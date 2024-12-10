@@ -1,0 +1,90 @@
+The FlexPrice API provides endpoints for user authentication during the onboarding process. Below are the endpoints for login and logout functionality.
+
+---
+
+## **Login**
+
+### **Endpoint**
+`POST https://api.flexprice.io/gw/auth/login`
+
+### **Description**
+This API endpoint allows a user to log in by providing their email and password. Upon successful login, the server returns a JSON Web Token (JWT) that can be used for authenticated requests.
+
+### **Request Body**
+The request body should contain the user's email and password in JSON format. For example:
+```json
+{
+    "email": "awsmankitt@gmail.com",
+    "password": "Pass!123"
+}
+```
+
+### **Headers**
+| Header            | Value                           |
+|--------------------|---------------------------------|
+| `content-type`    | `application/json`             |
+
+### **Request Example (CURL)**
+```bash
+curl --location --request POST 'https://api.flexprice.io/gw/auth/login' \
+--header 'content-type: application/json' \
+--data-raw '{
+    "email": "awsmankitt@gmail.com",
+    "password": "Pass!123"
+}'
+```
+
+### **Response Example**
+```json
+{
+    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "token_type": "Bearer",
+    "expires_in": 3600
+}
+```
+
+### **Errors**
+| Status Code | Error                  | Description                             |
+|-------------|------------------------|-----------------------------------------|
+| `400`       | Bad Request            | Missing or invalid email/password.      |
+| `401`       | Unauthorized           | Incorrect email or password.            |
+| `500`       | Internal Server Error  | A server error occurred.                |
+
+---
+
+## **Logout**
+
+### **Endpoint**
+`POST https://api.flexprice.io/gw/user/logout`
+
+### **Description**
+This API endpoint logs out the current user by invalidating the active session token. No request body is required for this endpoint.
+
+### **Authorization**
+This endpoint requires a valid Bearer token. Include the token in the `Authorization` header.
+
+### **Headers**
+| Header            | Value                |
+|--------------------|----------------------|
+| `Authorization`   | `Bearer {your_token}`|
+
+### **Request Example (CURL)**
+```bash
+curl --location --request POST 'https://api.flexprice.io/gw/user/logout' \
+--header 'Authorization: Bearer {your_token}'
+```
+
+### **Response Example**
+```json
+{
+    "message": "Logout successful"
+}
+```
+
+### **Errors**
+| Status Code | Error                  | Description                             |
+|-------------|------------------------|-----------------------------------------|
+| `401`       | Unauthorized           | The Bearer token is missing or invalid. |
+| `500`       | Internal Server Error  | A server error occurred.                |
+
+---

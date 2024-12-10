@@ -1,0 +1,87 @@
+
+The FlexPrice API provides endpoints to manage and retrieve user information. This document outlines the available endpoints for user operations.
+
+---
+
+## **Get Current User Details**
+
+### **Endpoint**
+`GET https://api.flexprice.io/gw/user/me`
+
+### **Description**
+Retrieve details of the currently authenticated user.
+
+### **Authorization**
+This endpoint requires a valid Bearer token. Include the token in the `Authorization` header.
+
+### **Request Example (CURL)**
+```bash
+curl --location 'https://api.flexprice.io/gw/user/me' \
+--header 'Authorization: Bearer {your_token}'
+```
+
+### **Response Example**
+```json
+{
+  "user_id": "8f9dbd96-48a9-4aff-9ad5-910976556c65",
+  "user_name": "John Doe",
+  "email": "johndoe@example.com",
+  "role": "admin"
+}
+```
+
+### **Errors**
+| Status Code | Error                  | Description                             |
+|-------------|------------------------|-----------------------------------------|
+| `401`       | Unauthorized           | The Bearer token is missing or invalid. |
+| `403`       | Forbidden              | Access is restricted.                   |
+
+---
+
+## **Update User Details**
+
+### **Endpoint**
+`PUT https://api.flexprice.io/gw/user/update/{user_id}`
+
+### **Description**
+This endpoint allows you to update the details of an existing user identified by their `user_id`. Only the fields provided in the request body will be updated.
+
+### **Path Parameters**
+| Parameter  | Type   | Description                          |
+|------------|--------|--------------------------------------|
+| `user_id`  | string | The unique identifier of the user.   |
+
+### **Request Body**
+The request body should be a JSON object containing the user fields to update. For example:
+```json
+{
+  "user_name": "John Doe",
+  "email": "johndoe@example.com"
+}
+```
+
+### **Authorization**
+This endpoint requires a valid Bearer token. Include the token in the `Authorization` header.
+
+### **Request Example (CURL)**
+```bash
+curl --location --request PUT 'https://api.flexprice.io/gw/user/update/8f9dbd96-48a9-4aff-9ad5-910976556c65' \
+--header 'Authorization: Bearer {your_token}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "user_name": "John Doe",
+    "email": "johndoe@example.com"
+}'
+```
+
+### **Response**
+This endpoint does not return a response body upon success. A `204 No Content` status code will be returned.
+
+### **Errors**
+| Status Code | Error                  | Description                             |
+|-------------|------------------------|-----------------------------------------|
+| `400`       | Bad Request            | Invalid or malformed request body.      |
+| `401`       | Unauthorized           | The Bearer token is missing or invalid. |
+| `403`       | Forbidden              | You are not authorized to update the user. |
+| `404`       | Not Found              | The `user_id` does not exist.           |
+```

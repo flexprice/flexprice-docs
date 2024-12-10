@@ -1,33 +1,55 @@
----
-title: 'Introduction'
-description: 'Example section for showcasing API endpoints'
----
+# Welcome to the FlexPrice API
 
-<Note>
-  If you're not looking to build API reference documentation, you can delete
-  this section by removing the api-reference folder.
-</Note>
-
-## Welcome
-
-There are two ways to build API documentation: [OpenAPI](https://mintlify.com/docs/api-playground/openapi/setup) and [MDX components](https://mintlify.com/docs/api-playground/mdx/configuration). For the starter kit, we are using the following OpenAPI specification.
-
-<Card
-  title="Plant Store Endpoints"
-  icon="leaf"
-  href="https://github.com/mintlify/starter/blob/main/api-reference/openapi.json"
->
-  View the OpenAPI specification file
-</Card>
+The FlexPrice API provides powerful tools for managing users, customers, subscriptions, and more. Use this documentation to quickly integrate with our platform and unlock its full potential.
 
 ## Authentication
 
-All API endpoints are authenticated using Bearer tokens and picked up from the specification file.
+All API endpoints require a Bearer token for authentication. Include your token in the `Authorization` header in every request. For example:
+
+```bash
+Authorization: Bearer <your_token>
+```
+
+### Base URL
+All requests should be made to the following base URL:
+
+```plaintext
+https://api.flexprice.io/
+```
+
+### Example Response Format
+All responses conform to the following general format:
 
 ```json
-"security": [
-  {
-    "bearerAuth": []
-  }
-]
+{
+    "status": "success",
+    "data": { ... },
+    "message": "Optional status message"
+}
 ```
+
+---
+
+## Available Resources
+
+FlexPrice API consists of the following major resources:
+
+### Users
+Manage user accounts, including retrieval and updates.
+- **Endpoints**: `/gw/user/me`, `/gw/user/update`
+
+### Customers
+Handle customer data, such as creating and retrieving customer profiles.
+- **Endpoints**: `/gw/customers/?status=published`, `/gw/customers/submit`
+
+### Authentication
+Facilitate login and logout operations to manage user sessions.
+- **Endpoints**: `/gw/auth/login`, `/gw/user/logout`
+
+Refer to each resource's respective section for detailed API specifications and examples.
+
+---
+
+## Need Help?
+
+If you have any questions or issues, feel free to contact our support team at **support@flexprice.io**.
