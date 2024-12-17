@@ -8,7 +8,7 @@
   },
   "servers": [
     {
-      "url": "https://api.flexprice.io/"
+      "url": "https://cloud.flexprice.io/v1"
     }
   ],
   "paths": {
@@ -128,18 +128,33 @@
             }
           },
           {
-            "name": "search",
+            "name": "sort",
             "in": "query",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "sort",
+            "name": "status",
             "in": "query",
             "schema": {
-              "type": "string"
-            }
+              "type": "string",
+              "enum": [
+                "published",
+                "deleted",
+                "archived"
+              ],
+              "x-enum-varnames": [
+                "StatusPublished",
+                "StatusDeleted",
+                "StatusArchived"
+              ]
+            },
+            "x-enum-varnames": [
+              "StatusPublished",
+              "StatusDeleted",
+              "StatusArchived"
+            ]
           }
         ],
         "responses": {
@@ -410,6 +425,66 @@
         ]
       }
     },
+    "/customers/{id}/wallets": {
+      "get": {
+        "tags": [
+          "Wallet"
+        ],
+        "summary": "Get wallets by customer ID",
+        "description": "Get all wallets for a customer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Customer ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/dto.WalletResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
     "/events": {
       "get": {
         "tags": [
@@ -574,52 +649,6 @@
       }
     },
     "/events/usage": {
-      "get": {
-        "tags": [
-          "events"
-        ],
-        "summary": "Get usage statistics",
-        "description": "Retrieve aggregated usage statistics for events",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/v1.ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/v1.ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "x-codegen-request-body-name": "request"
-      },
       "post": {
         "tags": [
           "events"
@@ -643,8 +672,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true
+                  "$ref": "#/components/schemas/dto.GetUsageResponse"
                 }
               }
             }
@@ -679,62 +707,6 @@
       }
     },
     "/events/usage/meter": {
-      "get": {
-        "tags": [
-          "events"
-        ],
-        "summary": "Get usage by meter",
-        "description": "Retrieve aggregated usage statistics using meter configuration",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/v1.ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/v1.ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/v1.ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "x-codegen-request-body-name": "request"
-      },
       "post": {
         "tags": [
           "events"
@@ -758,8 +730,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": true
+                  "$ref": "#/components/schemas/dto.GetUsageResponse"
                 }
               }
             }
@@ -1103,18 +1074,33 @@
             }
           },
           {
-            "name": "search",
+            "name": "sort",
             "in": "query",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "sort",
+            "name": "status",
             "in": "query",
             "schema": {
-              "type": "string"
-            }
+              "type": "string",
+              "enum": [
+                "published",
+                "deleted",
+                "archived"
+              ],
+              "x-enum-varnames": [
+                "StatusPublished",
+                "StatusDeleted",
+                "StatusArchived"
+              ]
+            },
+            "x-enum-varnames": [
+              "StatusPublished",
+              "StatusDeleted",
+              "StatusArchived"
+            ]
           }
         ],
         "responses": {
@@ -1421,18 +1407,33 @@
             }
           },
           {
-            "name": "search",
+            "name": "sort",
             "in": "query",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "sort",
+            "name": "status",
             "in": "query",
             "schema": {
-              "type": "string"
-            }
+              "type": "string",
+              "enum": [
+                "published",
+                "deleted",
+                "archived"
+              ],
+              "x-enum-varnames": [
+                "StatusPublished",
+                "StatusDeleted",
+                "StatusArchived"
+              ]
+            },
+            "x-enum-varnames": [
+              "StatusPublished",
+              "StatusDeleted",
+              "StatusArchived"
+            ]
           }
         ],
         "responses": {
@@ -1853,64 +1854,6 @@
         "x-codegen-request-body-name": "subscription"
       }
     },
-    "/subscriptions/usage": {
-      "post": {
-        "tags": [
-          "subscriptions"
-        ],
-        "summary": "Get usage by subscription",
-        "description": "Get usage by subscription",
-        "requestBody": {
-          "description": "Request",
-          "content": {
-            "*/*": {
-              "schema": {
-                "$ref": "#/components/schemas/dto.GetUsageBySubscriptionRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/dto.GetUsageBySubscriptionResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/v1.ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/v1.ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "BearerAuth": []
-          }
-        ],
-        "x-codegen-request-body-name": "request"
-      }
-    },
     "/subscriptions/{id}": {
       "get": {
         "tags": [
@@ -2033,6 +1976,64 @@
         ]
       }
     },
+    "/subscriptions/usage": {
+      "post": {
+        "tags": [
+          "subscriptions"
+        ],
+        "summary": "Get usage by subscription",
+        "description": "Get usage by subscription",
+        "requestBody": {
+          "description": "Request",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/dto.GetUsageBySubscriptionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.GetUsageBySubscriptionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "x-codegen-request-body-name": "request"
+      }
+    },
     "/users/me": {
       "get": {
         "tags": [
@@ -2047,6 +2048,384 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/dto.UserResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/wallets": {
+      "post": {
+        "tags": [
+          "Wallet"
+        ],
+        "summary": "Create a new wallet",
+        "description": "Create a new wallet for a customer",
+        "requestBody": {
+          "description": "Create wallet request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dto.CreateWalletRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.WalletResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "x-codegen-request-body-name": "request"
+      }
+    },
+    "/wallets/{id}": {
+      "get": {
+        "tags": [
+          "Wallet"
+        ],
+        "summary": "Get wallet by ID",
+        "description": "Get a wallet by its ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Wallet ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.WalletResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/wallets/{id}/balance": {
+      "get": {
+        "tags": [
+          "Wallet"
+        ],
+        "summary": "Get wallet balance",
+        "description": "Get real-time balance of a wallet",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Wallet ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.WalletBalanceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      }
+    },
+    "/wallets/{id}/top-up": {
+      "post": {
+        "tags": [
+          "Wallet"
+        ],
+        "summary": "Top up wallet",
+        "description": "Add credits to a wallet",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Wallet ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Top up request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dto.TopUpWalletRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.WalletResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "x-codegen-request-body-name": "request"
+      }
+    },
+    "/wallets/{id}/transactions": {
+      "get": {
+        "tags": [
+          "Wallet"
+        ],
+        "summary": "Get wallet transactions",
+        "description": "Get transactions for a wallet with pagination",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Wallet ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Limit",
+            "schema": {
+              "type": "integer",
+              "default": 50
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Offset",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort field",
+            "schema": {
+              "type": "string",
+              "default": "created_at"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "description": "Sort order",
+            "schema": {
+              "type": "string",
+              "default": "desc",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.WalletTransactionsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
                 }
               }
             }
@@ -2135,6 +2514,7 @@
       },
       "dto.CreatePlanPriceRequest": {
         "required": [
+          "amount",
           "billing_cadence",
           "billing_model",
           "billing_period",
@@ -2145,7 +2525,7 @@
         "type": "object",
         "properties": {
           "amount": {
-            "type": "number"
+            "type": "string"
           },
           "billing_cadence": {
             "$ref": "#/components/schemas/types.BillingCadence"
@@ -2199,8 +2579,8 @@
               "$ref": "#/components/schemas/dto.CreatePriceTier"
             }
           },
-          "transform": {
-            "$ref": "#/components/schemas/price.PriceTransform"
+          "transform_quantity": {
+            "$ref": "#/components/schemas/price.TransformQuantity"
           },
           "type": {
             "$ref": "#/components/schemas/types.PriceType"
@@ -2238,6 +2618,7 @@
       },
       "dto.CreatePriceRequest": {
         "required": [
+          "amount",
           "billing_cadence",
           "billing_model",
           "billing_period",
@@ -2248,7 +2629,7 @@
         "type": "object",
         "properties": {
           "amount": {
-            "type": "number"
+            "type": "string"
           },
           "billing_cadence": {
             "$ref": "#/components/schemas/types.BillingCadence"
@@ -2302,8 +2683,8 @@
               "$ref": "#/components/schemas/dto.CreatePriceTier"
             }
           },
-          "transform": {
-            "$ref": "#/components/schemas/price.PriceTransform"
+          "transform_quantity": {
+            "$ref": "#/components/schemas/price.TransformQuantity"
           },
           "type": {
             "$ref": "#/components/schemas/types.PriceType"
@@ -2311,13 +2692,16 @@
         }
       },
       "dto.CreatePriceTier": {
+        "required": [
+          "unit_amount"
+        ],
         "type": "object",
         "properties": {
           "flat_amount": {
-            "type": "number"
+            "type": "string"
           },
           "unit_amount": {
-            "type": "number"
+            "type": "string"
           },
           "up_to": {
             "type": "integer"
@@ -2337,7 +2721,7 @@
           "billing_period": {
             "$ref": "#/components/schemas/types.BillingPeriod"
           },
-          "billing_period_unit": {
+          "billing_period_count": {
             "type": "integer"
           },
           "currency": {
@@ -2366,6 +2750,24 @@
           },
           "trial_start": {
             "type": "string"
+          }
+        }
+      },
+      "dto.CreateWalletRequest": {
+        "required": [
+          "currency",
+          "customer_id"
+        ],
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/types.Metadata"
           }
         }
       },
@@ -2600,6 +3002,26 @@
                 "$ref": "#/components/schemas/types.WindowSize"
               }
             ]
+          }
+        }
+      },
+      "dto.GetUsageResponse": {
+        "type": "object",
+        "properties": {
+          "event_name": {
+            "type": "string"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dto.UsageResult"
+            }
+          },
+          "type": {
+            "$ref": "#/components/schemas/types.AggregationType"
+          },
+          "value": {
+            "type": "number"
           }
         }
       },
@@ -2838,8 +3260,8 @@
         "type": "object",
         "properties": {
           "amount": {
-            "type": "integer",
-            "description": "Amount in cents ex 1200 for $12"
+            "type": "number",
+            "description": "Amount stored in main currency units (e.g., dollars, not cents)\nFor USD: 12.50 means $12.50"
           },
           "billing_cadence": {
             "type": "object",
@@ -2888,7 +3310,7 @@
           },
           "display_amount": {
             "type": "string",
-            "description": "DisplayAmount is the amount in the currency ex $12.00"
+            "description": "DisplayAmount is the formatted amount with currency symbol\nFor USD: $12.50"
           },
           "filter_values": {
             "type": "object",
@@ -2946,12 +3368,12 @@
               "$ref": "#/components/schemas/price.PriceTier"
             }
           },
-          "transform": {
+          "transform_quantity": {
             "type": "object",
             "description": "Transform is the quantity transformation in case of PACKAGE billing model",
             "allOf": [
               {
-                "$ref": "#/components/schemas/price.JSONBTransform"
+                "$ref": "#/components/schemas/price.JSONBTransformQuantity"
               }
             ]
           },
@@ -3013,9 +3435,9 @@
               }
             ]
           },
-          "billing_period_unit": {
+          "billing_period_count": {
             "type": "integer",
-            "description": "BillingPeriodUnit is the unit of the billing period."
+            "description": "BillingPeriodCount is the total number units of the billing period."
           },
           "cancel_at": {
             "type": "string",
@@ -3132,8 +3554,28 @@
           "meter_display_name": {
             "type": "string"
           },
+          "price": {
+            "$ref": "#/components/schemas/price.Price"
+          },
           "quantity": {
             "type": "number"
+          }
+        }
+      },
+      "dto.TopUpWalletRequest": {
+        "required": [
+          "amount"
+        ],
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "description": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/types.Metadata"
           }
         }
       },
@@ -3153,6 +3595,7 @@
       },
       "dto.UpdatePlanPriceRequest": {
         "required": [
+          "amount",
           "billing_cadence",
           "billing_model",
           "billing_period",
@@ -3163,7 +3606,7 @@
         "type": "object",
         "properties": {
           "amount": {
-            "type": "number"
+            "type": "string"
           },
           "billing_cadence": {
             "$ref": "#/components/schemas/types.BillingCadence"
@@ -3221,8 +3664,8 @@
               "$ref": "#/components/schemas/dto.CreatePriceTier"
             }
           },
-          "transform": {
-            "$ref": "#/components/schemas/price.PriceTransform"
+          "transform_quantity": {
+            "$ref": "#/components/schemas/price.TransformQuantity"
           },
           "type": {
             "$ref": "#/components/schemas/types.PriceType"
@@ -3275,6 +3718,17 @@
           }
         }
       },
+      "dto.UsageResult": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "number"
+          },
+          "window_size": {
+            "type": "string"
+          }
+        }
+      },
       "dto.UserResponse": {
         "type": "object",
         "properties": {
@@ -3283,6 +3737,140 @@
           },
           "id": {
             "type": "string"
+          }
+        }
+      },
+      "dto.WalletBalanceResponse": {
+        "type": "object",
+        "properties": {
+          "balance": {
+            "type": "number"
+          },
+          "balance_updated_at": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/types.Metadata"
+          },
+          "real_time_balance": {
+            "type": "number"
+          },
+          "status": {
+            "$ref": "#/components/schemas/types.Status"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "updated_by": {
+            "type": "string"
+          },
+          "wallet_status": {
+            "$ref": "#/components/schemas/types.WalletStatus"
+          }
+        }
+      },
+      "dto.WalletResponse": {
+        "type": "object",
+        "properties": {
+          "balance": {
+            "type": "number"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/types.Metadata"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "wallet_status": {
+            "type": "string"
+          }
+        }
+      },
+      "dto.WalletTransactionResponse": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "balance_after": {
+            "type": "number"
+          },
+          "balance_before": {
+            "type": "number"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/types.Metadata"
+          },
+          "reference_id": {
+            "type": "string"
+          },
+          "reference_type": {
+            "type": "string"
+          },
+          "transaction_status": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "wallet_id": {
+            "type": "string"
+          }
+        }
+      },
+      "dto.WalletTransactionsResponse": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "$ref": "#/components/schemas/types.Filter"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "transactions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dto.WalletTransactionResponse"
+            }
           }
         }
       },
@@ -3296,10 +3884,17 @@
         "type": "object",
         "properties": {
           "field": {
-            "type": "string"
+            "type": "string",
+            "description": "Field is the key in $event.properties on which the aggregation is to be applied\nFor ex if the aggregation type is sum for API usage, the field could be \"duration_ms\""
           },
           "type": {
-            "$ref": "#/components/schemas/types.AggregationType"
+            "type": "object",
+            "description": "Type is the type of aggregation to be applied on the events\nFor ex sum, count, avg, max, min etc",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/types.AggregationType"
+              }
+            ]
           }
         }
       },
@@ -3307,10 +3902,12 @@
         "type": "object",
         "properties": {
           "key": {
-            "type": "string"
+            "type": "string",
+            "description": "Key is the key for the filter from $event.properties\nCurrently we support only first level keys in the properties and not nested keys"
           },
           "values": {
             "type": "array",
+            "description": "Values are the possible values for the filter to be considered for the meter\nFor ex \"model_name\" could have values \"o1-mini\", \"gpt-4o\" etc",
             "items": {
               "type": "string"
             }
@@ -3373,7 +3970,7 @@
           "type": "string"
         }
       },
-      "price.JSONBTransform": {
+      "price.JSONBTransformQuantity": {
         "type": "object",
         "properties": {
           "divide_by": {
@@ -3382,7 +3979,145 @@
           },
           "round": {
             "type": "string",
-            "description": "up, down, or nearest"
+            "description": "up or down"
+          }
+        }
+      },
+      "price.Price": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "description": "Amount stored in main currency units (e.g., dollars, not cents)\nFor USD: 12.50 means $12.50"
+          },
+          "billing_cadence": {
+            "type": "object",
+            "description": "BillingCadence is the billing cadence for the price ex RECURRING, ONETIME",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/types.BillingCadence"
+              }
+            ]
+          },
+          "billing_model": {
+            "type": "object",
+            "description": "BillingModel is the billing model for the price ex FLAT_FEE, PACKAGE, TIERED",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/types.BillingModel"
+              }
+            ]
+          },
+          "billing_period": {
+            "type": "object",
+            "description": "BillingPeriod is the billing period for the price ex month, year",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/types.BillingPeriod"
+              }
+            ]
+          },
+          "billing_period_count": {
+            "type": "integer",
+            "description": "BillingPeriodCount is the count of the billing period ex 1, 3, 6, 12"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string",
+            "description": "Currency 3 digit ISO currency code in lowercase ex usd, eur, gbp"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the price"
+          },
+          "display_amount": {
+            "type": "string",
+            "description": "DisplayAmount is the formatted amount with currency symbol\nFor USD: $12.50"
+          },
+          "filter_values": {
+            "type": "object",
+            "description": "FilterValues are the filter values for the price in case of usage based pricing",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/price.JSONBFilters"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "description": "ID uuid identifier for the price"
+          },
+          "lookup_key": {
+            "type": "string",
+            "description": "LookupKey used for looking up the price in the database"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Metadata is a jsonb field for additional information",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/price.JSONBMetadata"
+              }
+            ]
+          },
+          "meter_id": {
+            "type": "string",
+            "description": "MeterID is the id of the meter for usage based pricing"
+          },
+          "plan_id": {
+            "type": "string",
+            "description": "PlanID is the id of the plan for plan based pricing"
+          },
+          "status": {
+            "$ref": "#/components/schemas/types.Status"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "tier_mode": {
+            "type": "object",
+            "description": "Tiered pricing fields when BillingModel is TIERED",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/types.BillingTier"
+              }
+            ]
+          },
+          "tiers": {
+            "type": "array",
+            "description": "Tiers are the tiers for the price when BillingModel is TIERED",
+            "items": {
+              "$ref": "#/components/schemas/price.PriceTier"
+            }
+          },
+          "transform_quantity": {
+            "type": "object",
+            "description": "Transform is the quantity transformation in case of PACKAGE billing model",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/price.JSONBTransformQuantity"
+              }
+            ]
+          },
+          "type": {
+            "type": "object",
+            "description": "Type is the type of the price ex USAGE, FIXED",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/types.PriceType"
+              }
+            ]
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "updated_by": {
+            "type": "string"
           }
         }
       },
@@ -3390,20 +4125,20 @@
         "type": "object",
         "properties": {
           "flat_amount": {
-            "type": "integer",
-            "description": "Optional flat fee for this tier"
+            "type": "number",
+            "description": "FlatAmount is the flat amount for the given tier and it is applied\non top of the unit amount*quantity. It solves cases in banking like 2.7% + 5c"
           },
           "unit_amount": {
-            "type": "integer",
-            "description": "Amount per unit in cents"
+            "type": "number",
+            "description": "UnitAmount is the amount per unit for the given tier"
           },
           "up_to": {
             "type": "integer",
-            "description": "null means infinity"
+            "description": "Upto is the quantity up to which this tier applies. It is null for the last tier"
           }
         }
       },
-      "price.PriceTransform": {
+      "price.TransformQuantity": {
         "type": "object",
         "properties": {
           "divide_by": {
@@ -3412,7 +4147,7 @@
           },
           "round": {
             "type": "string",
-            "description": "up, down, or nearest"
+            "description": "up or down"
           }
         }
       },
@@ -3421,20 +4156,12 @@
         "enum": [
           "COUNT",
           "SUM",
-          "AVG",
-          "MAX",
-          "MIN",
-          "COUNT_UNIQUE",
-          "LATEST"
+          "AVG"
         ],
         "x-enum-varnames": [
           "AggregationCount",
           "AggregationSum",
-          "AggregationAvg",
-          "AggregationMax",
-          "AggregationMin",
-          "AggregationCountUnique",
-          "AggregationLatest"
+          "AggregationAvg"
         ]
       },
       "types.BillingCadence": {
@@ -3487,6 +4214,26 @@
           "BILLING_TIER_SLAB"
         ]
       },
+      "types.Filter": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "order": {
+            "type": "string"
+          },
+          "sort": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/types.Status"
+          }
+        }
+      },
       "types.InvoiceCadence": {
         "type": "string",
         "enum": [
@@ -3497,6 +4244,12 @@
           "InvoiceCadenceArrear",
           "InvoiceCadenceAdvance"
         ]
+      },
+      "types.Metadata": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "string"
+        }
       },
       "types.PriceType": {
         "type": "string",
@@ -3556,6 +4309,19 @@
           "SubscriptionStatusUnpaid"
         ]
       },
+      "types.WalletStatus": {
+        "type": "string",
+        "enum": [
+          "active",
+          "frozen",
+          "closed"
+        ],
+        "x-enum-varnames": [
+          "WalletStatusActive",
+          "WalletStatusFrozen",
+          "WalletStatusClosed"
+        ]
+      },
       "types.WindowSize": {
         "type": "string",
         "enum": [
@@ -3572,6 +4338,10 @@
       "v1.ErrorResponse": {
         "type": "object",
         "properties": {
+          "detail": {
+            "type": "string",
+            "example": "Invalid request payload"
+          },
           "error": {
             "type": "string",
             "example": "Invalid request payload"
