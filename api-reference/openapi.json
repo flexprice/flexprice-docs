@@ -8,7 +8,7 @@
   },
   "servers": [
     {
-      "url": "https://api-dev.cloud.flexprice.io/v1"
+      "url": "https://api.cloud.flexprice.io/v1"
     }
   ],
   "paths": {
@@ -428,7 +428,7 @@
     "/customers/{id}/wallets": {
       "get": {
         "tags": [
-          "Wallet"
+          "wallets"
         ],
         "summary": "Get wallets by customer ID",
         "description": "Get all wallets for a customer",
@@ -483,6 +483,304 @@
             "BearerAuth": []
           }
         ]
+      }
+    },
+    "/environments": {
+      "get": {
+        "tags": [
+          "environments"
+        ],
+        "summary": "Get environments",
+        "description": "Get environments",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "published",
+                "deleted",
+                "archived"
+              ],
+              "x-enum-varnames": [
+                "StatusPublished",
+                "StatusDeleted",
+                "StatusArchived"
+              ]
+            },
+            "x-enum-varnames": [
+              "StatusPublished",
+              "StatusDeleted",
+              "StatusArchived"
+            ]
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.ListEnvironmentsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "environments"
+        ],
+        "summary": "Create an environment",
+        "description": "Create an environment",
+        "requestBody": {
+          "description": "Environment",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dto.CreateEnvironmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.EnvironmentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "x-codegen-request-body-name": "environment"
+      }
+    },
+    "/environments/{id}": {
+      "get": {
+        "tags": [
+          "environments"
+        ],
+        "summary": "Get an environment",
+        "description": "Get an environment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Environment ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.EnvironmentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "environments"
+        ],
+        "summary": "Update an environment",
+        "description": "Update an environment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Environment ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Environment",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dto.UpdateEnvironmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.EnvironmentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "x-codegen-request-body-name": "environment"
       }
     },
     "/events": {
@@ -774,6 +1072,404 @@
         "x-codegen-request-body-name": "request"
       }
     },
+    "/invoices": {
+      "get": {
+        "tags": [
+          "invoices"
+        ],
+        "summary": "List invoices",
+        "description": "List invoices with optional filtering",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "query",
+            "description": "Customer ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "subscription_id",
+            "in": "query",
+            "description": "Subscription ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "wallet_id",
+            "in": "query",
+            "description": "Wallet ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Invoice statuses",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "start_time",
+            "in": "query",
+            "description": "Start time (RFC3339)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "end_time",
+            "in": "query",
+            "description": "End time (RFC3339)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Limit",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Offset",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.ListInvoicesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "invoices"
+        ],
+        "summary": "Create a new invoice",
+        "description": "Create a new invoice with the provided details",
+        "requestBody": {
+          "description": "Invoice details",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dto.CreateInvoiceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.InvoiceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "invoice"
+      }
+    },
+    "/invoices/{id}": {
+      "get": {
+        "tags": [
+          "invoices"
+        ],
+        "summary": "Get an invoice by ID",
+        "description": "Get detailed information about an invoice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Invoice ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.InvoiceResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invoices/{id}/finalize": {
+      "post": {
+        "tags": [
+          "invoices"
+        ],
+        "summary": "Finalize an invoice",
+        "description": "Finalize a draft invoice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Invoice ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/gin.H"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invoices/{id}/payment": {
+      "put": {
+        "tags": [
+          "invoices"
+        ],
+        "summary": "Update invoice payment status",
+        "description": "Update the payment status of an invoice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Invoice ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Payment Status Update Request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dto.UpdateInvoicePaymentStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.InvoiceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "x-codegen-request-body-name": "request"
+      }
+    },
+    "/invoices/{id}/void": {
+      "post": {
+        "tags": [
+          "invoices"
+        ],
+        "summary": "Void an invoice",
+        "description": "Void an invoice that hasn't been paid",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Invoice ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/gin.H"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/meters": {
       "get": {
         "tags": [
@@ -924,6 +1620,83 @@
             "BearerAuth": []
           }
         ]
+      },
+      "put": {
+        "tags": [
+          "meters"
+        ],
+        "summary": "Update meter",
+        "description": "Update an existing meter",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Meter ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Meter configuration",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dto.UpdateMeterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.MeterResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "x-codegen-request-body-name": "meter"
       },
       "delete": {
         "tags": [
@@ -1854,6 +2627,64 @@
         "x-codegen-request-body-name": "subscription"
       }
     },
+    "/subscriptions/usage": {
+      "post": {
+        "tags": [
+          "subscriptions"
+        ],
+        "summary": "Get usage by subscription",
+        "description": "Get usage by subscription",
+        "requestBody": {
+          "description": "Request",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/dto.GetUsageBySubscriptionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.GetUsageBySubscriptionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "x-codegen-request-body-name": "request"
+      }
+    },
     "/subscriptions/{id}": {
       "get": {
         "tags": [
@@ -1976,31 +2807,31 @@
         ]
       }
     },
-    "/subscriptions/usage": {
+    "/tenants": {
       "post": {
         "tags": [
-          "subscriptions"
+          "tenants"
         ],
-        "summary": "Get usage by subscription",
-        "description": "Get usage by subscription",
+        "summary": "Create a new tenant",
+        "description": "Create a new tenant",
         "requestBody": {
-          "description": "Request",
+          "description": "Create tenant request",
           "content": {
-            "*/*": {
+            "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/dto.GetUsageBySubscriptionRequest"
+                "$ref": "#/components/schemas/dto.CreateTenantRequest"
               }
             }
           },
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK",
+          "201": {
+            "description": "Created",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/dto.GetUsageBySubscriptionResponse"
+                  "$ref": "#/components/schemas/dto.TenantResponse"
                 }
               }
             }
@@ -2032,6 +2863,63 @@
           }
         ],
         "x-codegen-request-body-name": "request"
+      }
+    },
+    "/tenants/{id}": {
+      "get": {
+        "tags": [
+          "tenants"
+        ],
+        "summary": "Get tenant by ID",
+        "description": "Get tenant by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Tenant ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.TenantResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ]
       }
     },
     "/users/me": {
@@ -2073,7 +2961,7 @@
     "/wallets": {
       "post": {
         "tags": [
-          "Wallet"
+          "wallets"
         ],
         "summary": "Create a new wallet",
         "description": "Create a new wallet for a customer",
@@ -2131,7 +3019,7 @@
     "/wallets/{id}": {
       "get": {
         "tags": [
-          "Wallet"
+          "wallets"
         ],
         "summary": "Get wallet by ID",
         "description": "Get a wallet by its ID",
@@ -2198,7 +3086,7 @@
     "/wallets/{id}/balance/real-time": {
       "get": {
         "tags": [
-          "Wallet"
+          "wallets"
         ],
         "summary": "Get wallet balance",
         "description": "Get real-time balance of a wallet",
@@ -2262,10 +3150,72 @@
         ]
       }
     },
+    "/wallets/{id}/terminate": {
+      "post": {
+        "tags": [
+          "wallets"
+        ],
+        "summary": "Terminate a wallet",
+        "description": "Terminates a wallet by closing it and debiting remaining balance",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Wallet ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.WalletResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/wallets/{id}/top-up": {
       "post": {
         "tags": [
-          "Wallet"
+          "wallets"
         ],
         "summary": "Top up wallet",
         "description": "Add credits to a wallet",
@@ -2344,7 +3294,7 @@
     "/wallets/{id}/transactions": {
       "get": {
         "tags": [
-          "Wallet"
+          "wallets"
         ],
         "summary": "Get wallet transactions",
         "description": "Get transactions for a wallet with pagination",
@@ -2472,6 +3422,73 @@
             "type": "string"
           },
           "name": {
+            "type": "string"
+          }
+        }
+      },
+      "dto.CreateEnvironmentRequest": {
+        "required": [
+          "name",
+          "slug",
+          "type"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
+      "dto.CreateInvoiceRequest": {
+        "required": [
+          "amount_due",
+          "currency",
+          "customer_id",
+          "invoice_type"
+        ],
+        "type": "object",
+        "properties": {
+          "amount_due": {
+            "type": "number"
+          },
+          "amount_paid": {
+            "type": "number"
+          },
+          "billing_reason": {
+            "$ref": "#/components/schemas/types.InvoiceBillingReason"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "due_date": {
+            "type": "string"
+          },
+          "invoice_status": {
+            "$ref": "#/components/schemas/types.InvoiceStatus"
+          },
+          "invoice_type": {
+            "$ref": "#/components/schemas/types.InvoiceType"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "payment_status": {
+            "$ref": "#/components/schemas/types.InvoicePaymentStatus"
+          },
+          "subscription_id": {
             "type": "string"
           }
         }
@@ -2710,8 +3727,14 @@
       },
       "dto.CreateSubscriptionRequest": {
         "required": [
+          "billing_cadence",
+          "billing_period",
+          "billing_period_count",
+          "currency",
           "customer_id",
-          "plan_id"
+          "invoice_cadence",
+          "plan_id",
+          "start_date"
         ],
         "type": "object",
         "properties": {
@@ -2722,6 +3745,7 @@
             "$ref": "#/components/schemas/types.BillingPeriod"
           },
           "billing_period_count": {
+            "minimum": 1,
             "type": "integer"
           },
           "currency": {
@@ -2749,6 +3773,17 @@
             "type": "string"
           },
           "trial_start": {
+            "type": "string"
+          }
+        }
+      },
+      "dto.CreateTenantRequest": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
             "type": "string"
           }
         }
@@ -2806,6 +3841,29 @@
             "type": "string"
           },
           "updated_by": {
+            "type": "string"
+          }
+        }
+      },
+      "dto.EnvironmentResponse": {
+        "type": "object",
+        "properties": {
+          "created_at": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "updated_at": {
             "type": "string"
           }
         }
@@ -2869,7 +3927,7 @@
           },
           "end_time": {
             "type": "string",
-            "example": "2024-12-09T00:00:00.000Z"
+            "example": "2024-12-09T00:00:00Z"
           },
           "external_customer_id": {
             "type": "string",
@@ -2890,7 +3948,7 @@
           },
           "start_time": {
             "type": "string",
-            "example": "2024-11-09T00:00:00.000Z"
+            "example": "2024-11-09T00:00:00Z"
           },
           "window_size": {
             "type": "object",
@@ -2911,11 +3969,15 @@
         "properties": {
           "end_time": {
             "type": "string",
-            "example": "2024-03-20T00:00:00.000Z"
+            "example": "2024-03-20T00:00:00Z"
+          },
+          "lifetime_usage": {
+            "type": "boolean",
+            "example": false
           },
           "start_time": {
             "type": "string",
-            "example": "2024-03-13T00:00:00.000Z"
+            "example": "2024-03-13T00:00:00Z"
           },
           "subscription_id": {
             "type": "string",
@@ -2966,7 +4028,7 @@
           },
           "end_time": {
             "type": "string",
-            "example": "2024-03-20T00:00:00.000Z"
+            "example": "2024-03-20T00:00:00Z"
           },
           "event_name": {
             "type": "string",
@@ -2992,7 +4054,7 @@
           },
           "start_time": {
             "type": "string",
-            "example": "2024-03-13T00:00:00.000Z"
+            "example": "2024-03-13T00:00:00Z"
           },
           "window_size": {
             "type": "object",
@@ -3064,7 +4126,88 @@
           },
           "timestamp": {
             "type": "string",
-            "example": "2024-03-20T15:04:05.000Z"
+            "example": "2024-03-20T15:04:05Z"
+          }
+        }
+      },
+      "dto.InvoiceResponse": {
+        "type": "object",
+        "properties": {
+          "amount_due": {
+            "type": "number"
+          },
+          "amount_paid": {
+            "type": "number"
+          },
+          "amount_remaining": {
+            "type": "number"
+          },
+          "billing_reason": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "due_date": {
+            "type": "string"
+          },
+          "finalized_at": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "invoice_pdf_url": {
+            "type": "string"
+          },
+          "invoice_status": {
+            "$ref": "#/components/schemas/types.InvoiceStatus"
+          },
+          "invoice_type": {
+            "$ref": "#/components/schemas/types.InvoiceType"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "paid_at": {
+            "type": "string"
+          },
+          "payment_status": {
+            "$ref": "#/components/schemas/types.InvoicePaymentStatus"
+          },
+          "status": {
+            "type": "string"
+          },
+          "subscription_id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "updated_by": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "voided_at": {
+            "type": "string"
           }
         }
       },
@@ -3082,6 +4225,40 @@
           },
           "offset": {
             "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          }
+        }
+      },
+      "dto.ListEnvironmentsResponse": {
+        "type": "object",
+        "properties": {
+          "environments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dto.EnvironmentResponse"
+            }
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          }
+        }
+      },
+      "dto.ListInvoicesResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dto.InvoiceResponse"
+            }
           },
           "total": {
             "type": "integer"
@@ -3172,7 +4349,7 @@
           },
           "created_at": {
             "type": "string",
-            "example": "2024-03-20T15:04:05.000Z"
+            "example": "2024-03-20T15:04:05Z"
           },
           "event_name": {
             "type": "string",
@@ -3205,7 +4382,7 @@
           },
           "updated_at": {
             "type": "string",
-            "example": "2024-03-20T15:04:05.000Z"
+            "example": "2024-03-20T15:04:05Z"
           }
         }
       },
@@ -3533,6 +4710,9 @@
           },
           "updated_by": {
             "type": "string"
+          },
+          "version": {
+            "type": "integer"
           }
         }
       },
@@ -3559,6 +4739,23 @@
           },
           "quantity": {
             "type": "number"
+          }
+        }
+      },
+      "dto.TenantResponse": {
+        "type": "object",
+        "properties": {
+          "created_at": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
           }
         }
       },
@@ -3590,6 +4787,45 @@
           },
           "name": {
             "type": "string"
+          }
+        }
+      },
+      "dto.UpdateEnvironmentRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
+      "dto.UpdateInvoicePaymentStatusRequest": {
+        "required": [
+          "payment_status"
+        ],
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "payment_status": {
+            "$ref": "#/components/schemas/types.InvoicePaymentStatus"
+          }
+        }
+      },
+      "dto.UpdateMeterRequest": {
+        "type": "object",
+        "properties": {
+          "filters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/meter.Filter"
+            }
           }
         }
       },
@@ -3761,6 +4997,9 @@
           "customer_id": {
             "type": "string"
           },
+          "description": {
+            "type": "string"
+          },
           "id": {
             "type": "string"
           },
@@ -3812,7 +5051,7 @@
             "type": "string"
           },
           "wallet_status": {
-            "type": "string"
+            "$ref": "#/components/schemas/types.WalletStatus"
           }
         }
       },
@@ -3847,7 +5086,7 @@
             "type": "string"
           },
           "transaction_status": {
-            "type": "string"
+            "$ref": "#/components/schemas/types.TransactionStatus"
           },
           "type": {
             "type": "string"
@@ -4234,6 +5473,21 @@
           }
         }
       },
+      "types.InvoiceBillingReason": {
+        "type": "string",
+        "enum": [
+          "SUBSCRIPTION_CREATE",
+          "SUBSCRIPTION_CYCLE",
+          "SUBSCRIPTION_UPDATE",
+          "MANUAL"
+        ],
+        "x-enum-varnames": [
+          "InvoiceBillingReasonSubscriptionCreate",
+          "InvoiceBillingReasonSubscriptionCycle",
+          "InvoiceBillingReasonSubscriptionUpdate",
+          "InvoiceBillingReasonManual"
+        ]
+      },
       "types.InvoiceCadence": {
         "type": "string",
         "enum": [
@@ -4243,6 +5497,45 @@
         "x-enum-varnames": [
           "InvoiceCadenceArrear",
           "InvoiceCadenceAdvance"
+        ]
+      },
+      "types.InvoicePaymentStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "SUCCEEDED",
+          "FAILED"
+        ],
+        "x-enum-varnames": [
+          "InvoicePaymentStatusPending",
+          "InvoicePaymentStatusSucceeded",
+          "InvoicePaymentStatusFailed"
+        ]
+      },
+      "types.InvoiceStatus": {
+        "type": "string",
+        "enum": [
+          "DRAFT",
+          "FINALIZED",
+          "VOIDED"
+        ],
+        "x-enum-varnames": [
+          "InvoiceStatusDraft",
+          "InvoiceStatusFinalized",
+          "InvoiceStatusVoided"
+        ]
+      },
+      "types.InvoiceType": {
+        "type": "string",
+        "enum": [
+          "SUBSCRIPTION",
+          "ONE_OFF",
+          "CREDIT"
+        ],
+        "x-enum-varnames": [
+          "InvoiceTypeSubscription",
+          "InvoiceTypeOneOff",
+          "InvoiceTypeCredit"
         ]
       },
       "types.Metadata": {
@@ -4307,6 +5600,19 @@
           "SubscriptionStatusPastDue",
           "SubscriptionStatusTrialing",
           "SubscriptionStatusUnpaid"
+        ]
+      },
+      "types.TransactionStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "completed",
+          "failed"
+        ],
+        "x-enum-varnames": [
+          "TransactionStatusPending",
+          "TransactionStatusCompleted",
+          "TransactionStatusFailed"
         ]
       },
       "types.WalletStatus": {
