@@ -1,24 +1,39 @@
 # Welcome to the FlexPrice API
 
-The FlexPrice API provides powerful tools for managing users, customers, subscriptions, and more. Use this documentation to quickly integrate with our platform and unlock its full potential.
+The FlexPrice API enables you to programmatically manage pricing, subscriptions, and billing for your SaaS application. This documentation will help you integrate FlexPrice into your application.
+
+## Base URL
+
+All API requests should be made to:
+
+```plaintext
+https://api.cloud.flexprice.io/v1
+```
 
 ## Authentication
 
-All API endpoints require a Bearer token for authentication. Include your token in the `Authorization` header in every request. For example:
+All API endpoints require authentication using an API Key or JWT token.
+
+#### JWT Token:
+These are the tokens you get when you login to the FlexPrice Dashboard.
+These tokens are short lived and can be used to authenticate requests to the API.
 
 ```bash
 Authorization: Bearer <your_token>
 ```
 
-### Base URL
-All requests should be made to the following base URL:
-
-```plaintext
-https://api.flexprice.io/
+#### API Key:
+These are the keys you get when you create a new API key in the FlexPrice Dashboard.
+These keys are long lived and can be used to authenticate requests to the API.
+```bash
+x-api-key: <your_api_key>
 ```
 
-### Example Response Format
-All responses conform to the following general format:
+Drop us an email at support@flexprice.io if you need help getting an API key.
+
+## Response Format
+
+All API responses follow a consistent JSON format:
 
 ```json
 {
@@ -28,28 +43,83 @@ All responses conform to the following general format:
 }
 ```
 
----
+## Core Resources
 
-## Available Resources
+### Plans
 
-FlexPrice API consists of the following major resources:
+Plans represent your product's pricing tiers. Each plan can contain multiple prices with different billing models.
+
+#### Key Endpoints:
+- `GET /plans` - List all plans
+- `GET /plans/{id}` - Retrieve a specific plan
+- `PUT /plans/{id}` - Update a plan
+- `DELETE /plans/{id}` - Delete a plan
+
+#### Plan Properties:
+- `name` - Name of the plan
+- `description` - Detailed description
+- `lookup_key` - Unique identifier for the plan
+- `invoice_cadence` - Billing frequency
+- `trial_period` - Trial period in days
+- `prices` - Array of associated prices
+
+### Prices
+
+Prices define how you charge for your products/services, supporting various billing models and cadences.
+
+#### Key Endpoints:
+- `GET /prices` - List all prices
+- `POST /prices` - Create a new price
+- `GET /prices/{id}` - Retrieve a specific price
+- `PUT /prices/{id}` - Update a price
+- `DELETE /prices/{id}` - Delete a price
+
+#### Price Properties:
+- `amount` - Price amount in main currency units (e.g., dollars)
+- `currency` - 3-letter ISO currency code (e.g., "usd")
+- `billing_model` - Pricing model (FLAT_FEE, PACKAGE, TIERED)
+- `billing_cadence` - Frequency (RECURRING, ONETIME)
+- `billing_period` - Period (month, year)
+- `billing_period_count` - Number of periods
+- `display_amount` - Formatted amount with currency symbol (e.g., "$12.50")
+
+### Wallets
+
+Wallets manage customer balances and payment methods.
+
+#### Key Endpoints:
+- `POST /wallets` - Create a new wallet
+- `GET /wallets/{id}` - Retrieve wallet details
 
 ### Users
-Manage user accounts, including retrieval and updates.
-- **Endpoints**: `/gw/user/me`, `/gw/user/update`
 
-### Customers
-Handle customer data, such as creating and retrieving customer profiles.
-- **Endpoints**: `/gw/customers/?status=published`, `/gw/customers/submit`
+Manage user accounts and authentication.
 
-### Authentication
-Facilitate login and logout operations to manage user sessions.
-- **Endpoints**: `/gw/auth/login`, `/gw/user/logout`
+#### Key Endpoints:
+- `GET /users/me` - Get current user info
+- `POST /auth/login` - Authenticate user
+- `POST /auth/signup` - Create new user account
 
-Refer to each resource's respective section for detailed API specifications and examples.
+## Error Handling
 
----
+The API uses standard HTTP response codes:
+- `200` - Success
+- `201` - Created
+- `400` - Bad Request
+- `401` - Unauthorized
+- `404` - Not Found
+- `500` - Internal Server Error
+
+Error responses include detailed information:
+```json
+{
+    "status": "error",
+    "message": "Error description",
+    "code": "ERROR_CODE"
+}
+```
 
 ## Need Help?
 
-If you have any questions or issues, feel free to contact our support team at **support@flexprice.io**.
+- Email: support@flexprice.io
+- Documentation Updates: [docs.flexprice.io](https://docs.flexprice.io)
