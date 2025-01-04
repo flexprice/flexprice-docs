@@ -107,6 +107,13 @@
         "description": "Get customers",
         "parameters": [
           {
+            "name": "expand",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "limit",
             "in": "query",
             "schema": {
@@ -493,6 +500,13 @@
         "summary": "Get environments",
         "description": "Get environments",
         "parameters": [
+          {
+            "name": "expand",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
           {
             "name": "limit",
             "in": "query",
@@ -1826,6 +1840,13 @@
         "description": "Get plans with the specified filter",
         "parameters": [
           {
+            "name": "expand",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "limit",
             "in": "query",
             "schema": {
@@ -2159,6 +2180,13 @@
         "description": "Get prices with the specified filter",
         "parameters": [
           {
+            "name": "expand",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "limit",
             "in": "query",
             "schema": {
@@ -2177,6 +2205,18 @@
             "in": "query",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "plan_ids",
+            "in": "query",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           {
@@ -3445,6 +3485,37 @@
           }
         }
       },
+      "dto.CreateInvoiceLineItemRequest": {
+        "required": [
+          "amount",
+          "price_id",
+          "quantity"
+        ],
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/types.Metadata"
+          },
+          "meter_id": {
+            "type": "string"
+          },
+          "period_end": {
+            "type": "string"
+          },
+          "period_start": {
+            "type": "string"
+          },
+          "price_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          }
+        }
+      },
       "dto.CreateInvoiceRequest": {
         "required": [
           "amount_due",
@@ -3481,11 +3552,23 @@
           "invoice_type": {
             "$ref": "#/components/schemas/types.InvoiceType"
           },
+          "line_items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dto.CreateInvoiceLineItemRequest"
+            }
+          },
           "metadata": {
             "$ref": "#/components/schemas/types.Metadata"
           },
           "payment_status": {
             "$ref": "#/components/schemas/types.InvoicePaymentStatus"
+          },
+          "period_end": {
+            "type": "string"
+          },
+          "period_start": {
+            "type": "string"
           },
           "subscription_id": {
             "type": "string"
@@ -3530,7 +3613,6 @@
       },
       "dto.CreatePlanPriceRequest": {
         "required": [
-          "amount",
           "billing_cadence",
           "billing_model",
           "billing_period",
@@ -3634,7 +3716,6 @@
       },
       "dto.CreatePriceRequest": {
         "required": [
-          "amount",
           "billing_cadence",
           "billing_model",
           "billing_period",
@@ -4129,6 +4210,65 @@
           }
         }
       },
+      "dto.InvoiceLineItemResponse": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "invoice_id": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/types.Metadata"
+          },
+          "meter_id": {
+            "type": "string"
+          },
+          "period_end": {
+            "type": "string"
+          },
+          "period_start": {
+            "type": "string"
+          },
+          "price_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          },
+          "subscription_id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "updated_by": {
+            "type": "string"
+          }
+        }
+      },
       "dto.InvoiceResponse": {
         "type": "object",
         "properties": {
@@ -4177,6 +4317,12 @@
           "invoice_type": {
             "$ref": "#/components/schemas/types.InvoiceType"
           },
+          "line_items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dto.InvoiceLineItemResponse"
+            }
+          },
           "metadata": {
             "$ref": "#/components/schemas/types.Metadata"
           },
@@ -4185,6 +4331,12 @@
           },
           "payment_status": {
             "$ref": "#/components/schemas/types.InvoicePaymentStatus"
+          },
+          "period_end": {
+            "type": "string"
+          },
+          "period_start": {
+            "type": "string"
           },
           "status": {
             "type": "string"
@@ -4275,7 +4427,7 @@
           "plans": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/plan.Plan"
+              "$ref": "#/components/schemas/dto.PlanResponse"
             }
           },
           "total": {
@@ -4512,6 +4664,9 @@
                 "$ref": "#/components/schemas/price.JSONBMetadata"
               }
             ]
+          },
+          "meter": {
+            "$ref": "#/components/schemas/dto.MeterResponse"
           },
           "meter_id": {
             "type": "string",
@@ -4829,7 +4984,6 @@
       },
       "dto.UpdatePlanPriceRequest": {
         "required": [
-          "amount",
           "billing_cadence",
           "billing_model",
           "billing_period",
@@ -5151,47 +5305,6 @@
           }
         }
       },
-      "plan.Plan": {
-        "type": "object",
-        "properties": {
-          "created_at": {
-            "type": "string"
-          },
-          "created_by": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "id": {
-            "type": "string"
-          },
-          "invoice_cadence": {
-            "$ref": "#/components/schemas/types.InvoiceCadence"
-          },
-          "lookup_key": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "status": {
-            "$ref": "#/components/schemas/types.Status"
-          },
-          "tenant_id": {
-            "type": "string"
-          },
-          "trial_period": {
-            "type": "integer"
-          },
-          "updated_at": {
-            "type": "string"
-          },
-          "updated_by": {
-            "type": "string"
-          }
-        }
-      },
       "price.JSONBFilters": {
         "type": "object",
         "additionalProperties": {
@@ -5454,6 +5567,9 @@
       "types.Filter": {
         "type": "object",
         "properties": {
+          "expand": {
+            "type": "string"
+          },
           "limit": {
             "type": "integer"
           },
