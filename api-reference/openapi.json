@@ -107,7 +107,28 @@
         "description": "Get customers",
         "parameters": [
           {
+            "name": "email",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "end_time",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "expand",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "external_id",
             "in": "query",
             "schema": {
               "type": "string"
@@ -117,6 +138,8 @@
             "name": "limit",
             "in": "query",
             "schema": {
+              "maximum": 1000,
+              "minimum": 1,
               "type": "integer"
             }
           },
@@ -124,6 +147,7 @@
             "name": "offset",
             "in": "query",
             "schema": {
+              "minimum": 0,
               "type": "integer"
             }
           },
@@ -131,11 +155,22 @@
             "name": "order",
             "in": "query",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
             }
           },
           {
             "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "start_time",
             "in": "query",
             "schema": {
               "type": "string"
@@ -1097,44 +1132,6 @@
           {
             "name": "customer_id",
             "in": "query",
-            "description": "Customer ID",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "subscription_id",
-            "in": "query",
-            "description": "Subscription ID",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "wallet_id",
-            "in": "query",
-            "description": "Wallet ID",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "description": "Invoice statuses",
-            "style": "form",
-            "explode": false,
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          },
-          {
-            "name": "start_time",
-            "in": "query",
-            "description": "Start time (RFC3339)",
             "schema": {
               "type": "string"
             }
@@ -1142,25 +1139,142 @@
           {
             "name": "end_time",
             "in": "query",
-            "description": "End time (RFC3339)",
             "schema": {
               "type": "string"
             }
           },
           {
+            "name": "expand",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "invoice_status",
+            "in": "query",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "DRAFT",
+                  "FINALIZED",
+                  "VOIDED"
+                ]
+              }
+            }
+          },
+          {
+            "name": "invoice_type",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "SUBSCRIPTION",
+                "ONE_OFF",
+                "CREDIT"
+              ],
+              "x-enum-varnames": [
+                "InvoiceTypeSubscription",
+                "InvoiceTypeOneOff",
+                "InvoiceTypeCredit"
+              ]
+            },
+            "x-enum-varnames": [
+              "InvoiceTypeSubscription",
+              "InvoiceTypeOneOff",
+              "InvoiceTypeCredit"
+            ]
+          },
+          {
             "name": "limit",
             "in": "query",
-            "description": "Limit",
             "schema": {
+              "maximum": 1000,
+              "minimum": 1,
               "type": "integer"
             }
           },
           {
             "name": "offset",
             "in": "query",
-            "description": "Offset",
             "schema": {
+              "minimum": 0,
               "type": "integer"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "payment_status",
+            "in": "query",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "PENDING",
+                  "SUCCEEDED",
+                  "FAILED"
+                ]
+              }
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "start_time",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "published",
+                "deleted",
+                "archived"
+              ],
+              "x-enum-varnames": [
+                "StatusPublished",
+                "StatusDeleted",
+                "StatusArchived"
+              ]
+            },
+            "x-enum-varnames": [
+              "StatusPublished",
+              "StatusDeleted",
+              "StatusArchived"
+            ]
+          },
+          {
+            "name": "subscription_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -1491,6 +1605,93 @@
         ],
         "summary": "List meters",
         "description": "Get all meters",
+        "parameters": [
+          {
+            "name": "end_time",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "event_name",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "expand",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "start_time",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "published",
+                "deleted",
+                "archived"
+              ],
+              "x-enum-varnames": [
+                "StatusPublished",
+                "StatusDeleted",
+                "StatusArchived"
+              ]
+            },
+            "x-enum-varnames": [
+              "StatusPublished",
+              "StatusDeleted",
+              "StatusArchived"
+            ]
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1840,6 +2041,13 @@
         "description": "Get plans with the specified filter",
         "parameters": [
           {
+            "name": "end_time",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "expand",
             "in": "query",
             "schema": {
@@ -1850,6 +2058,8 @@
             "name": "limit",
             "in": "query",
             "schema": {
+              "maximum": 1000,
+              "minimum": 1,
               "type": "integer"
             }
           },
@@ -1857,6 +2067,7 @@
             "name": "offset",
             "in": "query",
             "schema": {
+              "minimum": 0,
               "type": "integer"
             }
           },
@@ -1864,11 +2075,34 @@
             "name": "order",
             "in": "query",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "plan_ids",
+            "in": "query",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           },
           {
             "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "start_time",
             "in": "query",
             "schema": {
               "type": "string"
@@ -2180,6 +2414,13 @@
         "description": "Get prices with the specified filter",
         "parameters": [
           {
+            "name": "end_time",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "expand",
             "in": "query",
             "schema": {
@@ -2190,6 +2431,8 @@
             "name": "limit",
             "in": "query",
             "schema": {
+              "maximum": 1000,
+              "minimum": 1,
               "type": "integer"
             }
           },
@@ -2197,6 +2440,7 @@
             "name": "offset",
             "in": "query",
             "schema": {
+              "minimum": 0,
               "type": "integer"
             }
           },
@@ -2204,7 +2448,11 @@
             "name": "order",
             "in": "query",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
             }
           },
           {
@@ -2221,6 +2469,13 @@
           },
           {
             "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "start_time",
             "in": "query",
             "schema": {
               "type": "string"
@@ -3340,10 +3595,15 @@
         "description": "Get transactions for a wallet with pagination",
         "parameters": [
           {
-            "name": "id",
-            "in": "path",
-            "description": "Wallet ID",
-            "required": true,
+            "name": "end_time",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "expand",
+            "in": "query",
             "schema": {
               "type": "string"
             }
@@ -3351,41 +3611,127 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "Limit",
             "schema": {
-              "type": "integer",
-              "default": 50
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
             }
           },
           {
             "name": "offset",
             "in": "query",
-            "description": "Offset",
             "schema": {
-              "type": "integer",
-              "default": 0
-            }
-          },
-          {
-            "name": "sort",
-            "in": "query",
-            "description": "Sort field",
-            "schema": {
-              "type": "string",
-              "default": "created_at"
+              "minimum": 0,
+              "type": "integer"
             }
           },
           {
             "name": "order",
             "in": "query",
-            "description": "Sort order",
             "schema": {
               "type": "string",
-              "default": "desc",
               "enum": [
                 "asc",
                 "desc"
               ]
+            }
+          },
+          {
+            "name": "reference_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "reference_type",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "start_time",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "published",
+                "deleted",
+                "archived"
+              ],
+              "x-enum-varnames": [
+                "StatusPublished",
+                "StatusDeleted",
+                "StatusArchived"
+              ]
+            },
+            "x-enum-varnames": [
+              "StatusPublished",
+              "StatusDeleted",
+              "StatusArchived"
+            ]
+          },
+          {
+            "name": "transaction_status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "completed",
+                "failed"
+              ],
+              "x-enum-varnames": [
+                "TransactionStatusPending",
+                "TransactionStatusCompleted",
+                "TransactionStatusFailed"
+              ]
+            },
+            "x-enum-varnames": [
+              "TransactionStatusPending",
+              "TransactionStatusCompleted",
+              "TransactionStatusFailed"
+            ]
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "credit",
+                "debit"
+              ],
+              "x-enum-varnames": [
+                "TransactionTypeCredit",
+                "TransactionTypeDebit"
+              ]
+            },
+            "x-enum-varnames": [
+              "TransactionTypeCredit",
+              "TransactionTypeDebit"
+            ]
+          },
+          {
+            "name": "wallet_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -3395,7 +3741,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/dto.WalletTransactionsResponse"
+                  "$ref": "#/components/schemas/dto.ListWalletTransactionsResponse"
                 }
               }
             }
@@ -3499,6 +3845,9 @@
           "metadata": {
             "$ref": "#/components/schemas/types.Metadata"
           },
+          "meter_display_name": {
+            "type": "string"
+          },
           "meter_id": {
             "type": "string"
           },
@@ -3508,7 +3857,16 @@
           "period_start": {
             "type": "string"
           },
+          "plan_display_name": {
+            "type": "string"
+          },
+          "plan_id": {
+            "type": "string"
+          },
           "price_id": {
+            "type": "string"
+          },
+          "price_type": {
             "type": "string"
           },
           "quantity": {
@@ -3544,6 +3902,9 @@
             "type": "string"
           },
           "due_date": {
+            "type": "string"
+          },
+          "idempotency_key": {
             "type": "string"
           },
           "invoice_status": {
@@ -4237,6 +4598,9 @@
           "metadata": {
             "$ref": "#/components/schemas/types.Metadata"
           },
+          "meter_display_name": {
+            "type": "string"
+          },
           "meter_id": {
             "type": "string"
           },
@@ -4246,7 +4610,16 @@
           "period_start": {
             "type": "string"
           },
+          "plan_display_name": {
+            "type": "string"
+          },
+          "plan_id": {
+            "type": "string"
+          },
           "price_id": {
+            "type": "string"
+          },
+          "price_type": {
             "type": "string"
           },
           "quantity": {
@@ -4284,6 +4657,9 @@
           "billing_reason": {
             "type": "string"
           },
+          "billing_sequence": {
+            "type": "integer"
+          },
           "created_at": {
             "type": "string"
           },
@@ -4306,6 +4682,12 @@
             "type": "string"
           },
           "id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "invoice_number": {
             "type": "string"
           },
           "invoice_pdf_url": {
@@ -4364,20 +4746,14 @@
       "dto.ListCustomersResponse": {
         "type": "object",
         "properties": {
-          "customers": {
+          "items": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/dto.CustomerResponse"
             }
           },
-          "limit": {
-            "type": "integer"
-          },
-          "offset": {
-            "type": "integer"
-          },
-          "total": {
-            "type": "integer"
+          "pagination": {
+            "$ref": "#/components/schemas/types.PaginationResponse"
           }
         }
       },
@@ -4410,68 +4786,64 @@
               "$ref": "#/components/schemas/dto.InvoiceResponse"
             }
           },
-          "total": {
-            "type": "integer"
+          "pagination": {
+            "$ref": "#/components/schemas/types.PaginationResponse"
           }
         }
       },
       "dto.ListPlansResponse": {
         "type": "object",
         "properties": {
-          "limit": {
-            "type": "integer"
-          },
-          "offset": {
-            "type": "integer"
-          },
-          "plans": {
+          "items": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/dto.PlanResponse"
             }
           },
-          "total": {
-            "type": "integer"
+          "pagination": {
+            "$ref": "#/components/schemas/types.PaginationResponse"
           }
         }
       },
       "dto.ListPricesResponse": {
         "type": "object",
         "properties": {
-          "limit": {
-            "type": "integer"
-          },
-          "offset": {
-            "type": "integer"
-          },
-          "prices": {
+          "items": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/dto.PriceResponse"
             }
           },
-          "total": {
-            "type": "integer"
+          "pagination": {
+            "$ref": "#/components/schemas/types.PaginationResponse"
           }
         }
       },
       "dto.ListSubscriptionsResponse": {
         "type": "object",
         "properties": {
-          "limit": {
-            "type": "integer"
-          },
-          "offset": {
-            "type": "integer"
-          },
-          "subscriptions": {
+          "items": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/dto.SubscriptionResponse"
             }
           },
-          "total": {
-            "type": "integer"
+          "pagination": {
+            "$ref": "#/components/schemas/types.PaginationResponse"
+          }
+        }
+      },
+      "dto.ListWalletTransactionsResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dto.WalletTransactionResponse"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/types.PaginationResponse"
           }
         }
       },
@@ -5248,23 +5620,6 @@
           }
         }
       },
-      "dto.WalletTransactionsResponse": {
-        "type": "object",
-        "properties": {
-          "filter": {
-            "$ref": "#/components/schemas/types.Filter"
-          },
-          "total": {
-            "type": "integer"
-          },
-          "transactions": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/dto.WalletTransactionResponse"
-            }
-          }
-        }
-      },
       "gin.H": {
         "type": "object",
         "additionalProperties": {
@@ -5564,29 +5919,6 @@
           "BILLING_TIER_SLAB"
         ]
       },
-      "types.Filter": {
-        "type": "object",
-        "properties": {
-          "expand": {
-            "type": "string"
-          },
-          "limit": {
-            "type": "integer"
-          },
-          "offset": {
-            "type": "integer"
-          },
-          "order": {
-            "type": "string"
-          },
-          "sort": {
-            "type": "string"
-          },
-          "status": {
-            "$ref": "#/components/schemas/types.Status"
-          }
-        }
-      },
       "types.InvoiceBillingReason": {
         "type": "string",
         "enum": [
@@ -5658,6 +5990,20 @@
           "type": "string"
         }
       },
+      "types.PaginationResponse": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          }
+        }
+      },
       "types.PriceType": {
         "type": "string",
         "enum": [
@@ -5727,6 +6073,17 @@
           "TransactionStatusPending",
           "TransactionStatusCompleted",
           "TransactionStatusFailed"
+        ]
+      },
+      "types.TransactionType": {
+        "type": "string",
+        "enum": [
+          "credit",
+          "debit"
+        ],
+        "x-enum-varnames": [
+          "TransactionTypeCredit",
+          "TransactionTypeDebit"
         ]
       },
       "types.WalletStatus": {
