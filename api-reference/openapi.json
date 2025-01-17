@@ -1363,6 +1363,59 @@
         "x-codegen-request-body-name": "invoice"
       }
     },
+    "/invoices/preview": {
+      "post": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Get a preview invoice",
+        "description": "Get a preview invoice",
+        "requestBody": {
+          "description": "Preview Invoice Request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dto.GetPreviewInvoiceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.InvoiceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "request"
+      }
+    },
     "/invoices/{id}": {
       "get": {
         "tags": [
@@ -4361,6 +4414,23 @@
             "type": "string"
           },
           "iter_last_key": {
+            "type": "string"
+          }
+        }
+      },
+      "dto.GetPreviewInvoiceRequest": {
+        "required": [
+          "subscription_id"
+        ],
+        "type": "object",
+        "properties": {
+          "period_end": {
+            "type": "string"
+          },
+          "period_start": {
+            "type": "string"
+          },
+          "subscription_id": {
             "type": "string"
           }
         }
