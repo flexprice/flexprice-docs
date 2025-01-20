@@ -1,0 +1,96 @@
+---
+title: "Creating a billable metric"
+description: "Description of your new file."
+---
+
+* At the top-right of the **Billable Metrics** dashboard, select **Add Meter** to create a new Billable Metric.
+
+* **Define Event Schema**
+  ![](/Screenshot2025-01-20at11.13.29PM.png)
+
+  * **Event Name**
+
+    * This is the **unique identifier** you’ll use to send events that match the metric.
+
+    * Keep it **short and descriptive**—for example, `tokens_used` or `orders_placed`.
+
+    * Must be unique across your Flexprice account to avoid confusion with other metrics.
+
+  * **Display Name**:
+
+    * It is a **user-friendly label** (e.g., “Tokens Used” or “Orders Placed”) that will appear on invoices, internal dashboards, and usage reports.
+
+  * This helps you and your team instantly recognize what the metric measures—especially handy if you have several metrics.
+
+**Example**
+Suppose you want to track how many tokens users consume while calling your AI model. In that case:
+
+* **Event Name**: `tokens_used`
+
+* **Display Name**: `Tokens Used`
+
+
+
+1. **Event Filters** *(Optional)*&#x20;
+   ![](/Screenshot2025-01-20at11.25.02PM.png)
+   Filters let you **narrow down** which events get counted or summed in this metric. You **do not** have to add filters if you want to aggregate **all** events of a given type. However, filters become crucial if you need more granular control, such as **billing for only certain AI models** or **distinguishing usage by environment**.
+
+   * **Key & Values**
+
+     * A filter consists of a **property key** (e.g., `model`) and **one or more values** (e.g., `llama3.1`, `llama3.2`).
+
+     * Only events that match *both* the key and one of the values are included in the metric.
+
+It is important to note that filters cannot be edited later, so decide up front if you’ll need them for billing or reporting.
+
+**Example**
+Continuing our AI tokens example:
+If your system supports multiple AI models (`llama3.1`, `llama3.2`, `alpaca2.0`), and you only want to track usage from **Llama** models for specialized billing, you can add a filter:
+
+* **Key**: `model`
+
+* **Values**: `llama3.1`, `llama3.2`
+
+This means Flexprice will only aggregate token usage events where `model` is either `llama3.1` or `llama3.2`.
+
+1. **Define Aggregation**
+   The **aggregation** settings tell Flexprice **how** to measure your events.
+   ![](/Screenshot2025-01-20at11.49.35PM.png)
+
+   * **Aggregation**
+
+     * Common options include **SUM** or **COUNT**.
+
+     * **SUM**: Adds a numeric property (like tokens, price, etc.) across all matching events.
+
+     * **COUNT**: Counts the total number of matching events, regardless of any numeric value in the event data.
+
+   * **Aggregation Value**
+
+     * The **property** that Flexprice sums or evaluates. For `SUM`, this property should be numeric (e.g., `tokens`).
+
+     * If you choose **COUNT**, you typically don’t specify a numeric property (because you’re just counting occurrences).
+
+   * **Aggregation Type**
+
+     * **Cumulative**: The meter never resets. Usage keeps accumulating across billing cycles, providing a running total. This is useful for features like storage.
+
+     * **Periodic**: Usage resets at each **billing period** (e.g., monthly). This is ideal for most subscription-based models where usage is calculated anew every cycle
+
+**Example**
+If you’re summing the total tokens used:
+
+* **Aggregation** = `SUM`
+
+* **Aggregation Value** = `tokens`
+
+* **Aggregation Type** = `Periodic` (if you invoice monthly and want usage to reset each month)
+
+
+**Save the Meter**
+
+* Click **Save Meter** to finalize your settings.
+
+* The Billable Metric becomes **Active** and appears on the dashboard.
+
+You can now **send events** matching this **Event Name** (and any defined filters) to Flexprice. The system will immediately begin **aggregating** usage for billing and reporting.
