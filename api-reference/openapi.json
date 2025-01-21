@@ -467,6 +467,63 @@
         ]
       }
     },
+    "/customers/{id}/invoices/summary": {
+      "get": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Get a customer invoice summary",
+        "description": "Get a customer invoice summary",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Customer ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.CustomerMultiCurrencyInvoiceSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
     "/customers/{id}/wallets": {
       "get": {
         "tags": [
@@ -4309,6 +4366,58 @@
           }
         }
       },
+      "dto.CustomerInvoiceSummary": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "overdue_invoice_count": {
+            "type": "integer"
+          },
+          "total_invoice_count": {
+            "type": "integer"
+          },
+          "total_overdue_amount": {
+            "type": "number"
+          },
+          "total_revenue_amount": {
+            "type": "number"
+          },
+          "total_unpaid_amount": {
+            "type": "number"
+          },
+          "unpaid_fixed_charges": {
+            "type": "number"
+          },
+          "unpaid_invoice_count": {
+            "type": "integer"
+          },
+          "unpaid_usage_charges": {
+            "type": "number"
+          }
+        }
+      },
+      "dto.CustomerMultiCurrencyInvoiceSummary": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": "string"
+          },
+          "default_currency": {
+            "type": "string"
+          },
+          "summaries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dto.CustomerInvoiceSummary"
+            }
+          }
+        }
+      },
       "dto.CustomerResponse": {
         "type": "object",
         "properties": {
@@ -4805,6 +4914,15 @@
           "status": {
             "type": "string"
           },
+          "subscription": {
+            "type": "object",
+            "description": "Edges",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/dto.SubscriptionResponse"
+              }
+            ]
+          },
           "subscription_id": {
             "type": "string"
           },
@@ -5253,6 +5371,9 @@
             "type": "string",
             "description": "CurrentPeriodStart is the end of the current period that the subscription has been invoiced for.\nAt the end of this period, a new invoice will be created."
           },
+          "customer": {
+            "$ref": "#/components/schemas/dto.CustomerResponse"
+          },
           "customer_id": {
             "type": "string",
             "description": "CustomerID is the identifier for the customer in our system"
@@ -5600,6 +5721,9 @@
           "currency": {
             "type": "string"
           },
+          "current_period_usage": {
+            "type": "number"
+          },
           "customer_id": {
             "type": "string"
           },
@@ -5623,6 +5747,9 @@
           },
           "tenant_id": {
             "type": "string"
+          },
+          "unpaid_invoice_amount": {
+            "type": "number"
           },
           "updated_at": {
             "type": "string"
