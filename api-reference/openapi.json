@@ -107,6 +107,18 @@
         "description": "Get customers",
         "parameters": [
           {
+            "name": "customer_ids",
+            "in": "query",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
             "name": "email",
             "in": "query",
             "schema": {
@@ -2578,6 +2590,18 @@
             }
           },
           {
+            "name": "price_ids",
+            "in": "query",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
             "name": "sort",
             "in": "query",
             "schema": {
@@ -3911,11 +3935,40 @@
         ],
         "type": "object",
         "properties": {
+          "address_city": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "address_country": {
+            "type": "string"
+          },
+          "address_line1": {
+            "maxLength": 255,
+            "type": "string"
+          },
+          "address_line2": {
+            "maxLength": 255,
+            "type": "string"
+          },
+          "address_postal_code": {
+            "maxLength": 20,
+            "type": "string"
+          },
+          "address_state": {
+            "maxLength": 100,
+            "type": "string"
+          },
           "email": {
             "type": "string"
           },
           "external_id": {
             "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
           },
           "name": {
             "type": "string"
@@ -4001,6 +4054,9 @@
           },
           "amount_paid": {
             "type": "number"
+          },
+          "billing_period": {
+            "type": "string"
           },
           "billing_reason": {
             "$ref": "#/components/schemas/types.InvoiceBillingReason"
@@ -4317,6 +4373,12 @@
           "lookup_key": {
             "type": "string"
           },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
           "plan_id": {
             "type": "string"
           },
@@ -4421,6 +4483,30 @@
       "dto.CustomerResponse": {
         "type": "object",
         "properties": {
+          "address_city": {
+            "type": "string",
+            "description": "AddressCity is the city of the customer's address"
+          },
+          "address_country": {
+            "type": "string",
+            "description": "AddressCountry is the country of the customer's address (ISO 3166-1 alpha-2)"
+          },
+          "address_line1": {
+            "type": "string",
+            "description": "AddressLine1 is the first line of the customer's address"
+          },
+          "address_line2": {
+            "type": "string",
+            "description": "AddressLine2 is the second line of the customer's address"
+          },
+          "address_postal_code": {
+            "type": "string",
+            "description": "AddressPostalCode is the postal code of the customer's address"
+          },
+          "address_state": {
+            "type": "string",
+            "description": "AddressState is the state of the customer's address"
+          },
           "created_at": {
             "type": "string"
           },
@@ -4438,6 +4524,13 @@
           "id": {
             "type": "string",
             "description": "ID is the unique identifier for the customer"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Metadata"
           },
           "name": {
             "type": "string",
@@ -4845,6 +4938,9 @@
           "amount_remaining": {
             "type": "number"
           },
+          "billing_period": {
+            "type": "string"
+          },
           "billing_reason": {
             "type": "string"
           },
@@ -4859,6 +4955,9 @@
           },
           "currency": {
             "type": "string"
+          },
+          "customer": {
+            "$ref": "#/components/schemas/dto.CustomerResponse"
           },
           "customer_id": {
             "type": "string"
@@ -5395,9 +5494,24 @@
               }
             ]
           },
+          "line_items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/subscription.SubscriptionLineItem"
+            }
+          },
           "lookup_key": {
             "type": "string",
             "description": "LookupKey is the key used to lookup the subscription in our system"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Metadata is a map of key-value pairs that can be attached to the subscription",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/types.Metadata"
+              }
+            ]
           },
           "plan": {
             "$ref": "#/components/schemas/dto.PlanResponse"
@@ -5440,7 +5554,8 @@
             "type": "string"
           },
           "version": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Version is used for optimistic locking"
           }
         }
       },
@@ -5507,11 +5622,40 @@
       "dto.UpdateCustomerRequest": {
         "type": "object",
         "properties": {
+          "address_city": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "address_country": {
+            "type": "string"
+          },
+          "address_line1": {
+            "maxLength": 255,
+            "type": "string"
+          },
+          "address_line2": {
+            "maxLength": 255,
+            "type": "string"
+          },
+          "address_postal_code": {
+            "maxLength": 20,
+            "type": "string"
+          },
+          "address_state": {
+            "maxLength": 100,
+            "type": "string"
+          },
           "email": {
             "type": "string"
           },
           "external_id": {
             "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
           },
           "name": {
             "type": "string"
@@ -5700,6 +5844,9 @@
           },
           "id": {
             "type": "string"
+          },
+          "tenant": {
+            "$ref": "#/components/schemas/dto.TenantResponse"
           }
         }
       },
@@ -6071,6 +6218,80 @@
           "round": {
             "type": "string",
             "description": "up or down"
+          }
+        }
+      },
+      "subscription.SubscriptionLineItem": {
+        "type": "object",
+        "properties": {
+          "billing_period": {
+            "$ref": "#/components/schemas/types.BillingPeriod"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "meter_display_name": {
+            "type": "string"
+          },
+          "meter_id": {
+            "type": "string"
+          },
+          "plan_display_name": {
+            "type": "string"
+          },
+          "plan_id": {
+            "type": "string"
+          },
+          "price_id": {
+            "type": "string"
+          },
+          "price_type": {
+            "$ref": "#/components/schemas/types.PriceType"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "start_date": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/types.Status"
+          },
+          "subscription_id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "updated_by": {
+            "type": "string"
           }
         }
       },
