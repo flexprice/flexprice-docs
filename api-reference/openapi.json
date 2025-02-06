@@ -596,6 +596,421 @@
         ]
       }
     },
+    "/entitlements": {
+      "get": {
+        "tags": [
+          "Entitlements"
+        ],
+        "summary": "Get entitlements",
+        "description": "Get entitlements with the specified filter",
+        "parameters": [
+          {
+            "name": "end_time",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "expand",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "feature_ids",
+            "in": "query",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "feature_type",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "metered",
+                "boolean",
+                "static"
+              ],
+              "x-enum-varnames": [
+                "FeatureTypeMetered",
+                "FeatureTypeBoolean",
+                "FeatureTypeStatic"
+              ]
+            },
+            "x-enum-varnames": [
+              "FeatureTypeMetered",
+              "FeatureTypeBoolean",
+              "FeatureTypeStatic"
+            ]
+          },
+          {
+            "name": "is_enabled",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "plan_ids",
+            "in": "query",
+            "description": "Specific filters for entitlements",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "start_time",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "published",
+                "deleted",
+                "archived"
+              ],
+              "x-enum-varnames": [
+                "StatusPublished",
+                "StatusDeleted",
+                "StatusArchived"
+              ]
+            },
+            "x-enum-varnames": [
+              "StatusPublished",
+              "StatusDeleted",
+              "StatusArchived"
+            ]
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.ListEntitlementsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Entitlements"
+        ],
+        "summary": "Create a new entitlement",
+        "description": "Create a new entitlement with the specified configuration",
+        "requestBody": {
+          "description": "Entitlement configuration",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dto.CreateEntitlementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.EntitlementResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "x-codegen-request-body-name": "entitlement"
+      }
+    },
+    "/entitlements/{id}": {
+      "get": {
+        "tags": [
+          "Entitlements"
+        ],
+        "summary": "Get an entitlement by ID",
+        "description": "Get an entitlement by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Entitlement ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.EntitlementResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Entitlements"
+        ],
+        "summary": "Update an entitlement",
+        "description": "Update an entitlement with the specified configuration",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Entitlement ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Entitlement configuration",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dto.UpdateEntitlementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.EntitlementResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "x-codegen-request-body-name": "entitlement"
+      },
+      "delete": {
+        "tags": [
+          "Entitlements"
+        ],
+        "summary": "Delete an entitlement",
+        "description": "Delete an entitlement",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Entitlement ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/gin.H"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
     "/environments": {
       "get": {
         "tags": [
@@ -2920,6 +3335,63 @@
         ]
       }
     },
+    "/plans/{id}/entitlements": {
+      "get": {
+        "tags": [
+          "Entitlements"
+        ],
+        "summary": "Get plan entitlements",
+        "description": "Get all entitlements for a plan",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Plan ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.PlanResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
     "/prices": {
       "get": {
         "tags": [
@@ -4368,6 +4840,39 @@
           }
         }
       },
+      "dto.CreateEntitlementRequest": {
+        "required": [
+          "feature_id",
+          "feature_type"
+        ],
+        "type": "object",
+        "properties": {
+          "feature_id": {
+            "type": "string"
+          },
+          "feature_type": {
+            "$ref": "#/components/schemas/types.FeatureType"
+          },
+          "is_enabled": {
+            "type": "boolean"
+          },
+          "is_soft_limit": {
+            "type": "boolean"
+          },
+          "plan_id": {
+            "type": "string"
+          },
+          "static_value": {
+            "type": "string"
+          },
+          "usage_limit": {
+            "type": "integer"
+          },
+          "usage_reset_period": {
+            "$ref": "#/components/schemas/types.BillingPeriod"
+          }
+        }
+      },
       "dto.CreateEnvironmentRequest": {
         "required": [
           "name",
@@ -4562,6 +5067,39 @@
           }
         }
       },
+      "dto.CreatePlanEntitlementRequest": {
+        "required": [
+          "feature_id",
+          "feature_type"
+        ],
+        "type": "object",
+        "properties": {
+          "feature_id": {
+            "type": "string"
+          },
+          "feature_type": {
+            "$ref": "#/components/schemas/types.FeatureType"
+          },
+          "is_enabled": {
+            "type": "boolean"
+          },
+          "is_soft_limit": {
+            "type": "boolean"
+          },
+          "plan_id": {
+            "type": "string"
+          },
+          "static_value": {
+            "type": "string"
+          },
+          "usage_limit": {
+            "type": "integer"
+          },
+          "usage_reset_period": {
+            "$ref": "#/components/schemas/types.BillingPeriod"
+          }
+        }
+      },
       "dto.CreatePlanPriceRequest": {
         "required": [
           "billing_cadence",
@@ -4644,6 +5182,12 @@
         "properties": {
           "description": {
             "type": "string"
+          },
+          "entitlements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dto.CreatePlanEntitlementRequest"
+            }
           },
           "invoice_cadence": {
             "$ref": "#/components/schemas/types.InvoiceCadence"
@@ -4971,6 +5515,62 @@
           }
         }
       },
+      "dto.EntitlementResponse": {
+        "type": "object",
+        "properties": {
+          "created_at": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "feature": {
+            "$ref": "#/components/schemas/dto.FeatureResponse"
+          },
+          "feature_id": {
+            "type": "string"
+          },
+          "feature_type": {
+            "$ref": "#/components/schemas/types.FeatureType"
+          },
+          "id": {
+            "type": "string"
+          },
+          "is_enabled": {
+            "type": "boolean"
+          },
+          "is_soft_limit": {
+            "type": "boolean"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/dto.PlanResponse"
+          },
+          "plan_id": {
+            "type": "string"
+          },
+          "static_value": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/types.Status"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "updated_by": {
+            "type": "string"
+          },
+          "usage_limit": {
+            "type": "integer"
+          },
+          "usage_reset_period": {
+            "$ref": "#/components/schemas/types.BillingPeriod"
+          }
+        }
+      },
       "dto.EnvironmentResponse": {
         "type": "object",
         "properties": {
@@ -5036,7 +5636,7 @@
           "id": {
             "type": "string"
           },
-          "lookupKey": {
+          "lookup_key": {
             "type": "string"
           },
           "metadata": {
@@ -5045,7 +5645,7 @@
           "meter": {
             "$ref": "#/components/schemas/dto.MeterResponse"
           },
-          "meterID": {
+          "meter_id": {
             "type": "string"
           },
           "name": {
@@ -5524,6 +6124,20 @@
           }
         }
       },
+      "dto.ListEntitlementsResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dto.EntitlementResponse"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/types.PaginationResponse"
+          }
+        }
+      },
       "dto.ListEnvironmentsResponse": {
         "type": "object",
         "properties": {
@@ -5700,6 +6314,12 @@
           },
           "description": {
             "type": "string"
+          },
+          "entitlements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dto.EntitlementResponse"
+            }
           },
           "id": {
             "type": "string"
@@ -6144,6 +6764,26 @@
           }
         }
       },
+      "dto.UpdateEntitlementRequest": {
+        "type": "object",
+        "properties": {
+          "is_enabled": {
+            "type": "boolean"
+          },
+          "is_soft_limit": {
+            "type": "boolean"
+          },
+          "static_value": {
+            "type": "string"
+          },
+          "usage_limit": {
+            "type": "integer"
+          },
+          "usage_reset_period": {
+            "$ref": "#/components/schemas/types.BillingPeriod"
+          }
+        }
+      },
       "dto.UpdateEnvironmentRequest": {
         "type": "object",
         "properties": {
@@ -6166,9 +6806,6 @@
           },
           "metadata": {
             "$ref": "#/components/schemas/types.Metadata"
-          },
-          "meter_id": {
-            "type": "string"
           },
           "name": {
             "type": "string"
@@ -6197,6 +6834,43 @@
             "items": {
               "$ref": "#/components/schemas/meter.Filter"
             }
+          }
+        }
+      },
+      "dto.UpdatePlanEntitlementRequest": {
+        "required": [
+          "feature_id",
+          "feature_type"
+        ],
+        "type": "object",
+        "properties": {
+          "feature_id": {
+            "type": "string"
+          },
+          "feature_type": {
+            "$ref": "#/components/schemas/types.FeatureType"
+          },
+          "id": {
+            "type": "string",
+            "description": "The ID of the entitlement to update (present if the entitlement is being updated)"
+          },
+          "is_enabled": {
+            "type": "boolean"
+          },
+          "is_soft_limit": {
+            "type": "boolean"
+          },
+          "plan_id": {
+            "type": "string"
+          },
+          "static_value": {
+            "type": "string"
+          },
+          "usage_limit": {
+            "type": "integer"
+          },
+          "usage_reset_period": {
+            "$ref": "#/components/schemas/types.BillingPeriod"
           }
         }
       },
@@ -6279,13 +6953,16 @@
         }
       },
       "dto.UpdatePlanRequest": {
-        "required": [
-          "name"
-        ],
         "type": "object",
         "properties": {
           "description": {
             "type": "string"
+          },
+          "entitlements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dto.UpdatePlanEntitlementRequest"
+            }
           },
           "invoice_cadence": {
             "$ref": "#/components/schemas/types.InvoiceCadence"
