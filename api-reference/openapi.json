@@ -2093,8 +2093,11 @@
                 "type": "string",
                 "enum": [
                   "PENDING",
+                  "PROCESSING",
                   "SUCCEEDED",
-                  "FAILED"
+                  "FAILED",
+                  "REFUNDED",
+                  "PARTIALLY_REFUNDED"
                 ]
               }
             }
@@ -2408,7 +2411,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/dto.UpdateInvoicePaymentStatusRequest"
+                "$ref": "#/components/schemas/dto.UpdatePaymentStatusRequest"
               }
             }
           },
@@ -2936,6 +2939,478 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/payments": {
+      "get": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "List payments",
+        "description": "List payments with the specified filter",
+        "parameters": [
+          {
+            "name": "currency",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "destination_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "destination_type",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "end_time",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "expand",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "payment_gateway",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "payment_ids",
+            "in": "query",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "payment_method_type",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "payment_status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "start_time",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "published",
+                "deleted",
+                "archived"
+              ],
+              "x-enum-varnames": [
+                "StatusPublished",
+                "StatusDeleted",
+                "StatusArchived"
+              ]
+            },
+            "x-enum-varnames": [
+              "StatusPublished",
+              "StatusDeleted",
+              "StatusArchived"
+            ]
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.ListPaymentsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Create a new payment",
+        "description": "Create a new payment with the specified configuration",
+        "requestBody": {
+          "description": "Payment configuration",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dto.CreatePaymentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.PaymentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "x-codegen-request-body-name": "payment"
+      }
+    },
+    "/payments/{id}": {
+      "get": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Get a payment by ID",
+        "description": "Get a payment by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Payment ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.PaymentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Update a payment",
+        "description": "Update a payment with the specified configuration",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Payment ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Payment configuration",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dto.UpdatePaymentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.PaymentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "x-codegen-request-body-name": "payment"
+      },
+      "delete": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Delete a payment",
+        "description": "Delete a payment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Payment ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/gin.H"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/payments/{id}/process": {
+      "post": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Process a payment",
+        "description": "Process a payment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Payment ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.PaymentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
             "content": {
               "application/json": {
                 "schema": {
@@ -4101,6 +4576,436 @@
         ]
       }
     },
+    "/tasks": {
+      "get": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "List tasks",
+        "description": "List tasks with optional filtering",
+        "parameters": [
+          {
+            "name": "created_by",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "end_time",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entity_type",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "EVENTS",
+                "PRICES"
+              ],
+              "x-enum-varnames": [
+                "EntityTypeEvents",
+                "EntityTypePrices"
+              ]
+            },
+            "x-enum-varnames": [
+              "EntityTypeEvents",
+              "EntityTypePrices"
+            ]
+          },
+          {
+            "name": "expand",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "start_time",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "published",
+                "deleted",
+                "archived"
+              ],
+              "x-enum-varnames": [
+                "StatusPublished",
+                "StatusDeleted",
+                "StatusArchived"
+              ]
+            },
+            "x-enum-varnames": [
+              "StatusPublished",
+              "StatusDeleted",
+              "StatusArchived"
+            ]
+          },
+          {
+            "name": "task_status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "PROCESSING",
+                "COMPLETED",
+                "FAILED"
+              ],
+              "x-enum-varnames": [
+                "TaskStatusPending",
+                "TaskStatusProcessing",
+                "TaskStatusCompleted",
+                "TaskStatusFailed"
+              ]
+            },
+            "x-enum-varnames": [
+              "TaskStatusPending",
+              "TaskStatusProcessing",
+              "TaskStatusCompleted",
+              "TaskStatusFailed"
+            ]
+          },
+          {
+            "name": "task_type",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "IMPORT",
+                "EXPORT"
+              ],
+              "x-enum-varnames": [
+                "TaskTypeImport",
+                "TaskTypeExport"
+              ]
+            },
+            "x-enum-varnames": [
+              "TaskTypeImport",
+              "TaskTypeExport"
+            ]
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.ListTasksResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Create a new task",
+        "description": "Create a new import/export task",
+        "requestBody": {
+          "description": "Task details",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dto.CreateTaskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.TaskResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "task"
+      }
+    },
+    "/tasks/{id}": {
+      "get": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Get a task by ID",
+        "description": "Get detailed information about a task",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Task ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.TaskResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tasks/{id}/process": {
+      "post": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Process a task",
+        "description": "Start processing a task",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Task ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/gin.H"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tasks/{id}/status": {
+      "put": {
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Update task status",
+        "description": "Update the status of a task",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Task ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "New status",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dto.UpdateTaskStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.TaskResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "status"
+      }
+    },
     "/tenants": {
       "post": {
         "tags": [
@@ -5024,7 +5929,7 @@
             "$ref": "#/components/schemas/types.Metadata"
           },
           "payment_status": {
-            "$ref": "#/components/schemas/types.InvoicePaymentStatus"
+            "$ref": "#/components/schemas/types.PaymentStatus"
           },
           "period_end": {
             "type": "string"
@@ -5070,6 +5975,46 @@
                 "$ref": "#/components/schemas/types.ResetUsage"
               }
             ]
+          }
+        }
+      },
+      "dto.CreatePaymentRequest": {
+        "required": [
+          "amount",
+          "currency",
+          "destination_id",
+          "destination_type",
+          "payment_method_type"
+        ],
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "destination_id": {
+            "type": "string"
+          },
+          "destination_type": {
+            "$ref": "#/components/schemas/types.PaymentDestinationType"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/types.Metadata"
+          },
+          "payment_method_id": {
+            "type": "string"
+          },
+          "payment_method_type": {
+            "$ref": "#/components/schemas/types.PaymentMethodType"
+          },
+          "process_payment": {
+            "type": "boolean",
+            "default": true
           }
         }
       },
@@ -5361,6 +6306,33 @@
           },
           "trial_start": {
             "type": "string"
+          }
+        }
+      },
+      "dto.CreateTaskRequest": {
+        "required": [
+          "entity_type",
+          "file_type",
+          "file_url",
+          "task_type"
+        ],
+        "type": "object",
+        "properties": {
+          "entity_type": {
+            "$ref": "#/components/schemas/types.EntityType"
+          },
+          "file_type": {
+            "$ref": "#/components/schemas/types.FileType"
+          },
+          "file_url": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "task_type": {
+            "$ref": "#/components/schemas/types.TaskType"
           }
         }
       },
@@ -5917,6 +6889,7 @@
             "additionalProperties": {
               "type": "string"
             },
+            "description": "Handled separately for dynamic columns",
             "example": {
               "\"response_status\"": "200}",
               "{\"request_size\"": "100"
@@ -5928,6 +6901,7 @@
           },
           "timestamp": {
             "type": "string",
+            "description": "Handled separately due to parsing",
             "example": "2024-03-20T15:04:05Z"
           }
         }
@@ -6082,7 +7056,7 @@
             "type": "string"
           },
           "payment_status": {
-            "$ref": "#/components/schemas/types.InvoicePaymentStatus"
+            "$ref": "#/components/schemas/types.PaymentStatus"
           },
           "period_end": {
             "type": "string"
@@ -6198,6 +7172,20 @@
           }
         }
       },
+      "dto.ListPaymentsResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dto.PaymentResponse"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/types.PaginationResponse"
+          }
+        }
+      },
       "dto.ListPlansResponse": {
         "type": "object",
         "properties": {
@@ -6233,6 +7221,20 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/dto.SubscriptionResponse"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/types.PaginationResponse"
+          }
+        }
+      },
+      "dto.ListTasksResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dto.TaskResponse"
             }
           },
           "pagination": {
@@ -6312,6 +7314,112 @@
           "updated_at": {
             "type": "string",
             "example": "2024-03-20T15:04:05Z"
+          }
+        }
+      },
+      "dto.PaymentAttemptResponse": {
+        "type": "object",
+        "properties": {
+          "attempt_number": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "error_message": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/types.Metadata"
+          },
+          "payment_id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "updated_by": {
+            "type": "string"
+          }
+        }
+      },
+      "dto.PaymentResponse": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "attempts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dto.PaymentAttemptResponse"
+            }
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "destination_id": {
+            "type": "string"
+          },
+          "destination_type": {
+            "$ref": "#/components/schemas/types.PaymentDestinationType"
+          },
+          "error_message": {
+            "type": "string"
+          },
+          "failed_at": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/types.Metadata"
+          },
+          "payment_method_id": {
+            "type": "string"
+          },
+          "payment_method_type": {
+            "$ref": "#/components/schemas/types.PaymentMethodType"
+          },
+          "payment_status": {
+            "$ref": "#/components/schemas/types.PaymentStatus"
+          },
+          "refunded_at": {
+            "type": "string"
+          },
+          "succeeded_at": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "track_attempts": {
+            "type": "boolean"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "updated_by": {
+            "type": "string"
           }
         }
       },
@@ -6699,6 +7807,75 @@
           }
         }
       },
+      "dto.TaskResponse": {
+        "type": "object",
+        "properties": {
+          "completed_at": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "entity_type": {
+            "$ref": "#/components/schemas/types.EntityType"
+          },
+          "error_summary": {
+            "type": "string"
+          },
+          "failed_at": {
+            "type": "string"
+          },
+          "failed_records": {
+            "type": "integer"
+          },
+          "file_type": {
+            "$ref": "#/components/schemas/types.FileType"
+          },
+          "file_url": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "processed_records": {
+            "type": "integer"
+          },
+          "started_at": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "successful_records": {
+            "type": "integer"
+          },
+          "task_status": {
+            "$ref": "#/components/schemas/types.TaskStatus"
+          },
+          "task_type": {
+            "$ref": "#/components/schemas/types.TaskType"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "total_records": {
+            "type": "integer"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "updated_by": {
+            "type": "string"
+          }
+        }
+      },
       "dto.TenantResponse": {
         "type": "object",
         "properties": {
@@ -6830,7 +8007,29 @@
           }
         }
       },
-      "dto.UpdateInvoicePaymentStatusRequest": {
+      "dto.UpdateMeterRequest": {
+        "type": "object",
+        "properties": {
+          "filters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/meter.Filter"
+            }
+          }
+        }
+      },
+      "dto.UpdatePaymentRequest": {
+        "type": "object",
+        "properties": {
+          "metadata": {
+            "$ref": "#/components/schemas/types.Metadata"
+          },
+          "payment_status": {
+            "type": "string"
+          }
+        }
+      },
+      "dto.UpdatePaymentStatusRequest": {
         "required": [
           "payment_status"
         ],
@@ -6840,18 +8039,7 @@
             "type": "number"
           },
           "payment_status": {
-            "$ref": "#/components/schemas/types.InvoicePaymentStatus"
-          }
-        }
-      },
-      "dto.UpdateMeterRequest": {
-        "type": "object",
-        "properties": {
-          "filters": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/meter.Filter"
-            }
+            "$ref": "#/components/schemas/types.PaymentStatus"
           }
         }
       },
@@ -7016,6 +8204,17 @@
             "additionalProperties": {
               "type": "string"
             }
+          }
+        }
+      },
+      "dto.UpdateTaskStatusRequest": {
+        "required": [
+          "task_status"
+        ],
+        "type": "object",
+        "properties": {
+          "task_status": {
+            "$ref": "#/components/schemas/types.TaskStatus"
           }
         }
       },
@@ -7552,6 +8751,17 @@
           "BILLING_TIER_SLAB"
         ]
       },
+      "types.EntityType": {
+        "type": "string",
+        "enum": [
+          "EVENTS",
+          "PRICES"
+        ],
+        "x-enum-varnames": [
+          "EntityTypeEvents",
+          "EntityTypePrices"
+        ]
+      },
       "types.FeatureType": {
         "type": "string",
         "enum": [
@@ -7563,6 +8773,17 @@
           "FeatureTypeMetered",
           "FeatureTypeBoolean",
           "FeatureTypeStatic"
+        ]
+      },
+      "types.FileType": {
+        "type": "string",
+        "enum": [
+          "CSV",
+          "JSON"
+        ],
+        "x-enum-varnames": [
+          "FileTypeCSV",
+          "FileTypeJSON"
         ]
       },
       "types.InvoiceBillingReason": {
@@ -7589,19 +8810,6 @@
         "x-enum-varnames": [
           "InvoiceCadenceArrear",
           "InvoiceCadenceAdvance"
-        ]
-      },
-      "types.InvoicePaymentStatus": {
-        "type": "string",
-        "enum": [
-          "PENDING",
-          "SUCCEEDED",
-          "FAILED"
-        ],
-        "x-enum-varnames": [
-          "InvoicePaymentStatusPending",
-          "InvoicePaymentStatusSucceeded",
-          "InvoicePaymentStatusFailed"
         ]
       },
       "types.InvoiceStatus": {
@@ -7649,6 +8857,49 @@
             "type": "integer"
           }
         }
+      },
+      "types.PaymentDestinationType": {
+        "type": "string",
+        "enum": [
+          "INVOICE"
+        ],
+        "x-enum-varnames": [
+          "PaymentDestinationTypeInvoice"
+        ]
+      },
+      "types.PaymentMethodType": {
+        "type": "string",
+        "enum": [
+          "CARD",
+          "ACH",
+          "OFFLINE",
+          "CREDITS"
+        ],
+        "x-enum-varnames": [
+          "PaymentMethodTypeCard",
+          "PaymentMethodTypeACH",
+          "PaymentMethodTypeOffline",
+          "PaymentMethodTypeCredits"
+        ]
+      },
+      "types.PaymentStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "PROCESSING",
+          "SUCCEEDED",
+          "FAILED",
+          "REFUNDED",
+          "PARTIALLY_REFUNDED"
+        ],
+        "x-enum-varnames": [
+          "PaymentStatusPending",
+          "PaymentStatusProcessing",
+          "PaymentStatusSucceeded",
+          "PaymentStatusFailed",
+          "PaymentStatusRefunded",
+          "PaymentStatusPartiallyRefunded"
+        ]
       },
       "types.PriceType": {
         "type": "string",
@@ -7706,6 +8957,32 @@
           "SubscriptionStatusPastDue",
           "SubscriptionStatusTrialing",
           "SubscriptionStatusUnpaid"
+        ]
+      },
+      "types.TaskStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "PROCESSING",
+          "COMPLETED",
+          "FAILED"
+        ],
+        "x-enum-varnames": [
+          "TaskStatusPending",
+          "TaskStatusProcessing",
+          "TaskStatusCompleted",
+          "TaskStatusFailed"
+        ]
+      },
+      "types.TaskType": {
+        "type": "string",
+        "enum": [
+          "IMPORT",
+          "EXPORT"
+        ],
+        "x-enum-varnames": [
+          "TaskTypeImport",
+          "TaskTypeExport"
         ]
       },
       "types.TransactionStatus": {
