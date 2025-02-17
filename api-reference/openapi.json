@@ -306,6 +306,73 @@
         "x-codegen-request-body-name": "customer"
       }
     },
+    "/customers/lookup/{lookup_key}": {
+      "get": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "Get a customer by lookup key",
+        "description": "Get a customer by lookup key (external_id)",
+        "parameters": [
+          {
+            "name": "lookup_key",
+            "in": "path",
+            "description": "Customer Lookup Key (external_id)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.CustomerResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
     "/customers/{id}": {
       "get": {
         "tags": [
@@ -6321,6 +6388,9 @@
           "entity_type": {
             "$ref": "#/components/schemas/types.EntityType"
           },
+          "file_name": {
+            "type": "string"
+          },
           "file_type": {
             "$ref": "#/components/schemas/types.FileType"
           },
@@ -7831,6 +7901,9 @@
           "failed_records": {
             "type": "integer"
           },
+          "file_name": {
+            "type": "string"
+          },
           "file_type": {
             "$ref": "#/components/schemas/types.FileType"
           },
@@ -8693,12 +8766,14 @@
         "enum": [
           "COUNT",
           "SUM",
-          "AVG"
+          "AVG",
+          "COUNT_UNIQUE"
         ],
         "x-enum-varnames": [
           "AggregationCount",
           "AggregationSum",
-          "AggregationAvg"
+          "AggregationAvg",
+          "AggregationCountUnique"
         ]
       },
       "types.BillingCadence": {
