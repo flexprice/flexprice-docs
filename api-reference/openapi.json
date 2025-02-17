@@ -5347,6 +5347,78 @@
             "ApiKeyAuth": []
           }
         ]
+      },
+      "put": {
+        "tags": [
+          "wallets"
+        ],
+        "summary": "Update a wallet",
+        "description": "Update a wallet's details including auto top-up configuration",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Wallet ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Update wallet request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dto.UpdateWalletRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.WalletResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "request"
       }
     },
     "/wallets/{id}/balance/real-time": {
@@ -6424,6 +6496,20 @@
         ],
         "type": "object",
         "properties": {
+          "auto_topup_amount": {
+            "type": "number"
+          },
+          "auto_topup_min_balance": {
+            "type": "number"
+          },
+          "auto_topup_trigger": {
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/types.AutoTopupTrigger"
+              }
+            ]
+          },
           "currency": {
             "type": "string"
           },
@@ -8291,6 +8377,34 @@
           }
         }
       },
+      "dto.UpdateWalletRequest": {
+        "type": "object",
+        "properties": {
+          "auto_topup_amount": {
+            "type": "number"
+          },
+          "auto_topup_min_balance": {
+            "type": "number"
+          },
+          "auto_topup_trigger": {
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/types.AutoTopupTrigger"
+              }
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/types.Metadata"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
       "dto.UsageResult": {
         "type": "object",
         "properties": {
@@ -8319,6 +8433,15 @@
       "dto.WalletBalanceResponse": {
         "type": "object",
         "properties": {
+          "auto_topup_amount": {
+            "type": "number"
+          },
+          "auto_topup_min_balance": {
+            "type": "number"
+          },
+          "auto_topup_trigger": {
+            "$ref": "#/components/schemas/types.AutoTopupTrigger"
+          },
           "balance": {
             "type": "number"
           },
@@ -8378,6 +8501,15 @@
       "dto.WalletResponse": {
         "type": "object",
         "properties": {
+          "auto_topup_amount": {
+            "type": "number"
+          },
+          "auto_topup_min_balance": {
+            "type": "number"
+          },
+          "auto_topup_trigger": {
+            "$ref": "#/components/schemas/types.AutoTopupTrigger"
+          },
           "balance": {
             "type": "number"
           },
@@ -8774,6 +8906,17 @@
           "AggregationSum",
           "AggregationAvg",
           "AggregationCountUnique"
+        ]
+      },
+      "types.AutoTopupTrigger": {
+        "type": "string",
+        "enum": [
+          "disabled",
+          "balance_below_threshold"
+        ],
+        "x-enum-varnames": [
+          "AutoTopupTriggerDisabled",
+          "AutoTopupTriggerBalanceBelowThreshold"
         ]
       },
       "types.BillingCadence": {
