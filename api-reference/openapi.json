@@ -5638,6 +5638,13 @@
         "description": "Get transactions for a wallet with pagination",
         "parameters": [
           {
+            "name": "amount_used_less_than",
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
             "name": "end_time",
             "in": "query",
             "schema": {
@@ -5646,6 +5653,20 @@
           },
           {
             "name": "expand",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "expiry_date_after",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "expiry_date_before",
             "in": "query",
             "schema": {
               "type": "string"
@@ -5727,6 +5748,40 @@
               "StatusPublished",
               "StatusDeleted",
               "StatusArchived"
+            ]
+          },
+          {
+            "name": "transaction_reason",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "INVOICE_PAYMENT",
+                "FREE_CREDIT_GRANT",
+                "SUBSCRIPTION_CREDIT_GRANT",
+                "PURCHASED_CREDIT_INVOICED",
+                "PURCHASED_CREDIT_DIRECT",
+                "INVOICE_REFUND",
+                "CREDIT_EXPIRED"
+              ],
+              "x-enum-varnames": [
+                "TransactionReasonInvoicePayment",
+                "TransactionReasonFreeCredit",
+                "TransactionReasonSubscriptionCredit",
+                "TransactionReasonPurchasedCreditInvoiced",
+                "TransactionReasonPurchasedCreditDirect",
+                "TransactionReasonInvoiceRefund",
+                "TransactionReasonCreditExpired"
+              ]
+            },
+            "x-enum-varnames": [
+              "TransactionReasonInvoicePayment",
+              "TransactionReasonFreeCredit",
+              "TransactionReasonSubscriptionCredit",
+              "TransactionReasonPurchasedCreditInvoiced",
+              "TransactionReasonPurchasedCreditDirect",
+              "TransactionReasonInvoiceRefund",
+              "TransactionReasonCreditExpired"
             ]
           },
           {
@@ -6503,12 +6558,13 @@
             "type": "number"
           },
           "auto_topup_trigger": {
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.AutoTopupTrigger"
-              }
-            ]
+            "$ref": "#/components/schemas/types.AutoTopupTrigger"
+          },
+          "config": {
+            "$ref": "#/components/schemas/types.WalletConfig"
+          },
+          "conversion_rate": {
+            "type": "number"
           },
           "currency": {
             "type": "string"
@@ -6524,6 +6580,14 @@
           },
           "name": {
             "type": "string"
+          },
+          "wallet_type": {
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/types.WalletType"
+              }
+            ]
           }
         }
       },
@@ -8054,18 +8118,41 @@
       },
       "dto.TopUpWalletRequest": {
         "required": [
-          "amount"
+          "amount",
+          "generate_invoice"
         ],
         "type": "object",
         "properties": {
           "amount": {
-            "type": "number"
+            "type": "number",
+            "description": "Amount is the number of credits to add to the wallet"
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "description": "Description to add any specific details about the transaction"
+          },
+          "generate_invoice": {
+            "type": "boolean",
+            "description": "GenerateInvoice when true, an invoice will be generated for the transaction",
+            "default": false
           },
           "metadata": {
-            "$ref": "#/components/schemas/types.Metadata"
+            "type": "object",
+            "description": "Metadata to add any additional information about the transaction",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/types.Metadata"
+              }
+            ]
+          },
+          "transaction_reason": {
+            "type": "object",
+            "description": "TransactionReason defines the flow from which the credits are added to the wallet",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/types.TransactionReason"
+              }
+            ]
           }
         }
       },
@@ -8394,6 +8481,9 @@
               }
             ]
           },
+          "config": {
+            "$ref": "#/components/schemas/types.WalletConfig"
+          },
           "description": {
             "type": "string"
           },
@@ -8448,11 +8538,20 @@
           "balance_updated_at": {
             "type": "string"
           },
+          "config": {
+            "$ref": "#/components/schemas/types.WalletConfig"
+          },
+          "conversion_rate": {
+            "type": "number"
+          },
           "created_at": {
             "type": "string"
           },
           "created_by": {
             "type": "string"
+          },
+          "credit_balance": {
+            "type": "number"
           },
           "currency": {
             "type": "string"
@@ -8495,6 +8594,9 @@
           },
           "wallet_status": {
             "$ref": "#/components/schemas/types.WalletStatus"
+          },
+          "wallet_type": {
+            "$ref": "#/components/schemas/types.WalletType"
           }
         }
       },
@@ -8513,8 +8615,17 @@
           "balance": {
             "type": "number"
           },
+          "config": {
+            "$ref": "#/components/schemas/types.WalletConfig"
+          },
+          "conversion_rate": {
+            "type": "number"
+          },
           "created_at": {
             "type": "string"
+          },
+          "credit_balance": {
+            "type": "number"
           },
           "currency": {
             "type": "string"
@@ -8539,6 +8650,9 @@
           },
           "wallet_status": {
             "$ref": "#/components/schemas/types.WalletStatus"
+          },
+          "wallet_type": {
+            "$ref": "#/components/schemas/types.WalletType"
           }
         }
       },
@@ -8546,6 +8660,9 @@
         "type": "object",
         "properties": {
           "amount": {
+            "type": "number"
+          },
+          "amount_used": {
             "type": "number"
           },
           "balance_after": {
@@ -8557,7 +8674,19 @@
           "created_at": {
             "type": "string"
           },
+          "credit_amount": {
+            "type": "number"
+          },
+          "credit_balance_after": {
+            "type": "number"
+          },
+          "credit_balance_before": {
+            "type": "number"
+          },
           "description": {
+            "type": "string"
+          },
+          "expiry_date": {
             "type": "string"
           },
           "id": {
@@ -8571,6 +8700,9 @@
           },
           "reference_type": {
             "type": "string"
+          },
+          "transaction_reason": {
+            "$ref": "#/components/schemas/types.TransactionReason"
           },
           "transaction_status": {
             "$ref": "#/components/schemas/types.TransactionStatus"
@@ -9203,6 +9335,27 @@
           "TaskTypeExport"
         ]
       },
+      "types.TransactionReason": {
+        "type": "string",
+        "enum": [
+          "INVOICE_PAYMENT",
+          "FREE_CREDIT_GRANT",
+          "SUBSCRIPTION_CREDIT_GRANT",
+          "PURCHASED_CREDIT_INVOICED",
+          "PURCHASED_CREDIT_DIRECT",
+          "INVOICE_REFUND",
+          "CREDIT_EXPIRED"
+        ],
+        "x-enum-varnames": [
+          "TransactionReasonInvoicePayment",
+          "TransactionReasonFreeCredit",
+          "TransactionReasonSubscriptionCredit",
+          "TransactionReasonPurchasedCreditInvoiced",
+          "TransactionReasonPurchasedCreditDirect",
+          "TransactionReasonInvoiceRefund",
+          "TransactionReasonCreditExpired"
+        ]
+      },
       "types.TransactionStatus": {
         "type": "string",
         "enum": [
@@ -9227,6 +9380,31 @@
           "TransactionTypeDebit"
         ]
       },
+      "types.WalletConfig": {
+        "type": "object",
+        "properties": {
+          "allowed_price_types": {
+            "type": "array",
+            "description": "AllowedPriceTypes is a list of price types that are allowed for the wallet\nnil means all price types are allowed",
+            "items": {
+              "$ref": "#/components/schemas/types.WalletConfigPriceType"
+            }
+          }
+        }
+      },
+      "types.WalletConfigPriceType": {
+        "type": "string",
+        "enum": [
+          "ALL",
+          "USAGE",
+          "FIXED"
+        ],
+        "x-enum-varnames": [
+          "WalletConfigPriceTypeAll",
+          "WalletConfigPriceTypeUsage",
+          "WalletConfigPriceTypeFixed"
+        ]
+      },
       "types.WalletStatus": {
         "type": "string",
         "enum": [
@@ -9238,6 +9416,17 @@
           "WalletStatusActive",
           "WalletStatusFrozen",
           "WalletStatusClosed"
+        ]
+      },
+      "types.WalletType": {
+        "type": "string",
+        "enum": [
+          "PROMOTIONAL",
+          "PRE_PAID"
+        ],
+        "x-enum-varnames": [
+          "WalletTypePromotional",
+          "WalletTypePrePaid"
         ]
       },
       "types.WindowSize": {
