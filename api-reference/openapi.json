@@ -4319,6 +4319,328 @@
         ]
       }
     },
+    "/secrets/api/keys": {
+      "get": {
+        "tags": [
+          "secrets"
+        ],
+        "summary": "List API keys",
+        "description": "Get a paginated list of API keys",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Limit",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Offset",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Status (published/archived)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.ListSecretsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "secrets"
+        ],
+        "summary": "Create a new API key",
+        "description": "Create a new API key with the specified type and permissions",
+        "requestBody": {
+          "description": "API key creation request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dto.CreateAPIKeyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.CreateAPIKeyResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "request"
+      }
+    },
+    "/secrets/api/keys/{id}": {
+      "delete": {
+        "tags": [
+          "secrets"
+        ],
+        "summary": "Delete an API key",
+        "description": "Delete an API key by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "API key ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {}
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/secrets/integrations/{provider}": {
+      "get": {
+        "tags": [
+          "secrets"
+        ],
+        "summary": "Get integration details",
+        "description": "Get details of a specific integration",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "description": "Integration provider",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.SecretResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "secrets"
+        ],
+        "summary": "Create or update an integration",
+        "description": "Create or update integration credentials",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "description": "Integration provider",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Integration creation request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dto.CreateIntegrationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.SecretResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "request"
+      },
+      "delete": {
+        "tags": [
+          "secrets"
+        ],
+        "summary": "Delete an integration",
+        "description": "Delete integration credentials",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "description": "Integration provider",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {}
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/subscriptions": {
       "get": {
         "tags": [
@@ -5638,7 +5960,7 @@
         "description": "Get transactions for a wallet with pagination",
         "parameters": [
           {
-            "name": "amount_used_less_than",
+            "name": "credits_available_gt",
             "in": "query",
             "schema": {
               "type": "number"
@@ -5762,7 +6084,8 @@
                 "PURCHASED_CREDIT_INVOICED",
                 "PURCHASED_CREDIT_DIRECT",
                 "INVOICE_REFUND",
-                "CREDIT_EXPIRED"
+                "CREDIT_EXPIRED",
+                "WALLET_TERMINATION"
               ],
               "x-enum-varnames": [
                 "TransactionReasonInvoicePayment",
@@ -5771,7 +6094,8 @@
                 "TransactionReasonPurchasedCreditInvoiced",
                 "TransactionReasonPurchasedCreditDirect",
                 "TransactionReasonInvoiceRefund",
-                "TransactionReasonCreditExpired"
+                "TransactionReasonCreditExpired",
+                "TransactionReasonWalletTermination"
               ]
             },
             "x-enum-varnames": [
@@ -5781,7 +6105,8 @@
               "TransactionReasonPurchasedCreditInvoiced",
               "TransactionReasonPurchasedCreditDirect",
               "TransactionReasonInvoiceRefund",
-              "TransactionReasonCreditExpired"
+              "TransactionReasonCreditExpired",
+              "TransactionReasonWalletTermination"
             ]
           },
           {
@@ -5890,6 +6215,46 @@
         "properties": {
           "token": {
             "type": "string"
+          }
+        }
+      },
+      "dto.CreateAPIKeyRequest": {
+        "required": [
+          "name",
+          "type"
+        ],
+        "type": "object",
+        "properties": {
+          "expires_at": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "type": {
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/types.SecretType"
+              }
+            ]
+          }
+        }
+      },
+      "dto.CreateAPIKeyResponse": {
+        "type": "object",
+        "properties": {
+          "api_key": {
+            "type": "string"
+          },
+          "secret": {
+            "$ref": "#/components/schemas/dto.SecretResponse"
           }
         }
       },
@@ -6022,6 +6387,28 @@
           },
           "unit_singular": {
             "type": "string"
+          }
+        }
+      },
+      "dto.CreateIntegrationRequest": {
+        "required": [
+          "credentials",
+          "name",
+          "provider"
+        ],
+        "type": "object",
+        "properties": {
+          "credentials": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "name": {
+            "type": "string"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/types.SecretProvider"
           }
         }
       },
@@ -7437,6 +7824,20 @@
           }
         }
       },
+      "dto.ListSecretsResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dto.SecretResponse"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/types.PaginationResponse"
+          }
+        }
+      },
       "dto.ListSubscriptionsResponse": {
         "type": "object",
         "properties": {
@@ -7840,6 +8241,47 @@
           }
         }
       },
+      "dto.SecretResponse": {
+        "type": "object",
+        "properties": {
+          "created_at": {
+            "type": "string"
+          },
+          "display_id": {
+            "type": "string"
+          },
+          "expires_at": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "last_used_at": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "provider": {
+            "$ref": "#/components/schemas/types.SecretProvider"
+          },
+          "status": {
+            "$ref": "#/components/schemas/types.Status"
+          },
+          "type": {
+            "$ref": "#/components/schemas/types.SecretType"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        }
+      },
       "dto.SignUpRequest": {
         "required": [
           "email",
@@ -8121,41 +8563,46 @@
       },
       "dto.TopUpWalletRequest": {
         "required": [
-          "amount",
-          "generate_invoice"
+          "amount"
         ],
         "type": "object",
         "properties": {
           "amount": {
             "type": "number",
-            "description": "Amount is the number of credits to add to the wallet"
+            "description": "amount is the number of credits to add to the wallet"
           },
           "description": {
             "type": "string",
-            "description": "Description to add any specific details about the transaction"
+            "description": "description to add any specific details about the transaction"
+          },
+          "expiry_date": {
+            "type": "integer",
+            "description": "expiry_date YYYYMMDD format in UTC timezone (optional to set nil means no expiry)\nfor ex 20250101 means the credits will expire on 2025-01-01 00:00:00 UTC\nhence they will be available for use until 2024-12-31 23:59:59 UTC"
           },
           "generate_invoice": {
             "type": "boolean",
-            "description": "GenerateInvoice when true, an invoice will be generated for the transaction",
-            "default": false
+            "description": "generate_invoice when true, an invoice will be generated for the transaction"
           },
           "metadata": {
             "type": "object",
-            "description": "Metadata to add any additional information about the transaction",
+            "description": "metadata to add any additional information about the transaction",
             "allOf": [
               {
                 "$ref": "#/components/schemas/types.Metadata"
               }
             ]
           },
-          "transaction_reason": {
-            "type": "object",
-            "description": "TransactionReason defines the flow from which the credits are added to the wallet",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.TransactionReason"
-              }
-            ]
+          "purchased_credits": {
+            "type": "boolean",
+            "description": "purchased_credits when true, the credits are added as purchased credits"
+          },
+          "reference_id": {
+            "type": "string",
+            "description": "reference_id is the ID of the reference ex payment ID, invoice ID, request ID"
+          },
+          "reference_type": {
+            "type": "string",
+            "description": "reference_type is the type of the reference ex payment, invoice, request"
           }
         }
       },
@@ -8580,6 +9027,9 @@
           "real_time_balance": {
             "type": "number"
           },
+          "real_time_credit_balance": {
+            "type": "number"
+          },
           "status": {
             "$ref": "#/components/schemas/types.Status"
           },
@@ -8665,15 +9115,6 @@
           "amount": {
             "type": "number"
           },
-          "amount_used": {
-            "type": "number"
-          },
-          "balance_after": {
-            "type": "number"
-          },
-          "balance_before": {
-            "type": "number"
-          },
           "created_at": {
             "type": "string"
           },
@@ -8684,6 +9125,9 @@
             "type": "number"
           },
           "credit_balance_before": {
+            "type": "number"
+          },
+          "credits_available": {
             "type": "number"
           },
           "description": {
@@ -8702,7 +9146,7 @@
             "type": "string"
           },
           "reference_type": {
-            "type": "string"
+            "$ref": "#/components/schemas/types.WalletTxReferenceType"
           },
           "transaction_reason": {
             "$ref": "#/components/schemas/types.TransactionReason"
@@ -9276,6 +9720,32 @@
           "ResetUsageNever"
         ]
       },
+      "types.SecretProvider": {
+        "type": "string",
+        "enum": [
+          "flexprice",
+          "stripe",
+          "razorpay"
+        ],
+        "x-enum-varnames": [
+          "SecretProviderFlexPrice",
+          "SecretProviderStripe",
+          "SecretProviderRazorpay"
+        ]
+      },
+      "types.SecretType": {
+        "type": "string",
+        "enum": [
+          "private_key",
+          "publishable_key",
+          "integration"
+        ],
+        "x-enum-varnames": [
+          "SecretTypePrivateKey",
+          "SecretTypePublishableKey",
+          "SecretTypeIntegration"
+        ]
+      },
       "types.Status": {
         "type": "string",
         "enum": [
@@ -9347,7 +9817,8 @@
           "PURCHASED_CREDIT_INVOICED",
           "PURCHASED_CREDIT_DIRECT",
           "INVOICE_REFUND",
-          "CREDIT_EXPIRED"
+          "CREDIT_EXPIRED",
+          "WALLET_TERMINATION"
         ],
         "x-enum-varnames": [
           "TransactionReasonInvoicePayment",
@@ -9356,7 +9827,8 @@
           "TransactionReasonPurchasedCreditInvoiced",
           "TransactionReasonPurchasedCreditDirect",
           "TransactionReasonInvoiceRefund",
-          "TransactionReasonCreditExpired"
+          "TransactionReasonCreditExpired",
+          "TransactionReasonWalletTermination"
         ]
       },
       "types.TransactionStatus": {
@@ -9430,6 +9902,21 @@
           "WalletStatusActive",
           "WalletStatusFrozen",
           "WalletStatusClosed"
+        ]
+      },
+      "types.WalletTxReferenceType": {
+        "type": "string",
+        "enum": [
+          "INVOICE",
+          "PAYMENT",
+          "EXTERNAL",
+          "REQUEST"
+        ],
+        "x-enum-varnames": [
+          "WalletTxReferenceTypeInvoice",
+          "WalletTxReferenceTypePayment",
+          "WalletTxReferenceTypeExternal",
+          "WalletTxReferenceTypeRequest"
         ]
       },
       "types.WalletType": {
