@@ -4483,6 +4483,83 @@
         }
       }
     },
+    "/secrets/integrations/linked": {
+      "get": {
+        "tags": [
+          "secrets"
+        ],
+        "summary": "List linked integrations",
+        "description": "Get a list of unique providers which have a valid linked integration secret",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.LinkedIntegrationsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/secrets/integrations/{id}": {
+      "delete": {
+        "tags": [
+          "secrets"
+        ],
+        "summary": "Delete an integration",
+        "description": "Delete integration credentials",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Integration ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content",
+            "content": {}
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/secrets/integrations/{provider}": {
       "get": {
         "tags": [
@@ -4595,50 +4672,6 @@
           }
         },
         "x-codegen-request-body-name": "request"
-      },
-      "delete": {
-        "tags": [
-          "secrets"
-        ],
-        "summary": "Delete an integration",
-        "description": "Delete integration credentials",
-        "parameters": [
-          {
-            "name": "provider",
-            "in": "path",
-            "description": "Integration provider",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content",
-            "content": {}
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/v1.ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/v1.ErrorResponse"
-                }
-              }
-            }
-          }
-        }
       }
     },
     "/subscriptions": {
@@ -5970,6 +6003,15 @@
         "description": "Get transactions for a wallet with pagination",
         "parameters": [
           {
+            "name": "id",
+            "in": "path",
+            "description": "Wallet ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "credits_available_gt",
             "in": "query",
             "schema": {
@@ -5999,6 +6041,13 @@
           },
           {
             "name": "expiry_date_before",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
             "in": "query",
             "schema": {
               "type": "string"
@@ -6159,13 +6208,6 @@
               "TransactionTypeCredit",
               "TransactionTypeDebit"
             ]
-          },
-          {
-            "name": "wallet_id",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
           }
         ],
         "responses": {
@@ -6474,8 +6516,7 @@
         "required": [
           "amount_due",
           "currency",
-          "customer_id",
-          "invoice_type"
+          "customer_id"
         ],
         "type": "object",
         "properties": {
@@ -6510,7 +6551,12 @@
             "$ref": "#/components/schemas/types.InvoiceStatus"
           },
           "invoice_type": {
-            "$ref": "#/components/schemas/types.InvoiceType"
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/types.InvoiceType"
+              }
+            ]
           },
           "line_items": {
             "type": "array",
@@ -7082,6 +7128,10 @@
             "type": "string",
             "description": "Email is the email of the customer"
           },
+          "environment_id": {
+            "type": "string",
+            "description": "EnvironmentID is the environment identifier for the customer"
+          },
           "external_id": {
             "type": "string",
             "description": "ExternalID is the external identifier for the customer"
@@ -7122,6 +7172,9 @@
             "type": "string"
           },
           "created_by": {
+            "type": "string"
+          },
+          "environment_id": {
             "type": "string"
           },
           "feature": {
@@ -7228,6 +7281,9 @@
             "type": "string"
           },
           "description": {
+            "type": "string"
+          },
+          "environment_id": {
             "type": "string"
           },
           "id": {
@@ -7715,6 +7771,17 @@
           }
         }
       },
+      "dto.LinkedIntegrationsResponse": {
+        "type": "object",
+        "properties": {
+          "providers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "dto.ListCustomersResponse": {
         "type": "object",
         "properties": {
@@ -8077,6 +8144,9 @@
               "$ref": "#/components/schemas/dto.EntitlementResponse"
             }
           },
+          "environment_id": {
+            "type": "string"
+          },
           "id": {
             "type": "string"
           },
@@ -8167,6 +8237,10 @@
           "display_amount": {
             "type": "string",
             "description": "DisplayAmount is the formatted amount with currency symbol\nFor USD: $12.50"
+          },
+          "environment_id": {
+            "type": "string",
+            "description": "EnvironmentID is the environment identifier for the price"
           },
           "filter_values": {
             "type": "object",
@@ -8384,6 +8458,10 @@
           "end_date": {
             "type": "string",
             "description": "EndDate is the end date of the subscription"
+          },
+          "environment_id": {
+            "type": "string",
+            "description": "EnvironmentID is the environment identifier for the subscription"
           },
           "id": {
             "type": "string",
@@ -9032,6 +9110,9 @@
           "description": {
             "type": "string"
           },
+          "environment_id": {
+            "type": "string"
+          },
           "id": {
             "type": "string"
           },
@@ -9303,6 +9384,10 @@
             "type": "string",
             "description": "DisplayAmount is the formatted amount with currency symbol\nFor USD: $12.50"
           },
+          "environment_id": {
+            "type": "string",
+            "description": "EnvironmentID is the environment identifier for the price"
+          },
           "filter_values": {
             "type": "object",
             "description": "FilterValues are the filter values for the price in case of usage based pricing",
@@ -9437,6 +9522,9 @@
             "type": "string"
           },
           "end_date": {
+            "type": "string"
+          },
+          "environment_id": {
             "type": "string"
           },
           "id": {
