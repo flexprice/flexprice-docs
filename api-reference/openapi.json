@@ -5528,6 +5528,16 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/v1.ErrorResponse"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal Server Error",
             "content": {
@@ -5672,7 +5682,7 @@
       },
       "put": {
         "tags": [
-          "wallets"
+          "Wallets"
         ],
         "summary": "Update a wallet",
         "description": "Update a wallet's details including auto top-up configuration",
@@ -6213,7 +6223,13 @@
       "dto.AuthResponse": {
         "type": "object",
         "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
           "token": {
+            "type": "string"
+          },
+          "user_id": {
             "type": "string"
           }
         }
@@ -6340,15 +6356,11 @@
       "dto.CreateEnvironmentRequest": {
         "required": [
           "name",
-          "slug",
           "type"
         ],
         "type": "object",
         "properties": {
           "name": {
-            "type": "string"
-          },
-          "slug": {
             "type": "string"
           },
           "type": {
@@ -7171,9 +7183,6 @@
           "name": {
             "type": "string"
           },
-          "slug": {
-            "type": "string"
-          },
           "type": {
             "type": "string"
           },
@@ -7893,6 +7902,9 @@
           "password": {
             "minLength": 8,
             "type": "string"
+          },
+          "token": {
+            "type": "string"
           }
         }
       },
@@ -8284,8 +8296,7 @@
       },
       "dto.SignUpRequest": {
         "required": [
-          "email",
-          "password"
+          "email"
         ],
         "type": "object",
         "properties": {
@@ -8294,6 +8305,12 @@
           },
           "password": {
             "minLength": 8,
+            "type": "string"
+          },
+          "tenant_name": {
+            "type": "string"
+          },
+          "token": {
             "type": "string"
           }
         }
@@ -8556,6 +8573,9 @@
           "name": {
             "type": "string"
           },
+          "status": {
+            "type": "string"
+          },
           "updated_at": {
             "type": "string"
           }
@@ -8673,9 +8693,6 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "string"
-          },
-          "slug": {
             "type": "string"
           },
           "type": {
