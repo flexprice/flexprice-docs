@@ -4683,43 +4683,189 @@
         "description": "Get subscriptions with optional filtering",
         "parameters": [
           {
+            "name": "active_at",
+            "in": "query",
+            "description": "ActiveAt filters subscriptions that are active at the given time",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "billing_cadence",
+            "in": "query",
+            "description": "BillingCadence filters by billing cadence",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "RECURRING",
+                  "ONETIME"
+                ]
+              }
+            }
+          },
+          {
+            "name": "billing_period",
+            "in": "query",
+            "description": "BillingPeriod filters by billing period",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "MONTHLY",
+                  "ANNUAL",
+                  "WEEKLY",
+                  "DAILY"
+                ]
+              }
+            }
+          },
+          {
             "name": "customer_id",
             "in": "query",
-            "description": "Filter by customer ID",
+            "description": "CustomerID filters by customer ID",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "subscription_status",
+            "name": "end_time",
             "in": "query",
-            "description": "Filter by subscription status",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "plan_id",
+            "name": "expand",
             "in": "query",
-            "description": "Filter by plan ID",
             "schema": {
               "type": "string"
             }
           },
           {
-            "name": "offset",
+            "name": "include_canceled",
             "in": "query",
-            "description": "Offset for pagination",
+            "description": "IncludeCanceled includes canceled subscriptions if true",
             "schema": {
-              "type": "integer"
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "invoice_cadence",
+            "in": "query",
+            "description": "InvoiceCadence filters by invoice cadence",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "ARREAR",
+                  "ADVANCE"
+                ]
+              }
             }
           },
           {
             "name": "limit",
             "in": "query",
-            "description": "Limit for pagination",
             "schema": {
+              "maximum": 1000,
+              "minimum": 1,
               "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "plan_id",
+            "in": "query",
+            "description": "PlanID filters by plan ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "start_time",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "published",
+                "deleted",
+                "archived"
+              ],
+              "x-enum-varnames": [
+                "StatusPublished",
+                "StatusDeleted",
+                "StatusArchived"
+              ]
+            },
+            "x-enum-varnames": [
+              "StatusPublished",
+              "StatusDeleted",
+              "StatusArchived"
+            ]
+          },
+          {
+            "name": "subscription_status",
+            "in": "query",
+            "description": "SubscriptionStatus filters by subscription status",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "active",
+                  "paused",
+                  "cancelled",
+                  "incomplete",
+                  "incomplete_expired",
+                  "past_due",
+                  "trialing",
+                  "unpaid"
+                ]
+              }
             }
           }
         ],
@@ -4996,6 +5142,219 @@
             "ApiKeyAuth": []
           }
         ]
+      }
+    },
+    "/subscriptions/{id}/pause": {
+      "post": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Pause a subscription",
+        "description": "Pause a subscription with the specified parameters",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Subscription ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Pause subscription request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dto.PauseSubscriptionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.SubscriptionPauseResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "request"
+      }
+    },
+    "/subscriptions/{id}/pauses": {
+      "get": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "List all pauses for a subscription",
+        "description": "List all pauses for a subscription",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Subscription ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/dto.ListSubscriptionPausesResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/subscriptions/{id}/resume": {
+      "post": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Resume a paused subscription",
+        "description": "Resume a paused subscription with the specified parameters",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Subscription ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Resume subscription request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dto.ResumeSubscriptionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.SubscriptionPauseResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-codegen-request-body-name": "request"
       }
     },
     "/tasks": {
@@ -6412,7 +6771,6 @@
       },
       "dto.CreateFeatureRequest": {
         "required": [
-          "lookup_key",
           "name",
           "type"
         ],
@@ -7914,6 +8272,20 @@
           }
         }
       },
+      "dto.ListSubscriptionPausesResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dto.SubscriptionPauseResponse"
+            }
+          },
+          "total": {
+            "type": "integer"
+          }
+        }
+      },
       "dto.ListSubscriptionsResponse": {
         "type": "object",
         "properties": {
@@ -8017,6 +8389,39 @@
           "updated_at": {
             "type": "string",
             "example": "2024-03-20T15:04:05Z"
+          }
+        }
+      },
+      "dto.PauseSubscriptionRequest": {
+        "required": [
+          "pause_mode"
+        ],
+        "type": "object",
+        "properties": {
+          "dry_run": {
+            "type": "boolean"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "pause_days": {
+            "type": "integer"
+          },
+          "pause_end": {
+            "type": "string"
+          },
+          "pause_mode": {
+            "$ref": "#/components/schemas/types.PauseMode"
+          },
+          "pause_start": {
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 255,
+            "type": "string"
           }
         }
       },
@@ -8327,6 +8732,26 @@
           }
         }
       },
+      "dto.ResumeSubscriptionRequest": {
+        "required": [
+          "resume_mode"
+        ],
+        "type": "object",
+        "properties": {
+          "dry_run": {
+            "type": "boolean"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "resume_mode": {
+            "$ref": "#/components/schemas/types.ResumeMode"
+          }
+        }
+      },
       "dto.SecretResponse": {
         "type": "object",
         "properties": {
@@ -8389,9 +8814,108 @@
           }
         }
       },
+      "dto.SubscriptionPauseResponse": {
+        "type": "object",
+        "properties": {
+          "created_at": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "environment_id": {
+            "type": "string",
+            "description": "EnvironmentID is the environment identifier for the pause"
+          },
+          "id": {
+            "type": "string",
+            "description": "ID is the unique identifier for the subscription pause"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Metadata is a map of key-value pairs that can be attached to the pause",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/types.Metadata"
+              }
+            ]
+          },
+          "original_period_end": {
+            "type": "string",
+            "description": "OriginalPeriodEnd is the end of the billing period when the pause was created"
+          },
+          "original_period_start": {
+            "type": "string",
+            "description": "OriginalPeriodStart is the start of the billing period when the pause was created"
+          },
+          "pause_end": {
+            "type": "string",
+            "description": "PauseEnd is when the pause will end (null for indefinite)"
+          },
+          "pause_mode": {
+            "type": "object",
+            "description": "PauseMode indicates how the pause was applied",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/types.PauseMode"
+              }
+            ]
+          },
+          "pause_start": {
+            "type": "string",
+            "description": "PauseStart is when the pause actually started"
+          },
+          "pause_status": {
+            "type": "object",
+            "description": "PauseStatus is the status of the pause",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/types.PauseStatus"
+              }
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "description": "Reason is the reason for pausing"
+          },
+          "resume_mode": {
+            "type": "object",
+            "description": "ResumeMode indicates how the resume will be applied",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/types.ResumeMode"
+              }
+            ]
+          },
+          "resumed_at": {
+            "type": "string",
+            "description": "ResumedAt is when the pause was actually ended (if manually resumed)"
+          },
+          "status": {
+            "$ref": "#/components/schemas/types.Status"
+          },
+          "subscription_id": {
+            "type": "string",
+            "description": "SubscriptionID is the identifier for the subscription"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "updated_by": {
+            "type": "string"
+          }
+        }
+      },
       "dto.SubscriptionResponse": {
         "type": "object",
         "properties": {
+          "active_pause_id": {
+            "type": "string",
+            "description": "ActivePauseID references the current active pause configuration\nThis will be null if no pause is active or scheduled"
+          },
           "billing_anchor": {
             "type": "string",
             "description": "BillingAnchor is the reference point that aligns future billing cycle dates.\nIt sets the day of week for week intervals, the day of month for month and year intervals,\nand the month of year for year intervals. The timestamp is in UTC format."
@@ -8494,6 +9018,21 @@
                 "$ref": "#/components/schemas/types.Metadata"
               }
             ]
+          },
+          "pause_status": {
+            "type": "object",
+            "description": "PauseStatus tracks the current pause state",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/types.PauseStatus"
+              }
+            ]
+          },
+          "pauses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/subscription.SubscriptionPause"
+            }
           },
           "plan": {
             "$ref": "#/components/schemas/dto.PlanResponse"
@@ -9260,6 +9799,31 @@
           }
         }
       },
+      "errors.ErrorDetail": {
+        "type": "object",
+        "properties": {
+          "details": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object"
+            }
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "errors.ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/errors.ErrorDetail"
+          },
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
       "gin.H": {
         "type": "object",
         "additionalProperties": {
@@ -9577,6 +10141,101 @@
           }
         }
       },
+      "subscription.SubscriptionPause": {
+        "type": "object",
+        "properties": {
+          "created_at": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "environment_id": {
+            "type": "string",
+            "description": "EnvironmentID is the environment identifier for the pause"
+          },
+          "id": {
+            "type": "string",
+            "description": "ID is the unique identifier for the subscription pause"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Metadata is a map of key-value pairs that can be attached to the pause",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/types.Metadata"
+              }
+            ]
+          },
+          "original_period_end": {
+            "type": "string",
+            "description": "OriginalPeriodEnd is the end of the billing period when the pause was created"
+          },
+          "original_period_start": {
+            "type": "string",
+            "description": "OriginalPeriodStart is the start of the billing period when the pause was created"
+          },
+          "pause_end": {
+            "type": "string",
+            "description": "PauseEnd is when the pause will end (null for indefinite)"
+          },
+          "pause_mode": {
+            "type": "object",
+            "description": "PauseMode indicates how the pause was applied",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/types.PauseMode"
+              }
+            ]
+          },
+          "pause_start": {
+            "type": "string",
+            "description": "PauseStart is when the pause actually started"
+          },
+          "pause_status": {
+            "type": "object",
+            "description": "PauseStatus is the status of the pause",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/types.PauseStatus"
+              }
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "description": "Reason is the reason for pausing"
+          },
+          "resume_mode": {
+            "type": "object",
+            "description": "ResumeMode indicates how the resume will be applied",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/types.ResumeMode"
+              }
+            ]
+          },
+          "resumed_at": {
+            "type": "string",
+            "description": "ResumedAt is when the pause was actually ended (if manually resumed)"
+          },
+          "status": {
+            "$ref": "#/components/schemas/types.Status"
+          },
+          "subscription_id": {
+            "type": "string",
+            "description": "SubscriptionID is the identifier for the subscription"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "updated_by": {
+            "type": "string"
+          }
+        }
+      },
       "types.AggregationType": {
         "type": "string",
         "enum": [
@@ -9760,6 +10419,36 @@
           }
         }
       },
+      "types.PauseMode": {
+        "type": "string",
+        "enum": [
+          "immediate",
+          "scheduled",
+          "period_end"
+        ],
+        "x-enum-varnames": [
+          "PauseModeImmediate",
+          "PauseModeScheduled",
+          "PauseModePeriodEnd"
+        ]
+      },
+      "types.PauseStatus": {
+        "type": "string",
+        "enum": [
+          "none",
+          "active",
+          "scheduled",
+          "completed",
+          "cancelled"
+        ],
+        "x-enum-varnames": [
+          "PauseStatusNone",
+          "PauseStatusActive",
+          "PauseStatusScheduled",
+          "PauseStatusCompleted",
+          "PauseStatusCancelled"
+        ]
+      },
       "types.PaymentDestinationType": {
         "type": "string",
         "enum": [
@@ -9823,6 +10512,19 @@
         "x-enum-varnames": [
           "ResetUsageBillingPeriod",
           "ResetUsageNever"
+        ]
+      },
+      "types.ResumeMode": {
+        "type": "string",
+        "enum": [
+          "immediate",
+          "scheduled",
+          "auto"
+        ],
+        "x-enum-varnames": [
+          "ResumeModeImmediate",
+          "ResumeModeScheduled",
+          "ResumeModeAuto"
         ]
       },
       "types.SecretProvider": {
