@@ -1,0 +1,62 @@
+---
+title: "Clone Open AI pricing"
+description: "Flexprice documentation"
+---
+
+# Clone Open AI pricing
+
+Manually managing per-token pricing can be complex, but with Flexprice, you can automate and scale your billing effortlessly. This guide walks you through setting up OpenAI's O1 pricing model using a **package-based pricing approach**. This method ensures clarity in billing, making it ideal for AI APIs, generative models, and machine learning services.
+
+**Use Cases**
+
+- AI APIs (LLMs like OpenAI, Anthropic, Mistral)
+- Machine learning inference services
+- Text-to-Speech or Speech-to-Text APIs
+
+**OpenAI** charges users based on the number of input, output and cached tokens processed by their models. You can view the official pricing details here: [OpenAI Pricing](https://openai.com/api/pricing/).
+
+The O1 model has the following pricing structure:
+
+| **Token Type** | **Price per Million Tokens** |
+| --- | --- |
+| Input Tokens | $15.00 per million tokens |
+| Output Tokens | $60.00 per million tokens |
+| Cached Input Tokens | $7.50 per million tokens |
+
+For example, if a user processes:
+
+- 5 million input tokens → $75.00 ($15.00 x 5)
+- 2 million output tokens → $120.00 ($60.00 x 2)
+- 1 million cached input tokens → $7.50 ($7.50 x 1)
+- Total Cost = $202.50
+
+Now, let’s configure the pricing for the O1 model using **Flexprice**.
+
+**Configuring Pricing of o1 model in Flexprice**
+
+1. **Create [Metered Features](../../Features%201b09b3a59a6880e59e45d3e7a56bd66b/Creating%20a%20feature%201b09b3a59a68808fafbfd3ec556640dd.md) for Token Usage**
+Since token usage is metered, we first define three separate Metered Features in Flexprice for input tokens, output tokens, and cached input tokens.
+    
+    
+    | **Feature Name** | **Feature Type** | **Aggregation Method** | **Key** | **Filters** |
+    | --- | --- | --- | --- | --- |
+    | Input Tokens | Metered | SUM | model_name | model: OpenAI O1, prompt_type: input |
+    | Output Tokens | Metered | SUM | model_name | model: OpenAI O1, prompt_type: output |
+    | Cached Input Tokens | Metered | SUM | model_name | model: OpenAI O1, prompt_type: cached_input |
+2. **Create a Plan with [Package-Based Pricing](../Charges%20in%20plans%201b09b3a59a6880d69013dab788bbe5ea/Package%201b09b3a59a688086af25c00392d217a5.md)**
+Once the metered features are created, we define a **Plan** that charges users per million tokens rather than per individual token.
+    
+    
+    | **Metered Feature** | **Billing Model** | Charges |
+    | --- | --- | --- |
+    | Input Tokens | Package Charge | $15.00 per million tokens |
+    | Output Tokens | Package Charge | $60.00 per million tokens |
+    | Cached Input Tokens | Package Charge | $7.50 per million tokens |
+
+Now, whenever a customer **purchases this plan and starts using it**, they will:
+
+- See **real-time usage events** for token consumption.
+- Get a **dynamically generated proposed invoice** based on their usage.
+- Have full transparency in billing, ensuring clarity on costs.
+
+This process ensures that **AI companies can charge users fairly based on actual usage** while providing predictable and scalable billing.

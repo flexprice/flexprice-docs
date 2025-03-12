@@ -1,0 +1,254 @@
+---
+title: 'Configuration'
+description: 'Configure your self-hosted Flexprice instance'
+---
+
+## Configuration Methods
+
+Flexprice can be configured using:
+
+1. Environment variables (recommended)
+2. Configuration files
+3. Command-line arguments (for specific overrides)
+
+## Environment Variables
+
+Environment variables are the recommended way to configure Flexprice. All environment variables are prefixed with `FLEXPRICE_`. Here's a comprehensive list of available variables:
+
+### Deployment Configuration
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `FLEXPRICE_DEPLOYMENT_MODE` | Deployment mode (local, api, consumer, temporal_worker, aws_lambda_api, aws_lambda_consumer) | `local` | No |
+| `FLEXPRICE_SERVER_ADDRESS` | Server address and port | `:8080` | No |
+
+### Authentication Configuration
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `FLEXPRICE_AUTH_PROVIDER` | Authentication provider (flexprice, supabase) | `flexprice` | No |
+| `FLEXPRICE_AUTH_SECRET` | Secret key for authentication | - | Yes |
+| `FLEXPRICE_AUTH_SUPABASE_BASE_URL` | Supabase base URL (if using Supabase auth) | - | Only if using Supabase |
+| `FLEXPRICE_AUTH_SUPABASE_SERVICE_KEY` | Supabase service key | - | Only if using Supabase |
+| `FLEXPRICE_AUTH_API_KEY_HEADER` | Header name for API key authentication | `x-api-key` | No |
+| `FLEXPRICE_AUTH_API_KEY_KEYS` | JSON string of API keys configuration | - | No |
+
+### Database Configuration
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `FLEXPRICE_POSTGRES_HOST` | PostgreSQL host | `localhost` | No |
+| `FLEXPRICE_POSTGRES_PORT` | PostgreSQL port | `5432` | No |
+| `FLEXPRICE_POSTGRES_USER` | PostgreSQL username | `flexprice` | No |
+| `FLEXPRICE_POSTGRES_PASSWORD` | PostgreSQL password | `flexprice123` | Yes |
+| `FLEXPRICE_POSTGRES_DBNAME` | PostgreSQL database name | `flexprice` | No |
+| `FLEXPRICE_POSTGRES_SSLMODE` | PostgreSQL SSL mode (disable, require) | `disable` | No |
+| `FLEXPRICE_POSTGRES_AUTO_MIGRATE` | Automatically run migrations on startup | `false` | No |
+
+### ClickHouse Configuration
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `FLEXPRICE_CLICKHOUSE_ADDRESS` | ClickHouse address (host:port) | `localhost:9000` | No |
+| `FLEXPRICE_CLICKHOUSE_TLS` | Use TLS for ClickHouse connection | `false` | No |
+| `FLEXPRICE_CLICKHOUSE_USERNAME` | ClickHouse username | `flexprice` | No |
+| `FLEXPRICE_CLICKHOUSE_PASSWORD` | ClickHouse password | `flexprice123` | Yes |
+| `FLEXPRICE_CLICKHOUSE_DATABASE` | ClickHouse database name | `flexprice` | No |
+
+### Kafka Configuration
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `FLEXPRICE_KAFKA_BROKERS` | Kafka brokers (comma-separated) | `localhost:29092` | No |
+| `FLEXPRICE_KAFKA_CONSUMER_GROUP` | Kafka consumer group ID | `flexprice-consumer-local` | No |
+| `FLEXPRICE_KAFKA_TOPIC` | Kafka topic for events | `events` | No |
+| `FLEXPRICE_KAFKA_USE_SASL` | Use SASL authentication for Kafka | `false` | No |
+| `FLEXPRICE_KAFKA_SASL_MECHANISM` | SASL mechanism (PLAIN, SCRAM-SHA-256, etc.) | - | Only if SASL is enabled |
+| `FLEXPRICE_KAFKA_SASL_USER` | SASL username | - | Only if SASL is enabled |
+| `FLEXPRICE_KAFKA_SASL_PASSWORD` | SASL password | - | Only if SASL is enabled |
+| `FLEXPRICE_KAFKA_CLIENT_ID` | Kafka client ID | `flexprice-client-local` | No |
+
+### Temporal Configuration
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `FLEXPRICE_TEMPORAL_ADDRESS` | Temporal service address | `localhost:7233` | No |
+| `FLEXPRICE_TEMPORAL_TLS` | Use TLS for Temporal connection | `false` | No |
+| `FLEXPRICE_TEMPORAL_NAMESPACE` | Temporal namespace | `default` | No |
+| `FLEXPRICE_TEMPORAL_TASK_QUEUE` | Temporal task queue | `billing-task-queue` | No |
+| `FLEXPRICE_TEMPORAL_API_KEY` | Temporal API key | - | Only if using Temporal Cloud |
+| `FLEXPRICE_TEMPORAL_API_KEY_NAME` | Temporal API key name | - | Only if using Temporal Cloud |
+
+### Logging and Monitoring
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `FLEXPRICE_LOGGING_LEVEL` | Logging level (debug, info, warn, error) | `info` | No |
+| `FLEXPRICE_SENTRY_ENABLED` | Enable Sentry error reporting | `false` | No |
+| `FLEXPRICE_SENTRY_DSN` | Sentry DSN | - | Only if Sentry is enabled |
+| `FLEXPRICE_SENTRY_ENVIRONMENT` | Sentry environment | `development` | No |
+| `FLEXPRICE_SENTRY_SAMPLE_RATE` | Sentry sampling rate (0.0-1.0) | `1.0` | No |
+
+### DynamoDB Configuration
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `FLEXPRICE_DYNAMODB_IN_USE` | Use DynamoDB for event storage | `false` | No |
+| `FLEXPRICE_DYNAMODB_REGION` | AWS region for DynamoDB | `us-east-1` | Only if DynamoDB is enabled |
+| `FLEXPRICE_DYNAMODB_EVENT_TABLE_NAME` | DynamoDB table name for events | `events` | Only if DynamoDB is enabled |
+
+### Webhook Configuration
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `FLEXPRICE_WEBHOOK_MAX_RETRIES` | Maximum number of webhook retry attempts | `3` | No |
+| `FLEXPRICE_WEBHOOK_INITIAL_INTERVAL` | Initial retry interval (e.g., 1s) | `1s` | No |
+| `FLEXPRICE_WEBHOOK_MAX_INTERVAL` | Maximum retry interval (e.g., 10s) | `10s` | No |
+| `FLEXPRICE_WEBHOOK_MULTIPLIER` | Backoff multiplier for retries | `2.0` | No |
+| `FLEXPRICE_WEBHOOK_MAX_ELAPSED_TIME` | Maximum total retry time (e.g., 2m) | `2m` | No |
+
+### Event Publishing
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `FLEXPRICE_EVENT_PUBLISH_DESTINATION` | Event publishing destination (kafka, dynamodb, all) | `kafka` | No |
+
+## Using a .env File
+
+For local development, you can use a `.env` file to set environment variables. Create a file named `.env` in the root directory of your project:
+
+```bash
+# Deployment Configuration
+FLEXPRICE_DEPLOYMENT_MODE=local
+FLEXPRICE_SERVER_ADDRESS=":8080"
+
+# Authentication Configuration
+FLEXPRICE_AUTH_PROVIDER="flexprice"
+FLEXPRICE_AUTH_SECRET="your_secure_secret_key"
+FLEXPRICE_AUTH_API_KEY_HEADER="x-api-key"
+
+# Database Configuration
+FLEXPRICE_POSTGRES_HOST=localhost
+FLEXPRICE_POSTGRES_PORT=5432
+FLEXPRICE_POSTGRES_USER=flexprice
+FLEXPRICE_POSTGRES_PASSWORD=flexprice123
+FLEXPRICE_POSTGRES_DBNAME=flexprice
+FLEXPRICE_POSTGRES_SSLMODE=disable
+FLEXPRICE_POSTGRES_AUTO_MIGRATE=true
+
+# ClickHouse Configuration
+FLEXPRICE_CLICKHOUSE_ADDRESS=localhost:9000
+FLEXPRICE_CLICKHOUSE_TLS=false
+FLEXPRICE_CLICKHOUSE_USERNAME=flexprice
+FLEXPRICE_CLICKHOUSE_PASSWORD=flexprice123
+FLEXPRICE_CLICKHOUSE_DATABASE=flexprice
+
+# Kafka Configuration
+FLEXPRICE_KAFKA_BROKERS=localhost:29092
+FLEXPRICE_KAFKA_CONSUMER_GROUP=flexprice-consumer-local
+FLEXPRICE_KAFKA_TOPIC=events
+
+# Logging Configuration
+FLEXPRICE_LOGGING_LEVEL=debug
+```
+
+<Tip>
+  When using Docker Compose, you can specify environment variables in your `docker-compose.yml` file or use the `.env` file directly.
+</Tip>
+
+## Configuration File
+
+For more complex configurations, you can use a YAML configuration file. By default, Flexprice looks for a file named `config.yaml` in the `internal/config` directory:
+
+```yaml
+deployment:
+  mode: "local" # "local", "docker", "production"
+
+server:
+  address: ":8080"
+
+auth:
+  provider: "flexprice" # "flexprice" or "supabase"
+  secret: "your_secure_secret_key"
+  supabase:
+    base_url: "http://localhost:54321"
+    service_key: "<supabase service key>"
+  api_key:
+    header: "x-api-key"
+    keys:
+      "your_api_key_hash":
+        tenant_id: "00000000-0000-0000-0000-000000000000"
+        user_id: "00000000-0000-0000-0000-000000000000"
+        name: "Dev API Keys"
+        is_active: true
+
+kafka:
+  brokers: "localhost:29092"
+  consumer_group: "flexprice-consumer-local"
+  topic: "events"
+  use_sasl: false
+  sasl_mechanism: ""
+  sasl_user: ""
+  sasl_password: ""
+  client_id: "flexprice-client-local"
+
+clickhouse:
+  address: "localhost:9000"
+  tls: false
+  username: "flexprice"
+  password: "flexprice123"
+  database: "flexprice"
+
+postgres:
+  host: "localhost"
+  port: 5432
+  user: "flexprice"
+  password: "flexprice123"
+  dbname: "flexprice"
+  sslmode: "disable"
+  auto_migrate: false
+
+temporal:
+  address: "localhost:7233"
+  tls: false
+  namespace: "default"
+  task_queue: "billing-task-queue"
+```
+
+<Warning>
+  Environment variables take precedence over configuration file settings. If an environment variable is set, it will override the corresponding value in the configuration file.
+</Warning>
+
+## Production Best Practices
+
+When configuring Flexprice for production, follow these best practices:
+
+### Security
+
+1. **Use strong, unique passwords** for all database users
+2. **Enable SSL/TLS** for all external connections
+3. **Set up a firewall** to restrict access to your servers
+4. **Use a secure API key** for authentication
+5. **Rotate secrets regularly** to maintain security
+
+### Performance
+
+1. **Allocate sufficient resources** to each component based on your expected load
+2. **Monitor resource usage** and scale as needed
+3. **Configure appropriate Kafka settings** for your message volume
+4. **Adjust database connection pools** based on your workload
+
+### High Availability
+
+1. **Set up database replication** for PostgreSQL and ClickHouse
+2. **Deploy multiple API server instances** behind a load balancer
+3. **Configure Kafka with multiple brokers** in a cluster
+4. **Implement automated backups** for all data stores
+
+## Next Steps
+
+After configuring your Flexprice instance, you should:
+
+1. Set up [monitoring and alerting](/guides/self-hosted/maintenance#monitoring) for your instance
+2. Implement a [backup strategy](/guides/self-hosted/maintenance#backups) for your data
+3. Plan for [regular updates](/guides/self-hosted/maintenance#updates) to keep your instance secure and up-to-date 

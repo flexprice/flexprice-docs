@@ -1,0 +1,139 @@
+---
+title: 'Webhooks'
+description: 'Learn about webhook events in Flexprice'
+---
+
+# Webhooks
+
+Webhooks allow your application to receive real-time notifications about events that occur in your Flexprice account. Each time an event is generated, Flexprice sends an HTTP POST request to the webhook endpoints you've configured, containing information about the event.
+
+## Setting Up Webhooks
+
+To set up a webhook endpoint:
+
+1. Go to the **Developers** section in the Flexprice dashboard
+2. Navigate to the **Webhooks** tab
+3. Click **Add a webhook**
+4. Enter your webhook URL
+5. Choose your preferred webhook signature method
+6. Click **Add webhook** to confirm
+
+You can add multiple webhook endpoints to receive notifications at different URLs.
+
+## Webhook Format
+
+All webhook events follow a consistent format:
+
+```json
+{
+  "webhook_type": "event.name",
+  "object_type": "object_type",
+  "data": {
+    "object": {
+      // Object details specific to the event type
+    }
+  }
+}
+```
+
+## Webhook Signature
+
+Webhook requests include a signature in the headers to verify that the request came from Flexprice. You can use this signature to validate the authenticity of the webhook request.
+
+## Webhook Events
+
+Below is a comprehensive list of webhook events that Flexprice can send to your application.
+
+### Billable Metrics Events
+
+| Event | Description |
+|-------|-------------|
+| `billable_metric.created` | Sent when a new billable metric is created |
+| `billable_metric.updated` | Sent when a billable metric is updated |
+| `billable_metric.archived` | Sent when a billable metric is archived |
+
+### Customer Events
+
+| Event | Description |
+|-------|-------------|
+| `customer.created` | Sent when a new customer is created |
+| `customer.updated` | Sent when a customer's information is updated |
+| `customer.payment_provider_created` | Sent when a customer is successfully created in the payment provider's system |
+| `customer.payment_provider_error` | Sent when there's an error creating a customer in the payment provider's system |
+| `customer.checkout_url_generated` | Sent when a checkout link is generated for a customer |
+
+### Subscription Events
+
+| Event | Description |
+|-------|-------------|
+| `subscription.started` | Sent when a subscription starts |
+| `subscription.terminated` | Sent when a subscription is terminated |
+| `subscription.trial_ended` | Sent when a subscription's trial period ends |
+| `subscription.usage_threshold_reached` | Sent when a progressive billing threshold has been crossed |
+
+### Invoice Events
+
+| Event | Description |
+|-------|-------------|
+| `invoice.drafted` | Sent when a new invoice is created in draft status |
+| `invoice.created` | Sent when an invoice is finalized |
+| `invoice.one_off_created` | Sent when a one-off invoice is created |
+| `invoice.generated` | Sent when a PDF invoice has been generated |
+| `invoice.payment_status_updated` | Sent when an invoice's payment status is updated |
+| `invoice.payment_failure` | Sent when there's an error processing payment for an invoice |
+| `invoice.payment_overdue` | Sent when an invoice payment is overdue |
+| `invoice.voided` | Sent when an invoice is voided |
+
+### Wallet Events
+
+| Event | Description |
+|-------|-------------|
+| `wallet.created` | Sent when a new wallet is created for a customer |
+| `wallet.updated` | Sent when a wallet is updated |
+| `wallet.terminated` | Sent when a wallet is terminated |
+| `wallet.depleted_ongoing_balance` | Sent when a wallet's balance reaches zero or becomes negative |
+| `wallet_transaction.updated` | Sent when a wallet transaction is updated |
+| `wallet_transaction.payment_failure` | Sent when a wallet transaction payment fails |
+
+### Credit Note Events
+
+| Event | Description |
+|-------|-------------|
+| `credit_note.created` | Sent when a new credit note is issued |
+| `credit_note.generated` | Sent when a PDF credit note has been generated |
+| `credit_note.refund_failure` | Sent when there's an error processing a refund |
+
+### Fee Events
+
+| Event | Description |
+|-------|-------------|
+| `fee.created` | Sent when a fee for a charge to be paid in advance is created |
+
+### Event Ingestion
+
+| Event | Description |
+|-------|-------------|
+| `events.errors` | Sent when events received do not match validation rules |
+
+## Handling Webhook Events
+
+Your webhook endpoint should:
+
+1. Respond with a 2xx status code (200, 201, 202, or 204) to acknowledge receipt
+2. Process the event asynchronously if needed
+3. Be idempotent (able to handle the same event multiple times without issues)
+
+## Error Handling and Retries
+
+If your endpoint fails to respond with a 2xx status code, Flexprice will retry sending the webhook several times with an exponential backoff. You can view failed webhook deliveries and manually retry them from the Flexprice dashboard.
+
+## Webhook Logs
+
+You can view the history of webhook events sent to your endpoints:
+
+1. Go to the **Developers** section in the Flexprice dashboard
+2. Navigate to the **Webhooks** tab
+3. Click on a webhook endpoint to view its event history
+4. Click on an event to see its details, including the payload and response
+
+This helps you debug issues with webhook delivery and ensure your application is correctly processing events. 

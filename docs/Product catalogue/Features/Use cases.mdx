@@ -1,0 +1,109 @@
+---
+title: "Use cases"
+description: "Flexprice documentation"
+---
+
+# Use cases
+
+Metered features in Flexprice allow you to **track usage-based metrics** like API requests, AI token consumption, and storage usage. Below are some **common real-world examples**, along with **why they are structured a certain way** and how to configure them in Flexprice.
+
+**AI Token Usage Tracking**
+In most AI applications, token usage needs to be tracked for billing and cost control. Since a single API interaction may consume multiple tokens (input, output, and system prompts), tracking token usage accurately is critical.
+
+Additionally, different LLM models (e.g., GPT-4, Claude, Llama) charge different rates per token, and token pricing varies based on input vs. output tokens. To capture and price these variations differently, we must store model type and prompt type as filters.
+
+```jsx
+curl --request POST \
+  --url https://api.cloud.flexprice.io/v1/meters \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: ' \
+  --data '{
+  "aggregation": {
+    "field": "tokens",
+    "type": "SUM"
+  },
+  "event_name": "tokens_total",
+  "name": "ai_tokens_used",
+  "filters": [
+    {
+      "key": "model_type",
+      "values": [
+        "gpt-4"
+      ]
+    },
+    {
+      "key": "prompt_type",
+      "values": [
+        "input"
+      ]
+    }
+  ],
+  "reset_usage": "Periodic"
+}'
+```
+
+💡 Outcome:
+Flexprice will sum up all tokens used within a billing cycle, while also tracking usage by model and prompt type. This allows you to bill differently for input vs. output tokens and adjust pricing per model.
+
+**GPU Compute Time Billing**
+
+Cloud infrastructure providers charge customers based on GPU time used for model training and inference. Since different GPUs (e.g., NVIDIA A100, H100) have different hourly costs, tracking GPU usage by type is necessary for accurate billing.
+
+Additionally, compute time is measured in seconds, but billing is often done in hourly increments. To ensure proper charge alignment, we track time in seconds and aggregate usage before billing.
+
+```jsx
+curl --request POST \
+  --url https://api.cloud.flexprice.io/v1/meters \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: ' \
+  --data '{
+  "aggregation": {
+    "field": "time_seconds",
+    "type": "SUM"
+  },
+  "event_name": "gpu_time",
+  "name": "gpu_time_used",
+  "filters": [
+    {
+      "key": "gpu_type",
+      "values": [
+        "nvidia_a100"
+      ]
+    }
+  ],
+  "reset_usage": "Periodic"
+}'
+```
+
+💡 Outcome:
+
+This setup enables per-second tracking of GPU usage, aggregated hourly for billing. Filtering by GPU type ensures each machine is billed at the correct rate.
+
+**API Request Counting**
+
+Many SaaS products with API-based pricing offer a fixed number of free requests per month, with overage charges for additional usage.
+
+For accurate billing:
+
+- Every API request should be counted.
+- Different endpoints may have different billing weights (e.g., a basic GET request vs. an expensive AI inference call).
+
+```jsx
+curl --request POST \
+  --url https://api.cloud.flexprice.io/v1/meters \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: ' \
+  --data '{
+  "aggregation": {
+    "field": "",
+    "type": "COUNT"
+  },
+  "event_name": "api_calls",
+  "name": "api_requests",
+  "filters": [],
+  "reset_usage": "Periodic"
+}'
+```
+
+💡 Outcome:
+Every API call is counted and attributed to the customer, with overages billed at the correct rate. You can also filter by endpoint to charge differently for high-compute calls.
