@@ -1,9 +1,6 @@
 ---
 title: "Use cases"
-description: "Flexprice documentation"
 ---
-
-# Use cases
 
 Metered features in Flexprice allow you to **track usage-based metrics** like API requests, AI token consumption, and storage usage. Below are some **common real-world examples**, along with **why they are structured a certain way** and how to configure them in Flexprice.
 
@@ -46,7 +43,6 @@ curl --request POST \
 Flexprice will sum up all tokens used within a billing cycle, while also tracking usage by model and prompt type. This allows you to bill differently for input vs. output tokens and adjust pricing per model.
 
 **GPU Compute Time Billing**
-
 Cloud infrastructure providers charge customers based on GPU time used for model training and inference. Since different GPUs (e.g., NVIDIA A100, H100) have different hourly costs, tracking GPU usage by type is necessary for accurate billing.
 
 Additionally, compute time is measured in seconds, but billing is often done in hourly increments. To ensure proper charge alignment, we track time in seconds and aggregate usage before billing.
@@ -76,7 +72,6 @@ curl --request POST \
 ```
 
 💡 Outcome:
-
 This setup enables per-second tracking of GPU usage, aggregated hourly for billing. Filtering by GPU type ensures each machine is billed at the correct rate.
 
 **API Request Counting**
@@ -85,8 +80,9 @@ Many SaaS products with API-based pricing offer a fixed number of free requests 
 
 For accurate billing:
 
-- Every API request should be counted.
-- Different endpoints may have different billing weights (e.g., a basic GET request vs. an expensive AI inference call).
+* Every API request should be counted.
+
+* Different endpoints may have different billing weights (e.g., a basic GET request vs. an expensive AI inference call).
 
 ```jsx
 curl --request POST \
