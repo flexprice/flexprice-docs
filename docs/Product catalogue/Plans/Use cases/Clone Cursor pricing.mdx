@@ -1,6 +1,70 @@
 ---
 title: "Clone Cursor pricing"
-description: "Flexprice documentation"
 ---
 
-# Clone Cursor pricing
+Cursor’s pricing model combines subscription tiers with usage-based metering, allowing developers and teams to scale AI-powered assistance effectively.
+
+Cursor charges users based on their selected plan (Free, Pro, or Team) and additional metered usage for AI completions, codebase indexing, and customization. By setting this up in Flexprice, you can provide users with transparent billing while managing limits dynamically. This guide walks you through setting up Cursor’s pricing model using a structured approach, ensuring clarity in billing and monetization.
+
+**Use Cases**
+
+- AI-powered development tools
+- Code completion and AI assistance platforms
+- Team-based coding environments with AI-driven automation
+
+Whether you're a solo developer or a growing team, replicating Cursor’s pricing in Flexprice ensures seamless billing automation and monetization. This guide walks you through the setup process step by step.
+
+**Cursor’s pricing model**
+
+Cursor provides three pricing tiers:
+
+| Plan Name | Price per Month | Features Included                                                                 |
+| --------- | --------------- | --------------------------------------------------------------------------------- |
+| Hobby     | $0              | 2,000 completions, 50 slow premium requests                                       |
+| Pro       | $20             | Unlimited completions, 500 fast premium requests, unlimited slow premium requests |
+| Business  | $40 per user    | Pro features + privacy mode, centralized billing, admin dashboard, SAML/OIDC SSO  |
+
+In addition, Cursor provides usage-based metering for:
+
+- AI completions
+- Premium requests (fast and slow)
+
+**Configuring Cursor’s Pricing in Flexprice**
+
+1. **Define **[**Features**](https://docs.flexprice.io/docs/Product%20catalogue/Features/Creating%20a%20feature)** in Flexprice**\
+   Flexprice allows you to define different types of features to enable precise billing and usage tracking for Cursor’s pricing model.\
+   \
+   **Metered Features**\
+   These features track usage over time and are billed based on consumption.
+
+   | Feature Name          | Feature Type | Aggregation Method | Key Filters           |
+   | --------------------- | ------------ | ------------------ | --------------------- |
+   | AI Completions        | Metered      | SUM                | Feature: AI Queries   |
+   | Fast Premium Requests | Metered      | SUM                | Feature: Premium Fast |
+   | Slow Premium Requests | Metered      | SUM                | Feature: Premium Slow |
+
+   **Boolean Features (On/Off Toggle)**\
+   These features enable or disable specific functionality without tracking usage.
+
+   | Feature Name    | Feature Type | Description                            |
+   | --------------- | ------------ | -------------------------------------- |
+   | Privacy Mode    | Boolean      | Enables privacy mode for organizations |
+   | Admin Dashboard | Boolean      | Grants access to admin-level analytics |
+   | SAML/OIDC SSO   | Boolean      | Enables single sign-on authentication  |
+
+   **Static Features**\
+   These features are always included in a specific plan and do not change based on usage.
+
+   | Feature Name  | Feature Type | Description                           |
+   | ------------- | ------------ | ------------------------------------- |
+   | SAML/OIDC SSO | Static       | Enables single sign-on authentication |
+2. **Create ** [**Plans**](https://docs.flexprice.io/docs/Product%20catalogue/Plans/Creating%20a%20plan)** for Subscription Tiers**
+   1. Each of Cursor’s plans can be created as a **recurring charges** in Flexprice:
+
+      | Plan Name | Billing Type | Base Price     |
+      | --------- | ------------ | -------------- |
+      | Hobby     | Subscription | $0             |
+      | Pro       | Subscription | $20/month      |
+      | Business  | Subscription | $40/user/month |
+   2. Define usage-based charges along with recurring charges\
+      ![images/Screenshot2025-03-16at11.45.29PM.png](/images/Screenshot2025-03-16at11.45.29PM.png)
