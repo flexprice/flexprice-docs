@@ -1,0 +1,77 @@
+---
+title: 'Flexprice Cloud'
+description: 'Learn how to quickly get started with Flexprice Cloud - the fastest way to integrate usage-based pricing'
+---
+
+## Quick Setup
+
+Getting started with Flexprice Cloud is straightforward and requires no infrastructure setup. Follow these simple steps:
+
+1. Visit [Flexprice Cloud](https://admin.flexprice.io/auth)
+2. Sign up using either:
+   - Google account
+   - Email and password
+
+That's it! Your Flexprice Cloud instance is ready to use.
+
+## Understanding Environments
+
+When you first log in, you'll be placed in the **Sandbox** environment. Flexprice provides different environments to help you manage your pricing across different stages:
+
+<CardGroup cols={2}>
+  <Card title="Sandbox" icon="box">
+    A pre-configured environment with Cursor pricing template for you to experiment and learn
+  </Card>
+  <Card title="Production" icon="rocket">
+    Your live environment for real customer data and billing
+  </Card>
+</CardGroup>
+
+![Environments](/public/images/docs/Getting%20Started/Environment%20Selector.png)
+
+## Exploring the Sample Setup
+
+The Sandbox environment comes pre-configured with Cursor's pricing model, giving you a practical example of how to structure complex pricing:
+
+<Card title="Cursor Pricing Template" icon="book" href="/docs/Product%20catalogue/Plans/Use%20cases/Clone%20Cursor%20pricing">
+  Explore the detailed guide on how Cursor's pricing is implemented in Flexprice
+</Card>
+
+## Setting up API Keys
+
+To integrate Flexprice with your application, you'll need to generate an API key:
+
+
+1. Navigate to the **Developers** tab
+![API Keys Page](/public/images/docs/Getting%20Started/API%20Keys%20Page.png)
+
+2. Click **Add** to create a new API key
+![Create API Key](/public/images/docs/Getting%20Started/Create%20API%20Key.png)
+3. Configure your key:
+   - **Name**: Give it a descriptive name (e.g., "Development")
+   - **Permissions**: Select "Read & Write"
+   - **Expiration**: Choose "Never" for long-term use
+4. Click **Create**
+![Created API Key](/public/images/docs/Getting%20Started/Created%20API%20Key.png)
+5. **Important**: Copy your API key immediately - it will only be shown once!
+
+### Using Your API Key
+
+Include your API key in all requests to Flexprice API:
+
+```bash
+curl -X POST https://api.flexprice.io/v1/customers \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Example Customer", "external_customer_id": "<your-customer-id>"}'
+```
+
+<Warning>
+  Keep your API key secure and never expose it in client-side code or public repositories.
+</Warning>
+
+## Need Help?
+
+If you need assistance or have questions:
+
+- Email us at [support@flexprice.io](mailto:support@flexprice.io)

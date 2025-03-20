@@ -2,98 +2,81 @@
 title: "Creating a feature"
 ---
 
-Follow the steps below to create a feature in Flexprice
+Follow the steps below to create a feature in Flexprice:
 
-* In the main navigation menu, select **Features** from **Product Catalog**.
+1. In the main navigation menu, select **Features** from **Product Catalog**.
 
-* At the top-right of the Feature dashboard, select Add Feature to create a new feature.
+2. At the top-right of the Feature dashboard, select **Add Feature** to create a new feature.
 
-* **Feature Name:** Enter a unique and descriptive name for the feature (e.g., "Premium API Access").​
+3. Fill in the feature details:
+   - **Feature Name:** Enter a unique and descriptive name for the feature (e.g., "Premium API Access").
+   - **Feature Type:** Select the type of feature:
+     - **Metered:** Tracks quantifiable usage (e.g., number of API calls)
+     - **Boolean:** Indicates a simple on/off state (e.g., access to a premium dashboard)
+     - **Static:** Represents fixed attributes or entitlements (e.g., priority support)
 
-* **Feature Type:** Select the type of feature:​
+## Creating a Boolean Feature
 
-  * **Metered:** Tracks quantifiable usage (e.g., number of API calls).​
+1. Select **Boolean** as Type which indicates a simple on/off state (e.g., access to a premium dashboard).
 
-  * **Boolean:** Indicates a simple on/off state (e.g., access to a premium dashboard).​
+![Boolean Feature Creation](/public/images/docs/Product%20catalogue/Features/Creating%20a%20feature/Screenshot_2025-03-08_at_9.25.27_PM.png)
 
-  * **Static:** Represents fixed attributes or entitlements (e.g., priority support).
+## Creating a Static Feature
 
-**Creating a Boolean feature**
+1. Select **Static** as feature type which represents fixed attributes or entitlements (e.g., priority support)
 
-* Select Boolean as Type which indicates a simple on/off state (e.g., access to a premium dashboard).
+![Static Feature Creation](/public/images/docs/Product%20catalogue/Features/Creating%20a%20feature/Screenshot_2025-03-08_at_9.31.36_PM.png)
 
-  ![Screenshot 2025-03-08 at 9.25.27 PM.png](/public/images/docs/Product%20catalogue/Features/Creating%20a%20feature/Screenshot_2025-03-08_at_9.25.27_PM.png)
+## Creating a Metered Feature
 
-**Creating a Static feature**
+1. Select **Metered** as Type which tracks quantifiable usage (e.g., number of API calls).
 
-* Select Static as feature type which represents fixed attributes or entitlements (e.g., priority support)
+2. Optionally edit the singular and plural unit names, for example: "token" and "tokens".
 
-  ![Screenshot 2025-03-08 at 9.31.36 PM.png](/public/images/docs/Product%20catalogue/Features/Creating%20a%20feature/Screenshot_2025-03-08_at_9.31.36_PM.png)
+![Metered Feature Creation](/public/images/docs/Product%20catalogue/Features/Creating%20a%20feature/Screenshot_2025-03-08_at_9.27.43_PM.png)
 
-**Creating a Metered feature**
+### Define Event Details
 
-* Select Metered as Type which tracks quantifiable usage (e.g., number of API calls).
+![Event Details](/public/images/docs/Product%20catalogue/Features/Creating%20a%20feature/Screenshot_2025-03-08_at_8.45.56_PM.png)
 
-* Optionally edit the singular and plural unit names, for example: "token" and "tokens".
+#### Event Name
+For example, suppose you want to track how many tokens users consume while calling your AI model:
+- **Event Name**: `tokens_total`
+  - This is the unique identifier you'll use to send events that match the metric
+  - Must be unique across your Flexprice account to avoid confusion with other metrics
 
-  ![Screenshot 2025-03-08 at 9.27.43 PM.png](/public/images/docs/Product%20catalogue/Features/Creating%20a%20feature/Screenshot_2025-03-08_at_9.27.43_PM.png)
+#### Filters (Optional)
+It is important to note that filters cannot be edited later, so decide up front if you'll need them for billing or reporting.
 
-* Define Event Details
+Filters let you **narrow down** which events get counted or summed in this metric. You do not have to add filters if you want to aggregate all events of a given type. However, filters become crucial if you need more granular control, such as billing for only certain AI models or distinguishing usage by environment.
 
-  ![Screenshot 2025-03-08 at 8.45.56 PM.png](/public/images/docs/Product%20catalogue/Features/Creating%20a%20feature/Screenshot_2025-03-08_at_8.45.56_PM.png)
+**Example**: If your system supports multiple AI models (`gpt 3`, `llama3.2`, `gpt 4`), and you only want to track usage from GPT models for specialized billing, you can add a filter:
 
-  * Name**Example** Suppose you want to track how many tokens users consume while calling your AI model. In that case:
-    **Event Name**: **`tokens_total`**
+- **Key**: `model`
+- **Values**: `gpt 3`, `gpt 4`
 
-    * This is the unique identifier you’ll use to send events that match the metric.
+This means Flexprice will only aggregate token usage events where `model` is either `gpt 3` or `gpt 4`.
 
-    * Must be unique across your Flexprice account to avoid confusion with other metrics.
+### Define Aggregation
+The aggregation settings tell Flexprice how to measure your events.
 
-  * **Filters** *(Optional)*&#x49;t is important to note that filters cannot be edited later, so decide up front if you’ll need them for billing or reporting.**Example** Continuing our AI tokens example: If your system supports multiple AI models (**`gpt 3`**, **`llama3.2`**,**`gpt 4`**), and you only want to track usage from gpt models for specialized billing, you can add a filter:This means Flexprice will only aggregate token usage events where **`model`** is either `gpt 3` or  **`gpt 4`**
+![Aggregation Settings](/public/images/docs/Product%20catalogue/Features/Creating%20a%20feature/Screenshot_2025-03-08_at_8.46.31_PM.png)
 
-    * Filters let you **narrow down** which events get counted or summed in this metric. You **do not** have to add filters if you want to aggregate **all** events of a given type. However, filters become crucial if you need more granular control, such as **billing for only certain AI models** or **distinguishing usage by environment**.
+#### Function
+Choose one of these aggregation functions:
+- **SUM**: Adds a numeric property (like tokens, price, etc.) across all matching events
+- **COUNT**: Counts the total number of matching events, regardless of any numeric value in the event data
+- **COUNT UNIQUE**: Counts only the unique values of a specified event property
 
-    * **Key & Values**
+#### Field
+- The property that Flexprice sums or evaluates. For `SUM` and `COUNT UNIQUE`, this property should be numeric (e.g., `tokens`)
+- If you choose `COUNT`, you typically don't specify a numeric property (because you're just counting occurrences)
 
-      * A filter consists of a **property key** (e.g., **`model`**) and **one or more values** (e.g., **`gpt 3`**, **`gpt 4`**).
+#### Usage Reset
+- **Cumulative**: The meter never resets. Usage keeps accumulating across billing cycles, providing a running total. This is useful for features like storage.
+- **Periodic**: Usage resets at each billing period (e.g., monthly). This is ideal for most subscription-based models where usage resets for every billing period
 
-      * Only events that match *both* the key and one of the values are included in the metric.
-
-    - **Key**: **`model`**
-
-    - **Values**: **`gpt 3`**, **`gpt 4`**
-
-* Define Aggregation
-  The **aggregation** settings tell Flexprice **how** to measure your events.
-
-  ![Screenshot 2025-03-08 at 8.46.31 PM.png](/public/images/docs/Product%20catalogue/Features/Creating%20a%20feature/Screenshot_2025-03-08_at_8.46.31_PM.png)
-
-  **Example** If you’re summing the total tokens used:
-
-  * Function
-
-    * It can be either Sum , Count or Count Unique
-
-      * **SUM**: Adds a numeric property (like tokens, price, etc.) across all matching events.
-
-      * **COUNT**: It counts the total number of matching events, regardless of any numeric value in the event data.
-
-      * **COUNT UNIQUE:** It counts only the unique values of a specified event property.
-
-  * Field
-
-    * The **property** that Flexprice sums or evaluates. For **`SUM`** and  **`COUNT UNIUE`**, this property should be numeric (e.g., **`tokens`**).
-
-    * If you choose **COUNT**, you typically don’t specify a numeric property (because you’re just counting occurrences).
-
-  * Usage reset
-
-    * **Cumulative**: The meter never resets. Usage keeps accumulating across billing cycles, providing a running total. This is useful for features like storage.
-
-    * **Periodic**: Usage resets at each **billing period** (e.g., monthly). This is ideal for most subscription-based models where usage resets for every billing period
-
-  - **Aggregation** = **`SUM`**
-
-  - **Aggregation Value** = **`tokens`**
-
-  - **Aggregation Type** = **`Periodic`** (if you invoice monthly and want usage to reset each month)
+**Example Configuration**:
+- **Aggregation** = `SUM`
+- **Aggregation Value** = `tokens`
+- **Aggregation Type** = `Periodic` (if you invoice monthly and want usage to reset each month)
