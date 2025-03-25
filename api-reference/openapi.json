@@ -1708,6 +1708,67 @@
         "x-codegen-request-body-name": "event"
       }
     },
+    "/events/bulk": {
+      "post": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Bulk Ingest events",
+        "description": "Ingest bulk events into the system",
+        "requestBody": {
+          "description": "Event data",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dto.BulkIngestEventRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "message:Event accepted for processing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "x-codegen-request-body-name": "event"
+      }
+    },
     "/events/usage": {
       "post": {
         "tags": [
@@ -6103,6 +6164,62 @@
         "x-codegen-request-body-name": "status"
       }
     },
+    "/tenant/billing": {
+      "get": {
+        "tags": [
+          "Tenants"
+        ],
+        "summary": "Get billing usage for the current tenant",
+        "description": "Get the subscription and usage details for the current tenant",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.TenantBillingUsage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
     "/tenants": {
       "post": {
         "tags": [
@@ -7100,6 +7217,22 @@
           },
           "start_time": {
             "type": "string"
+          }
+        }
+      },
+      "dto.BulkIngestEventRequest": {
+        "required": [
+          "events"
+        ],
+        "type": "object",
+        "properties": {
+          "events": {
+            "maxItems": 1000,
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dto.IngestEventRequest"
+            }
           }
         }
       },
@@ -9760,6 +9893,20 @@
           },
           "phone": {
             "type": "string"
+          }
+        }
+      },
+      "dto.TenantBillingUsage": {
+        "type": "object",
+        "properties": {
+          "subscriptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dto.SubscriptionResponse"
+            }
+          },
+          "usage": {
+            "$ref": "#/components/schemas/dto.CustomerUsageSummaryResponse"
           }
         }
       },
