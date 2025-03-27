@@ -2875,6 +2875,69 @@
         }
       }
     },
+    "/invoices/{id}/pdf": {
+      "get": {
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Get PDF for an invoice",
+        "description": "Retrieve the PDF document for a specific invoice by its ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Invoice ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/invoices/{id}/void": {
       "post": {
         "tags": [
@@ -4867,7 +4930,7 @@
     "/secrets/integrations/linked": {
       "get": {
         "tags": [
-          "secrets"
+          "Integrations"
         ],
         "summary": "List linked integrations",
         "description": "Get a list of unique providers which have a valid linked integration secret",
@@ -4898,7 +4961,7 @@
     "/secrets/integrations/{id}": {
       "delete": {
         "tags": [
-          "secrets"
+          "Integrations"
         ],
         "summary": "Delete an integration",
         "description": "Delete integration credentials",
@@ -4944,7 +5007,7 @@
     "/secrets/integrations/{provider}": {
       "get": {
         "tags": [
-          "secrets"
+          "Integrations"
         ],
         "summary": "Get integration details",
         "description": "Get details of a specific integration",
@@ -4994,7 +5057,7 @@
       },
       "post": {
         "tags": [
-          "secrets"
+          "Integrations"
         ],
         "summary": "Create or update an integration",
         "description": "Create or update integration credentials",
@@ -10551,6 +10614,9 @@
             "additionalProperties": {
               "type": "object"
             }
+          },
+          "internal_error": {
+            "type": "string"
           },
           "message": {
             "type": "string"
