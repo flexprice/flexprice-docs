@@ -7319,12 +7319,7 @@
             }
           },
           "type": {
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.SecretType"
-              }
-            ]
+            "$ref": "#/components/schemas/types.SecretType"
           }
         }
       },
@@ -7576,12 +7571,7 @@
             "$ref": "#/components/schemas/types.InvoiceStatus"
           },
           "invoice_type": {
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.InvoiceType"
-              }
-            ]
+            "$ref": "#/components/schemas/types.InvoiceType"
           },
           "line_items": {
             "type": "array",
@@ -7610,7 +7600,8 @@
         "required": [
           "aggregation",
           "event_name",
-          "name"
+          "name",
+          "reset_usage"
         ],
         "type": "object",
         "properties": {
@@ -7632,13 +7623,7 @@
             "example": "API Usage Meter"
           },
           "reset_usage": {
-            "type": "object",
-            "example": "BILLING_PERIOD",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.ResetUsage"
-              }
-            ]
+            "$ref": "#/components/schemas/types.ResetUsage"
           }
         }
       },
@@ -8059,12 +8044,7 @@
             "type": "string"
           },
           "wallet_type": {
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.WalletType"
-              }
-            ]
+            "$ref": "#/components/schemas/types.WalletType"
           }
         }
       },
@@ -8521,13 +8501,7 @@
             "example": "2024-11-09T00:00:00Z"
           },
           "window_size": {
-            "type": "object",
-            "example": "HOUR",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.WindowSize"
-              }
-            ]
+            "$ref": "#/components/schemas/types.WindowSize"
           }
         }
       },
@@ -8589,8 +8563,7 @@
         "type": "object",
         "properties": {
           "aggregation_type": {
-            "type": "string",
-            "example": "COUNT"
+            "$ref": "#/components/schemas/types.AggregationType"
           },
           "customer_id": {
             "type": "string",
@@ -8627,13 +8600,7 @@
             "example": "2024-03-13T00:00:00Z"
           },
           "window_size": {
-            "type": "object",
-            "example": "HOUR",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.WindowSize"
-              }
-            ]
+            "$ref": "#/components/schemas/types.WindowSize"
           }
         }
       },
@@ -8864,13 +8831,7 @@
             "type": "string"
           },
           "subscription": {
-            "type": "object",
-            "description": "Edges",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/dto.SubscriptionResponse"
-              }
-            ]
+            "$ref": "#/components/schemas/dto.SubscriptionResponse"
           },
           "subscription_id": {
             "type": "string"
@@ -9352,31 +9313,13 @@
             "description": "Amount stored in main currency units (e.g., dollars, not cents)\nFor USD: 12.50 means $12.50"
           },
           "billing_cadence": {
-            "type": "object",
-            "description": "BillingCadence is the billing cadence for the price ex RECURRING, ONETIME",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.BillingCadence"
-              }
-            ]
+            "$ref": "#/components/schemas/types.BillingCadence"
           },
           "billing_model": {
-            "type": "object",
-            "description": "BillingModel is the billing model for the price ex FLAT_FEE, PACKAGE, TIERED",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.BillingModel"
-              }
-            ]
+            "$ref": "#/components/schemas/types.BillingModel"
           },
           "billing_period": {
-            "type": "object",
-            "description": "BillingPeriod is the billing period for the price ex month, year",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.BillingPeriod"
-              }
-            ]
+            "$ref": "#/components/schemas/types.BillingPeriod"
           },
           "billing_period_count": {
             "type": "integer",
@@ -9405,39 +9348,21 @@
             "description": "EnvironmentID is the environment identifier for the price"
           },
           "filter_values": {
-            "type": "object",
-            "description": "FilterValues are the filter values for the price in case of usage based pricing",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/price.JSONBFilters"
-              }
-            ]
+            "$ref": "#/components/schemas/price.JSONBFilters"
           },
           "id": {
             "type": "string",
             "description": "ID uuid identifier for the price"
           },
           "invoice_cadence": {
-            "type": "object",
-            "description": "InvoiceCadence is the cadence of the invoice ex ARREAR, ADVANCE",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.InvoiceCadence"
-              }
-            ]
+            "$ref": "#/components/schemas/types.InvoiceCadence"
           },
           "lookup_key": {
             "type": "string",
             "description": "LookupKey used for looking up the price in the database"
           },
           "metadata": {
-            "type": "object",
-            "description": "Metadata is a jsonb field for additional information",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/price.JSONBMetadata"
-              }
-            ]
+            "$ref": "#/components/schemas/price.JSONBMetadata"
           },
           "meter": {
             "$ref": "#/components/schemas/dto.MeterResponse"
@@ -9457,42 +9382,23 @@
             "type": "string"
           },
           "tier_mode": {
-            "type": "object",
-            "description": "Tiered pricing fields when BillingModel is TIERED",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.BillingTier"
-              }
-            ]
+            "$ref": "#/components/schemas/types.BillingTier"
           },
           "tiers": {
             "type": "array",
-            "description": "Tiers are the tiers for the price when BillingModel is TIERED",
             "items": {
               "$ref": "#/components/schemas/price.PriceTier"
             }
           },
           "transform_quantity": {
-            "type": "object",
-            "description": "Transform is the quantity transformation in case of PACKAGE billing model",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/price.JSONBTransformQuantity"
-              }
-            ]
+            "$ref": "#/components/schemas/price.JSONBTransformQuantity"
           },
           "trial_period": {
             "type": "integer",
             "description": "TrialPeriod is the number of days for the trial period\nNote: This is only applicable for recurring prices (BILLING_CADENCE_RECURRING)"
           },
           "type": {
-            "type": "object",
-            "description": "Type is the type of the price ex USAGE, FIXED",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.PriceType"
-              }
-            ]
+            "$ref": "#/components/schemas/types.PriceType"
           },
           "updated_at": {
             "type": "string"
@@ -9602,13 +9508,7 @@
             "description": "ID is the unique identifier for the subscription pause"
           },
           "metadata": {
-            "type": "object",
-            "description": "Metadata is a map of key-value pairs that can be attached to the pause",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.Metadata"
-              }
-            ]
+            "$ref": "#/components/schemas/types.Metadata"
           },
           "original_period_end": {
             "type": "string",
@@ -9623,39 +9523,21 @@
             "description": "PauseEnd is when the pause will end (null for indefinite)"
           },
           "pause_mode": {
-            "type": "object",
-            "description": "PauseMode indicates how the pause was applied",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.PauseMode"
-              }
-            ]
+            "$ref": "#/components/schemas/types.PauseMode"
           },
           "pause_start": {
             "type": "string",
             "description": "PauseStart is when the pause actually started"
           },
           "pause_status": {
-            "type": "object",
-            "description": "PauseStatus is the status of the pause",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.PauseStatus"
-              }
-            ]
+            "$ref": "#/components/schemas/types.PauseStatus"
           },
           "reason": {
             "type": "string",
             "description": "Reason is the reason for pausing"
           },
           "resume_mode": {
-            "type": "object",
-            "description": "ResumeMode indicates how the resume will be applied",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.ResumeMode"
-              }
-            ]
+            "$ref": "#/components/schemas/types.ResumeMode"
           },
           "resumed_at": {
             "type": "string",
@@ -9691,22 +9573,10 @@
             "description": "BillingAnchor is the reference point that aligns future billing cycle dates.\nIt sets the day of week for week intervals, the day of month for month and year intervals,\nand the month of year for year intervals. The timestamp is in UTC format."
           },
           "billing_cadence": {
-            "type": "object",
-            "description": "BillingCadence is the cadence of the billing cycle.",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.BillingCadence"
-              }
-            ]
+            "$ref": "#/components/schemas/types.BillingCadence"
           },
           "billing_period": {
-            "type": "object",
-            "description": "BillingPeriod is the period of the billing cycle.",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.BillingPeriod"
-              }
-            ]
+            "$ref": "#/components/schemas/types.BillingPeriod"
           },
           "billing_period_count": {
             "type": "integer",
@@ -9772,22 +9642,10 @@
             "description": "LookupKey is the key used to lookup the subscription in our system"
           },
           "metadata": {
-            "type": "object",
-            "description": "Metadata is a map of key-value pairs that can be attached to the subscription",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.Metadata"
-              }
-            ]
+            "$ref": "#/components/schemas/types.Metadata"
           },
           "pause_status": {
-            "type": "object",
-            "description": "PauseStatus tracks the current pause state",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.PauseStatus"
-              }
-            ]
+            "$ref": "#/components/schemas/types.PauseStatus"
           },
           "pauses": {
             "type": "array",
@@ -9810,13 +9668,7 @@
             "$ref": "#/components/schemas/types.Status"
           },
           "subscription_status": {
-            "type": "object",
-            "description": "Status is the status of the subscription",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.SubscriptionStatus"
-              }
-            ]
+            "$ref": "#/components/schemas/types.SubscriptionStatus"
           },
           "tenant_id": {
             "type": "string"
@@ -10019,13 +9871,7 @@
             "description": "generate_invoice when true, an invoice will be generated for the transaction"
           },
           "metadata": {
-            "type": "object",
-            "description": "metadata to add any additional information about the transaction",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.Metadata"
-              }
-            ]
+            "$ref": "#/components/schemas/types.Metadata"
           },
           "purchased_credits": {
             "type": "boolean",
@@ -10365,12 +10211,7 @@
             "type": "number"
           },
           "auto_topup_trigger": {
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.AutoTopupTrigger"
-              }
-            ]
+            "$ref": "#/components/schemas/types.AutoTopupTrigger"
           },
           "config": {
             "$ref": "#/components/schemas/types.WalletConfig"
@@ -10648,13 +10489,7 @@
             "description": "Field is the key in $event.properties on which the aggregation is to be applied\nFor ex if the aggregation type is sum for API usage, the field could be \"duration_ms\""
           },
           "type": {
-            "type": "object",
-            "description": "Type is the type of aggregation to be applied on the events\nFor ex sum, count, avg, max, min etc",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.AggregationType"
-              }
-            ]
+            "$ref": "#/components/schemas/types.AggregationType"
           }
         }
       },
@@ -10710,31 +10545,13 @@
             "description": "Amount stored in main currency units (e.g., dollars, not cents)\nFor USD: 12.50 means $12.50"
           },
           "billing_cadence": {
-            "type": "object",
-            "description": "BillingCadence is the billing cadence for the price ex RECURRING, ONETIME",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.BillingCadence"
-              }
-            ]
+            "$ref": "#/components/schemas/types.BillingCadence"
           },
           "billing_model": {
-            "type": "object",
-            "description": "BillingModel is the billing model for the price ex FLAT_FEE, PACKAGE, TIERED",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.BillingModel"
-              }
-            ]
+            "$ref": "#/components/schemas/types.BillingModel"
           },
           "billing_period": {
-            "type": "object",
-            "description": "BillingPeriod is the billing period for the price ex month, year",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.BillingPeriod"
-              }
-            ]
+            "$ref": "#/components/schemas/types.BillingPeriod"
           },
           "billing_period_count": {
             "type": "integer",
@@ -10763,39 +10580,21 @@
             "description": "EnvironmentID is the environment identifier for the price"
           },
           "filter_values": {
-            "type": "object",
-            "description": "FilterValues are the filter values for the price in case of usage based pricing",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/price.JSONBFilters"
-              }
-            ]
+            "$ref": "#/components/schemas/price.JSONBFilters"
           },
           "id": {
             "type": "string",
             "description": "ID uuid identifier for the price"
           },
           "invoice_cadence": {
-            "type": "object",
-            "description": "InvoiceCadence is the cadence of the invoice ex ARREAR, ADVANCE",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.InvoiceCadence"
-              }
-            ]
+            "$ref": "#/components/schemas/types.InvoiceCadence"
           },
           "lookup_key": {
             "type": "string",
             "description": "LookupKey used for looking up the price in the database"
           },
           "metadata": {
-            "type": "object",
-            "description": "Metadata is a jsonb field for additional information",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/price.JSONBMetadata"
-              }
-            ]
+            "$ref": "#/components/schemas/price.JSONBMetadata"
           },
           "meter_id": {
             "type": "string",
@@ -10812,42 +10611,23 @@
             "type": "string"
           },
           "tier_mode": {
-            "type": "object",
-            "description": "Tiered pricing fields when BillingModel is TIERED",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.BillingTier"
-              }
-            ]
+            "$ref": "#/components/schemas/types.BillingTier"
           },
           "tiers": {
             "type": "array",
-            "description": "Tiers are the tiers for the price when BillingModel is TIERED",
             "items": {
               "$ref": "#/components/schemas/price.PriceTier"
             }
           },
           "transform_quantity": {
-            "type": "object",
-            "description": "Transform is the quantity transformation in case of PACKAGE billing model",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/price.JSONBTransformQuantity"
-              }
-            ]
+            "$ref": "#/components/schemas/price.JSONBTransformQuantity"
           },
           "trial_period": {
             "type": "integer",
             "description": "TrialPeriod is the number of days for the trial period\nNote: This is only applicable for recurring prices (BILLING_CADENCE_RECURRING)"
           },
           "type": {
-            "type": "object",
-            "description": "Type is the type of the price ex USAGE, FIXED",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.PriceType"
-              }
-            ]
+            "$ref": "#/components/schemas/types.PriceType"
           },
           "updated_at": {
             "type": "string"
@@ -10988,13 +10768,7 @@
             "description": "ID is the unique identifier for the subscription pause"
           },
           "metadata": {
-            "type": "object",
-            "description": "Metadata is a map of key-value pairs that can be attached to the pause",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.Metadata"
-              }
-            ]
+            "$ref": "#/components/schemas/types.Metadata"
           },
           "original_period_end": {
             "type": "string",
@@ -11009,39 +10783,21 @@
             "description": "PauseEnd is when the pause will end (null for indefinite)"
           },
           "pause_mode": {
-            "type": "object",
-            "description": "PauseMode indicates how the pause was applied",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.PauseMode"
-              }
-            ]
+            "$ref": "#/components/schemas/types.PauseMode"
           },
           "pause_start": {
             "type": "string",
             "description": "PauseStart is when the pause actually started"
           },
           "pause_status": {
-            "type": "object",
-            "description": "PauseStatus is the status of the pause",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.PauseStatus"
-              }
-            ]
+            "$ref": "#/components/schemas/types.PauseStatus"
           },
           "reason": {
             "type": "string",
             "description": "Reason is the reason for pausing"
           },
           "resume_mode": {
-            "type": "object",
-            "description": "ResumeMode indicates how the resume will be applied",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.ResumeMode"
-              }
-            ]
+            "$ref": "#/components/schemas/types.ResumeMode"
           },
           "resumed_at": {
             "type": "string",
