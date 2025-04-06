@@ -44,13 +44,6 @@ Webhook requests include a signature in the headers to verify that the request c
 
 Below is a comprehensive list of webhook events that Flexprice can send to your application.
 
-### Billable Metrics Events
-
-| Event | Description |
-|-------|-------------|
-| `billable_metric.created` | Sent when a new billable metric is created |
-| `billable_metric.updated` | Sent when a billable metric is updated |
-| `billable_metric.archived` | Sent when a billable metric is archived |
 
 ### Customer Events
 
@@ -58,9 +51,6 @@ Below is a comprehensive list of webhook events that Flexprice can send to your 
 |-------|-------------|
 | `customer.created` | Sent when a new customer is created |
 | `customer.updated` | Sent when a customer's information is updated |
-| `customer.payment_provider_created` | Sent when a customer is successfully created in the payment provider's system |
-| `customer.payment_provider_error` | Sent when there's an error creating a customer in the payment provider's system |
-| `customer.checkout_url_generated` | Sent when a checkout link is generated for a customer |
 
 ### Subscription Events
 
@@ -75,14 +65,10 @@ Below is a comprehensive list of webhook events that Flexprice can send to your 
 
 | Event | Description |
 |-------|-------------|
-| `invoice.drafted` | Sent when a new invoice is created in draft status |
-| `invoice.created` | Sent when an invoice is finalized |
-| `invoice.one_off_created` | Sent when a one-off invoice is created |
-| `invoice.generated` | Sent when a PDF invoice has been generated |
-| `invoice.payment_status_updated` | Sent when an invoice's payment status is updated |
-| `invoice.payment_failure` | Sent when there's an error processing payment for an invoice |
-| `invoice.payment_overdue` | Sent when an invoice payment is overdue |
-| `invoice.voided` | Sent when an invoice is voided |
+| `invoice.create.drafted` | Sent when a new invoice is created in draft status |
+| `invoice.update.finalized` | Sent when an invoice is finalized |
+| `invoice.updated.payment` | Sent when the payment status of an invoice is updated |
+| `invoice.update.voided` | Sent when an invoice is voided |
 
 ### Wallet Events
 
@@ -94,20 +80,6 @@ Below is a comprehensive list of webhook events that Flexprice can send to your 
 | `wallet.depleted_ongoing_balance` | Sent when a wallet's balance reaches zero or becomes negative |
 | `wallet_transaction.updated` | Sent when a wallet transaction is updated |
 | `wallet_transaction.payment_failure` | Sent when a wallet transaction payment fails |
-
-### Credit Note Events
-
-| Event | Description |
-|-------|-------------|
-| `credit_note.created` | Sent when a new credit note is issued |
-| `credit_note.generated` | Sent when a PDF credit note has been generated |
-| `credit_note.refund_failure` | Sent when there's an error processing a refund |
-
-### Fee Events
-
-| Event | Description |
-|-------|-------------|
-| `fee.created` | Sent when a fee for a charge to be paid in advance is created |
 
 ### Event Ingestion
 
