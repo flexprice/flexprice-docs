@@ -1546,108 +1546,6 @@
       }
     },
     "/events": {
-      "get": {
-        "tags": [
-          "Events"
-        ],
-        "summary": "Get raw events",
-        "description": "Retrieve raw events with pagination and filtering",
-        "parameters": [
-          {
-            "name": "external_customer_id",
-            "in": "query",
-            "description": "External Customer ID",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "event_name",
-            "in": "query",
-            "description": "Event Name",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "start_time",
-            "in": "query",
-            "description": "Start Time (RFC3339)",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "end_time",
-            "in": "query",
-            "description": "End Time (RFC3339)",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "iter_first_key",
-            "in": "query",
-            "description": "Iter First Key (unix_timestamp_nanoseconds::event_id)",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "iter_last_key",
-            "in": "query",
-            "description": "Iter Last Key (unix_timestamp_nanoseconds::event_id)",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "page_size",
-            "in": "query",
-            "description": "Page Size (1-50)",
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/dto.GetEventsResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/errors.ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/errors.ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ]
-      },
       "post": {
         "tags": [
           "Events"
@@ -1767,6 +1665,64 @@
           }
         ],
         "x-codegen-request-body-name": "event"
+      }
+    },
+    "/events/query": {
+      "post": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "List raw events",
+        "description": "Retrieve raw events with pagination and filtering",
+        "requestBody": {
+          "description": "Request body",
+          "content": {
+            "*/*": {
+              "schema": {
+                "$ref": "#/components/schemas/dto.GetEventsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.GetEventsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "x-codegen-request-body-name": "request"
       }
     },
     "/events/usage": {
@@ -7486,7 +7442,6 @@
       "dto.CreateInvoiceLineItemRequest": {
         "required": [
           "amount",
-          "price_id",
           "quantity"
         ],
         "type": "object",
@@ -8428,6 +8383,55 @@
           }
         }
       },
+      "dto.GetEventsRequest": {
+        "required": [
+          "event_name"
+        ],
+        "type": "object",
+        "properties": {
+          "count_total": {
+            "type": "boolean"
+          },
+          "end_time": {
+            "type": "string",
+            "example": "2024-12-09T00:00:00Z"
+          },
+          "event_id": {
+            "type": "string"
+          },
+          "event_name": {
+            "type": "string"
+          },
+          "external_customer_id": {
+            "type": "string"
+          },
+          "iter_first_key": {
+            "type": "string"
+          },
+          "iter_last_key": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "page_size": {
+            "type": "integer"
+          },
+          "property_filters": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "start_time": {
+            "type": "string",
+            "example": "2024-11-09T00:00:00Z"
+          }
+        }
+      },
       "dto.GetEventsResponse": {
         "type": "object",
         "properties": {
@@ -8445,6 +8449,12 @@
           },
           "iter_last_key": {
             "type": "string"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "total_count": {
+            "type": "integer"
           }
         }
       },
