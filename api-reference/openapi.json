@@ -7091,6 +7091,9 @@
           "idempotency_key": {
             "type": "string"
           },
+          "invoice_number": {
+            "type": "string"
+          },
           "invoice_status": {
             "$ref": "#/components/schemas/types.InvoiceStatus"
           },
@@ -7958,9 +7961,6 @@
       "dto.GetEventsRequest": {
         "type": "object",
         "properties": {
-          "count_total": {
-            "type": "boolean"
-          },
           "end_time": {
             "type": "string",
             "description": "End time of the events to be fetched in ISO 8601 format\nDefaults to now if not provided",
@@ -8003,6 +8003,10 @@
               }
             },
             "description": "Property filters to filter the events by the keys in `properties` field of the event"
+          },
+          "source": {
+            "type": "string",
+            "description": "Source to filter the events by the source"
           },
           "start_time": {
             "type": "string",
@@ -8938,9 +8942,6 @@
           "environment_id": {
             "type": "string",
             "description": "EnvironmentID is the environment identifier for the price"
-          },
-          "filter_values": {
-            "$ref": "#/components/schemas/price.JSONBFilters"
           },
           "id": {
             "type": "string",
@@ -10165,9 +10166,6 @@
           "environment_id": {
             "type": "string",
             "description": "EnvironmentID is the environment identifier for the price"
-          },
-          "filter_values": {
-            "$ref": "#/components/schemas/price.JSONBFilters"
           },
           "id": {
             "type": "string",
