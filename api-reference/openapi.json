@@ -9452,13 +9452,18 @@
       },
       "dto.TopUpWalletRequest": {
         "required": [
-          "amount"
+          "idempotency_key",
+          "transaction_reason"
         ],
         "type": "object",
         "properties": {
           "amount": {
             "type": "number",
-            "description": "amount is the number of credits to add to the wallet"
+            "description": "amount is the amount in the currency of the wallet to be added\nNOTE: this is not the number of credits to add, but the amount in the currency\namount = credits_to_add * conversion_rate\nif both amount and credits_to_add are provided, amount will be ignored\nex if the wallet has a conversion_rate of 2 then adding an amount of\n10 USD in the wallet wil add 5 credits in the wallet"
+          },
+          "credits_to_add": {
+            "type": "number",
+            "description": "credits_to_add is the number of credits to add to the wallet"
           },
           "description": {
             "type": "string",
@@ -9468,24 +9473,21 @@
             "type": "integer",
             "description": "expiry_date YYYYMMDD format in UTC timezone (optional to set nil means no expiry)\nfor ex 20250101 means the credits will expire on 2025-01-01 00:00:00 UTC\nhence they will be available for use until 2024-12-31 23:59:59 UTC"
           },
-          "generate_invoice": {
-            "type": "boolean",
-            "description": "generate_invoice when true, an invoice will be generated for the transaction"
+          "idempotency_key": {
+            "type": "string",
+            "description": "idempotency_key is a unique key for the transaction"
           },
           "metadata": {
-            "$ref": "#/components/schemas/types.Metadata"
+            "type": "object",
+            "description": "metadata is a map of key-value pairs to store any additional information about the transaction",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/types.Metadata"
+              }
+            ]
           },
-          "purchased_credits": {
-            "type": "boolean",
-            "description": "purchased_credits when true, the credits are added as purchased credits"
-          },
-          "reference_id": {
-            "type": "string",
-            "description": "reference_id is the ID of the reference ex payment ID, invoice ID, request ID"
-          },
-          "reference_type": {
-            "type": "string",
-            "description": "reference_type is the type of the reference ex payment, invoice, request"
+          "transaction_reason": {
+            "$ref": "#/components/schemas/types.TransactionReason"
           }
         }
       },
@@ -10888,13 +10890,11 @@
       "types.WalletTxReferenceType": {
         "type": "string",
         "enum": [
-          "INVOICE",
           "PAYMENT",
           "EXTERNAL",
           "REQUEST"
         ],
         "x-enum-varnames": [
-          "WalletTxReferenceTypeInvoice",
           "WalletTxReferenceTypePayment",
           "WalletTxReferenceTypeExternal",
           "WalletTxReferenceTypeRequest"
