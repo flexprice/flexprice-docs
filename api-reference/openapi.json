@@ -9475,16 +9475,22 @@
             "type": "string",
             "description": "description to add any specific details about the transaction"
           },
-          "expiry_date": {
-            "type": "integer",
-            "description": "expiry_date YYYYMMDD format in UTC timezone (optional to set nil means no expiry)\nfor ex 20250101 means the credits will expire on 2025-01-01 00:00:00 UTC\nhence they will be available for use until 2024-12-31 23:59:59 UTC"
+          "expiry_date_utc": {
+            "type": "string",
+            "description": "expiry_date_utc is the expiry date in UTC timezone\nex 2025-01-01 00:00:00 UTC"
           },
           "idempotency_key": {
             "type": "string",
             "description": "idempotency_key is a unique key for the transaction"
           },
           "metadata": {
-            "$ref": "#/components/schemas/types.Metadata"
+            "type": "object",
+            "description": "metadata is a map of key-value pairs to store any additional information about the transaction",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/types.Metadata"
+              }
+            ]
           },
           "transaction_reason": {
             "$ref": "#/components/schemas/types.TransactionReason"
