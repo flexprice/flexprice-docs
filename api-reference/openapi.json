@@ -373,6 +373,89 @@
         ]
       }
     },
+    "/customers/wallets": {
+      "get": {
+        "tags": [
+          "Wallets"
+        ],
+        "summary": "Get Customer Wallets",
+        "description": "Get all wallets for a customer by lookup key or id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "include_real_time_balance",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "lookup_key",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/dto.WalletResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
     "/customers/{id}": {
       "get": {
         "tags": [
@@ -9484,13 +9567,7 @@
             "description": "idempotency_key is a unique key for the transaction"
           },
           "metadata": {
-            "type": "object",
-            "description": "metadata is a map of key-value pairs to store any additional information about the transaction",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/types.Metadata"
-              }
-            ]
+            "$ref": "#/components/schemas/types.Metadata"
           },
           "transaction_reason": {
             "$ref": "#/components/schemas/types.TransactionReason"
@@ -9803,6 +9880,9 @@
         "properties": {
           "billing_details": {
             "$ref": "#/components/schemas/dto.TenantBillingDetails"
+          },
+          "name": {
+            "type": "string"
           }
         }
       },
