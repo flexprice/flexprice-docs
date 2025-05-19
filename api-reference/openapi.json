@@ -98,6 +98,392 @@
         "x-codegen-request-body-name": "signup"
       }
     },
+    "/creditgrants": {
+      "get": {
+        "tags": [
+          "CreditGrants"
+        ],
+        "summary": "Get credit grants",
+        "description": "Get credit grants with the specified filter",
+        "parameters": [
+          {
+            "name": "end_time",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "expand",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "plan_ids",
+            "in": "query",
+            "description": "Specific filters for credit grants",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "start_time",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "published",
+                "deleted",
+                "archived"
+              ],
+              "x-enum-varnames": [
+                "StatusPublished",
+                "StatusDeleted",
+                "StatusArchived"
+              ]
+            },
+            "x-enum-varnames": [
+              "StatusPublished",
+              "StatusDeleted",
+              "StatusArchived"
+            ]
+          },
+          {
+            "name": "subscription_ids",
+            "in": "query",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.ListCreditGrantsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "CreditGrants"
+        ],
+        "summary": "Create a new credit grant",
+        "description": "Create a new credit grant with the specified configuration",
+        "requestBody": {
+          "description": "Credit Grant configuration",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dto.CreateCreditGrantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.CreditGrantResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "x-codegen-request-body-name": "credit_grant"
+      }
+    },
+    "/creditgrants/{id}": {
+      "get": {
+        "tags": [
+          "CreditGrants"
+        ],
+        "summary": "Get a credit grant by ID",
+        "description": "Get a credit grant by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Credit Grant ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.CreditGrantResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "CreditGrants"
+        ],
+        "summary": "Update a credit grant",
+        "description": "Update a credit grant with the specified configuration",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Credit Grant ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Credit Grant configuration",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dto.UpdateCreditGrantRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.CreditGrantResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "x-codegen-request-body-name": "credit_grant"
+      },
+      "delete": {
+        "tags": [
+          "CreditGrants"
+        ],
+        "summary": "Delete a credit grant",
+        "description": "Delete a credit grant",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Credit Grant ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/gin.H"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
     "/customers": {
       "get": {
         "tags": [
@@ -4091,6 +4477,73 @@
         ]
       }
     },
+    "/plans/{id}/creditgrants": {
+      "get": {
+        "tags": [
+          "CreditGrants"
+        ],
+        "summary": "Get plan credit grants",
+        "description": "Get all credit grants for a plan",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Plan ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.ListCreditGrantsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
     "/plans/{id}/entitlements": {
       "get": {
         "tags": [
@@ -6777,6 +7230,13 @@
             }
           },
           {
+            "name": "priority",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
             "name": "reference_id",
             "in": "query",
             "schema": {
@@ -7103,6 +7563,54 @@
           },
           "secret": {
             "$ref": "#/components/schemas/dto.SecretResponse"
+          }
+        }
+      },
+      "dto.CreateCreditGrantRequest": {
+        "required": [
+          "amount",
+          "cadence",
+          "currency",
+          "name",
+          "scope"
+        ],
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "cadence": {
+            "$ref": "#/components/schemas/types.CreditGrantCadence"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "expire_in_days": {
+            "type": "integer"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/types.Metadata"
+          },
+          "name": {
+            "type": "string"
+          },
+          "period": {
+            "$ref": "#/components/schemas/types.CreditGrantPeriod"
+          },
+          "period_count": {
+            "type": "integer"
+          },
+          "plan_id": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "integer"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/types.CreditGrantScope"
+          },
+          "subscription_id": {
+            "type": "string"
           }
         }
       },
@@ -7710,6 +8218,13 @@
             "minimum": 1,
             "type": "integer"
           },
+          "credit_grants": {
+            "type": "array",
+            "description": "Credit grants to be applied when subscription is created",
+            "items": {
+              "$ref": "#/components/schemas/dto.CreateCreditGrantRequest"
+            }
+          },
           "currency": {
             "type": "string"
           },
@@ -7834,6 +8349,71 @@
           },
           "wallet_type": {
             "$ref": "#/components/schemas/types.WalletType"
+          }
+        }
+      },
+      "dto.CreditGrantResponse": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "cadence": {
+            "$ref": "#/components/schemas/types.CreditGrantCadence"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "environment_id": {
+            "type": "string"
+          },
+          "expire_in_days": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/types.Metadata"
+          },
+          "name": {
+            "type": "string"
+          },
+          "period": {
+            "$ref": "#/components/schemas/types.CreditGrantPeriod"
+          },
+          "period_count": {
+            "type": "integer"
+          },
+          "plan_id": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "integer"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/types.CreditGrantScope"
+          },
+          "status": {
+            "$ref": "#/components/schemas/types.Status"
+          },
+          "subscription_id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          },
+          "updated_by": {
+            "type": "string"
           }
         }
       },
@@ -8355,8 +8935,7 @@
             "type": "string"
           },
           "window_size": {
-            "type": "string",
-            "description": "e.g., \"MINUTE\", \"HOUR\", \"DAY\""
+            "$ref": "#/components/schemas/types.WindowSize"
           }
         }
       },
@@ -8773,6 +9352,20 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "dto.ListCreditGrantsResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dto.CreditGrantResponse"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/types.PaginationResponse"
           }
         }
       },
@@ -9793,8 +10386,23 @@
           "metadata": {
             "$ref": "#/components/schemas/types.Metadata"
           },
+          "priority": {
+            "type": "integer",
+            "description": "priority is the priority of the transaction\nlower number means higher priority\ndefault is nil which means no priority at all"
+          },
           "transaction_reason": {
             "$ref": "#/components/schemas/types.TransactionReason"
+          }
+        }
+      },
+      "dto.UpdateCreditGrantRequest": {
+        "type": "object",
+        "properties": {
+          "metadata": {
+            "$ref": "#/components/schemas/types.Metadata"
+          },
+          "name": {
+            "type": "string"
           }
         }
       },
@@ -10391,6 +10999,9 @@
           "metadata": {
             "$ref": "#/components/schemas/types.Metadata"
           },
+          "priority": {
+            "type": "integer"
+          },
           "reference_id": {
             "type": "string"
           },
@@ -10404,6 +11015,9 @@
             "$ref": "#/components/schemas/types.TransactionStatus"
           },
           "type": {
+            "type": "string"
+          },
+          "updated_at": {
             "type": "string"
           },
           "wallet_id": {
@@ -10894,6 +11508,47 @@
         "x-enum-varnames": [
           "BILLING_TIER_VOLUME",
           "BILLING_TIER_SLAB"
+        ]
+      },
+      "types.CreditGrantCadence": {
+        "type": "string",
+        "enum": [
+          "ONETIME",
+          "RECURRING"
+        ],
+        "x-enum-varnames": [
+          "CreditGrantCadenceOneTime",
+          "CreditGrantCadenceRecurring"
+        ]
+      },
+      "types.CreditGrantPeriod": {
+        "type": "string",
+        "enum": [
+          "DAILY",
+          "WEEKLY",
+          "MONTHLY",
+          "YEARLY",
+          "QUARTERLY",
+          "HALFYEARLY"
+        ],
+        "x-enum-varnames": [
+          "CreditGrantPeriodDaily",
+          "CreditGrantPeriodWeekly",
+          "CreditGrantPeriodMonthly",
+          "CreditGrantPeriodYearly",
+          "CreditGrantPeriodQuarter",
+          "CreditGrantPeriodHalfYear"
+        ]
+      },
+      "types.CreditGrantScope": {
+        "type": "string",
+        "enum": [
+          "PLAN",
+          "SUBSCRIPTION"
+        ],
+        "x-enum-varnames": [
+          "CreditGrantScopePlan",
+          "CreditGrantScopeSubscription"
         ]
       },
       "types.CustomerFilter": {
@@ -11514,13 +12169,25 @@
         "type": "string",
         "enum": [
           "MINUTE",
+          "15MIN",
+          "30MIN",
           "HOUR",
-          "DAY"
+          "3HOUR",
+          "6HOUR",
+          "12HOUR",
+          "DAY",
+          "WEEK"
         ],
         "x-enum-varnames": [
           "WindowSizeMinute",
+          "WindowSize15Min",
+          "WindowSize30Min",
           "WindowSizeHour",
-          "WindowSizeDay"
+          "WindowSize3Hour",
+          "WindowSize6Hour",
+          "WindowSize12Hour",
+          "WindowSizeDay",
+          "WindowSizeWeek"
         ]
       }
     },
