@@ -5945,6 +5945,75 @@
         }
       }
     },
+    "/subscriptions/{id}/phases": {
+      "post": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Add new phase to subscription schedule",
+        "description": "Add a new phase to a subscription schedule",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Subscription ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Add schedule phase request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/dto.AddSchedulePhaseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/dto.SubscriptionScheduleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "x-codegen-request-body-name": "request"
+      }
+    },
     "/subscriptions/{id}/resume": {
       "post": {
         "tags": [
@@ -7417,6 +7486,17 @@
   },
   "components": {
     "schemas": {
+      "dto.AddSchedulePhaseRequest": {
+        "required": [
+          "phase"
+        ],
+        "type": "object",
+        "properties": {
+          "phase": {
+            "$ref": "#/components/schemas/dto.SubscriptionSchedulePhaseInput"
+          }
+        }
+      },
       "dto.Address": {
         "type": "object",
         "properties": {
