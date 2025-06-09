@@ -7648,25 +7648,31 @@
       },
       "dto.CreateCreditGrantRequest": {
         "required": [
-          "amount",
           "cadence",
+          "credits",
           "currency",
           "name",
           "scope"
         ],
         "type": "object",
         "properties": {
-          "amount": {
-            "type": "number"
-          },
           "cadence": {
             "$ref": "#/components/schemas/types.CreditGrantCadence"
+          },
+          "credits": {
+            "type": "number"
           },
           "currency": {
             "type": "string"
           },
-          "expire_in_days": {
+          "expiration_duration": {
             "type": "integer"
+          },
+          "expiration_duration_unit": {
+            "$ref": "#/components/schemas/types.CreditGrantExpiryDurationUnit"
+          },
+          "expiration_type": {
+            "$ref": "#/components/schemas/types.CreditGrantExpiryType"
           },
           "metadata": {
             "$ref": "#/components/schemas/types.Metadata"
@@ -8398,8 +8404,7 @@
       },
       "dto.CreateWalletRequest": {
         "required": [
-          "currency",
-          "customer_id"
+          "currency"
         ],
         "type": "object",
         "properties": {
@@ -8428,6 +8433,9 @@
           "description": {
             "type": "string"
           },
+          "external_customer_id": {
+            "type": "string"
+          },
           "initial_credits_to_load": {
             "type": "number",
             "description": "initial_credits_to_load is the number of credits to load to the wallet\nif not provided, the wallet will be created with 0 balance\nNOTE: this is not the amount in the currency, but the number of credits"
@@ -8450,9 +8458,6 @@
       "dto.CreditGrantResponse": {
         "type": "object",
         "properties": {
-          "amount": {
-            "type": "number"
-          },
           "cadence": {
             "$ref": "#/components/schemas/types.CreditGrantCadence"
           },
@@ -8462,14 +8467,23 @@
           "created_by": {
             "type": "string"
           },
+          "credits": {
+            "type": "number"
+          },
           "currency": {
             "type": "string"
           },
           "environment_id": {
             "type": "string"
           },
-          "expire_in_days": {
+          "expiration_duration": {
             "type": "integer"
+          },
+          "expiration_duration_unit": {
+            "$ref": "#/components/schemas/types.CreditGrantExpiryDurationUnit"
+          },
+          "expiration_type": {
+            "$ref": "#/components/schemas/types.CreditGrantExpiryType"
           },
           "id": {
             "type": "string"
@@ -11132,6 +11146,10 @@
           "currency": {
             "type": "string"
           },
+          "event_count": {
+            "type": "integer",
+            "description": "Number of events that contributed to this aggregation"
+          },
           "event_name": {
             "type": "string"
           },
@@ -11169,6 +11187,10 @@
         "properties": {
           "cost": {
             "type": "number"
+          },
+          "event_count": {
+            "type": "integer",
+            "description": "Number of events in this time window"
           },
           "timestamp": {
             "type": "string"
@@ -11900,21 +11922,49 @@
           "CreditGrantCadenceRecurring"
         ]
       },
+      "types.CreditGrantExpiryDurationUnit": {
+        "type": "string",
+        "enum": [
+          "DAY",
+          "WEEK",
+          "MONTH",
+          "YEAR"
+        ],
+        "x-enum-varnames": [
+          "CreditGrantExpiryDurationUnitDays",
+          "CreditGrantExpiryDurationUnitWeeks",
+          "CreditGrantExpiryDurationUnitMonths",
+          "CreditGrantExpiryDurationUnitYears"
+        ]
+      },
+      "types.CreditGrantExpiryType": {
+        "type": "string",
+        "enum": [
+          "NEVER",
+          "DURATION",
+          "BILLING_CYCLE"
+        ],
+        "x-enum-varnames": [
+          "CreditGrantExpiryTypeNever",
+          "CreditGrantExpiryTypeDuration",
+          "CreditGrantExpiryTypeBillingCycle"
+        ]
+      },
       "types.CreditGrantPeriod": {
         "type": "string",
         "enum": [
           "DAILY",
           "WEEKLY",
           "MONTHLY",
-          "YEARLY",
+          "ANNUAL",
           "QUARTERLY",
-          "HALFYEARLY"
+          "HALF_YEARLY"
         ],
         "x-enum-varnames": [
           "CreditGrantPeriodDaily",
           "CreditGrantPeriodWeekly",
           "CreditGrantPeriodMonthly",
-          "CreditGrantPeriodYearly",
+          "CreditGrantPeriodAnnual",
           "CreditGrantPeriodQuarter",
           "CreditGrantPeriodHalfYear"
         ]
