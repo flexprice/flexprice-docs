@@ -19,49 +19,67 @@ You can receive webhook notifications for a range of events:
 
 ### Invoice Events
 
-* `invoice.create.drafted` - New invoice created in draft status
-* `invoice.update.finalized` - Invoice has been finalized
-* `invoice.updated.payment` - Payment status updated
-* `invoice.update.voided` - Invoice has been voided
-* `invoice.amounts.recalculated` - Invoice amounts have been recalculated
+* `invoice.create.drafted` - Fired when a new invoice is created in draft state
+* `invoice.update.finalized` - Fired when an invoice is finalized and ready for payment
+* `invoice.updated.payment` - Fired when a payment is recorded on an invoice
+* `invoice.update.voided` - Fired when an invoice is voided
 
 ### Subscription Events
 
-* `subscription.created` - New subscription created
-* `subscription.paused` - Subscription paused
-* `subscription.cancelled` - Subscription cancelled
-* `subscription.resumed` - Subscription resumed
-* `subscription.expired` - Subscription expired
+* `subscription.created` - Fired when a new subscription is created
+* `subscription.paused` - Fired when a subscription is paused
+* `subscription.cancelled` - Fired when a subscription is cancelled
+* `subscription.resumed` - Fired when a paused subscription is resumed
+* `subscription.expired` - Fired when a subscription reaches its end date
 
 ### Wallet Events
 
-* `wallet.created` - New wallet created
-* `wallet.updated` - Wallet updated
-* `wallet.terminated` - Wallet terminated
-* `wallet.depleted_ongoing_balance` - Wallet balance depleted
-* `wallet.transaction.created` - New wallet transaction
-* `wallet.transaction.updated` - Transaction updated
-* `wallet.transaction.payment_failure` - Transaction payment failed
-* `wallet.transaction.payment_success` - Transaction payment succeeded
-* `wallet.transaction.payment_failed` - Transaction payment failed permanently
+* `wallet.created` - Fired when a new wallet is created
+* `wallet.updated` - Fired when wallet details are updated
+* `wallet.terminated` - Fired when a wallet is terminated
+* `wallet.depleted_ongoing_balance` - Fired when wallet's ongoing balance reaches zero
+* `wallet.transaction.created` - Fired when a new wallet transaction is created
+* `wallet.transaction.updated` - Fired when a wallet transaction is updated
+* `wallet.transaction.payment_failure` - Fired when a transaction payment attempt fails
+* `wallet.transaction.payment_success` - Fired when a transaction payment succeeds
+* `wallet.transaction.payment_failed` - Fired when a transaction payment fails permanently
 
 ### Payment Events
 
-* `payment.created` - New payment created
-* `payment.updated` - Payment updated
-* `payment.failed` - Payment failed
-* `payment.success` - Payment succeeded
-* `payment.pending` - Payment pending
-* `payment.declined` - Payment declined
-* `payment.reversed` - Payment reversed
+* `payment.created` - Fired when a new payment is created
+* `payment.updated` - Fired when payment details are updated
+* `payment.failed` - Fired when a payment attempt fails
+* `payment.success` - Fired when a payment is successful
+* `payment.pending` - Fired when a payment is awaiting processing
+* `payment.declined` - Fired when a payment is declined
+* `payment.reversed` - Fired when a payment is reversed
 
 ### Customer Events
 
-* `customer.created` - New customer created
-* `customer.updated` - Customer information updated
-* `customer.deleted` - Customer deleted
+* `customer.created` - Fired when a new customer is created
+* `customer.updated` - Fired when customer information is updated
+* `customer.deleted` - Fired when a customer is deleted
 
 *(More event types may be added in the future.)*
+
+## Webhook Payload Format
+
+Every webhook payload follows this structure:
+
+```json
+{
+  "id": "string",
+  "event_name": "string",
+  "tenant_id": "string",
+  "timestamp": "2024-01-01T00:00:00Z",
+  "payload": {
+    // Event-specific data
+  }
+}
+```
+
+* All event types use this base schema
+* The payload field contains event-specific data
 
 ## How Webhook Delivery Works
 
@@ -101,26 +119,6 @@ The retry schedule for failed deliveries is:
 
 **Summary:**
 Svix is the recommended choice for production, customer-facing, or high-uptime integrations. If you want reliability, observability, and security, use Svix.
-
-## Webhook Payload Format
-
-Every webhook payload follows this basic structure:
-
-```json
-{
-  "id": "evt_xxx",
-  "event_name": "payment.success",
-  "tenant_id": "your-tenant-id",
-  "environment_id": "env_xxx",
-  "timestamp": "2024-06-30T12:34:56.789Z",
-  "payload": {
-    // Event-specific fields
-  }
-}
-```
-
-* All event types use this base schema
-* Svix webhooks include extra signature headers for verification
 
 ## Setting Up Webhooks
 
