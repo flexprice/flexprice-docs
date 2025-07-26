@@ -668,6 +668,25 @@
                         }
                     },
                     {
+                        "name": "scope",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "PLAN",
+                                "SUBSCRIPTION"
+                            ],
+                            "x-enum-varnames": [
+                                "CreditGrantScopePlan",
+                                "CreditGrantScopeSubscription"
+                            ]
+                        },
+                        "x-enum-varnames": [
+                            "CreditGrantScopePlan",
+                            "CreditGrantScopeSubscription"
+                        ]
+                    },
+                    {
                         "name": "sort",
                         "in": "query",
                         "schema": {
@@ -2515,7 +2534,6 @@
                     {
                         "name": "plan_ids",
                         "in": "query",
-                        "description": "Specific filters for entitlements",
                         "style": "form",
                         "explode": false,
                         "schema": {
@@ -2523,13 +2541,6 @@
                             "items": {
                                 "type": "string"
                             }
-                        }
-                    },
-                    {
-                        "name": "sort",
-                        "in": "query",
-                        "schema": {
-                            "type": "string"
                         }
                     },
                     {
@@ -2655,6 +2666,64 @@
                     }
                 ],
                 "x-codegen-request-body-name": "entitlement"
+            }
+        },
+        "/entitlements/search": {
+            "post": {
+                "tags": [
+                    "Entitlements"
+                ],
+                "summary": "List entitlements by filter",
+                "description": "List entitlements by filter",
+                "requestBody": {
+                    "description": "Filter",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/types.EntitlementFilter"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.ListEntitlementsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "x-codegen-request-body-name": "filter"
             }
         },
         "/entitlements/{id}": {
@@ -4144,13 +4213,6 @@
                         }
                     },
                     {
-                        "name": "sort",
-                        "in": "query",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
                         "name": "start_time",
                         "in": "query",
                         "schema": {
@@ -4326,6 +4388,64 @@
                 "x-codegen-request-body-name": "request"
             }
         },
+        "/invoices/search": {
+            "post": {
+                "tags": [
+                    "Invoices"
+                ],
+                "summary": "List invoices by filter",
+                "description": "List invoices by filter",
+                "requestBody": {
+                    "description": "Filter",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/types.InvoiceFilter"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.ListInvoicesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "x-codegen-request-body-name": "filter"
+            }
+        },
         "/invoices/{id}": {
             "get": {
                 "tags": [
@@ -4376,6 +4496,78 @@
                         }
                     }
                 }
+            },
+            "put": {
+                "tags": [
+                    "Invoices"
+                ],
+                "summary": "Update an invoice",
+                "description": "Update invoice details like PDF URL",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Invoice ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Invoice Update Request",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/dto.UpdateInvoiceRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.InvoiceResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-codegen-request-body-name": "request"
             }
         },
         "/invoices/{id}/finalize": {
@@ -5299,13 +5491,6 @@
                         }
                     },
                     {
-                        "name": "sort",
-                        "in": "query",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
                         "name": "start_time",
                         "in": "query",
                         "schema": {
@@ -5428,6 +5613,64 @@
                     }
                 ],
                 "x-codegen-request-body-name": "plan"
+            }
+        },
+        "/plans/search": {
+            "post": {
+                "tags": [
+                    "Plans"
+                ],
+                "summary": "List plans by filter",
+                "description": "List plans by filter",
+                "requestBody": {
+                    "description": "Filter",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/types.PlanFilter"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.ListPlansResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "x-codegen-request-body-name": "filter"
             }
         },
         "/plans/{id}": {
@@ -6703,13 +6946,6 @@
                         }
                     },
                     {
-                        "name": "sort",
-                        "in": "query",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
                         "name": "start_time",
                         "in": "query",
                         "schema": {
@@ -6875,6 +7111,64 @@
                     }
                 ],
                 "x-codegen-request-body-name": "subscription"
+            }
+        },
+        "/subscriptions/search": {
+            "post": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "List subscriptions by filter",
+                "description": "List subscriptions by filter",
+                "requestBody": {
+                    "description": "Filter",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/types.SubscriptionFilter"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.ListSubscriptionsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "x-codegen-request-body-name": "filter"
             }
         },
         "/subscriptions/usage": {
@@ -9126,7 +9420,6 @@
                 "required": [
                     "cadence",
                     "credits",
-                    "currency",
                     "name",
                     "scope"
                 ],
@@ -9137,9 +9430,6 @@
                     },
                     "credits": {
                         "type": "number"
-                    },
-                    "currency": {
-                        "type": "string"
                     },
                     "expiration_duration": {
                         "type": "integer"
@@ -9503,6 +9793,10 @@
                     "invoice_number": {
                         "type": "string",
                         "description": "invoice_number is an optional human-readable identifier for the invoice"
+                    },
+                    "invoice_pdf_url": {
+                        "type": "string",
+                        "description": "invoice_pdf_url is the URL where customers can download the PDF version of this invoice"
                     },
                     "invoice_status": {
                         "$ref": "#/components/schemas/types.InvoiceStatus"
@@ -10062,9 +10356,6 @@
                     },
                     "credits": {
                         "type": "number"
-                    },
-                    "currency": {
-                        "type": "string"
                     },
                     "environment_id": {
                         "type": "string"
@@ -10940,7 +11231,7 @@
                         }
                     },
                     "multiplier": {
-                        "type": "integer"
+                        "type": "number"
                     },
                     "property_name": {
                         "type": "string",
@@ -12758,6 +13049,15 @@
                     }
                 }
             },
+            "dto.UpdateInvoiceRequest": {
+                "type": "object",
+                "properties": {
+                    "invoice_pdf_url": {
+                        "type": "string",
+                        "description": "invoice_pdf_url is the URL where customers can download the PDF version of this invoice"
+                    }
+                }
+            },
             "dto.UpdatePaymentRequest": {
                 "type": "object",
                 "properties": {
@@ -12788,7 +13088,6 @@
                 "required": [
                     "cadence",
                     "credits",
-                    "currency",
                     "name",
                     "scope"
                 ],
@@ -12799,9 +13098,6 @@
                     },
                     "credits": {
                         "type": "number"
-                    },
-                    "currency": {
-                        "type": "string"
                     },
                     "expiration_duration": {
                         "type": "integer"
@@ -13029,6 +13325,9 @@
                 "properties": {
                     "billing_details": {
                         "$ref": "#/components/schemas/dto.TenantBillingDetails"
+                    },
+                    "metadata": {
+                        "$ref": "#/components/schemas/types.Metadata"
                     },
                     "name": {
                         "type": "string"
@@ -13415,7 +13714,7 @@
                         "description": "Field is the key in $event.properties on which the aggregation is to be applied\nFor ex if the aggregation type is sum for API usage, the field could be \"duration_ms\""
                     },
                     "multiplier": {
-                        "type": "integer",
+                        "type": "number",
                         "description": "Multiplier is the multiplier for the aggregation\nFor ex if the aggregation type is sum_with_multiplier for API usage, the multiplier could be 1000\nto scale up by a factor of 1000"
                     },
                     "type": {
@@ -13792,6 +14091,9 @@
                 "x-enum-comments": {
                     "AggregationSumWithMultiplier": "Sum with a multiplier - [sum(value) * multiplier]"
                 },
+                "x-enum-descriptions": [
+                    "Sum with a multiplier - [sum(value) * multiplier]"
+                ],
                 "x-enum-varnames": [
                     "AggregationCount",
                     "AggregationSum",
@@ -14069,6 +14371,70 @@
                     "DataTypeArray"
                 ]
             },
+            "types.EntitlementFilter": {
+                "type": "object",
+                "properties": {
+                    "end_time": {
+                        "type": "string"
+                    },
+                    "expand": {
+                        "type": "string"
+                    },
+                    "feature_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "feature_type": {
+                        "$ref": "#/components/schemas/types.FeatureType"
+                    },
+                    "filters": {
+                        "type": "array",
+                        "description": "Specific filters for entitlements",
+                        "items": {
+                            "$ref": "#/components/schemas/types.FilterCondition"
+                        }
+                    },
+                    "is_enabled": {
+                        "type": "boolean"
+                    },
+                    "limit": {
+                        "maximum": 1000,
+                        "minimum": 1,
+                        "type": "integer"
+                    },
+                    "offset": {
+                        "minimum": 0,
+                        "type": "integer"
+                    },
+                    "order": {
+                        "type": "string",
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ]
+                    },
+                    "plan_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "sort": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/types.SortCondition"
+                        }
+                    },
+                    "start_time": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.Status"
+                    }
+                }
+            },
             "types.EntityType": {
                 "type": "string",
                 "enum": [
@@ -14237,6 +14603,95 @@
                     "InvoiceCadenceAdvance"
                 ]
             },
+            "types.InvoiceFilter": {
+                "type": "object",
+                "properties": {
+                    "amount_due_gt": {
+                        "type": "number",
+                        "description": "amount_due_gt filters invoices with a total amount due greater than the specified value\nUseful for finding invoices above a certain threshold or identifying high-value invoices"
+                    },
+                    "amount_remaining_gt": {
+                        "type": "number",
+                        "description": "amount_remaining_gt filters invoices with an outstanding balance greater than the specified value\nUseful for finding invoices that still have significant unpaid amounts"
+                    },
+                    "customer_id": {
+                        "type": "string",
+                        "description": "customer_id filters invoices for a specific customer using FlexPrice's internal customer ID\nThis is the ID returned by FlexPrice when creating or retrieving customers"
+                    },
+                    "end_time": {
+                        "type": "string"
+                    },
+                    "expand": {
+                        "type": "string"
+                    },
+                    "external_customer_id": {
+                        "type": "string",
+                        "description": "external_customer_id filters invoices for a customer using your system's customer identifier\nThis is the ID you provided when creating the customer in FlexPrice"
+                    },
+                    "filters": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/types.FilterCondition"
+                        }
+                    },
+                    "invoice_ids": {
+                        "type": "array",
+                        "description": "invoice_ids restricts results to invoices with the specified IDs\nUse this to retrieve specific invoices when you know their exact identifiers",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "invoice_status": {
+                        "type": "array",
+                        "description": "invoice_status filters by the current state of invoices in their lifecycle\nMultiple statuses can be specified to include invoices in any of the listed states",
+                        "items": {
+                            "$ref": "#/components/schemas/types.InvoiceStatus"
+                        }
+                    },
+                    "invoice_type": {
+                        "$ref": "#/components/schemas/types.InvoiceType"
+                    },
+                    "limit": {
+                        "maximum": 1000,
+                        "minimum": 1,
+                        "type": "integer"
+                    },
+                    "offset": {
+                        "minimum": 0,
+                        "type": "integer"
+                    },
+                    "order": {
+                        "type": "string",
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ]
+                    },
+                    "payment_status": {
+                        "type": "array",
+                        "description": "payment_status filters by the payment state of invoices\nMultiple statuses can be specified to include invoices with any of the listed payment states",
+                        "items": {
+                            "$ref": "#/components/schemas/types.PaymentStatus"
+                        }
+                    },
+                    "sort": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/types.SortCondition"
+                        }
+                    },
+                    "start_time": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.Status"
+                    },
+                    "subscription_id": {
+                        "type": "string",
+                        "description": "subscription_id filters invoices generated for a specific subscription\nOnly returns invoices that were created as part of the specified subscription's billing"
+                    }
+                }
+            },
             "types.InvoiceStatus": {
                 "type": "string",
                 "enum": [
@@ -14355,6 +14810,58 @@
                     "PaymentStatusRefunded",
                     "PaymentStatusPartiallyRefunded"
                 ]
+            },
+            "types.PlanFilter": {
+                "type": "object",
+                "properties": {
+                    "end_time": {
+                        "type": "string"
+                    },
+                    "expand": {
+                        "type": "string"
+                    },
+                    "filters": {
+                        "type": "array",
+                        "description": "filters allows complex filtering based on multiple fields",
+                        "items": {
+                            "$ref": "#/components/schemas/types.FilterCondition"
+                        }
+                    },
+                    "limit": {
+                        "maximum": 1000,
+                        "minimum": 1,
+                        "type": "integer"
+                    },
+                    "offset": {
+                        "minimum": 0,
+                        "type": "integer"
+                    },
+                    "order": {
+                        "type": "string",
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ]
+                    },
+                    "plan_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "sort": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/types.SortCondition"
+                        }
+                    },
+                    "start_time": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.Status"
+                    }
+                }
             },
             "types.PriceType": {
                 "type": "string",
@@ -14492,6 +14999,94 @@
                     "StatusDeleted",
                     "StatusArchived"
                 ]
+            },
+            "types.SubscriptionFilter": {
+                "type": "object",
+                "properties": {
+                    "active_at": {
+                        "type": "string",
+                        "description": "ActiveAt filters subscriptions that are active at the given time"
+                    },
+                    "billing_cadence": {
+                        "type": "array",
+                        "description": "BillingCadence filters by billing cadence",
+                        "items": {
+                            "$ref": "#/components/schemas/types.BillingCadence"
+                        }
+                    },
+                    "billing_period": {
+                        "type": "array",
+                        "description": "BillingPeriod filters by billing period",
+                        "items": {
+                            "$ref": "#/components/schemas/types.BillingPeriod"
+                        }
+                    },
+                    "customer_id": {
+                        "type": "string",
+                        "description": "CustomerID filters by customer ID"
+                    },
+                    "end_time": {
+                        "type": "string"
+                    },
+                    "expand": {
+                        "type": "string"
+                    },
+                    "filters": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/types.FilterCondition"
+                        }
+                    },
+                    "limit": {
+                        "maximum": 1000,
+                        "minimum": 1,
+                        "type": "integer"
+                    },
+                    "offset": {
+                        "minimum": 0,
+                        "type": "integer"
+                    },
+                    "order": {
+                        "type": "string",
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ]
+                    },
+                    "plan_id": {
+                        "type": "string",
+                        "description": "PlanID filters by plan ID"
+                    },
+                    "sort": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/types.SortCondition"
+                        }
+                    },
+                    "start_time": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.Status"
+                    },
+                    "subscription_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "subscription_status": {
+                        "type": "array",
+                        "description": "SubscriptionStatus filters by subscription status",
+                        "items": {
+                            "$ref": "#/components/schemas/types.SubscriptionStatus"
+                        }
+                    },
+                    "with_line_items": {
+                        "type": "boolean",
+                        "description": "WithLineItems includes line items in the response"
+                    }
+                }
             },
             "types.SubscriptionScheduleStatus": {
                 "type": "string",
