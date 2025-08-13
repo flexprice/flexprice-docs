@@ -610,6 +610,476 @@
                 "x-codegen-request-body-name": "signup"
             }
         },
+        "/connections": {
+            "get": {
+                "tags": [
+                    "Connections"
+                ],
+                "summary": "Get connections",
+                "description": "Get a list of connections",
+                "parameters": [
+                    {
+                        "name": "connection_ids",
+                        "in": "query",
+                        "style": "form",
+                        "explode": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    {
+                        "name": "end_time",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "expand",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "maximum": 1000,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "schema": {
+                            "minimum": 0,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "order",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "provider_type",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "flexprice",
+                                "stripe",
+                                "razorpay"
+                            ],
+                            "x-enum-varnames": [
+                                "SecretProviderFlexPrice",
+                                "SecretProviderStripe",
+                                "SecretProviderRazorpay"
+                            ]
+                        },
+                        "x-enum-varnames": [
+                            "SecretProviderFlexPrice",
+                            "SecretProviderStripe",
+                            "SecretProviderRazorpay"
+                        ]
+                    },
+                    {
+                        "name": "start_time",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "published",
+                                "deleted",
+                                "archived"
+                            ],
+                            "x-enum-varnames": [
+                                "StatusPublished",
+                                "StatusDeleted",
+                                "StatusArchived"
+                            ]
+                        },
+                        "x-enum-varnames": [
+                            "StatusPublished",
+                            "StatusDeleted",
+                            "StatusArchived"
+                        ]
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.ListConnectionsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Connections"
+                ],
+                "summary": "Create a connection",
+                "description": "Create a new integration connection",
+                "requestBody": {
+                    "description": "Connection",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/dto.CreateConnectionRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.ConnectionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "x-codegen-request-body-name": "connection"
+            }
+        },
+        "/connections/search": {
+            "post": {
+                "tags": [
+                    "Connections"
+                ],
+                "summary": "List connections by filter",
+                "description": "List connections by filter",
+                "requestBody": {
+                    "description": "Filter",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/types.ConnectionFilter"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.ListConnectionsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "x-codegen-request-body-name": "filter"
+            }
+        },
+        "/connections/{id}": {
+            "get": {
+                "tags": [
+                    "Connections"
+                ],
+                "summary": "Get a connection",
+                "description": "Get a connection by ID",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Connection ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.ConnectionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Connections"
+                ],
+                "summary": "Update a connection",
+                "description": "Update a connection by ID",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Connection ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Connection",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/dto.UpdateConnectionRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.ConnectionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "x-codegen-request-body-name": "connection"
+            },
+            "delete": {
+                "tags": [
+                    "Connections"
+                ],
+                "summary": "Delete a connection",
+                "description": "Delete a connection by ID",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Connection ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "content": {}
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            }
+        },
         "/cost": {
             "get": {
                 "tags": [
@@ -1259,6 +1729,9 @@
                 "security": [
                     {
                         "ApiKeyAuth": []
+                    },
+                    {
+                        "ApiKeyAuth": []
                     }
                 ]
             },
@@ -1342,6 +1815,9 @@
                     }
                 },
                 "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
                     {
                         "ApiKeyAuth": []
                     }
@@ -1430,6 +1906,9 @@
                     }
                 },
                 "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
                     {
                         "ApiKeyAuth": []
                     }
@@ -1528,6 +2007,9 @@
                 "security": [
                     {
                         "ApiKeyAuth": []
+                    },
+                    {
+                        "ApiKeyAuth": []
                     }
                 ],
                 "x-codegen-request-body-name": "coupon"
@@ -1615,6 +2097,9 @@
                     }
                 },
                 "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
                     {
                         "ApiKeyAuth": []
                     }
@@ -2233,6 +2718,9 @@
                 "security": [
                     {
                         "ApiKeyAuth": []
+                    },
+                    {
+                        "ApiKeyAuth": []
                     }
                 ]
             },
@@ -2316,6 +2804,9 @@
                     }
                 },
                 "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
                     {
                         "ApiKeyAuth": []
                     }
@@ -2406,6 +2897,9 @@
                 "security": [
                     {
                         "ApiKeyAuth": []
+                    },
+                    {
+                        "ApiKeyAuth": []
                     }
                 ]
             }
@@ -2493,6 +2987,9 @@
                 "security": [
                     {
                         "ApiKeyAuth": []
+                    },
+                    {
+                        "ApiKeyAuth": []
                     }
                 ]
             }
@@ -2578,6 +3075,9 @@
                     }
                 },
                 "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
                     {
                         "ApiKeyAuth": []
                     }
@@ -4014,6 +4514,334 @@
                 ]
             }
         },
+        "/entity-integration-mappings": {
+            "get": {
+                "tags": [
+                    "Entity Integration Mappings"
+                ],
+                "summary": "List entity integration mappings",
+                "description": "Retrieve a list of entity integration mappings with optional filtering",
+                "parameters": [
+                    {
+                        "name": "entity_id",
+                        "in": "query",
+                        "description": "Filter by FlexPrice entity ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "entity_type",
+                        "in": "query",
+                        "description": "Filter by entity type",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "provider_type",
+                        "in": "query",
+                        "description": "Filter by provider type",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "provider_entity_id",
+                        "in": "query",
+                        "description": "Filter by provider entity ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "Number of results to return (default: 20, max: 100)",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "description": "Pagination offset (default: 0)",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.ListEntityIntegrationMappingsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Entity Integration Mappings"
+                ],
+                "summary": "Create entity integration mapping",
+                "description": "Create a new entity integration mapping",
+                "requestBody": {
+                    "description": "Entity integration mapping data",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/dto.CreateEntityIntegrationMappingRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.EntityIntegrationMappingResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "x-codegen-request-body-name": "entity_integration_mapping"
+            }
+        },
+        "/entity-integration-mappings/{id}": {
+            "get": {
+                "tags": [
+                    "Entity Integration Mappings"
+                ],
+                "summary": "Get entity integration mapping",
+                "description": "Retrieve a specific entity integration mapping by ID",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Entity integration mapping ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.EntityIntegrationMappingResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Entity Integration Mappings"
+                ],
+                "summary": "Delete entity integration mapping",
+                "description": "Delete an entity integration mapping",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Entity integration mapping ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "content": {}
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            }
+        },
         "/environments": {
             "get": {
                 "tags": [
@@ -5164,6 +5992,139 @@
                 ]
             }
         },
+        "/integration/providers": {
+            "get": {
+                "tags": [
+                    "Integration"
+                ],
+                "summary": "Get available providers",
+                "description": "Get all available payment providers for the current tenant",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.ListConnectionsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            }
+        },
+        "/integration/sync/{entity_type}/{entity_id}": {
+            "post": {
+                "tags": [
+                    "Integration"
+                ],
+                "summary": "Sync entity to all available providers",
+                "description": "Sync an entity to all available payment providers for the current tenant",
+                "parameters": [
+                    {
+                        "name": "entity_type",
+                        "in": "path",
+                        "description": "Entity type (e.g., customer, invoice, tax)",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "entity_id",
+                        "in": "path",
+                        "description": "Entity ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            }
+        },
         "/invoices": {
             "get": {
                 "tags": [
@@ -5311,6 +6272,7 @@
                             "items": {
                                 "type": "string",
                                 "enum": [
+                                    "INITIATED",
                                     "PENDING",
                                     "PROCESSING",
                                     "SUCCEEDED",
@@ -5390,7 +6352,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
             },
             "post": {
                 "tags": [
@@ -5441,6 +6408,11 @@
                         }
                     }
                 },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "x-codegen-request-body-name": "invoice"
             }
         },
@@ -5494,6 +6466,11 @@
                         }
                     }
                 },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "x-codegen-request-body-name": "request"
             }
         },
@@ -5612,7 +6589,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
             },
             "put": {
                 "tags": [
@@ -5684,7 +6666,79 @@
                         }
                     }
                 },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "x-codegen-request-body-name": "request"
+            }
+        },
+        "/invoices/{id}/comms/trigger": {
+            "post": {
+                "tags": [
+                    "Invoices"
+                ],
+                "summary": "Trigger communication webhook for an invoice",
+                "description": "Triggers a communication webhook event containing all information about the invoice",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Invoice ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/gin.H"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
             }
         },
         "/invoices/{id}/finalize": {
@@ -5736,7 +6790,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
             }
         },
         "/invoices/{id}/payment": {
@@ -5877,7 +6936,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
             }
         },
         "/invoices/{id}/pdf": {
@@ -5948,7 +7012,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
             }
         },
         "/invoices/{id}/recalculate": {
@@ -6018,7 +7087,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
             }
         },
         "/invoices/{id}/void": {
@@ -6070,7 +7144,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
             }
         },
         "/payments": {
@@ -7313,6 +8392,18 @@
                         }
                     },
                     {
+                        "name": "meter_ids",
+                        "in": "query",
+                        "style": "form",
+                        "explode": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    {
                         "name": "offset",
                         "in": "query",
                         "schema": {
@@ -7630,7 +8721,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
             },
             "post": {
                 "tags": [
@@ -7671,6 +8767,11 @@
                         }
                     }
                 },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "x-codegen-request-body-name": "body"
             }
         },
@@ -7723,7 +8824,70 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            }
+        },
+        "/prices/units/search": {
+            "post": {
+                "tags": [
+                    "Price Units"
+                ],
+                "summary": "List price units by filter",
+                "description": "List price units by filter",
+                "requestBody": {
+                    "description": "Filter",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/priceunit.PriceUnitFilter"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.ListPriceUnitsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "x-codegen-request-body-name": "filter"
             }
         },
         "/prices/units/{id}": {
@@ -7775,7 +8939,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
             },
             "put": {
                 "tags": [
@@ -7837,6 +9006,11 @@
                         }
                     }
                 },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "x-codegen-request-body-name": "body"
             },
             "delete": {
@@ -7887,7 +9061,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
             }
         },
         "/prices/{id}": {
@@ -8133,7 +9312,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
             },
             "post": {
                 "tags": [
@@ -8184,6 +9368,11 @@
                         }
                     }
                 },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "x-codegen-request-body-name": "request"
             }
         },
@@ -8230,7 +9419,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
             }
         },
         "/secrets/integrations/linked": {
@@ -8261,7 +9455,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
             }
         },
         "/secrets/integrations/{id}": {
@@ -8307,7 +9506,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
             }
         },
         "/secrets/integrations/{provider}": {
@@ -8359,7 +9563,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
             },
             "post": {
                 "tags": [
@@ -8421,6 +9630,11 @@
                         }
                     }
                 },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "x-codegen-request-body-name": "request"
             }
         },
@@ -9127,6 +10341,11 @@
                         }
                     }
                 },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "x-codegen-request-body-name": "request"
             }
         },
@@ -9335,6 +10554,11 @@
                         }
                     }
                 },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "x-codegen-request-body-name": "request"
             }
         },
@@ -9529,7 +10753,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
             },
             "post": {
                 "tags": [
@@ -9580,6 +10809,11 @@
                         }
                     }
                 },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "x-codegen-request-body-name": "task"
             }
         },
@@ -9632,7 +10866,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
             }
         },
         "/tasks/{id}/process": {
@@ -9694,7 +10933,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
             }
         },
         "/tasks/{id}/status": {
@@ -9768,6 +11012,11 @@
                         }
                     }
                 },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "x-codegen-request-body-name": "status"
             }
         },
@@ -10940,6 +12189,11 @@
                         }
                     }
                 },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
                 "x-codegen-request-body-name": "request"
             }
         },
@@ -11069,7 +12323,12 @@
                             }
                         }
                     }
-                }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
             }
         },
         "/wallets/{id}/top-up": {
@@ -11421,6 +12680,79 @@
                         "ApiKeyAuth": []
                     }
                 ]
+            }
+        },
+        "/webhooks/stripe/{tenant_id}/{environment_id}": {
+            "post": {
+                "tags": [
+                    "Webhooks"
+                ],
+                "summary": "Handle Stripe webhook events",
+                "description": "Process incoming Stripe webhook events for payment status updates and customer creation",
+                "parameters": [
+                    {
+                        "name": "tenant_id",
+                        "in": "path",
+                        "description": "Tenant ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "environment_id",
+                        "in": "path",
+                        "description": "Environment ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "Stripe-Signature",
+                        "in": "header",
+                        "description": "Stripe webhook signature",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Webhook processed successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": true
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - missing parameters or invalid signature",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": true
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": true
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     },
@@ -11964,6 +13296,41 @@
                     }
                 }
             },
+            "dto.ConnectionResponse": {
+                "type": "object",
+                "properties": {
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "created_by": {
+                        "type": "string"
+                    },
+                    "environment_id": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "provider_type": {
+                        "$ref": "#/components/schemas/types.SecretProvider"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.Status"
+                    },
+                    "tenant_id": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "updated_by": {
+                        "type": "string"
+                    }
+                }
+            },
             "dto.CostBreakdownItem": {
                 "type": "object",
                 "properties": {
@@ -12393,6 +13760,25 @@
                     }
                 }
             },
+            "dto.CreateConnectionRequest": {
+                "required": [
+                    "name",
+                    "provider_type"
+                ],
+                "type": "object",
+                "properties": {
+                    "encrypted_secret_data": {
+                        "$ref": "#/components/schemas/types.ConnectionMetadata"
+                    },
+                    "name": {
+                        "maxLength": 255,
+                        "type": "string"
+                    },
+                    "provider_type": {
+                        "$ref": "#/components/schemas/types.SecretProvider"
+                    }
+                }
+            },
             "dto.CreateCostSheetRequest": {
                 "required": [
                     "meter_id",
@@ -12677,6 +14063,36 @@
                     },
                     "usage_reset_period": {
                         "$ref": "#/components/schemas/types.BillingPeriod"
+                    }
+                }
+            },
+            "dto.CreateEntityIntegrationMappingRequest": {
+                "required": [
+                    "entity_id",
+                    "entity_type",
+                    "provider_entity_id",
+                    "provider_type"
+                ],
+                "type": "object",
+                "properties": {
+                    "entity_id": {
+                        "maxLength": 255,
+                        "type": "string"
+                    },
+                    "entity_type": {
+                        "$ref": "#/components/schemas/types.IntegrationEntityType"
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "additionalProperties": true
+                    },
+                    "provider_entity_id": {
+                        "maxLength": 255,
+                        "type": "string"
+                    },
+                    "provider_type": {
+                        "maxLength": 50,
+                        "type": "string"
                     }
                 }
             },
@@ -13023,6 +14439,9 @@
                     },
                     "metadata": {
                         "$ref": "#/components/schemas/types.Metadata"
+                    },
+                    "payment_gateway": {
+                        "$ref": "#/components/schemas/types.PaymentGatewayType"
                     },
                     "payment_method_id": {
                         "type": "string"
@@ -14113,6 +15532,47 @@
                     "EntitlementSourceEntityTypeAddon"
                 ]
             },
+            "dto.EntityIntegrationMappingResponse": {
+                "type": "object",
+                "properties": {
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "created_by": {
+                        "type": "string"
+                    },
+                    "entity_id": {
+                        "type": "string"
+                    },
+                    "entity_type": {
+                        "$ref": "#/components/schemas/types.IntegrationEntityType"
+                    },
+                    "environment_id": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "provider_entity_id": {
+                        "type": "string"
+                    },
+                    "provider_type": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.Status"
+                    },
+                    "tenant_id": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "updated_by": {
+                        "type": "string"
+                    }
+                }
+            },
             "dto.EnvironmentResponse": {
                 "type": "object",
                 "properties": {
@@ -15018,6 +16478,26 @@
                     }
                 }
             },
+            "dto.ListConnectionsResponse": {
+                "type": "object",
+                "properties": {
+                    "connections": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.ConnectionResponse"
+                        }
+                    },
+                    "limit": {
+                        "type": "integer"
+                    },
+                    "offset": {
+                        "type": "integer"
+                    },
+                    "total": {
+                        "type": "integer"
+                    }
+                }
+            },
             "dto.ListCostSheetsResponse": {
                 "type": "object",
                 "properties": {
@@ -15096,6 +16576,20 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/dto.EntitlementResponse"
+                        }
+                    },
+                    "pagination": {
+                        "$ref": "#/components/schemas/types.PaginationResponse"
+                    }
+                }
+            },
+            "dto.ListEntityIntegrationMappingsResponse": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.EntityIntegrationMappingResponse"
                         }
                     },
                     "pagination": {
@@ -15486,6 +16980,15 @@
                     "failed_at": {
                         "type": "string"
                     },
+                    "gateway_metadata": {
+                        "$ref": "#/components/schemas/types.Metadata"
+                    },
+                    "gateway_payment_id": {
+                        "type": "string"
+                    },
+                    "gateway_tracking_id": {
+                        "type": "string"
+                    },
                     "id": {
                         "type": "string"
                     },
@@ -15498,6 +17001,9 @@
                     "metadata": {
                         "$ref": "#/components/schemas/types.Metadata"
                     },
+                    "payment_gateway": {
+                        "type": "string"
+                    },
                     "payment_method_id": {
                         "type": "string"
                     },
@@ -15506,6 +17012,9 @@
                     },
                     "payment_status": {
                         "$ref": "#/components/schemas/types.PaymentStatus"
+                    },
+                    "payment_url": {
+                        "type": "string"
                     },
                     "refunded_at": {
                         "type": "string"
@@ -15760,6 +17269,12 @@
                     "created_at": {
                         "type": "string"
                     },
+                    "created_by": {
+                        "type": "string"
+                    },
+                    "environment_id": {
+                        "type": "string"
+                    },
                     "id": {
                         "type": "string"
                     },
@@ -15775,7 +17290,13 @@
                     "symbol": {
                         "type": "string"
                     },
+                    "tenant_id": {
+                        "type": "string"
+                    },
                     "updated_at": {
+                        "type": "string"
+                    },
+                    "updated_by": {
                         "type": "string"
                     }
                 }
@@ -16866,6 +18387,15 @@
                     }
                 }
             },
+            "dto.UpdateConnectionRequest": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "maxLength": 255,
+                        "type": "string"
+                    }
+                }
+            },
             "dto.UpdateCostSheetRequest": {
                 "required": [
                     "id"
@@ -17030,10 +18560,28 @@
             "dto.UpdatePaymentRequest": {
                 "type": "object",
                 "properties": {
+                    "error_message": {
+                        "type": "string"
+                    },
+                    "failed_at": {
+                        "type": "string"
+                    },
+                    "gateway_payment_id": {
+                        "type": "string"
+                    },
                     "metadata": {
                         "$ref": "#/components/schemas/types.Metadata"
                     },
+                    "payment_gateway": {
+                        "type": "string"
+                    },
+                    "payment_method_id": {
+                        "type": "string"
+                    },
                     "payment_status": {
+                        "type": "string"
+                    },
+                    "succeeded_at": {
                         "type": "string"
                     }
                 }
@@ -17994,6 +19542,42 @@
                     }
                 }
             },
+            "priceunit.PriceUnitFilter": {
+                "type": "object",
+                "properties": {
+                    "environment_id": {
+                        "type": "string",
+                        "description": "EnvironmentID filters by specific environment ID"
+                    },
+                    "filters": {
+                        "type": "array",
+                        "description": "Filters allows complex filtering based on multiple fields",
+                        "items": {
+                            "$ref": "#/components/schemas/types.FilterCondition"
+                        }
+                    },
+                    "queryFilter": {
+                        "$ref": "#/components/schemas/types.QueryFilter"
+                    },
+                    "sort": {
+                        "type": "array",
+                        "description": "Sort allows sorting by multiple fields",
+                        "items": {
+                            "$ref": "#/components/schemas/types.SortCondition"
+                        }
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.Status"
+                    },
+                    "tenant_id": {
+                        "type": "string",
+                        "description": "TenantID filters by specific tenant ID"
+                    },
+                    "timeRangeFilter": {
+                        "$ref": "#/components/schemas/types.TimeRangeFilter"
+                    }
+                }
+            },
             "service.SyncPlanPricesResponse": {
                 "type": "object",
                 "properties": {
@@ -18414,6 +19998,71 @@
                     "BILLING_TIER_VOLUME",
                     "BILLING_TIER_SLAB"
                 ]
+            },
+            "types.ConnectionFilter": {
+                "type": "object",
+                "properties": {
+                    "connection_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "end_time": {
+                        "type": "string"
+                    },
+                    "expand": {
+                        "type": "string"
+                    },
+                    "filters": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/types.FilterCondition"
+                        }
+                    },
+                    "limit": {
+                        "maximum": 1000,
+                        "minimum": 1,
+                        "type": "integer"
+                    },
+                    "offset": {
+                        "minimum": 0,
+                        "type": "integer"
+                    },
+                    "order": {
+                        "type": "string",
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ]
+                    },
+                    "provider_type": {
+                        "$ref": "#/components/schemas/types.SecretProvider"
+                    },
+                    "sort": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/types.SortCondition"
+                        }
+                    },
+                    "start_time": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.Status"
+                    }
+                }
+            },
+            "types.ConnectionMetadata": {
+                "type": "object",
+                "properties": {
+                    "generic": {
+                        "$ref": "#/components/schemas/types.GenericConnectionMetadata"
+                    },
+                    "stripe": {
+                        "$ref": "#/components/schemas/types.StripeConnectionMetadata"
+                    }
+                }
             },
             "types.CouponCadence": {
                 "type": "string",
@@ -18859,6 +20508,34 @@
                     "AFTER"
                 ]
             },
+            "types.GenericConnectionMetadata": {
+                "type": "object",
+                "properties": {
+                    "data": {
+                        "type": "object",
+                        "additionalProperties": true
+                    }
+                }
+            },
+            "types.IntegrationEntityType": {
+                "type": "string",
+                "enum": [
+                    "customer",
+                    "plan",
+                    "invoice",
+                    "subscription",
+                    "payment",
+                    "credit_note"
+                ],
+                "x-enum-varnames": [
+                    "IntegrationEntityTypeCustomer",
+                    "IntegrationEntityTypePlan",
+                    "IntegrationEntityTypeInvoice",
+                    "IntegrationEntityTypeSubscription",
+                    "IntegrationEntityTypePayment",
+                    "IntegrationEntityTypeCreditNote"
+                ]
+            },
             "types.InvoiceBillingReason": {
                 "type": "string",
                 "enum": [
@@ -19059,24 +20736,40 @@
                     "PaymentDestinationTypeInvoice"
                 ]
             },
+            "types.PaymentGatewayType": {
+                "type": "string",
+                "enum": [
+                    "stripe",
+                    "razorpay",
+                    "finix"
+                ],
+                "x-enum-varnames": [
+                    "PaymentGatewayTypeStripe",
+                    "PaymentGatewayTypeRazorpay",
+                    "PaymentGatewayTypeFinix"
+                ]
+            },
             "types.PaymentMethodType": {
                 "type": "string",
                 "enum": [
                     "CARD",
                     "ACH",
                     "OFFLINE",
-                    "CREDITS"
+                    "CREDITS",
+                    "PAYMENT_LINK"
                 ],
                 "x-enum-varnames": [
                     "PaymentMethodTypeCard",
                     "PaymentMethodTypeACH",
                     "PaymentMethodTypeOffline",
-                    "PaymentMethodTypeCredits"
+                    "PaymentMethodTypeCredits",
+                    "PaymentMethodTypePaymentLink"
                 ]
             },
             "types.PaymentStatus": {
                 "type": "string",
                 "enum": [
+                    "INITIATED",
                     "PENDING",
                     "PROCESSING",
                     "SUCCEEDED",
@@ -19085,6 +20778,7 @@
                     "PARTIALLY_REFUNDED"
                 ],
                 "x-enum-varnames": [
+                    "PaymentStatusInitiated",
                     "PaymentStatusPending",
                     "PaymentStatusProcessing",
                     "PaymentStatusSucceeded",
@@ -19316,6 +21010,23 @@
                     "StatusDeleted",
                     "StatusArchived"
                 ]
+            },
+            "types.StripeConnectionMetadata": {
+                "type": "object",
+                "properties": {
+                    "account_id": {
+                        "type": "string"
+                    },
+                    "publishable_key": {
+                        "type": "string"
+                    },
+                    "secret_key": {
+                        "type": "string"
+                    },
+                    "webhook_secret": {
+                        "type": "string"
+                    }
+                }
             },
             "types.SubscriptionFilter": {
                 "type": "object",
