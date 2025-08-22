@@ -1,0 +1,546 @@
+---
+title: "Troubleshooting Event Ingestion"
+description: "Comprehensive guide to fixing common event ingestion issues in Flexprice"
+---
+
+This guide helps you diagnose and fix common issues with event ingestion in Flexprice. Follow the systematic approach below to identify and resolve problems.
+
+## Quick Diagnostic Checklist
+
+Before diving into specific issues, run through this checklist:
+
+- [ ] Feature exists and is active
+- [ ] Event Name matches exactly (case-sensitive)
+- [ ] External Customer ID exists in Flexprice
+- [ ] API key is valid and has proper permissions
+- [ ] Events are being sent to the correct endpoint
+- [ ] Required fields are present in event payload
+- [ ] Aggregation field exists in event properties (if required)
+- [ ] Customer has an active subscription with the feature
+
+## Common Issues and Solutions
+
+### 1. Events Not Appearing in Dashboard
+
+**Symptoms**: Events sent successfully (202 response) but don't show up in Events dashboard.
+
+**Possible Causes and Solutions:**
+
+#### A. Invalid Event Name
+
+**Cause**: Event Name in your event doesn't match the feature configuration.
+
+**Check**:
+
+1. Go to **Product Catalog** → **Features**
+2. Find your feature and note the exact Event Name
+3. Compare with what you're sending in events
+
+**Fix**:
+
+```json
+// ❌ Wrong
+{
+  "event_name": "Model.Usage",
+  "external_customer_id": "cust_123"
+}
+
+// ✅ Correct
+{
+  "event_name": "model.usage",
+  "external_customer_id": "cust_123"
+}
+```
+
+#### B. Customer Doesn't Exist
+
+**Cause**: The external_customer_id doesn't exist in Flexprice.
+
+**Check**:
+
+1. Go to **Customers** section
+2. Search for your external_customer_id
+3. Verify the customer exists and is active
+
+**Fix**:
+
+- Create the customer first, or
+- Use the correct external_customer_id
+
+#### C. Feature Not Active
+
+**Cause**: The feature exists but is not active.
+
+**Check**:
+
+1. Go to **Product Catalog** → **Features**
+2. Find your feature
+3. Verify status is "Active"
+
+**Fix**:
+
+- Activate the feature if it's archived
+
+### 2. Wrong Aggregation Values
+
+**Symptoms**: Events appear but billing shows incorrect quantities.
+
+**Possible Causes and Solutions:**
+
+#### A. Aggregation Field Name Mismatch
+
+**Cause**: Property name in events doesn't match the Aggregation Field.
+
+**Check**:
+
+1. Go to your feature configuration
+2. Note the exact Aggregation Field name
+3. Compare with your event properties
+
+**Fix**:
+
+```json
+// Feature config: Aggregation Field = "credits"
+
+// ❌ Wrong
+{
+  "event_name": "model.usage",
+  "external_customer_id": "cust_123",
+  "properties": {
+    "tokens": 2  // Wrong field name
+  }
+}
+
+// ✅ Correct
+{
+  "event_name": "model.usage",
+  "external_customer_id": "cust_123",
+  "properties": {
+    "credits": 2  // Correct field name
+  }
+}
+```
+
+#### B. Wrong Data Type
+
+**Cause**: Using strings instead of numbers for numeric aggregation.
+
+**Check**:
+
+- Sum/Max aggregations require numbers
+- Unique Count can use strings or numbers
+
+**Fix**:
+
+```json
+// ❌ Wrong (for Sum aggregation)
+{
+  "properties": {
+    "credits": "2"  // String instead of number
+  }
+}
+
+// ✅ Correct
+{
+  "properties": {
+    "credits": 2  // Number
+  }
+}
+```
+
+#### C. Missing Properties
+
+**Cause**: Events don't include the required aggregation field.
+
+**Check**:
+
+- Every event must include the aggregation field
+- Check for typos in property names
+
+**Fix**:
+
+```json
+// ❌ Wrong (missing properties for Sum aggregation)
+{
+  "event_name": "model.usage",
+  "external_customer_id": "cust_123"
+  // Missing properties object
+}
+
+// ✅ Correct
+{
+  "event_name": "model.usage",
+  "external_customer_id": "cust_123",
+  "properties": {
+    "credits": 2
+  }
+}
+```
+
+### 3. No Charges in Billing
+
+**Symptoms**: Events are processed correctly but no charges appear in invoices.
+
+**Possible Causes and Solutions:**
+
+#### A. Feature Not in Plan
+
+**Cause**: The feature exists but isn't added to any pricing plan.
+
+**Check**:
+
+1. Go to **Product Catalog** → **Plans**
+2. Find the plan your customer is subscribed to
+3. Verify the feature is included
+
+**Fix**:
+
+- Add the feature to the plan with appropriate pricing
+
+#### B. Customer Not Subscribed
+
+**Cause**: Customer exists but doesn't have an active subscription.
+
+**Check**:
+
+1. Go to **Customers** → Find your customer
+2. Check subscription status
+3. Verify the subscription includes the feature
+
+**Fix**:
+
+- Create a subscription for the customer
+- Ensure the subscription includes the feature
+
+#### C. Usage Below Free Tier
+
+**Cause**: Usage is within the free tier limit.
+
+**Check**:
+
+1. Review plan configuration
+2. Check free tier settings
+3. Verify usage quantities
+
+**Fix**:
+
+- Adjust free tier limits if needed
+- Send more usage to exceed free tier
+
+#### D. Wrong Billing Period
+
+**Cause**: Events are in a different billing period than expected.
+
+**Check**:
+
+1. Review subscription billing cycle
+2. Check event timestamps
+3. Verify billing period dates
+
+**Fix**:
+
+- Wait for the correct billing period
+- Check upcoming invoices for the right period
+
+### 4. API Errors
+
+**Symptoms**: Getting error responses when sending events.
+
+#### A. 400 Bad Request
+
+**Common Causes**:
+
+- Missing required fields
+- Invalid JSON format
+- Invalid field values
+
+**Debug**:
+
+```bash
+# Check your payload
+curl -v --request POST \
+  --url https://api.cloud.flexprice.io/v1/events \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: <your_api_key>' \
+  --data '{
+    "event_name": "model.usage",
+    "external_customer_id": "cust_123",
+    "properties": {
+      "credits": 2
+    }
+  }'
+```
+
+**Common Fixes**:
+
+```json
+// ❌ Missing required field
+{
+  "external_customer_id": "cust_123"
+  // Missing event_name
+}
+
+// ✅ Complete payload
+{
+  "event_name": "model.usage",
+  "external_customer_id": "cust_123",
+  "properties": {
+    "credits": 2
+  }
+}
+```
+
+#### B. 401 Unauthorized
+
+**Cause**: Invalid or missing API key.
+
+**Fix**:
+
+1. Verify your API key is correct
+2. Check API key permissions
+3. Ensure the key is active
+
+#### C. 429 Too Many Requests
+
+**Cause**: Rate limit exceeded.
+
+**Fix**:
+
+- Implement exponential backoff
+- Use bulk events for high volume
+- Reduce request frequency
+
+### 5. Unexpected Usage Resets
+
+**Symptoms**: Usage resets when it shouldn't.
+
+#### A. Wrong Usage Reset Setting
+
+**Check**:
+
+1. Go to your feature configuration
+2. Review Usage Reset setting:
+   - **Periodic**: Resets each billing cycle
+   - **Cumulative**: Keeps growing
+
+**Fix**:
+
+- Change Usage Reset setting if needed
+- Note: This may require creating a new feature
+
+#### B. Subscription Changes
+
+**Cause**: Subscription was modified or recreated.
+
+**Check**:
+
+1. Review subscription history
+2. Check for plan changes
+3. Verify billing cycle alignment
+
+### 6. Duplicate Events
+
+**Symptoms**: Same event counted multiple times.
+
+**Causes**:
+
+- Retrying failed requests
+- Multiple event sources
+- Application bugs
+
+**Solutions**:
+
+- Use event_id for idempotency
+- Implement proper retry logic
+- Check for duplicate event sources
+
+## Systematic Debugging Approach
+
+### Step 1: Verify Event Ingestion
+
+1. Send a test event
+2. Check API response (should be 202 Accepted)
+3. Look for the event in Events dashboard
+4. Verify the payload is correct
+
+### Step 2: Check Feature Configuration
+
+1. Confirm Event Name matches exactly
+2. Verify Aggregation Function is correct
+3. Check Aggregation Field name
+4. Review Usage Reset setting
+
+### Step 3: Validate Customer Setup
+
+1. Ensure customer exists
+2. Check external_customer_id matches
+3. Verify subscription is active
+4. Confirm plan includes the feature
+
+### Step 4: Review Billing Configuration
+
+1. Check plan pricing settings
+2. Verify free tier configuration
+3. Review billing cycle dates
+4. Check upcoming invoices
+
+## Debugging Tools
+
+### Event Debugger
+
+Use the Event Debugger for real-time insights:
+
+1. Go to **Usage Tracking** → **Event Debugger**
+2. Monitor events as they're processed
+3. Look for errors or warnings
+
+### Events Dashboard
+
+Check the Events dashboard for:
+
+1. Event processing status
+2. Complete event payloads
+3. Timestamp information
+4. Customer mapping
+
+### Query Tool
+
+Use the Query tool to:
+
+1. View aggregated usage
+2. Check billing period alignment
+3. Verify aggregation calculations
+
+## Testing Your Fix
+
+After implementing a fix:
+
+1. **Send Test Events**
+
+   ```bash
+   curl --request POST \
+     --url https://api.cloud.flexprice.io/v1/events \
+     --header 'Content-Type: application/json' \
+     --header 'x-api-key: <your_api_key>' \
+     --data '{
+       "event_name": "model.usage",
+       "external_customer_id": "cust-test-customer",
+       "properties": {
+         "credits": 1
+       }
+     }'
+   ```
+
+2. **Verify Event Processing**
+
+   - Check Events dashboard
+   - Confirm payload is correct
+   - Verify aggregation values
+
+3. **Check Billing Impact**
+   - Review upcoming invoices
+   - Confirm charges appear correctly
+   - Verify amounts are accurate
+
+## Prevention Best Practices
+
+### 1. Test Before Production
+
+- Always test with a small number of events
+- Use test customers and features
+- Verify the complete flow end-to-end
+
+### 2. Monitor Regularly
+
+- Check Events dashboard daily
+- Review usage patterns weekly
+- Monitor billing accuracy monthly
+
+### 3. Use Consistent Naming
+
+- Standardize Event Names across your system
+- Use consistent external_customer_id format
+- Follow naming conventions for properties
+
+### 4. Implement Proper Error Handling
+
+- Handle API errors gracefully
+- Implement retry logic with backoff
+- Log failed events for debugging
+
+### 5. Document Your Setup
+
+- Keep records of feature configurations
+- Document Event Names and field mappings
+- Maintain customer ID mappings
+
+## Getting Additional Help
+
+If you're still experiencing issues:
+
+1. **Gather Information**:
+
+   - Event payload examples
+   - Feature configuration screenshots
+   - Error messages and timestamps
+   - Customer and subscription details
+
+2. **Check Documentation**:
+
+   - Review relevant guides
+   - Check API reference
+   - Look for similar issues
+
+3. **Contact Support**:
+   - Provide specific error details
+   - Include relevant screenshots
+   - Share event examples (with sensitive data removed)
+
+## Common Configuration Examples
+
+### API Usage Tracking
+
+```json
+// Feature: API Calls (Count)
+{
+  "event_name": "api.calls",
+  "external_customer_id": "cust_123"
+}
+
+// Feature: API Usage (Sum of tokens)
+{
+  "event_name": "api.usage",
+  "external_customer_id": "cust_123",
+  "properties": {
+    "tokens": 150
+  }
+}
+```
+
+### Storage Usage
+
+```json
+// Feature: Storage (Sum of GB)
+{
+  "event_name": "storage.usage",
+  "external_customer_id": "cust_123",
+  "properties": {
+    "gb": 1.5
+  }
+}
+```
+
+### User Activity
+
+```json
+// Feature: Active Users (Unique Count)
+{
+  "event_name": "active.users",
+  "external_customer_id": "cust_123",
+  "properties": {
+    "user_id": "user_456"
+  }
+}
+```
+
+Remember: The key to successful event ingestion is attention to detail. Small differences in naming, data types, or configuration can cause significant issues. Always test thoroughly and monitor continuously.

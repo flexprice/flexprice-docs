@@ -1,0 +1,76 @@
+---
+title: "Event Ingestion Overview"
+description: "Learn how to send usage events to Flexprice for metered billing"
+---
+
+Event ingestion is the core mechanism that powers Flexprice's metered billing system. It allows you to send usage data from your application to Flexprice, which then automatically calculates charges and generates invoices based on your pricing plans.
+
+## What is Event Ingestion?
+
+When you have a **Metered Feature** in Flexprice (like API calls, storage usage, or credits consumed), you need to tell Flexprice when and how much your customers are using that feature. This is done by sending **events** - JSON payloads that describe usage activity.
+
+## How It Works
+
+1. **Create a Metered Feature** - Define what you want to track (e.g., "model.usage", "api.calls")
+2. **Send Events** - Your application sends usage data to Flexprice via API
+3. **Validate Events** - Check that events are being received correctly
+4. **Link to Billing** - Connect the feature to a pricing plan and customer subscription
+5. **Automatic Invoicing** - Flexprice calculates charges and generates invoices
+
+## Key Concepts
+
+### Event
+
+A JSON payload containing usage information:
+
+- Who used the feature (`external_customer_id`)
+- What feature was used (`event_name`)
+- How much was used (`properties`)
+- When it happened (`timestamp`)
+
+### Aggregation
+
+How Flexprice combines multiple events into a single quantity for billing:
+
+- **Count** - Number of events
+- **Sum** - Total of a numeric property
+- **Max** - Highest value seen
+- **Unique Count** - Number of distinct values
+- **Latest** - Most recent value
+
+### Usage Reset
+
+How usage accumulates over time:
+
+- **Periodic** - Resets each billing cycle (e.g., monthly API calls)
+- **Cumulative** - Keeps growing (e.g., total storage used)
+
+## Quick Start
+
+[Create Your First Metered Feature](Creating%20a%20metered%20feature.md) - Set up what you want to track
+
+[Send Your First Event](Sending%20events.md) - Learn how to send usage data
+
+[Validate and Debug](Validating%20events.md) - Ensure events are working correctly
+
+[Connect to Billing](Connecting%20to%20billing.md) - Turn usage into invoices
+
+## Common Use Cases
+
+- **API Usage** - Track API calls, requests, or tokens consumed
+- **Storage** - Monitor file storage, database usage, or bandwidth
+- **AI/ML** - Count model inferences, training hours, or data processed
+- **User Activity** - Track logins, feature usage, or time spent
+- **Compute Resources** - Monitor CPU time, memory usage, or GPU hours
+
+## What You'll Learn
+
+This guide will walk you through the complete event ingestion workflow, from setting up your first metered feature to seeing charges appear on customer invoices. By the end, you'll understand:
+
+- How to configure metered features correctly
+- The exact format for sending events
+- How to validate that events are being processed
+- How usage flows into billing and invoicing
+- Common pitfalls and how to avoid them
+
+Ready to get started? Begin with [Creating a Metered Feature](Creating%20a%20metered%20feature.md).
