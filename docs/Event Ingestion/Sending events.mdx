@@ -3,7 +3,9 @@ title: "Sending Events"
 description: "Learn how to send usage events to Flexprice via API"
 ---
 
-Once you have created a metered feature, you can start sending events to Flexprice. Events are JSON payloads that describe usage activity and are sent via HTTP POST requests.
+# Sending Events
+
+Once you have created a metered feature, you can start transmitting events to Flexprice. Events are JSON payloads that describe usage activity and are transmitted via HTTP POST requests.
 
 ## Prerequisites
 
@@ -136,7 +138,7 @@ curl --request POST \
 
 ## Bulk Events
 
-Send multiple events in a single request for better performance:
+Transmit multiple events in a single request for better performance:
 
 ```bash
 curl --request POST \
@@ -182,7 +184,7 @@ async function sendEvent() {
   });
 
   const result = await response.json();
-  console.log("Event sent:", result);
+  console.log("Event transmitted:", result);
 }
 ```
 
@@ -209,7 +211,7 @@ def send_event():
 
     response = requests.post(url, headers=headers, json=data)
     result = response.json()
-    print("Event sent:", result)
+    print("Event transmitted:", result)
 ```
 
 ### Go
@@ -262,7 +264,7 @@ func sendEvent() error {
     }
     defer resp.Body.Close()
 
-    fmt.Printf("Event sent with status: %d\n", resp.StatusCode)
+    fmt.Printf("Event transmitted with status: %d\n", resp.StatusCode)
     return nil
 }
 ```
@@ -299,7 +301,7 @@ function sendEvent() {
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    echo "Event sent with status: $httpCode\n";
+    echo "Event transmitted with status: $httpCode\n";
     echo "Response: $response\n";
 }
 ```
@@ -315,6 +317,7 @@ function sendEvent() {
   ```
 
 - **Strings**: Use for Unique Count, Latest aggregations
+
   ```json
   "properties": { "user_id": "user_123" }
   ```
@@ -421,7 +424,7 @@ function sendEvent() {
 
 ### 1. Validate Your Configuration
 
-Before sending production events:
+Before transmitting production events:
 
 - Verify Event Name matches your feature exactly
 - Confirm Aggregation Field exists in your events
@@ -447,7 +450,7 @@ async function sendEventWithRetry(eventData, maxRetries = 3) {
       }
 
       if (response.status === 429) {
-        // Rate limited - wait and retry
+        // Rate limited — wait and retry
         await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
         continue;
       }
@@ -466,7 +469,7 @@ async function sendEventWithRetry(eventData, maxRetries = 3) {
 
 ### 3. Use Bulk Events for High Volume
 
-When sending many events, use the bulk endpoint:
+When transmitting many events, use the bulk endpoint:
 
 ```javascript
 const events = [
@@ -487,7 +490,7 @@ const response = await fetch("https://api.cloud.flexprice.io/v1/events/bulk", {
 
 ### 4. Include Relevant Metadata
 
-Add useful properties for debugging and analysis:
+Add useful properties to your events for debugging:
 
 ```json
 {
@@ -495,21 +498,25 @@ Add useful properties for debugging and analysis:
   "external_customer_id": "cust_123",
   "properties": {
     "credits": 2,
-    "model": "gpt-4",
-    "region": "us-east-1",
-    "request_id": "req_abc123"
+    "request_id": "req_abc123",
+    "version": "1.0"
   },
-  "source": "api",
-  "timestamp": "2025-08-22T07:05:49.441Z"
+  "source": "api"
 }
 ```
+
+## Related Documentation
+
+- **[API Reference](API%20Reference.mdx)** — Complete API documentation
+- **[Validating Events](Validating%20events.mdx)** — Check that events are being processed correctly
+- **[Troubleshooting](Troubleshooting.mdx)** — Fix common issues
 
 ## Next Steps
 
 After sending events, you should:
 
-1. [Validate Events](Validating%20events.md) - Check that events are being processed correctly
-2. [Connect to Billing](Connecting%20to%20billing.md) - Set up pricing and see usage in invoices
+1. **[Validate Events](Validating%20events.mdx)** - Verify that events are being processed correctly
+2. **[Connect to Billing](Connecting%20to%20billing.mdx)** - Set up pricing and subscriptions
 
 ## Troubleshooting
 
@@ -521,7 +528,7 @@ After sending events, you should:
 ### "Customer not found" error
 
 - Ensure the customer exists in Flexprice
-- Check that external_ccustomer_id matches exactly
+- Check that `external_customer_id` matches exactly
 
 ### "Missing required field" error
 
@@ -530,6 +537,6 @@ After sending events, you should:
 
 ### Events not appearing in dashboard
 
-- Check the [Event Debugger](Event%20debugger.md) for processing status
+- Check the **[Event Debugger](Event%20debugger.mdx)** for processing status
 - Verify Event Name and Aggregation Field configuration
 - Ensure customer has an active subscription with the feature

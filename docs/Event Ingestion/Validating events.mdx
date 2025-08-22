@@ -3,11 +3,11 @@ title: "Validating Events"
 description: "Learn how to verify that events are being processed correctly in Flexprice"
 ---
 
-After sending events to Flexprice, it's crucial to verify that they're being processed correctly. This guide shows you how to check event ingestion, debug issues, and ensure your billing calculations are accurate.
+After transmitting events to Flexprice, it's crucial to verify that they're being processed correctly. This guide shows you how to check event ingestion, debug issues, and ensure your billing calculations are accurate.
 
 ## Prerequisites
 
-- Events have been sent to Flexprice
+- Events have been transmitted to Flexprice
 - Access to the Flexprice Admin Dashboard
 - Knowledge of your feature configuration
 
@@ -31,13 +31,13 @@ You'll see a list of all ingested events with key information:
 
 ### 2. View Event Details
 
-Click on any event in the list to see the complete payload that was sent:
+Click on any event in the list to view the complete payload that was transmitted:
 
 ![Event Details Modal](/public/images/docs/Event%20Ingestion/event_details.png)
 
-This shows you the exact JSON payload that Flexprice received, including:
+This displays the exact JSON payload that Flexprice received, including:
 
-- All properties sent with the event
+- All properties transmitted with the event
 - Timestamp information
 - Customer details
 - Any additional metadata
@@ -63,7 +63,7 @@ This is especially useful for debugging issues with event ingestion.
 1. Go to **Product Catalog** → **Features**
 2. Find your metered feature
 3. Verify the configuration:
-   - **Event Name** matches what you're sending
+   - **Event Name** matches what you're transmitting
    - **Aggregation Function** is set correctly
    - **Aggregation Field** exists in your event properties
 
@@ -135,7 +135,7 @@ In the Events dashboard, check that:
 
 ### Step-by-Step Validation
 
-1. **Send a Test Event**
+1. **Transmit a Test Event**
 
    ```bash
    curl --request POST \
@@ -154,7 +154,7 @@ In the Events dashboard, check that:
 2. **Check Event Ingestion**
 
    - Go to Events dashboard
-   - Look for your test event
+   - Locate your test event
    - Verify the payload is correct
 
 3. **Verify Aggregation**
@@ -173,32 +173,32 @@ Use this checklist to systematically debug event ingestion issues:
 
 ### ✅ Event Configuration
 
-- [ ] Feature exists and is active
-- [ ] Event Name matches exactly
-- [ ] Aggregation Function is correct
-- [ ] Aggregation Field is set (if required)
+- Feature exists and is active
+- Event Name matches exactly
+- Aggregation Function is correct
+- Aggregation Field is set (if required)
 
 ### ✅ Event Payload
 
-- [ ] All required fields present
-- [ ] Event Name matches feature
-- [ ] External Customer ID exists
-- [ ] Properties contain aggregation field
-- [ ] Property values are correct data type
+- All required fields present
+- Event Name matches feature
+- External Customer ID exists
+- Properties contain aggregation field
+- Property values are correct data type
 
 ### ✅ Customer Setup
 
-- [ ] Customer exists in Flexprice
-- [ ] External Customer ID matches
-- [ ] Customer has active subscription
-- [ ] Subscription includes the feature
+- Customer exists in Flexprice
+- External Customer ID matches
+- Customer has active subscription
+- Subscription includes the feature
 
 ### ✅ Billing Configuration
 
-- [ ] Feature is added to a plan
-- [ ] Plan has pricing for the feature
-- [ ] Customer is subscribed to the plan
-- [ ] Usage Reset setting is correct
+- Feature is added to a plan
+- Plan has pricing for the feature
+- Customer is subscribed to the plan
+- Usage Reset setting is correct
 
 ## Advanced Validation
 
@@ -217,7 +217,7 @@ You can filter events by customer to see all usage for a specific account:
 3. Choose the customer and time period
 4. View aggregated usage values
 
-This shows you how Flexprice is calculating the total usage for billing.
+This displays how Flexprice is calculating the total usage for billing.
 
 ![Query Tab Event Preview](/public/images/docs/Event%20Ingestion/query_tab_event_preview.png)
 
@@ -235,7 +235,7 @@ For **Cumulative** usage reset:
 
 ## Troubleshooting Common Scenarios
 
-### Scenario 1: Events Sent but Not Counted
+### Scenario 1: Events Transmitted but Not Counted
 
 **Symptoms**: Events appear in dashboard but don't affect billing
 
@@ -259,7 +259,7 @@ For **Cumulative** usage reset:
 
 ### Scenario 3: Events Missing from Dashboard
 
-**Symptoms**: Events not appearing in Events list
+**Symptoms**: Events not visible in Events list
 
 **Check**:
 
@@ -322,15 +322,15 @@ Consider setting up alerts for:
 
 After validating your events:
 
-1. [Connect to Billing](Connecting%20to%20billing.md) - Set up pricing and subscriptions
-2. [Monitor Usage](Monitoring%20usage.md) - Track usage patterns and trends
-3. [Optimize Performance](Optimizing%20performance.md) - Improve event ingestion efficiency
+1. **[Connect to Billing](Connecting%20to%20billing.mdx)** - Set up pricing and subscriptions
+2. **[Monitor Usage](Monitoring%20usage.mdx)** - Track usage patterns and trends
+3. **[Optimize Performance](Optimizing%20performance.mdx)** - Improve event ingestion efficiency
 
 ## Getting Help
 
 If you're still experiencing issues after following this validation guide:
 
-1. Check the [Event Debugger](Event%20debugger.md) for detailed error messages
+1. Check the **[Event Debugger](Event%20debugger.mdx)** for detailed error messages
 2. Review your feature configuration carefully
 3. Test with a simple event payload
 4. Contact support with specific error messages and event examples

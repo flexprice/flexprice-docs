@@ -3,7 +3,9 @@ title: "Creating a Metered Feature"
 description: "Step-by-step guide to create a metered feature for event ingestion"
 ---
 
-Before you can send events to Flexprice, you need to create a **Metered Feature**. This feature defines what you want to track and how Flexprice should process the incoming events.
+# Creating a Metered Feature
+
+Before you can transmit events to Flexprice, you need to create a **Metered Feature**. This feature defines what you want to track and how Flexprice should process the incoming events.
 
 ## Prerequisites
 
@@ -39,7 +41,7 @@ The **Event Name** is the unique identifier that connects your events to this fe
 - **Must match exactly** what you send in your events
 - Use lowercase with dots (e.g., `model.usage`, `api.calls`, `storage.gb`)
 
-**Example**: If you set Event Name to `model.usage`, every event you send must have `"event_name": "model.usage"`.
+**Example**: If you set Event Name to `model.usage`, every event you transmit must have `"event_name": "model.usage"`.
 
 ![Event Name Configuration](/public/images/docs/Event%20Ingestion/setting_event_name.png)
 
@@ -47,15 +49,15 @@ The **Event Name** is the unique identifier that connects your events to this fe
 
 Select how you want to measure usage:
 
-- **Count**: Counts the number of events (no property required)
-- **Sum**: Adds up values from a specific property
-- **Max**: Takes the highest value seen in the billing period
-- **Unique Count**: Counts unique values of a property
-- **Latest**: Takes the most recent value sent
+- **Count** — Counts the number of events (no property required)
+- **Sum** — Adds up values from a specific property
+- **Max** — Takes the highest value seen in the billing period
+- **Unique Count** — Counts unique values of a property
+- **Latest** — Takes the most recent value sent
 
 **Example**: If you want to track total credits consumed, choose **Sum**.
 
-![Aggregation Function Selection](/public/images/docs/Product%20catalogue/Features/Creating%20a%20feature/Screenshot_2025-03-08_at_9.25.27_PM.png)
+![Aggregation Function Selection](/public/images/docs/Event%20Ingestion/aggregation_field.png)
 
 ### 5. Set Aggregation Field (if required)
 
@@ -83,10 +85,10 @@ If you selected Sum, Max, Latest, or Unique Count, you must specify which proper
 
 Choose how usage accumulates over time:
 
-- **Periodic**: Usage resets at the start of each billing cycle
+- **Periodic** — Usage resets at the start of each billing cycle
   - Good for: API calls, monthly limits, recurring usage
   - Example: Customer gets 1000 API calls per month
-- **Cumulative**: Usage keeps growing across billing cycles
+- **Cumulative** — Usage keeps growing across billing cycles
   - Good for: Storage usage, lifetime metrics
   - Example: Total storage used since account creation
 
@@ -125,7 +127,7 @@ Once saved, you'll see:
 - **Event Name**: The exact string to use in your events
 - **Aggregation Details**: How the feature processes events
 
-**Important**: Note down the **Event Name** and **Aggregation Field** - you'll need these when sending events.
+**Important**: Note down the **Event Name** and **Aggregation Field** - you'll need these when transmitting events.
 
 ## Common Configuration Examples
 
@@ -166,26 +168,31 @@ Once saved, you'll see:
 
 - **Cannot be changed** after creation
 - Must be **unique** across all features
-- **Case sensitive** - `api.calls` ≠ `API.calls`
+- **Case sensitive** — `api.calls` ≠ `API.calls`
 
 ### Aggregation Field
 
 - **Must match exactly** the property name in your events
-- **Case sensitive** - `credits` ≠ `Credits`
+- **Case sensitive** — `credits` ≠ `Credits`
 - **Required** for Sum, Max, Latest, and Unique Count functions
 
 ### Testing
 
-- Always test your feature configuration before sending production events
-- Use the [Event Debugger](Event%20debugger.md) to validate your setup
+- Always test your feature configuration before transmitting production events
+- Use the **[Event Debugger](Event%20debugger.mdx)** to validate your setup
+
+## Related Documentation
+
+- **[Features Overview](Product%20catalogue/Features/Overview.mdx)** — Learn about different feature types
+- **[Aggregation Functions](Product%20catalogue/Features/Overview.mdx#aggregation)** — Understand how data is processed
 
 ## Next Steps
 
 Now that you have a metered feature, you're ready to:
 
-1. [Send Events](Sending%20events.md) - Learn how to send usage data
-2. [Validate Events](Validating%20events.md) - Ensure events are being processed correctly
-3. [Connect to Billing](Connecting%20to%20billing.md) - Set up pricing and subscriptions
+1. **[Send Events](Sending%20events.mdx)** - Learn how to transmit usage data
+2. **[Validate Events](Validating%20events.mdx)** - Ensure events are being processed correctly
+3. **[Connect to Billing](Connecting%20to%20billing.mdx)** - Set up pricing and subscriptions
 
 ## Troubleshooting
 
@@ -193,7 +200,7 @@ Now that you have a metered feature, you're ready to:
 
 - Check that Event Name matches exactly
 - Verify Aggregation Field exists in your event properties
-- Ensure the customer exists with the correct external_ccustomer_id
+- Ensure the customer exists with the correct `external_customer_id`
 
 ### "Wrong aggregation values"
 
@@ -205,4 +212,6 @@ Now that you have a metered feature, you're ready to:
 
 - Event Name is immutable after creation
 - Create a new feature with the correct name
-- Update your application to send events with the new name
+- Update your application to transmit events with the new name
+
+For more detailed troubleshooting, see our **[Troubleshooting Guide](Troubleshooting.mdx)**.
