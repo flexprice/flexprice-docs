@@ -6276,6 +6276,7 @@
                                     "PENDING",
                                     "PROCESSING",
                                     "SUCCEEDED",
+                                    "OVERPAID",
                                     "FAILED",
                                     "REFUNDED",
                                     "PARTIALLY_REFUNDED"
@@ -9075,7 +9076,7 @@
                     "Prices"
                 ],
                 "summary": "Get a price by ID",
-                "description": "Get a price by ID",
+                "description": "Get a price by ID with expanded meter and price unit information",
                 "parameters": [
                     {
                         "name": "id",
@@ -14425,6 +14426,15 @@
                     "amount": {
                         "type": "number"
                     },
+                    "cancel_url": {
+                        "type": "string"
+                    },
+                    "connection_id": {
+                        "type": "string"
+                    },
+                    "connection_name": {
+                        "type": "string"
+                    },
                     "currency": {
                         "type": "string"
                     },
@@ -14452,6 +14462,9 @@
                     "process_payment": {
                         "type": "boolean",
                         "default": true
+                    },
+                    "success_url": {
+                        "type": "string"
                     }
                 }
             },
@@ -14614,6 +14627,9 @@
                     "lookup_key": {
                         "type": "string"
                     },
+                    "metadata": {
+                        "$ref": "#/components/schemas/types.Metadata"
+                    },
                     "name": {
                         "type": "string"
                     },
@@ -14728,13 +14744,16 @@
                 "type": "object",
                 "properties": {
                     "flat_amount": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "flat_amount is the flat amount for the given tier (optional)\nApplied on top of unit_amount*quantity. Useful for cases like \"2.7$ + 5c\""
                     },
                     "unit_amount": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "unit_amount is the amount per unit for the given tier"
                     },
                     "up_to": {
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "up_to is the quantity up to which this tier applies. It is null for the last tier.\nIMPORTANT: Tier boundaries are INCLUSIVE.\n- If up_to is 1000, then quantity less than or equal to 1000 belongs to this tier\n- This behavior is consistent across both VOLUME and SLAB tier modes"
                     }
                 }
             },
@@ -14800,6 +14819,9 @@
                     "billing_period_count": {
                         "minimum": 1,
                         "type": "integer"
+                    },
+                    "collection_method": {
+                        "$ref": "#/components/schemas/types.CollectionMethod"
                     },
                     "commitment_amount": {
                         "type": "number",
@@ -16382,6 +16404,10 @@
                     "metadata": {
                         "$ref": "#/components/schemas/types.Metadata"
                     },
+                    "overpaid_amount": {
+                        "type": "number",
+                        "description": "overpaid_amount is the amount overpaid if payment_status is OVERPAID (amount_paid - total)"
+                    },
                     "paid_at": {
                         "type": "string",
                         "description": "paid_at is the timestamp when this invoice was paid"
@@ -17069,6 +17095,9 @@
                     "lookup_key": {
                         "type": "string"
                     },
+                    "metadata": {
+                        "$ref": "#/components/schemas/types.Metadata"
+                    },
                     "name": {
                         "type": "string"
                     },
@@ -17200,6 +17229,9 @@
                     },
                     "price_unit_type": {
                         "$ref": "#/components/schemas/types.PriceUnitType"
+                    },
+                    "pricing_unit": {
+                        "$ref": "#/components/schemas/dto.PriceUnitResponse"
                     },
                     "status": {
                         "$ref": "#/components/schemas/types.Status"
@@ -18819,6 +18851,9 @@
                     "lookup_key": {
                         "type": "string"
                     },
+                    "metadata": {
+                        "$ref": "#/components/schemas/types.Metadata"
+                    },
                     "name": {
                         "type": "string"
                     },
@@ -19517,15 +19552,15 @@
                 "properties": {
                     "flat_amount": {
                         "type": "number",
-                        "description": "FlatAmount is the flat amount for the given tier and it is applied\non top of the unit amount*quantity. It solves cases in banking like 2.7% + 5c"
+                        "description": "flat_amount is the flat amount for the given tier (optional)\nApplied on top of unit_amount*quantity. Useful for cases like \"2.7$ + 5c\""
                     },
                     "unit_amount": {
                         "type": "number",
-                        "description": "UnitAmount is the amount per unit for the given tier"
+                        "description": "unit_amount is the amount per unit for the given tier"
                     },
                     "up_to": {
                         "type": "integer",
-                        "description": "Upto is the quantity up to which this tier applies. It is null for the last tier"
+                        "description": "up_to is the quantity up to which this tier applies. It is null for the last tier.\nIMPORTANT: Tier boundaries are INCLUSIVE.\n- If up_to is 1000, then quantity less than or equal to 1000 belongs to this tier\n- This behavior is consistent across both VOLUME and SLAB tier modes"
                     }
                 }
             },
@@ -19997,6 +20032,17 @@
                 "x-enum-varnames": [
                     "BILLING_TIER_VOLUME",
                     "BILLING_TIER_SLAB"
+                ]
+            },
+            "types.CollectionMethod": {
+                "type": "string",
+                "enum": [
+                    "default_incomplete",
+                    "send_invoice"
+                ],
+                "x-enum-varnames": [
+                    "CollectionMethodDefaultIncomplete",
+                    "CollectionMethodSendInvoice"
                 ]
             },
             "types.ConnectionFilter": {
@@ -20773,6 +20819,7 @@
                     "PENDING",
                     "PROCESSING",
                     "SUCCEEDED",
+                    "OVERPAID",
                     "FAILED",
                     "REFUNDED",
                     "PARTIALLY_REFUNDED"
@@ -20782,6 +20829,7 @@
                     "PaymentStatusPending",
                     "PaymentStatusProcessing",
                     "PaymentStatusSucceeded",
+                    "PaymentStatusOverpaid",
                     "PaymentStatusFailed",
                     "PaymentStatusRefunded",
                     "PaymentStatusPartiallyRefunded"
