@@ -3,10 +3,6 @@ title: 'Stripe Connection Setup'
 description: 'Complete guide to setting up and configuring Stripe connections in Flexprice'
 ---
 
-# Stripe Connection Setup
-
-This guide walks you through setting up a Stripe connection in Flexprice to enable payment processing, customer synchronization, and webhook integration.
-
 ## Overview
 
 A Stripe connection in Flexprice stores encrypted credentials that allow the system to interact with your Stripe account for:
@@ -57,12 +53,7 @@ Before setting up your Stripe connection, ensure you have:
 ### Webhook URL Format
 
 ```
-https://your-domain.com/api/v1/webhooks/stripe/{tenant_id}/{environment_id}
-```
-
-**Example:**
-```
-https://api.flexprice.io/api/v1/webhooks/stripe/tenant_123/prod
+https://api.cloud.flexprice.io/v1/webhooks/stripe/tenant_01K1TJDVNSN7TWY8CZY870QMNV/env_01K1TJJF0CJR410C6QVPYQTNV0
 ```
 
 ### Required Webhook Events
@@ -71,12 +62,9 @@ Configure these events in your Stripe webhook endpoint:
 
 | Event Type | Purpose |
 |------------|---------|
-| `checkout.session.completed` | Payment completed successfully |
-| `checkout.session.async_payment_succeeded` | Async payment (bank transfer) succeeded |
-| `checkout.session.async_payment_failed` | Async payment failed |
-| `checkout.session.expired` | Checkout session expired |
-| `customer.created` | New customer created in Stripe |
-| `payment_intent.payment_failed` | Payment attempt failed |
+| `checkout.session *` | Track payment link completions from Stripe Checkout |
+| `customer *` | Synchronize customer data changes between Stripe and Flexprice |
+| `payment_intent *` | Monitor payment processing status and handle payment lifecycle events |
 
 ### Setting Up the Webhook
 
