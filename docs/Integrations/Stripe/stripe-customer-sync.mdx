@@ -3,8 +3,6 @@ title: 'Stripe Customer Synchronization'
 description: 'Complete guide to bidirectional customer synchronization between Flexprice and Stripe'
 ---
 
-# Stripe Customer Synchronization
-
 This guide explains how to synchronize customers between Flexprice and Stripe, enabling seamless payment processing and customer management across both platforms.
 
 ## Overview
@@ -316,47 +314,3 @@ When sync fails:
   "address_country": "US"
 }
 ```
-
-## Best Practices
-
-### Customer Data Management
-
-1. **Consistent Naming**: Use consistent name formats
-2. **Email Validation**: Validate email addresses before sync
-3. **Address Standardization**: Use standardized address formats
-4. **Metadata Strategy**: Plan metadata structure carefully
-
-### Sync Strategy
-
-1. **Batch Processing**: Sync customers in batches for efficiency
-2. **Incremental Updates**: Only sync changed data
-3. **Conflict Resolution**: Define clear conflict resolution rules
-4. **Monitoring**: Monitor sync success rates
-
-### Security Considerations
-
-1. **Data Encryption**: All customer data encrypted in transit
-2. **Access Controls**: Limit access to sync endpoints
-3. **Audit Logging**: Log all sync operations
-4. **Data Retention**: Follow data retention policies
-
-## API Reference
-
-### Sync Endpoints
-
-- `POST /api/v1/integrations/sync/customer` - Manual customer sync
-- `GET /api/v1/customers/{id}/integrations` - Get customer integrations
-- `POST /api/v1/integrations/sync/batch` - Batch customer sync
-
-### Webhook Endpoints
-
-- `POST /api/v1/webhooks/stripe/{tenant_id}/{environment_id}` - Stripe webhook handler
-
-### Customer Endpoints
-
-- `GET /api/v1/customers` - List customers
-- `POST /api/v1/customers` - Create customer
-- `GET /api/v1/customers/{id}` - Get customer details
-- `PUT /api/v1/customers/{id}` - Update customer
-
-For complete API documentation, see the [API Reference](/api-reference).

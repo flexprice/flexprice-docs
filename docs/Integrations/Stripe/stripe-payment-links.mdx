@@ -3,8 +3,6 @@ title: 'Stripe Payment Links & Checkout Flow'
 description: 'Complete guide to creating payment links and handling the Stripe checkout flow'
 ---
 
-# Stripe Payment Links & Checkout Flow
-
 This guide explains how to create secure payment links using Stripe Checkout and handle the complete payment workflow from creation to completion.
 
 ## Overview
@@ -80,25 +78,23 @@ INITIATED → PENDING → SUCCEEDED
 ```http
 Content-Type: application/json
 Authorization: Bearer your_api_key
-X-Tenant-ID: your_tenant_id
 X-Environment-ID: your_environment_id
 ```
 
 **Request Body:**
 ```json
 {
-  "destination_type": "invoice",
-  "destination_id": "inv_1234567890abcdef",
-  "payment_method_type": "payment_link",
-  "payment_gateway": "stripe",
-  "amount": "150.00",
-  "currency": "usd",
-  "process_payment": true,
-  "metadata": {
-    "success_url": "https://yourapp.com/payment/success?session_id={CHECKOUT_SESSION_ID}",
-    "cancel_url": "https://yourapp.com/payment/cancel",
-    "customer_reference": "ORDER-123"
-  }
+    "amount": 10,
+    "currency": "usd",
+    "destination_id": "inv_01K34HYZN03V6X8Q6V3T8X6G4F",
+    "destination_type": "INVOICE",
+    "payment_method_type": "PAYMENT_LINK",
+    "process_payment": true,
+    "payment_gateway": "stripe",
+    "connection_id": "conn_01K2ETXVRS2ZWWJ5PB3PQ4Y9KY",
+    "connection_name": "Stripe",
+    "success_url": "https://admin-dev.flexprice.io/customer-management/invoices/inv_01K34HYZN03V6X8Q6V3T8X6G4F?page=1",
+    "cancel_url": "https://admin-dev.flexprice.io/customer-management/invoices/inv_01K34HYZN03V6X8Q6V3T8X6G4F?page=1"
 }
 ```
 
@@ -133,13 +129,6 @@ X-Environment-ID: your_environment_id
 | `currency` | string | ✅ | Valid currency code |
 | `process_payment` | boolean | ✅ | Set to `true` to create Stripe session |
 
-### Optional Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `metadata.success_url` | string | Custom success page URL |
-| `metadata.cancel_url` | string | Custom cancel page URL |
-| `metadata.customer_reference` | string | Custom reference for tracking |
 
 ## Stripe Checkout Configuration
 
@@ -153,22 +142,6 @@ When creating payment links, Flexprice automatically configures Stripe Checkout 
 - **Customer**: Pre-filled with customer data
 - **Invoice Details**: Line items from the invoice
 
-### Customizing Checkout
-
-You can customize the checkout experience by adding metadata:
-
-```json
-{
-  "metadata": {
-    "success_url": "https://yourapp.com/success?session_id={CHECKOUT_SESSION_ID}",
-    "cancel_url": "https://yourapp.com/cancel",
-    "billing_address_collection": "required",
-    "shipping_address_collection": "auto",
-    "payment_method_types": ["card", "bank_transfer"],
-    "locale": "en"
-  }
-}
-```
 
 ## Webhook Processing
 
@@ -266,30 +239,6 @@ When payments fail:
 - **Encrypted Storage**: All payment data encrypted at rest
 - **Access Controls**: Role-based access to payment data
 
-## Best Practices
-
-### Payment Link Management
-
-1. **Monitor Expiry**: Track payment link expiration
-2. **Handle Failures**: Implement retry mechanisms
-3. **Customer Communication**: Send payment reminders
-4. **Analytics**: Track payment success rates
-
-### Integration Tips
-
-1. **Test Thoroughly**: Use test mode for development
-2. **Monitor Webhooks**: Ensure reliable webhook delivery
-3. **Handle Edge Cases**: Plan for network failures
-4. **User Experience**: Provide clear payment instructions
-
-## API Reference
-
-### Payment Endpoints
-
-- `POST /api/v1/payments` - Create payment link
-- `GET /api/v1/payments/{id}` - Get payment details
-- `PUT /api/v1/payments/{id}` - Update payment
-- `DELETE /api/v1/payments/{id}` - Cancel payment
 
 ### Webhook Endpoints
 

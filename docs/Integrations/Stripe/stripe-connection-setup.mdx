@@ -30,10 +30,8 @@ Before setting up your Stripe connection, ensure you have:
 
 | Credential | Location in Stripe Dashboard | Required | Purpose |
 |------------|------------------------------|----------|---------|
-| **Publishable Key** | Developers → API Keys | ✅ | Frontend integration (client-side) |
 | **Secret Key** | Developers → API Keys | ✅ | Server-side API calls |
 | **Webhook Secret** | Developers → Webhooks → [Your Endpoint] | ✅ | Webhook signature verification |
-| **Account ID** | Settings → Account Details | ❌ | For Stripe Connect (optional) |
 
 ### Finding Your Credentials
 
@@ -109,10 +107,8 @@ X-Environment-ID: your_environment_id
   "name": "Stripe Production",
   "provider_type": "stripe",
   "encrypted_secret_data": {
-    "publishable_key": "pk_live_...",
     "secret_key": "sk_live_...",
     "webhook_secret": "whsec_...",
-    "account_id": "acct_..." // Optional
   }
 }
 ```
@@ -127,41 +123,6 @@ X-Environment-ID: your_environment_id
   "status": "active",
   "created_at": "2024-01-20T10:30:00Z",
   "updated_at": "2024-01-20T10:30:00Z"
-}
-```
-
-## Step 4: Test Your Connection
-
-### Test Mode Setup
-
-For development and testing, use Stripe's test mode:
-
-1. **Use Test Keys**: Replace live keys with test keys
-   - `pk_test_...` instead of `pk_live_...`
-   - `sk_test_...` instead of `sk_live_...`
-
-2. **Test Webhook Endpoint**: Use a tool like ngrok for local testing
-   ```
-   https://your-ngrok-url.ngrok.io/api/v1/webhooks/stripe/tenant_123/test
-   ```
-
-3. **Test Payment Methods**: Use Stripe's test card numbers
-   - `4242424242424242` - Successful payment
-   - `4000000000000002` - Card declined
-
-### Connection Testing
-
-**Endpoint:** `POST /api/v1/connections/{connection_id}/test`
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Connection test successful",
-  "details": {
-    "stripe_account_id": "acct_test123",
-    "webhook_endpoint": "https://api.stripe.com/v1/webhook_endpoints/we_123"
-  }
 }
 ```
 
