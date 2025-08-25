@@ -1,0 +1,542 @@
+---
+title: "Sending Events"
+description: "Learn how to send usage events to Flexprice via API"
+---
+
+# Sending Events
+
+Once you have created a metered feature, you can start transmitting events to Flexprice. Events are JSON payloads that describe usage activity and are transmitted via HTTP POST requests.
+
+## Prerequisites
+
+- A metered feature created in Flexprice
+- Your API key from the Admin Dashboard
+- The Event Name from your feature configuration
+
+## API Endpoints
+
+### Single Event
+
+```
+POST https://api.cloud.flexprice.io/v1/events
+```
+
+### Bulk Events
+
+```
+POST https://api.cloud.flexprice.io/v1/events/bulk
+```
+
+## Authentication
+
+Include your API key in the request header:
+
+```
+x-api-key: <your_api_key>
+```
+
+**Important**: Keep your API key secure and never expose it in client-side code.
+
+## Event Payload Structure
+
+### Required Fields
+
+| Field                  | Type   | Description                                  | Example         |
+| ---------------------- | ------ | -------------------------------------------- | --------------- |
+| `event_name`           | string | Must exactly match your feature's Event Name | `"model.usage"` |
+| `external_customer_id` | string | Your identifier for the customer             | `"cust_123"`    |
+
+### Conditional Fields
+
+| Field                | Type          | When Required                      | Description                                          |
+| -------------------- | ------------- | ---------------------------------- | ---------------------------------------------------- |
+| `properties`         | object        | For Sum, Max, Latest, Unique Count | Contains the values to aggregate                     |
+| `properties.<field>` | number/string | When aggregation field is set      | The exact field name from your feature configuration |
+
+### Optional Fields
+
+| Field       | Type   | Description                          | Example                      |
+| ----------- | ------ | ------------------------------------ | ---------------------------- |
+| `event_id`  | string | Your unique identifier for the event | `"evt_123"`                  |
+| `timestamp` | string | ISO 8601 UTC timestamp               | `"2025-08-22T07:05:49.441Z"` |
+| `source`    | string | Origin of the event                  | `"api"`, `"worker"`          |
+
+## Single Event Examples
+
+### Basic Event (Count Aggregation)
+
+If your feature uses **Count** aggregation, you only need the required fields:
+
+```json
+{
+  "event_name": "api.calls",
+  "external_customer_id": "cust_123"
+}
+```
+
+### Event with Properties (Sum Aggregation)
+
+If your feature uses **Sum** aggregation with field `credits`:
+
+```json
+{
+  "event_name": "model.usage",
+  "external_customer_id": "cust_123",
+  "properties": {
+    "credits": 2
+  }
+}
+```
+
+### Complete Event Example
+
+```json
+{
+  "event_name": "model.usage",
+  "external_customer_id": "cust_123",
+  "properties": {
+    "credits": 2,
+    "model": "gpt-4",
+    "region": "us-east-1"
+  },
+  "event_id": "evt_abc123",
+  "timestamp": "2025-08-22T07:05:49.441Z",
+  "source": "api"
+}
+```
+
+## cURL Examples
+
+### Single Event
+
+```bash
+curl --request POST \
+  --url https://api.cloud.flexprice.io/v1/events \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: <your_api_key>' \
+  --data '{
+    "event_name": "model.usage",
+    "external_customer_id": "cust-test-customer",
+    "properties": {
+      "credits": 2
+    }
+  }'
+```
+
+![cURL Event Ingestion Example](/public/images/docs/Event%20Ingestion/event_ingestion_curlpreview_feature_create.png)
+
+### Response
+
+```json
+{
+  "event_id": "event_01K389J4M1F1NZG6XP0AMD6J52",
+  "message": "Event accepted for processing"
+}
+```
+
+![Postman Event Ingestion Example](/public/images/docs/Event%20Ingestion/event_ingestion_postman.png)
+
+## Bulk Events
+
+Transmit multiple events in a single request for better performance:
+
+```bash
+curl --request POST \
+  --url https://api.cloud.flexprice.io/v1/events/bulk \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: <your_api_key>' \
+  --data '{
+    "events": [
+      {
+        "event_name": "model.usage",
+        "external_customer_id": "cust-test-customer",
+        "properties": { "credits": 2 }
+      },
+      {
+        "event_name": "model.usage",
+        "external_customer_id": "cust-another-customer",
+        "properties": { "credits": 5 }
+      }
+    ]
+  }'
+```
+
+## Language Examples
+
+### JavaScript (Node.js)
+
+```javascript
+const fetch = require("node-fetch");
+
+async function sendEvent() {
+  const response = await fetch("https://api.cloud.flexprice.io/v1/events", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": process.env.FLEXPRICE_API_KEY,
+    },
+    body: JSON.stringify({
+      event_name: "model.usage",
+      external_customer_id: "cust-test-customer",
+      properties: { credits: 2 },
+      source: "api",
+    }),
+  });
+
+  const result = await response.json();
+  console.log("Event transmitted:", result);
+}
+```
+
+### Python
+
+```python
+import os
+import requests
+import json
+
+def send_event():
+    url = "https://api.cloud.flexprice.io/v1/events"
+    headers = {
+        "Content-Type": "application/json",
+        "x-api-key": os.environ["FLEXPRICE_API_KEY"]
+    }
+
+    data = {
+        "event_name": "model.usage",
+        "external_customer_id": "cust-test-customer",
+        "properties": {"credits": 2},
+        "source": "api"
+    }
+
+    response = requests.post(url, headers=headers, json=data)
+    result = response.json()
+    print("Event transmitted:", result)
+```
+
+### Go
+
+```go
+package main
+
+import (
+    "bytes"
+    "encoding/json"
+    "fmt"
+    "net/http"
+    "os"
+)
+
+type Event struct {
+    EventName           string                 `json:"event_name"`
+    ExternalCustomerID  string                 `json:"external_customer_id"`
+    Properties          map[string]interface{} `json:"properties,omitempty"`
+    Source              string                 `json:"source,omitempty"`
+}
+
+func sendEvent() error {
+    event := Event{
+        EventName:          "model.usage",
+        ExternalCustomerID: "cust-test-customer",
+        Properties: map[string]interface{}{
+            "credits": 2,
+        },
+        Source: "api",
+    }
+
+    jsonData, err := json.Marshal(event)
+    if err != nil {
+        return err
+    }
+
+    req, err := http.NewRequest("POST", "https://api.cloud.flexprice.io/v1/events", bytes.NewBuffer(jsonData))
+    if err != nil {
+        return err
+    }
+
+    req.Header.Set("Content-Type", "application/json")
+    req.Header.Set("x-api-key", os.Getenv("FLEXPRICE_API_KEY"))
+
+    client := &http.Client{}
+    resp, err := client.Do(req)
+    if err != nil {
+        return err
+    }
+    defer resp.Body.Close()
+
+    fmt.Printf("Event transmitted with status: %d\n", resp.StatusCode)
+    return nil
+}
+```
+
+### PHP
+
+```php
+<?php
+
+function sendEvent() {
+    $url = 'https://api.cloud.flexprice.io/v1/events';
+    $apiKey = $_ENV['FLEXPRICE_API_KEY'];
+
+    $data = [
+        'event_name' => 'model.usage',
+        'external_customer_id' => 'cust-test-customer',
+        'properties' => [
+            'credits' => 2
+        ],
+        'source' => 'api'
+    ];
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'x-api-key: ' . $apiKey
+    ]);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    echo "Event transmitted with status: $httpCode\n";
+    echo "Response: $response\n";
+}
+```
+
+## Data Types and Best Practices
+
+### Property Values
+
+- **Numbers**: Use for Sum, Max aggregations
+
+  ```json
+  "properties": { "credits": 2 }
+  ```
+
+- **Strings**: Use for Unique Count, Latest aggregations
+
+  ```json
+  "properties": { "user_id": "user_123" }
+  ```
+
+### Timestamps
+
+- Use ISO 8601 format in UTC
+- Example: `"2025-08-22T07:05:49.441Z"`
+- If omitted, server time is used
+
+### Event IDs
+
+- Optional but recommended for traceability
+- Should be unique within your system
+- Helps with debugging and idempotency
+
+## Common Patterns
+
+### API Usage Tracking
+
+```json
+{
+  "event_name": "api.calls",
+  "external_customer_id": "cust_123",
+  "properties": {
+    "endpoint": "/v1/chat",
+    "method": "POST",
+    "response_time": 150
+  },
+  "source": "api"
+}
+```
+
+### Storage Usage
+
+```json
+{
+  "event_name": "storage.usage",
+  "external_customer_id": "cust_123",
+  "properties": {
+    "gb": 1.5,
+    "bucket": "user-uploads"
+  },
+  "source": "storage-service"
+}
+```
+
+### User Activity
+
+```json
+{
+  "event_name": "user.login",
+  "external_customer_id": "cust_123",
+  "properties": {
+    "user_id": "user_456",
+    "platform": "web"
+  },
+  "source": "auth-service"
+}
+```
+
+## Error Handling
+
+### HTTP Status Codes
+
+- **202 Accepted**: Event accepted for processing
+- **400 Bad Request**: Invalid payload or missing required fields
+- **401 Unauthorized**: Invalid or missing API key
+- **429 Too Many Requests**: Rate limit exceeded
+
+### Common Errors
+
+**Missing required field**
+
+```json
+{
+  "error": "Missing required field: event_name"
+}
+```
+
+**Invalid event_name**
+
+```json
+{
+  "error": "Event name 'unknown.event' not found"
+}
+```
+
+**Invalid customer**
+
+```json
+{
+  "error": "Customer with external_customer_id 'invalid_id' not found"
+}
+```
+
+## Rate Limits
+
+- **Single events**: 1000 requests per minute
+- **Bulk events**: 100 requests per minute (up to 1000 events per request)
+- **Response**: 429 status code when exceeded
+
+## Best Practices
+
+### 1. Validate Your Configuration
+
+Before transmitting production events:
+
+- Verify Event Name matches your feature exactly
+- Confirm Aggregation Field exists in your events
+- Test with a small number of events first
+
+### 2. Handle Failures Gracefully
+
+```javascript
+async function sendEventWithRetry(eventData, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch("https://api.cloud.flexprice.io/v1/events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": process.env.FLEXPRICE_API_KEY,
+        },
+        body: JSON.stringify(eventData),
+      });
+
+      if (response.status === 202) {
+        return await response.json();
+      }
+
+      if (response.status === 429) {
+        // Rate limited — wait and retry
+        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+        continue;
+      }
+
+      throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+    } catch (error) {
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      // Wait before retry
+      await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+    }
+  }
+}
+```
+
+### 3. Use Bulk Events for High Volume
+
+When transmitting many events, use the bulk endpoint:
+
+```javascript
+const events = [
+  { event_name: "api.calls", external_customer_id: "cust_1" },
+  { event_name: "api.calls", external_customer_id: "cust_2" },
+  // ... more events
+];
+
+const response = await fetch("https://api.cloud.flexprice.io/v1/events/bulk", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "x-api-key": process.env.FLEXPRICE_API_KEY,
+  },
+  body: JSON.stringify({ events }),
+});
+```
+
+### 4. Include Relevant Metadata
+
+Add useful properties to your events for debugging:
+
+```json
+{
+  "event_name": "model.usage",
+  "external_customer_id": "cust_123",
+  "properties": {
+    "credits": 2,
+    "request_id": "req_abc123",
+    "version": "1.0"
+  },
+  "source": "api"
+}
+```
+
+## Related Documentation
+
+- **[API Reference](API%20Reference.mdx)** — Complete API documentation
+- **[Validating Events](Validating%20events.mdx)** — Check that events are being processed correctly
+- **[Troubleshooting](Troubleshooting.mdx)** — Fix common issues
+
+## Next Steps
+
+After sending events, you should:
+
+1. **[Validate Events](Validating%20events.mdx)** - Verify that events are being processed correctly
+2. **[Connect to Billing](Connecting%20to%20billing.mdx)** - Set up pricing and subscriptions
+
+## Troubleshooting
+
+### "Event not found" error
+
+- Check that Event Name matches your feature exactly
+- Verify the feature exists and is active
+
+### "Customer not found" error
+
+- Ensure the customer exists in Flexprice
+- Check that `external_customer_id` matches exactly
+
+### "Missing required field" error
+
+- Verify all required fields are present
+- Check field names match exactly (case-sensitive)
+
+### Events not appearing in dashboard
+
+- Check the **[Event Debugger](Event%20debugger.mdx)** for processing status
+- Verify Event Name and Aggregation Field configuration
+- Ensure customer has an active subscription with the feature
