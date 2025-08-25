@@ -3,8 +3,6 @@ title: 'Stripe Payment Links & Checkout Flow'
 description: 'Complete guide to creating payment links and handling the Stripe checkout flow'
 ---
 
-This guide explains how to create secure payment links using Stripe Checkout and handle the complete payment workflow from creation to completion.
-
 ## Overview
 
 Payment links in Flexprice provide a secure, hosted checkout experience powered by Stripe. Customers click a payment URL and are redirected to Stripe's secure checkout page to complete their payment.
@@ -16,6 +14,7 @@ Payment links in Flexprice provide a secure, hosted checkout experience powered 
 - **Mobile Optimized**: Responsive checkout experience
 - **Real-time Updates**: Webhook-driven status updates
 - **Invoice Integration**: Automatic invoice reconciliation
+- **Card Saving**: Optional card storage for future payments
 
 ## Payment Link Lifecycle
 
@@ -70,6 +69,14 @@ INITIATED → PENDING → SUCCEEDED
 3. **Invoice Status**: Invoice must be finalized and unpaid
 4. **Valid Amount**: Payment amount must match invoice outstanding
 
+### Creating Payment Links via Dashboard
+
+You can create payment links directly from the Flexprice dashboard:
+
+![](/paymentlink2.png)
+
+![](/paymentlink1.png)
+
 ### API Request
 
 **Endpoint:** `POST /api/v1/payments`
@@ -81,7 +88,7 @@ Authorization: Bearer your_api_key
 X-Environment-ID: your_environment_id
 ```
 
-**Request Body:**
+**Request Body (Save Card for Future Use):**
 ```json
 {
     "amount": 10,
@@ -91,8 +98,22 @@ X-Environment-ID: your_environment_id
     "payment_method_type": "PAYMENT_LINK",
     "process_payment": true,
     "payment_gateway": "stripe",
-    "connection_id": "conn_01K2ETXVRS2ZWWJ5PB3PQ4Y9KY",
-    "connection_name": "Stripe",
+    "success_url": "https://admin-dev.flexprice.io/customer-management/invoices/inv_01K34HYZN03V6X8Q6V3T8X6G4F?page=1",
+    "cancel_url": "https://admin-dev.flexprice.io/customer-management/invoices/inv_01K34HYZN03V6X8Q6V3T8X6G4F?page=1",
+    "save_card_and_make_default": true
+}
+```
+
+**Request Body (One-time Payment Only):**
+```json
+{
+    "amount": 10,
+    "currency": "usd",
+    "destination_id": "inv_01K34HYZN03V6X8Q6V3T8X6G4F",
+    "destination_type": "INVOICE",
+    "payment_method_type": "PAYMENT_LINK",
+    "process_payment": true,
+    "payment_gateway": "stripe",
     "success_url": "https://admin-dev.flexprice.io/customer-management/invoices/inv_01K34HYZN03V6X8Q6V3T8X6G4F?page=1",
     "cancel_url": "https://admin-dev.flexprice.io/customer-management/invoices/inv_01K34HYZN03V6X8Q6V3T8X6G4F?page=1"
 }
@@ -128,6 +149,7 @@ X-Environment-ID: your_environment_id
 | `amount` | string | ✅ | Payment amount (must match invoice) |
 | `currency` | string | ✅ | Valid currency code |
 | `process_payment` | boolean | ✅ | Set to `true` to create Stripe session |
+| `save_card_and_make_default` | boolean | ❌ | Save card for future payments (default: false) |
 
 
 ## Stripe Checkout Configuration
@@ -141,6 +163,20 @@ When creating payment links, Flexprice automatically configures Stripe Checkout 
 - **Amount**: Exact payment amount
 - **Customer**: Pre-filled with customer data
 - **Invoice Details**: Line items from the invoice
+
+### Card Saving Configuration
+
+When `save_card_and_make_default` is set to `true`:
+
+- **Setup Future Usage**: Stripe session configured with `setup_future_usage: "off_session"`
+- **Card Storage**: Payment method automatically saved to customer
+- **Default Assignment**: Saved card becomes the customer's default payment method
+- **Future Payments**: Enables subsequent card payments without re-entering details
+
+**Important Notes:**
+- Card saving requires customer consent and should comply with local regulations
+- Saved cards can be used for future `CARD` payment method type payments
+- Only one default payment method per customer is supported
 
 
 ## Webhook Processing
@@ -173,9 +209,11 @@ When a payment is completed, Stripe sends a `checkout.session.completed` webhook
 1. **Receive Webhook**: Flexprice receives the webhook from Stripe
 2. **Verify Signature**: Validate webhook signature for security
 3. **Find Payment**: Locate payment record using session ID
-4. **Update Status**: Change payment status to `SUCCEEDED`
-5. **Reconcile Invoice**: Update invoice payment status and amounts
-6. **Trigger Events**: Send payment completion events
+4. **Check Card Saving**: Read `save_card_and_make_default` from payment metadata
+5. **Set Default Card**: If flag is true, set payment method as default in Stripe
+6. **Update Status**: Change payment status to `SUCCEEDED`
+7. **Reconcile Invoice**: Update invoice payment status and amounts
+8. **Trigger Events**: Send payment completion events
 
 ## Error Handling
 
@@ -223,6 +261,40 @@ When payments fail:
 4. **Verify Webhook**: Check webhook processing
 5. **Confirm Status**: Verify payment and invoice updates
 
+## Relationship with Card Payments
+
+### Enabling Future Card Payments
+
+Payment links with `save_card_and_make_default: true` enable future card payments:
+
+1. **First Payment**: Customer uses payment link to pay and save card
+2. **Card Storage**: Payment method saved and set as default in Stripe
+3. **Future Payments**: Customer can use `CARD` payment method type
+4. **Seamless Experience**: No redirect required for subsequent payments
+
+### Payment Method Hierarchy
+
+```mermaid
+graph TD
+    A[Customer First Payment] --> B[Payment Link with save_card_and_make_default: true]
+    B --> C[Card Saved as Default]
+    C --> D[Future Payments Available]
+    D --> E[CARD Payment Method Type]
+    D --> F[PAYMENT_LINK Payment Method Type]
+    E --> G[Uses Saved Default Card]
+    F --> H[Creates New Payment Session]
+```
+
+### Integration Strategy
+
+**Recommended Flow:**
+1. **New Customers**: Always use payment links for first payment
+2. **Set Save Flag**: Include `save_card_and_make_default: true` for returning customers
+3. **Future Payments**: Use card payment method for faster checkout
+4. **Fallback**: Provide payment link option if card payment fails
+
+For detailed information about card payments, see [Card Checkout Flow Documentation](./card-checkout-flow.md).
+
 ## Security Considerations
 
 ### Payment Link Security
@@ -244,4 +316,4 @@ When payments fail:
 
 - `POST /api/v1/webhooks/stripe/{tenant_id}/{environment_id}` - Stripe webhook handler
 
-For complete API documentation, see the [API Reference](/api-reference).
+For complete API documentation, see the [API Reference](/api-reference/payments/create-a-new-payment).
