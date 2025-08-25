@@ -6285,6 +6285,14 @@
                         }
                     },
                     {
+                        "name": "skip_line_items",
+                        "in": "query",
+                        "description": "SkipLineItems if true, will not include line items in the response",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
                         "name": "start_time",
                         "in": "query",
                         "schema": {
@@ -14429,12 +14437,6 @@
                     "cancel_url": {
                         "type": "string"
                     },
-                    "connection_id": {
-                        "type": "string"
-                    },
-                    "connection_name": {
-                        "type": "string"
-                    },
                     "currency": {
                         "type": "string"
                     },
@@ -14462,6 +14464,10 @@
                     "process_payment": {
                         "type": "boolean",
                         "default": true
+                    },
+                    "save_card_and_make_default": {
+                        "type": "boolean",
+                        "default": false
                     },
                     "success_url": {
                         "type": "string"
@@ -17044,6 +17050,9 @@
                     },
                     "refunded_at": {
                         "type": "string"
+                    },
+                    "save_card_and_make_default": {
+                        "type": "boolean"
                     },
                     "succeeded_at": {
                         "type": "string"
@@ -20678,6 +20687,10 @@
                         "items": {
                             "$ref": "#/components/schemas/types.PaymentStatus"
                         }
+                    },
+                    "skip_line_items": {
+                        "type": "boolean",
+                        "description": "SkipLineItems if true, will not include line items in the response"
                     },
                     "sort": {
                         "type": "array",
