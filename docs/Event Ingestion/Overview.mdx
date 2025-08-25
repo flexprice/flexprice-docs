@@ -1,0 +1,86 @@
+---
+title: "Overview"
+description: "Learn how to send usage events to Flexprice for metered billing"
+---
+
+Event ingestion is the core mechanism that powers Flexprice's metered billing system. It enables you to transmit usage data from your application to Flexprice, which then automatically calculates charges and generates invoices based on your pricing plans.
+
+## What is Event Ingestion?
+
+When you have a **Metered Feature** in Flexprice (such as API calls, storage usage, or credits consumed), you need to inform Flexprice when and how much your customers are utilizing that feature. This is accomplished by transmitting **events** - JSON payloads that describe usage activity.
+
+## How It Works
+
+1. **[Create a Metered Feature](Creating%20a%20metered%20feature.mdx)** - Define what you want to track (e.g., "model.usage", "api.calls")
+2. **[Send Events](Sending%20events.mdx)** - Your application transmits usage data to Flexprice via API
+3. **[Validate Events](Validating%20events.mdx)** - Verify that events are being processed correctly
+4. **[Connect to Billing](Connecting%20to%20billing.mdx)** - Link the feature to a pricing plan and customer subscription
+5. **Automatic Invoicing** - Flexprice calculates charges and generates invoices
+
+## Key Concepts
+
+### Event
+
+A JSON payload containing usage information:
+
+- **Who used the feature** (`external_customer_id`)
+- **What feature was used** (`event_name`)
+- **How much was used** (`properties`)
+- **When it happened** (`timestamp`)
+
+### Aggregation
+
+How Flexprice combines multiple events into a single quantity for billing:
+
+- **Count** - Number of events
+- **Sum** - Total of a numeric property
+- **Max** - Highest value seen
+- **Unique Count** - Number of distinct values
+- **Latest** - Most recent value
+
+### Usage Reset
+
+How usage accumulates over time:
+
+- **Periodic** - Resets each billing cycle (e.g., monthly API calls)
+- **Cumulative** - Keeps growing (e.g., total storage used)
+
+## Quick Start
+
+Follow these steps to get started with event ingestion:
+
+1. **[Create Your First Metered Feature](Creating%20a%20metered%20feature.mdx)** - Set up what you want to track
+2. **[Send Your First Event](Sending%20events.mdx)** - Learn how to send usage data
+3. **[Validate and Debug](Validating%20events.mdx)** - Ensure events are working correctly
+4. **[Connect to Billing](Connecting%20to%20billing.mdx)** - Turn usage into invoices
+
+## Common Use Cases
+
+- **API Usage** - Track API calls, requests, or tokens consumed
+- **Storage** - Monitor file storage, database usage, or bandwidth
+- **AI/ML** - Count model inferences, training hours, or data processed
+- **User Activity** - Track logins, feature usage, or time spent
+- **Compute Resources** - Monitor CPU time, memory usage, or GPU hours
+
+## What You'll Learn
+
+This guide will walk you through the complete event ingestion workflow, from setting up your first metered feature to viewing charges on customer invoices. By the end, you'll understand:
+
+- How to configure metered features correctly
+- The exact format for sending events
+- How to verify that events are being processed
+- How usage flows into billing and invoicing
+- Common pitfalls and how to avoid them
+
+## Related Documentation
+
+- **[Features Overview](Product%20catalogue/Features/Overview.mdx)** - Learn about different feature types
+- **[Plans](Product%20catalogue/Plans/Overview.mdx)** - Understand pricing plan configuration
+- **[Subscriptions](Subscriptions/Overview.mdx)** - Manage customer subscriptions
+- **[Invoices](Invoices/Overview.mdx)** - View and manage billing
+
+## Next Steps
+
+Ready to get started? Begin with **[Creating a Metered Feature](Creating%20a%20metered%20feature.mdx)**.
+
+If you encounter any issues, check our **[Troubleshooting Guide](Troubleshooting.mdx)** for common solutions.
