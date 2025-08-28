@@ -1,0 +1,129 @@
+---
+title: "Overage Discounts"
+description: "Learn how to configure overage discounts for usage beyond plan limits in Flexprice"
+---
+
+## How Overage Discounts Work
+
+### Basic Concept
+- Standard pricing applies within plan limits
+- Discounted pricing applies to usage beyond limits
+- Encourages customers to use more of your service
+
+### Overage Scenarios
+- **Plan Limit Exceeded**: Usage beyond included plan limits
+- **Commitment Exceeded**: Usage beyond committed volumes
+- **Tier Thresholds**: Usage beyond specific tier boundaries
+
+## Setting Up Overage Discounts
+
+### Via Dashboard
+1. Navigate to Plan Management
+2. Select a plan with usage-based pricing
+3. Enable "Overage Discounts" feature
+4. Configure overage tiers and discount rates
+5. Set threshold limits for each tier
+
+### Overage Tiers Example
+```
+Included Usage: 0-1,000 units (included in plan)
+Overage Tier 1: 1,001-5,000 units → $0.08 per unit (20% discount)
+Overage Tier 2: 5,001-10,000 units → $0.06 per unit (40% discount)
+Overage Tier 3: 10,001+ units → $0.05 per unit (50% discount)
+```
+
+## Configuration Options
+
+### Overage Thresholds
+- **Plan-based**: Beyond included plan limits
+- **Commitment-based**: Beyond committed usage volumes
+- **Custom thresholds**: User-defined breakpoints
+
+### Discount Structure
+- **Percentage Discounts**: 10%, 20%, 30% off standard overage rates
+- **Fixed Rates**: Lower per-unit pricing for overage usage
+- **Progressive Discounts**: Increasing discounts for higher usage
+
+### Billing Frequency
+- **Real-time**: Discounts applied immediately
+- **End-of-period**: Discounts calculated at billing cycle end
+- **Accumulative**: Discounts based on total period usage
+
+## Billing Examples
+
+### Example 1: Plan Limit Exceeded
+```
+Plan: Basic Plan (1,000 API calls included)
+Actual Usage: 2,500 API calls
+Standard Rate: $0.10 per call
+Overage Rate: $0.08 per call
+
+Billing Calculation:
+1,000 calls (included) × $0.00 = $0.00
+1,500 calls (overage) × $0.08 = $120.00
+Total: $120.00
+```
+
+### Example 2: Commitment Exceeded
+```
+Commitment: 5,000 API calls at $0.06 per call
+Actual Usage: 7,000 API calls
+Overage Rate: $0.05 per call
+
+Billing Calculation:
+5,000 calls (commitment) × $0.06 = $300.00
+2,000 calls (overage) × $0.05 = $100.00
+Total: $400.00
+```
+
+## Advanced Features
+
+### Volume Incentives
+- **Usage Acceleration**: Higher discounts for rapid usage growth
+- **Loyalty Rewards**: Better overage rates for long-term customers
+- **Seasonal Adjustments**: Dynamic overage pricing based on usage patterns
+
+### Predictive Discounts
+- **Usage Forecasting**: Proactive discount offers based on usage trends
+- **Smart Notifications**: Alert customers when approaching overage thresholds
+- **Optimization Suggestions**: Help customers maximize discount benefits
+
+## Best Practices
+
+### For Businesses
+1. **Analyze Usage Patterns**: Understand typical overage scenarios
+2. **Set Competitive Rates**: Ensure overage pricing remains attractive
+3. **Monitor Impact**: Track how overage discounts affect revenue
+4. **Customer Communication**: Clearly explain overage pricing structure
+
+### For Customers
+1. **Monitor Usage**: Track usage against plan limits
+2. **Optimize Usage**: Plan usage to maximize included limits
+3. **Understand Pricing**: Know overage rates before exceeding limits
+
+## API Integration
+
+### Configure Overage Discounts
+```bash
+curl -X POST "https://api.flexprice.com/v1/plans/{plan_id}/overage-discounts" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "threshold": 1000,
+    "discount_percentage": 20,
+    "overage_rate": 0.08,
+    "tier_type": "plan_limit"
+  }'
+```
+
+### Get Overage Usage
+```bash
+curl -X GET "https://api.flexprice.com/v1/subscriptions/{subscription_id}/overage-usage" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## Related Topics
+
+- [Commitment Discounts](./Commitment%20discounts.md)
+- [Volume Tiered Pricing](./Charges%20in%20plans/Volume%20tiered.md)
+- [Usage Monitoring](../../Event%20Ingestion/Overview.md) 
