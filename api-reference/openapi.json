@@ -6561,9 +6561,22 @@
                     {
                         "name": "expand_by_source",
                         "in": "query",
-                        "description": "Include source-level price breakdown for usage line items",
+                        "description": "Include source-level price breakdown for usage line items (legacy)",
                         "schema": {
                             "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "group_by",
+                        "in": "query",
+                        "description": "Group usage breakdown by specified fields (e.g., source, feature_id, properties.org_id)",
+                        "style": "form",
+                        "explode": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
                         }
                     }
                 ],
@@ -8279,7 +8292,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/service.SyncPlanPricesResponse"
+                                    "$ref": "#/components/schemas/dto.SyncPlanPricesResponse"
                                 }
                             }
                         }
@@ -8340,6 +8353,14 @@
                 "summary": "Get prices",
                 "description": "Get prices with the specified filter",
                 "parameters": [
+                    {
+                        "name": "allow_expired_prices",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        }
+                    },
                     {
                         "name": "end_time",
                         "in": "query",
@@ -14015,6 +14036,13 @@
                         "type": "string",
                         "description": "external_id is the unique identifier from your system to reference this customer (required)"
                     },
+                    "integration_entity_mapping": {
+                        "type": "array",
+                        "description": "integration_entity_mapping contains provider integration mappings for this customer",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.IntegrationEntityMapping"
+                        }
+                    },
                     "metadata": {
                         "type": "object",
                         "additionalProperties": {
@@ -14548,6 +14576,9 @@
                     "description": {
                         "type": "string"
                     },
+                    "end_date": {
+                        "type": "string"
+                    },
                     "entity_id": {
                         "type": "string",
                         "description": "TODO: this will be required in the future as we will not allow prices to be created without an entity id"
@@ -14588,6 +14619,9 @@
                     },
                     "price_unit_type": {
                         "$ref": "#/components/schemas/types.PriceUnitType"
+                    },
+                    "start_date": {
+                        "type": "string"
                     },
                     "tier_mode": {
                         "$ref": "#/components/schemas/types.BillingTier"
@@ -14682,6 +14716,9 @@
                     "description": {
                         "type": "string"
                     },
+                    "end_date": {
+                        "type": "string"
+                    },
                     "entity_id": {
                         "type": "string",
                         "description": "TODO: this will be required in the future as we will not allow prices to be created without an entity id"
@@ -14722,6 +14759,9 @@
                     },
                     "price_unit_type": {
                         "$ref": "#/components/schemas/types.PriceUnitType"
+                    },
+                    "start_date": {
+                        "type": "string"
                     },
                     "tier_mode": {
                         "$ref": "#/components/schemas/types.BillingTier"
@@ -15546,6 +15586,9 @@
                     },
                     "usage_limit": {
                         "type": "integer"
+                    },
+                    "usage_reset_period": {
+                        "$ref": "#/components/schemas/types.BillingPeriod"
                     }
                 }
             },
@@ -15869,7 +15912,7 @@
                     },
                     "group_by": {
                         "type": "array",
-                        "description": "allowed values: \"source\", \"feature_id\"",
+                        "description": "allowed values: \"source\", \"feature_id\", \"properties.<field_name>\"",
                         "items": {
                             "type": "string"
                         }
@@ -16146,6 +16189,29 @@
                     }
                 }
             },
+            "dto.IntegrationEntityMapping": {
+                "required": [
+                    "id",
+                    "provider"
+                ],
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "id is the external entity ID from the provider"
+                    },
+                    "provider": {
+                        "type": "string",
+                        "description": "provider is the integration provider name (e.g., \"stripe\", \"razorpay\")",
+                        "enum": [
+                            "stripe",
+                            "razorpay",
+                            "paypal"
+                        ]
+                    }
+                },
+                "description": "Integration entity mapping for external provider systems"
+            },
             "dto.InvoiceCoupon": {
                 "type": "object",
                 "properties": {
@@ -16306,9 +16372,16 @@
                     },
                     "usage_analytics": {
                         "type": "array",
-                        "description": "usage_analytics contains usage analytics for this line item",
+                        "description": "usage_analytics contains usage analytics for this line item (legacy - grouped by source)",
                         "items": {
                             "$ref": "#/components/schemas/dto.SourceUsageItem"
+                        }
+                    },
+                    "usage_breakdown": {
+                        "type": "array",
+                        "description": "usage_breakdown contains flexible usage breakdown for this line item (supports any grouping)",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.UsageBreakdownItem"
                         }
                     }
                 }
@@ -16894,6 +16967,9 @@
                         "type": "number",
                         "description": "Amount is the new price amount that overrides the original price (optional)"
                     },
+                    "billing_model": {
+                        "$ref": "#/components/schemas/types.BillingModel"
+                    },
                     "price_id": {
                         "type": "string",
                         "description": "PriceID references the plan price to override"
@@ -16901,6 +16977,19 @@
                     "quantity": {
                         "type": "number",
                         "description": "Quantity for this line item (optional)"
+                    },
+                    "tier_mode": {
+                        "$ref": "#/components/schemas/types.BillingTier"
+                    },
+                    "tiers": {
+                        "type": "array",
+                        "description": "Tiers determines the pricing tiers for this line item",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.CreatePriceTier"
+                        }
+                    },
+                    "transform_quantity": {
+                        "$ref": "#/components/schemas/price.TransformQuantity"
                     }
                 }
             },
@@ -17177,6 +17266,10 @@
                         "type": "string",
                         "description": "DisplayPriceUnitAmount is the formatted amount with price unit symbol\nFor BTC: 0.00000001 BTC"
                     },
+                    "end_date": {
+                        "type": "string",
+                        "description": "EndDate is the end date of the price"
+                    },
                     "entity_id": {
                         "type": "string",
                         "description": "EntityID holds the value of the \"entity_id\" field."
@@ -17241,6 +17334,10 @@
                     },
                     "pricing_unit": {
                         "$ref": "#/components/schemas/dto.PriceUnitResponse"
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "description": "StartDate is the start date of the price"
                     },
                     "status": {
                         "$ref": "#/components/schemas/types.Status"
@@ -17559,7 +17656,7 @@
                         "type": "string"
                     },
                     "entity_type": {
-                        "$ref": "#/components/schemas/types.SubscriptionLineItemEntitiyType"
+                        "$ref": "#/components/schemas/types.SubscriptionLineItemEntityType"
                     },
                     "environment_id": {
                         "type": "string"
@@ -18002,6 +18099,37 @@
                     },
                     "quantity": {
                         "type": "number"
+                    }
+                }
+            },
+            "dto.SyncPlanPricesResponse": {
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string"
+                    },
+                    "plan_id": {
+                        "type": "string"
+                    },
+                    "plan_name": {
+                        "type": "string"
+                    },
+                    "synchronization_summary": {
+                        "type": "object",
+                        "properties": {
+                            "prices_added": {
+                                "type": "integer"
+                            },
+                            "prices_removed": {
+                                "type": "integer"
+                            },
+                            "prices_skipped": {
+                                "type": "integer"
+                            },
+                            "subscriptions_processed": {
+                                "type": "integer"
+                            }
+                        }
                     }
                 }
             },
@@ -18518,6 +18646,13 @@
                         "type": "string",
                         "description": "external_id is the updated external identifier for the customer"
                     },
+                    "integration_entity_mapping": {
+                        "type": "array",
+                        "description": "integration_entity_mapping contains provider integration mappings for this customer",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.IntegrationEntityMapping"
+                        }
+                    },
                     "metadata": {
                         "type": "object",
                         "additionalProperties": {
@@ -18774,6 +18909,9 @@
                     "description": {
                         "type": "string"
                     },
+                    "end_date": {
+                        "type": "string"
+                    },
                     "entity_id": {
                         "type": "string",
                         "description": "TODO: this will be required in the future as we will not allow prices to be created without an entity id"
@@ -18818,6 +18956,9 @@
                     },
                     "price_unit_type": {
                         "$ref": "#/components/schemas/types.PriceUnitType"
+                    },
+                    "start_date": {
+                        "type": "string"
                     },
                     "tier_mode": {
                         "$ref": "#/components/schemas/types.BillingTier"
@@ -19023,6 +19164,13 @@
                             "$ref": "#/components/schemas/dto.UsageAnalyticPoint"
                         }
                     },
+                    "properties": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "description": "Stores property values for flexible grouping (e.g., org_id -> \"org123\")"
+                    },
                     "source": {
                         "type": "string"
                     },
@@ -19055,6 +19203,34 @@
                     },
                     "usage": {
                         "type": "number"
+                    }
+                }
+            },
+            "dto.UsageBreakdownItem": {
+                "type": "object",
+                "properties": {
+                    "cost": {
+                        "type": "string",
+                        "description": "cost is the cost attributed to this group for the line item"
+                    },
+                    "event_count": {
+                        "type": "integer",
+                        "description": "event_count is the number of events from this group (optional)"
+                    },
+                    "grouped_by": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "description": "grouped_by contains the grouping field values (e.g., {\"source\": \"api\", \"org_id\": \"org123\"})"
+                    },
+                    "percentage": {
+                        "type": "string",
+                        "description": "percentage is the percentage of total line item cost from this group (optional)"
+                    },
+                    "usage": {
+                        "type": "string",
+                        "description": "usage is the total usage amount from this group (optional, for additional context)"
                     }
                 }
             },
@@ -19468,6 +19644,10 @@
                         "type": "string",
                         "description": "DisplayPriceUnitAmount is the formatted amount with price unit symbol\nFor BTC: 0.00000001 BTC"
                     },
+                    "end_date": {
+                        "type": "string",
+                        "description": "EndDate is the end date of the price"
+                    },
                     "entity_id": {
                         "type": "string",
                         "description": "EntityID holds the value of the \"entity_id\" field."
@@ -19522,6 +19702,10 @@
                     },
                     "price_unit_type": {
                         "$ref": "#/components/schemas/types.PriceUnitType"
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "description": "StartDate is the start date of the price"
                     },
                     "status": {
                         "$ref": "#/components/schemas/types.Status"
@@ -19622,37 +19806,6 @@
                     }
                 }
             },
-            "service.SyncPlanPricesResponse": {
-                "type": "object",
-                "properties": {
-                    "message": {
-                        "type": "string"
-                    },
-                    "plan_id": {
-                        "type": "string"
-                    },
-                    "plan_name": {
-                        "type": "string"
-                    },
-                    "synchronization_summary": {
-                        "type": "object",
-                        "properties": {
-                            "prices_added": {
-                                "type": "integer"
-                            },
-                            "prices_removed": {
-                                "type": "integer"
-                            },
-                            "prices_skipped": {
-                                "type": "integer"
-                            },
-                            "subscriptions_processed": {
-                                "type": "integer"
-                            }
-                        }
-                    }
-                }
-            },
             "subscription.SubscriptionLineItem": {
                 "type": "object",
                 "properties": {
@@ -19681,7 +19834,7 @@
                         "type": "string"
                     },
                     "entity_type": {
-                        "$ref": "#/components/schemas/types.SubscriptionLineItemEntitiyType"
+                        "$ref": "#/components/schemas/types.SubscriptionLineItemEntityType"
                     },
                     "environment_id": {
                         "type": "string"
@@ -21177,15 +21330,15 @@
                     }
                 }
             },
-            "types.SubscriptionLineItemEntitiyType": {
+            "types.SubscriptionLineItemEntityType": {
                 "type": "string",
                 "enum": [
                     "plan",
                     "addon"
                 ],
                 "x-enum-varnames": [
-                    "SubscriptionLineItemEntitiyTypePlan",
-                    "SubscriptionLineItemEntitiyTypeAddon"
+                    "SubscriptionLineItemEntityTypePlan",
+                    "SubscriptionLineItemEntityTypeAddon"
                 ]
             },
             "types.SubscriptionScheduleStatus": {
