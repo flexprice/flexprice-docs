@@ -1,0 +1,202 @@
+# FlexPrice Settings Guide
+
+This guide documents the configuration settings available in FlexPrice, their usage, and implementation details. Settings are managed at the tenant × environment level, providing complete isolation between different environments within and across tenants.
+
+## Table of Contents
+- [Settings Overview](#settings-overview)
+- [Available Settings](#available-settings)
+  - [Subscription Configuration](#subscription-configuration)
+  - [Invoice Configuration](#invoice-configuration)
+- [API Endpoints](#api-endpoints)
+- [Best Practices](#best-practices)
+
+## Settings Overview
+
+Settings in FlexPrice are:
+- **Scoped**: Per tenant and environment
+- **Cached**: With 1-hour TTL
+- **Validated**: With strict type checking and value constraints
+- **Audited**: All changes are tracked
+- **Isolated**: Complete tenant and environment isolation
+
+## Available Settings
+
+### Subscription Configuration
+
+**Key**: `subscription_config`
+
+**Purpose**: Controls subscription auto-cancellation behavior for unpaid invoices.
+
+**Schema**:
+```json
+{
+  "grace_period_days": number,     // Required, >= 1
+  "auto_cancellation_enabled": boolean  // Optional, defaults to false
+}
+```
+
+**Default Values**:
+```json
+{
+  "grace_period_days": 3,
+  "auto_cancellation_enabled": false
+}
+```
+
+**Validation Rules**:
+- `grace_period_days` must be:
+  - Required field
+  - Integer value
+  - Greater than or equal to 1
+- `auto_cancellation_enabled` is:
+  - Optional field
+  - Boolean value
+  - Defaults to false if not set
+
+**Usage Example**:
+```json
+// Set grace period only
+{
+  "value": {
+    "grace_period_days": 6
+  }
+}
+
+// Enable auto-cancellation
+{
+  "value": {
+    "auto_cancellation_enabled": true
+  }
+}
+
+// Set both
+{
+  "value": {
+    "grace_period_days": 6,
+    "auto_cancellation_enabled": true
+  }
+}
+```
+
+**Behavior**:
+1. When `auto_cancellation_enabled` is true:
+   - System checks for unpaid invoices on active subscriptions
+   - If invoice is unpaid after grace period, subscription is auto-cancelled
+   - Cancellation is immediate (not at period end)
+   - Webhook event `subscription.canceled` is emitted
+2. When `auto_cancellation_enabled` is false:
+   - No automatic cancellation occurs
+   - Grace period value is still stored but not actively used
+
+### Invoice Configuration
+
+**Key**: `invoice_config`
+
+**Purpose**: Controls invoice number generation and formatting.
+
+**Schema**:
+```json
+{
+  "prefix": string,           // Required, non-empty
+  "format": string,          // Required, one of valid formats
+  "start_sequence": number,  // Required, >= 0
+  "timezone": string,       // Required, valid IANA timezone
+  "separator": string,      // Required, can be empty
+  "suffix_length": number   // Required, 1-10
+}
+```
+
+**Default Values**:
+```json
+{
+  "prefix": "INV",
+  "format": "YYYYMM",
+  "start_sequence": 1,
+  "timezone": "UTC",
+  "separator": "-",
+  "suffix_length": 5
+}
+```
+
+**Validation Rules**:
+- `prefix`: Non-empty string
+- `format`: One of:
+  - `YYYYMM`
+  - `YYYYMMDD`
+  - `YYMMDD`
+  - `YY`
+  - `YYYY`
+- `start_sequence`: Integer >= 0
+- `timezone`: Valid IANA timezone or common abbreviation
+- `separator`: String (can be empty)
+- `suffix_length`: Integer between 1 and 10
+
+**Supported Timezone Abbreviations**:
+- US: EST, CST, MST, PST, HST, AKST
+- Europe: GMT, CET, EET, WET, BST
+- Asia: IST, JST, KST, CCT
+- Australia: AEST, AWST
+- Others: MSK, CAT, EAT, WAT
+
+## API Endpoints
+
+### Get Setting
+```
+GET /v1/settings/:key
+```
+
+Response:
+```json
+{
+  "value": {
+    // Setting specific fields
+  }
+}
+```
+
+### Update Setting
+```
+PUT /v1/settings/:key
+```
+
+Request:
+```json
+{
+  "value": {
+    // Setting specific fields
+  }
+}
+```
+
+Notes:
+- Partial updates are supported
+- Omitted fields retain their existing values
+- All updates are validated
+- Changes are audited
+
+## Best Practices
+
+1. **Initialization**:
+   - Always set required settings when onboarding new tenants
+   - Use default values as starting point
+   - Review and adjust based on business needs
+
+2. **Updates**:
+   - Use partial updates when possible
+   - Validate values before updating
+   - Monitor audit logs for changes
+
+3. **Monitoring**:
+   - Track setting changes in audit logs
+   - Monitor auto-cancellation events
+   - Review grace period effectiveness
+
+4. **Security**:
+   - Only admin users should modify settings
+   - Verify tenant context on all operations
+   - Use tenant-specific API keys
+
+5. **Performance**:
+   - Settings are cached with 1-hour TTL
+   - Use bulk operations when updating multiple settings
+   - Consider timezone impact on operations
