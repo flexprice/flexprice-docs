@@ -1,0 +1,219 @@
+# FlexPrice Settings Guide
+
+This guide documents the configuration settings available in FlexPrice, their usage, and implementation details. 
+Settings are managed at the tenant × environment level, providing complete isolation between different environments within and across tenants.
+
+## Table of Contents
+- [Settings Overview](#settings-overview)
+- [Available Settings](#available-settings)
+  - [Subscription Configuration](#subscription-configuration)
+  - [Invoice Configuration](#invoice-configuration)
+- [API Endpoints](#api-endpoints)
+- [Best Practices](#best-practices)
+
+## Settings Overview
+
+Settings in FlexPrice are:
+- **Scoped**: Per tenant and environment
+- **Cached**: With 1-hour TTL
+- **Validated**: With strict type checking and value constraints
+- **Audited**: All changes are tracked
+- **Isolated**: Complete tenant and environment isolation
+- **Mergeable**: Support partial updates without losing existing values
+
+## Available Settings
+
+### Subscription Configuration
+
+**Key**: `subscription_config`
+
+**Purpose**: Controls subscription auto-cancellation behavior for unpaid invoices.
+
+**Schema**:
+```json
+{
+  "grace_period_days": number,     // REQUIRED for new settings, Optional for updates
+  "auto_cancellation_enabled": boolean  // Optional, defaults to false if not provided
+}
+```
+
+**Default Values** (only applied when creating through API):
+```json
+{
+  "grace_period_days": 3,
+  "auto_cancellation_enabled": false
+}
+```
+
+**Validation Rules**:
+1. For NEW settings:
+   - `grace_period_days`:
+     - Required field
+     - Must be integer >= 1
+   - `auto_cancellation_enabled`:
+     - Optional field
+     - Must be boolean if provided
+     - Defaults to false if not provided
+
+2. For UPDATES:
+   - `grace_period_days` if provided:
+     - Must be integer >= 1
+   - `auto_cancellation_enabled` if provided:
+     - Must be boolean
+   - Omitted fields preserve existing values
+
+**Usage Examples**:
+```json
+// Creating new settings (grace_period_days is required)
+{
+  "value": {
+    "grace_period_days": 6
+  }
+}
+
+// Updating only auto-cancellation (grace_period_days preserved)
+{
+  "value": {
+    "auto_cancellation_enabled": true
+  }
+}
+
+// Full update
+{
+  "value": {
+    "grace_period_days": 6,
+    "auto_cancellation_enabled": true
+  }
+}
+```
+
+**Behavior**:
+1. When `auto_cancellation_enabled` is true:
+   - System checks for unpaid invoices on active subscriptions
+   - If invoice is unpaid after grace period, subscription is auto-cancelled
+   - Cancellation is immediate (not at period end)
+   - Webhook event `subscription.canceled` is emitted
+2. When `auto_cancellation_enabled` is false:
+   - No automatic cancellation occurs
+   - Grace period value is still stored but not actively used
+3. When updating:
+   - Only provided fields are validated
+   - Existing values are preserved for omitted fields
+   - No defaults are applied during updates
+
+### Invoice Configuration
+
+**Key**: `invoice_config`
+
+**Purpose**: Controls invoice number generation and formatting.
+
+**Schema**:
+```json
+{
+  "prefix": string,           // REQUIRED for new settings, Optional for updates
+  "format": string,          // REQUIRED for new settings, Optional for updates
+  "start_sequence": number,  // REQUIRED for new settings, Optional for updates
+  "timezone": string,       // REQUIRED for new settings, Optional for updates
+  "separator": string,      // REQUIRED for new settings, Optional for updates
+  "suffix_length": number   // REQUIRED for new settings, Optional for updates
+}
+```
+
+**Default Values** (only applied when creating through API):
+```json
+{
+  "prefix": "INV",
+  "format": "YYYYMM",
+  "start_sequence": 1,
+  "timezone": "UTC",
+  "separator": "-",
+  "suffix_length": 5
+}
+```
+
+**Validation Rules**:
+1. For NEW settings (all fields required):
+   - `prefix`: Non-empty string
+   - `format`: One of: `YYYYMM`, `YYYYMMDD`, `YYMMDD`, `YY`, `YYYY`
+   - `start_sequence`: Integer >= 0
+   - `timezone`: Valid IANA timezone or common abbreviation
+   - `separator`: String (can be empty)
+   - `suffix_length`: Integer between 1 and 10
+
+2. For UPDATES (all fields optional):
+   - Only provided fields are validated using same rules as above
+   - Omitted fields preserve existing values
+   - No defaults are applied
+
+**Supported Timezone Abbreviations**:
+- US: EST, CST, MST, PST, HST, AKST
+- Europe: GMT, CET, EET, WET, BST
+- Asia: IST, JST, KST, CCT
+- Australia: AEST, AWST
+- Others: MSK, CAT, EAT, WAT
+
+## API Endpoints
+
+### Get Setting
+```
+GET /v1/settings/:key
+```
+
+Response:
+```json
+{
+  "value": {
+    // Setting specific fields
+  }
+}
+```
+
+### Update Setting
+```
+PUT /v1/settings/:key
+```
+
+Request:
+```json
+{
+  "value": {
+    // Setting specific fields
+  }
+}
+```
+
+Notes:
+- For new settings, required fields must be provided
+- For updates, partial updates are fully supported
+- Only provided fields are validated
+- Omitted fields retain their existing values
+- No defaults are applied during updates
+- Changes are audited
+
+## Best Practices
+
+1. **Initialization**:
+   - Provide all required fields when creating new settings
+   - Default values only apply when using API creation
+   - Validate all required fields before submission
+
+2. **Updates**:
+   - Use partial updates to modify only needed fields
+   - Existing values are preserved automatically
+   - No need to provide all fields in updates
+   - Only provided fields are validated
+
+3. **Monitoring**:
+   - Track setting changes in audit logs
+   - Monitor auto-cancellation events
+   - Review grace period effectiveness
+
+4. **Security**:
+   - Only admin users should modify settings
+   - Verify tenant context on all operations
+   - Use tenant-specific API keys
+
+5. **Performance**:
+   - Settings are cached with 1-hour TTL
+   - Use partial updates to minimize data transfer
+   - Consider timezone impact on operations
