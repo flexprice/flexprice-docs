@@ -50,62 +50,45 @@ Settings in FlexPrice are:
    - `grace_period_days`:
      - Required field
      - Must be integer >= 1
+     - Must be a whole number (no decimals)
    - `auto_cancellation_enabled`:
      - Optional field
      - Must be boolean if provided
      - Defaults to false if not provided
 
 2. For UPDATES:
-   - `grace_period_days` if provided:
-     - Must be integer >= 1
-   - `auto_cancellation_enabled` if provided:
-     - Must be boolean
+   - Partial updates are supported
+   - Only provided fields are validated
+   - Same validation rules apply as for new settings
    - Omitted fields preserve existing values
 
-**Usage Examples**:
-```json
-// Creating new settings (grace_period_days is required)
-{
-  "value": {
-    "grace_period_days": 6
-  }
-}
-
-// Updating only auto-cancellation (grace_period_days preserved)
-{
-  "value": {
-    "auto_cancellation_enabled": true
-  }
-}
-
-// Full update
-{
-  "value": {
-    "grace_period_days": 6,
-    "auto_cancellation_enabled": true
-  }
-}
-```
-
-**Behavior**:
-1. When `auto_cancellation_enabled` is true:
-   - System checks for unpaid invoices on active subscriptions
-   - If invoice is unpaid after grace period, subscription is auto-cancelled
-   - Cancellation is immediate (not at period end)
+**Auto-Cancellation Workflow**:
+1. System periodically checks all ACTIVE subscriptions in tenants with auto-cancellation enabled
+2. For each subscription, it evaluates unpaid invoices where:
+   - Invoice has remaining amount > 0 OR payment_status != succeeded
+   - Current time is after invoice due date
+   - Current time is after (due_date + grace_period_days)
+3. When eligible:
+   - Subscription is cancelled immediately (not at period end)
    - Webhook event `subscription.canceled` is emitted
-2. When `auto_cancellation_enabled` is false:
-   - No automatic cancellation occurs
-   - Grace period value is still stored but not actively used
-3. When updating:
-   - Only provided fields are validated
-   - Existing values are preserved for omitted fields
-   - No defaults are applied during updates
+   - All future credit grants are cancelled
+   - Final invoice is generated for the partial period if not end-of-period cancellation
+4. System logs and metadata capture:
+   - In application logs:
+     - Cancellation reason: "grace_period_expired"
+     - Cancelled by: "auto_cancellation_system"
+     - Grace period duration
+     - Tenant and environment IDs
+   - In subscription metadata:
+     - Cancellation type: "immediate"
+     - Effective date (in RFC3339 format)
+     - Cancellation timestamp (in cancelled_at field)
 
 ### Invoice Configuration
 
 **Key**: `invoice_config`
 
-**Purpose**: Controls invoice number generation and formatting.
+**Purpose**: Controls invoice number generation, formatting, and due date calculation.
 
 **Schema**:
 ```json
@@ -115,7 +98,8 @@ Settings in FlexPrice are:
   "start_sequence": number,  // REQUIRED for new settings, Optional for updates
   "timezone": string,       // REQUIRED for new settings, Optional for updates
   "separator": string,      // REQUIRED for new settings, Optional for updates
-  "suffix_length": number   // REQUIRED for new settings, Optional for updates
+  "suffix_length": number,  // REQUIRED for new settings, Optional for updates
+  "due_date_days": number   // Optional, defaults to 1 if not provided
 }
 ```
 
@@ -127,30 +111,92 @@ Settings in FlexPrice are:
   "start_sequence": 1,
   "timezone": "UTC",
   "separator": "-",
-  "suffix_length": 5
+  "suffix_length": 5,
+  "due_date_days": 1
 }
 ```
 
 **Validation Rules**:
-1. For NEW settings (all fields required):
-   - `prefix`: Non-empty string
-   - `format`: One of: `YYYYMM`, `YYYYMMDD`, `YYMMDD`, `YY`, `YYYY`
-   - `start_sequence`: Integer >= 0
-   - `timezone`: Valid IANA timezone or common abbreviation
-   - `separator`: String (can be empty)
-   - `suffix_length`: Integer between 1 and 10
+1. For NEW settings:
+    - Invoice Sequence Prefix Settings
+        - `prefix`:
+            - Required field
+            - Must be non-empty string
+            - Cannot be only whitespace
+        - `format`:
+            - Required field
+            - Must be one of: `YYYYMM`, `YYYYMMDD`, `YYMMDD`, `YY`, `YYYY`
+        - `start_sequence`:
+            - Required field
+            - Must be integer >= 0
+            - Must be a whole number (no decimals)
+        - `timezone`:
+            - Required field
+            - Must be valid IANA timezone or common abbreviation
+            - Cannot be empty string
+        - `separator`:
+            - Required field
+            - Must be string (empty string allowed)
+        - `suffix_length`:
+            - Required field
+            - Must be integer between 1 and 10
+    - Auto Canellation Settings
+        - `due_date_days`:
+            - Must be integer >= 0 if provided
+            - Must be a whole number (no decimals)
 
-2. For UPDATES (all fields optional):
-   - Only provided fields are validated using same rules as above
+2. For UPDATES:
+   - Partial updates are supported
+   - Only provided fields are validated
+   - Same validation rules apply as for new settings
    - Omitted fields preserve existing values
-   - No defaults are applied
+   - Can update only `due_date_days` without other fields
 
-**Supported Timezone Abbreviations**:
-- US: EST, CST, MST, PST, HST, AKST
-- Europe: GMT, CET, EET, WET, BST
-- Asia: IST, JST, KST, CCT
-- Australia: AEST, AWST
-- Others: MSK, CAT, EAT, WAT
+**Invoice Number Generation**:
+1. Format Pattern: `{prefix}{separator}{formatted_date}{separator}{padded_sequence}`
+2. Sequence numbers:
+   - Reset monthly based on the format (e.g., monthly for YYYYMM)
+   - Padded with zeros to match suffix_length
+   - Tenant and environment isolated
+3. Example with separator:
+   ```
+   Configuration:
+   - prefix: "INV"
+   - format: "YYYYMM"
+   - separator: "-"
+   - suffix_length: 5
+
+   Generated numbers:
+   INV-202501-00001
+   INV-202501-00002
+   ```
+
+4. Example without separator:
+   ```
+   Configuration:
+   - prefix: "INV"
+   - format: "YYYYMM"
+   - separator: ""
+   - suffix_length: 5
+
+   Generated numbers:
+   INV20250100001
+   INV20250100002
+   ```
+
+**Supported Timezone Formats**:
+1. IANA Timezone Names (Recommended):
+   - America/New_York
+   - Europe/London
+   - Asia/Tokyo
+   - UTC
+
+2. Common Abbreviations:
+   - US: EST, CST, MST, PST, HST, AKST
+   - Europe: GMT, CET, EET, WET, BST
+   - Asia: IST, JST, KST, CCT
+   - Australia: AEST, AWST
+   - Others: MSK, CAT, EAT, WAT
 
 ## API Endpoints
 
@@ -193,9 +239,10 @@ Notes:
 ## Best Practices
 
 1. **Initialization**:
-   - Provide all required fields when creating new settings
+   - Always provide all required fields when creating new settings
    - Default values only apply when using API creation
    - Validate all required fields before submission
+   - Use IANA timezone names instead of abbreviations when possible
 
 2. **Updates**:
    - Use partial updates to modify only needed fields
@@ -207,13 +254,16 @@ Notes:
    - Track setting changes in audit logs
    - Monitor auto-cancellation events
    - Review grace period effectiveness
+   - Watch for timezone-related issues
 
 4. **Security**:
    - Only admin users should modify settings
    - Verify tenant context on all operations
    - Use tenant-specific API keys
+   - Audit all setting changes
 
 5. **Performance**:
    - Settings are cached with 1-hour TTL
    - Use partial updates to minimize data transfer
    - Consider timezone impact on operations
+   - Monitor sequence number resets
