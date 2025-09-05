@@ -205,36 +205,105 @@ Settings in FlexPrice are:
 GET /v1/settings/:key
 ```
 
-Response:
+**Parameters**:
+- `key` (path): Required. One of: `subscription_config`, `invoice_config`
+
+**Response**:
 ```json
 {
   "value": {
-    // Setting specific fields
-  }
+    // Setting specific fields based on key type
+  },
+  "tenant_id": "string",
+  "environment_id": "string",
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
 }
 ```
 
-### Update Setting
+**Error Responses**:
+- `404 Not Found`: Setting not found for tenant × environment
+- `400 Bad Request`: Invalid setting key
+- `403 Forbidden`: Missing tenant or environment context
+
+### Create/Update Setting
 ```
 PUT /v1/settings/:key
 ```
 
-Request:
+**Parameters**:
+- `key` (path): Required. One of: `subscription_config`, `invoice_config`
+
+**Request**:
 ```json
 {
   "value": {
-    // Setting specific fields
+    // Setting specific fields based on key type
   }
 }
 ```
 
-Notes:
-- For new settings, required fields must be provided
-- For updates, partial updates are fully supported
-- Only provided fields are validated
-- Omitted fields retain their existing values
-- No defaults are applied during updates
-- Changes are audited
+**Response**:
+```json
+{
+  "value": {
+    // Complete setting after operation
+  },
+  "tenant_id": "string",
+  "environment_id": "string",
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
+}
+```
+
+**Error Responses**:
+- `400 Bad Request`: Invalid setting key or validation failed
+- `403 Forbidden`: Missing tenant or environment context
+
+**Behavior**:
+- Single endpoint handles both creation and updates
+- If setting doesn't exist for tenant × environment:
+  - Creates new setting
+  - All required fields must be provided
+  - Default values applied for optional fields
+- If setting exists for tenant × environment:
+  - Updates existing setting
+  - Supports partial updates
+  - Only provided fields are validated
+  - Omitted fields retain their existing values
+  - No defaults are applied
+
+### Delete Setting
+```
+DELETE /v1/settings/:key
+```
+
+**Parameters**:
+- `key` (path): Required. One of: `subscription_config`, `invoice_config`
+
+**Response**:
+```json
+{
+  "message": "Setting deleted successfully"
+}
+```
+
+**Error Responses**:
+- `404 Not Found`: Setting not found for tenant × environment
+- `400 Bad Request`: Invalid setting key
+- `403 Forbidden`: Missing tenant or environment context
+
+**Notes for All Endpoints**:
+- All endpoints require authentication
+- All endpoints require tenant and environment context
+- All operations are audited with:
+  - User ID performing the action
+  - Timestamp
+  - Previous and new values (for updates)
+  - Action type (create/update/delete)
+- Settings are uniquely identified by (tenant_id, environment_id, key)
+- All responses include standard error format for validation failures
+- All endpoints respect tenant isolation
 
 ## Best Practices
 
