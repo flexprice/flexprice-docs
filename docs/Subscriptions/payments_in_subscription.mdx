@@ -1,295 +1,75 @@
 ---
-title: 'Payment Behavior and Payment Methods'
+title: 'Record payment for subscription'
 description: 'Complete guide to Flexprice payment system including payment methods, behaviors, and wallet payment logic'
 ---
 
 ## Overview
 
-Flexprice's payment system is designed to handle multiple payment methods and behaviors while providing flexible payment collection strategies. The system supports both automatic and manual payment collection with advanced wallet-based payment processing and intelligent partial payment handling.
+Flexprice's payment system provides flexible subscription billing with intelligent payment processing. The system combines **payment behaviors** (how to handle payment failures) with **collection methods** (when to charge customers) to create a robust billing experience.
 
-### Key Features
+### Key Concepts
 
-- **Multiple Payment Methods**: Card, Credits, Offline, and Payment Link
-- **Flexible Collection Methods**: Automatic charging and manual invoice sending
-- **Smart Payment Behaviors**: Configurable handling of payment failures with partial payment support
-- **Multi-Wallet Support**: Intelligent payment splitting between cards and wallets
-- **Price Type Restrictions**: Wallet payments respect usage and fixed price type limitations
-- **Flow-Based Logic**: Different payment behaviors based on invoice flow types
-- **Gateway Integration**: Support for custom payment method IDs during subscription creation
-- **Partial Payment Intelligence**: Context-aware partial payment allowance based on behavior and flow type
+- **Collection Method**: Determines when payments are collected (`charge_automatically` or `send_invoice`)
+- **Payment Behavior**: Defines how the system responds to payment failures
+- **Payment Methods**: Card payments and wallet/credits with intelligent splitting
+- **Flow Types**: Different contexts like subscription creation, renewals, manual payments
+- **Partial Payments**: Smart fallback to wallet payments when card payments fail
 
-## Payment Methods
+## Why Payment Behaviors and Collection Methods Matter
 
-### 1. Card Payments (`CARD`)
+Flexprice separates **when** to collect payment from **how** to handle failures. This design provides flexibility for different business models:
 
-**Use Case**: Primary payment method for automatic billing and manual payments
+### Business Model Alignment
+- **SaaS Products**: Use `charge_automatically` + `allow_incomplete` for graceful failure handling
+- **Enterprise**: Use `send_invoice` + `default_active` for manual billing cycles  
+- **Freemium**: Use `charge_automatically` + `default_active` for service-first approach
+- **Premium Services**: Use `charge_automatically` + `error_if_incomplete` for strict payment requirements
 
-**Characteristics**:
-- Requires saved payment method in Stripe
-- Processed immediately when payment is attempted
-- Supports off-session payments for subscriptions
-- Full payment attempt tracking and error handling
+## Valid Payment Configurations
 
-**Requirements**:
-- Customer must exist in both Flexprice and Stripe
-- Default payment method must be set in Stripe OR gateway_payment_method_id provided
-- Payment method created via payment link with `save_card_and_make_default: true`
+The following table shows all valid combinations of collection methods, payment behaviors, and their outcomes:
 
-**Gateway Payment Method ID Support**:
-- Subscriptions can specify a custom `gateway_payment_method_id` during creation
-- This overrides the customer's default payment method for that specific subscription
-- Useful for subscription-specific payment methods or enterprise billing arrangements
+| Collection Method | Payment Behavior | Card Payment | Wallet Payment | Payment Success | Payment Failure |
+|-------------------|------------------|--------------|----------------|-----------------|-----------------|
+| `charge_automatically` | `allow_incomplete` | ✅ Attempted | ✅ Fallback | ✅ Active | ⚠️ Incomplete |
+| `charge_automatically` | `error_if_incomplete` | ✅ Attempted | ❌ No fallback* | ✅ Active | ❌ Failed/Incomplete |
+| `charge_automatically` | `default_active` | ✅ Attempted | ✅ Fallback | ✅ Active | ✅ Active |
+| `send_invoice` | `default_active` | ❌ Not attempted | ❌ Not attempted | ✅ Active | ✅ Active |
+| `send_invoice` | `default_incomplete` | ❌ Not attempted | ❌ Not attempted | ✅ Active | ⚠️ Incomplete |
 
-### 2. Credits/Wallet Payments (`CREDITS`)
+**Note**: *Wallet fallback depends on flow type - see Partial Payment Logic section below.
 
-**Use Case**: Prepaid wallet balance payments
+### Invalid Combinations
 
-**Characteristics**:
-- Instant processing with no external dependencies
-- Respects wallet price type restrictions
-- Supports multiple wallets per customer
-- Automatic reconciliation with invoices
+❌ `charge_automatically` + `default_incomplete` - Conflicts with automatic charging  
+❌ `send_invoice` + `allow_incomplete` - No automatic payment to fail  
+❌ `send_invoice` + `error_if_incomplete` - No automatic payment to fail  
 
-**Requirements**:
-- Active wallet with positive balance
-- Wallet must allow payment for invoice price types
-- Customer must have sufficient wallet balance
-
-### 3. Offline Payments (`OFFLINE`)
-
-**Use Case**: Manually recorded payments (cash, check, wire transfer)
-
-**Characteristics**:
-- No automatic processing
-- Manual reconciliation required
-- Immediate success status
-- Used for enterprise or custom payment arrangements
-
-**Requirements**:
-- Manual verification of payment receipt
-- Admin or customer service intervention
-- Payment amount must match invoice
-
-### 4. Payment Link (`PAYMENT_LINK`)
-
-**Use Case**: Customer-initiated payments through external checkout
-
-**Characteristics**:
-- Redirects customer to external payment page
-- Supports card and ACH payments
-- Handles 3D Secure authentication
-- Webhook-based status updates
-
-**Requirements**:
-- Valid payment link configuration
-- Customer interaction required
-- Webhook endpoint configured
-
-## Collection Methods
-
-### 1. Charge Automatically (`charge_automatically`)
-
-**Use Case**: Automatic subscription billing and immediate payment collection
-
-**Behavior**:
-- Attempts payment immediately when invoice is created
-- Uses customer's default payment method and gateway_payment_method_id
-- Applies payment behavior logic on failure
-- Updates subscription status based on payment result
-
-**Supported Payment Behaviors**:
-- `allow_incomplete`: Activates subscription even if payment fails and marks the subscription as incomplete
-- `error_if_incomplete`: Blocks subscription activation if payment fails 
-- `default_active`: Activates subscription regardless of payment result and marks the subscription as active
-
-### 2. Send Invoice (`send_invoice`)
-
-**Use Case**: Manual payment collection with customer notification
-
-**Behavior**:
-- Creates invoice without immediate payment attempt
-- Sends invoice to customer for manual payment
-- Customer pays through payment link or other methods
-- Subscription status depends on payment behavior
-
-**Supported Payment Behaviors**:
-- `default_active`: Activates subscription immediately without payment and marks the subscription as active
-- `default_incomplete`: Sets subscription to incomplete status 
-
-## Payment Behaviors
-
-### 1. Allow Incomplete (`allow_incomplete`)
-
-**Use Case**: Graceful handling of payment failures
-
-**Behavior**:
-- Attempts payment but allows subscription to continue if it fails
-- Subscription remains active even with failed payments
-- Useful for non-critical services or trial periods
-- Customer can retry payment later
-
-**Collection Method Compatibility**:
-- ✅ `charge_automatically`: Attempts payment, continues on failure
-- ❌ `send_invoice`: Not applicable (no automatic payment attempt)
-
-### 2. Error If Incomplete (`error_if_incomplete`)
-
-**Use Case**: Strict payment requirements
-
-**Behavior**:
-- Payment failure blocks subscription activation
-- Subscription remains in incomplete status until payment succeeds
-- Prevents service access without successful payment
-- Used for critical services requiring guaranteed payment
-
-**Collection Method Compatibility**:
-- ✅ `charge_automatically`: Blocks activation on payment failure
-- ❌ `send_invoice`: Not applicable (no automatic payment attempt)
-
-### 3. Default Active (`default_active`)
-
-**Use Case**: Service-first approach with payment collection
-
-**Behavior**:
-- Activates subscription immediately regardless of payment result
-- Attempts payment in background
-- Customer gets service access even if payment fails
-- Used for freemium or trial models
-
-**Collection Method Compatibility**:
-- ✅ `charge_automatically`: Activates immediately, attempts payment
-- ✅ `send_invoice`: Activates immediately, sends invoice
-
-**Partial Payment Behavior**:
-- **Subscription Creation + Default Active**: Allows partial wallet payment if card fails
-- **Other Behaviors**: No partial payment allowed if card fails
-
-### 4. Default Incomplete (`default_incomplete`)
-
-**Use Case**: Payment-first approach
-
-**Behavior**:
-- Sets subscription to incomplete status
-- Requires successful payment to activate
-- Customer cannot access service until payment succeeds
-- Used for paid services requiring upfront payment
-
-**Collection Method Compatibility**:
-- ❌ `charge_automatically`: Not supported (conflicts with automatic charging)
-- ✅ `send_invoice`: Sets incomplete, sends invoice for payment
+- When no collection method is provided, the default is `charge_automatically`.
+- When no payment behavior is provided, the default is `default_active`.
 
 ## Partial Payment Logic
 
 ### Overview
 
-The system implements intelligent partial payment logic that determines when wallet payments should be attempted even if card payments fail. This behavior is context-aware and depends on the payment behavior and invoice flow type.
+When card payments fail, the system can attempt wallet payments as a fallback. This behavior depends on the **payment behavior** and **flow type** combination.
 
-### Partial Payment Decision Matrix
+### Decision Matrix
 
-| Flow Type | Payment Behavior | Card Fails | Wallet Attempted | Subscription Status |
-|-----------|------------------|------------|------------------|-------------------|
-| `subscription_creation` | `default_active` | ❌ | ✅ **Yes** | ✅ Active (regardless) |
-| `subscription_creation` | `allow_incomplete` | ❌ | ❌ **No** | ❌ Incomplete |
-| `subscription_creation` | `error_if_incomplete` | ❌ | ❌ **No** | ❌ Error returned |
-| `renewal` | **Any** | ❌ | ✅ **Yes** | ⚠️ Based on behavior |
-| `manual` | **Any** | ❌ | ✅ **Yes** | ⚠️ Active if fully paid |
-| `cancel` | **Any** | ❌ | ✅ **Yes** | ⚠️ Based on behavior |
+| Flow Type | Payment Behavior | Card Fails | Wallet Attempted | Rationale |
+|-----------|------------------|------------|------------------|-----------|
+| `subscription_creation` | `default_active` | ❌ | ✅ **Yes** | Subscription activates anyway |
+| `subscription_creation` | `allow_incomplete` | ❌ | ❌ **No** | Payment affects subscription status |
+| `subscription_creation` | `error_if_incomplete` | ❌ | ❌ **No** | Payment required for activation |
+| `renewal` | **Any** | ❌ | ✅ **Yes** | Partial payment better than none |
+| `manual` | **Any** | ❌ | ✅ **Yes** | Customer-initiated, allow partial |
+| `cancel` | **Any** | ❌ | ✅ **Yes** | Proration handling |
 
-### Partial Payment Rules
+### Rules Summary
 
-#### 1. Subscription Creation Flow
-- **`default_active` behavior**: Always allows partial wallet payment
-  - Rationale: Subscription activates regardless, so partial payment is acceptable
-  - Customer gets service access even with partial payment
-  
-- **Other behaviors**: No partial wallet payment allowed
-  - Rationale: Payment success affects subscription status, partial payment could cause inconsistency
-
-#### 2. Renewal/Manual/Cancel Flows
-- **All behaviors**: Always allow partial wallet payment
-  - Rationale: These flows are less critical for subscription activation
-  - Partial payment is better than no payment for existing subscriptions
-
-## Payment Method and Behavior Combinations
-
-### Charge Automatically + Payment Behaviors
-
-| Payment Behavior | Card Available | Card Declined | Result |
-|------------------|----------------|---------------|---------|
-| `allow_incomplete` | ✅ Payment succeeds | ✅ Subscription active (status - incomplete) | ✅ Subscription active |
-| `error_if_incomplete` | ✅ Payment succeeds | ❌ Subscription incomplete | ❌ Subscription incomplete |
-| `default_active` | ✅ Payment succeeds | ✅ Subscription active (status - active) | ✅ Subscription active |
-
-### Send Invoice + Payment Behaviors
-
-| Payment Behavior | Invoice Sent | Customer Pays | Result |
-|------------------|--------------|---------------|---------|
-| `default_active` | ✅ Invoice sent | ✅ Payment succeeds | ✅ Subscription active (status - active) |
-| `default_incomplete` | ✅ Invoice sent | ✅ Payment succeeds | ✅ Subscription active  (status - incomplete)|
-
-## Payment System Design
-
-### Payment Flow Architecture
-
-```mermaid
-graph TD
-    A[Invoice Created] --> B{Collection Method?}
-    
-    B -->|charge_automatically| C[Payment Behavior Handler]
-    B -->|send_invoice| D[Invoice Sent to Customer]
-    
-    C --> E{Payment Behavior?}
-    E -->|allow_incomplete| F[Attempt Payment + Continue on Failure]
-    E -->|error_if_incomplete| G[Attempt Payment + Block on Failure]
-    E -->|default_active| H[Activate + Attempt Payment]
-    
-    F --> I[Payment Processing]
-    G --> I
-    H --> I
-    
-    I --> J[Card + Wallet Payment Split]
-    J --> K[Card Payment First]
-    K --> L{Card Success?}
-    L -->|Yes| M[Wallet Payment]
-    L -->|No| N{Allow Partial Payment?}
-    
-    N -->|Yes| O[Attempt Wallet Payment]
-    N -->|No| P[Payment Failed - Stop]
-    
-    O --> Q[Check Payment Result]
-    M --> Q
-    Q --> R{Fully Paid?}
-    R -->|Yes| S[Mark Subscription Active]
-    R -->|No| T[Apply Behavior Logic]
-```
-
-### Payment Splitting Logic
-
-The system uses a **card-first payment strategy** with intelligent wallet fallback:
-
-#### Card-First Strategy
-1. **Primary Payment**: Card attempts to pay the full amount first
-2. **Wallet Fallback**: If card fails, wallets attempt to pay available amount
-3. **Partial Payment Logic**: Context-aware decision on whether to allow partial wallet payment
-
-#### Payment Split Calculation
-
-The system intelligently splits payments between card and wallet based on:
-
-1. **Price Type Analysis**: Categorizes invoice charges as USAGE or FIXED
-2. **Wallet Restrictions**: Determines which wallets can pay which price types
-3. **Available Balance**: Calculates total wallet capacity
-4. **Payment Priority**: Card pays what wallets cannot cover
-
-#### Payment Processing Order
-1. **Calculate Split**: Determine card vs wallet amounts based on wallet restrictions
-2. **Card Payment First**: Attempt full card payment for card-eligible amount
-3. **Evaluate Card Result**: Check if card payment succeeded or failed
-4. **Partial Payment Decision**: Use behavior + flow type to decide on wallet fallback
-5. **Wallet Payment**: Process wallet payment if allowed
-6. **Final Assessment**: Determine overall payment success
-
-### Wallet Payment Logic
+- **Subscription Creation + Default Active**: Always allow partial wallet payment
+- **Other Subscription Creation**: No partial payment (affects activation)  
+- **All Other Flows**: Always allow partial payment (better than failure)
 
 #### Wallet Categorization
 
@@ -322,196 +102,186 @@ graph TD
 3. **ALL Wallets Last**: Pay remaining amounts
 4. **Balance Sorting**: Highest balance wallets used first
 
-#### Price Type Deduction Logic
-
-When a wallet makes a payment, the system deducts from price types based on wallet restrictions:
-
-### Payment Flow Types
-
-#### 1. Manual Payment Flow (`InvoiceFlowManual`)
-
-**Use Case**: Customer-initiated payment attempts
-
-**Behavior**:
-- Attempts payment using card-first logic with wallet fallback
-- **Updates subscription status based on payment result**:
-  - **Full payment success** → Mark subscription as active
-  - **Partial or failed payment** → Keep subscription status unchanged
-- Used for manual payment retry scenarios and one-off invoice payments
-
-**Flow**:
-```text
-Manual Payment Request → Process Payment → Check Result → Update Subscription Status
-```
-
-**Key Changes**:
-- Now supports subscription activation on successful payment
-- Maintains status quo for failed/partial payments
-- Consistent with other payment flows
-
-#### 2. Subscription Creation Flow (`InvoiceFlowSubscriptionCreation`)
-
-**Use Case**: New subscription activation
-
-**Behavior**:
-- Applies full payment behavior logic
-- Updates subscription status based on payment result
-- Blocks activation if `error_if_incomplete` behavior fails
-
-**Flow**:
-```text
-Invoice Created → Payment Behavior Handler → Payment Processing → Status Update
-```
-
-#### 3. Renewal Flow (`InvoiceFlowRenewal`)
-
-**Use Case**: Periodic subscription billing
-
-**Behavior**:
-- Always creates invoices regardless of payment result
-- Marks invoices as pending on payment failure
-- Non-blocking payment processing
-
-**Flow**:
-```text
-Renewal Triggered → Create Invoice → Attempt Payment → Update Status
-```
-
-#### 4. Cancel Flow (`InvoiceFlowCancel`)
-
-**Use Case**: Subscription cancellation with proration
-
-**Behavior**:
-- Uses subscription's payment method and behavior
-- No subscription status changes
-- Handles proration credits and charges
-
-**Flow**:
-```text
-Cancellation Request → Create Proration Invoice → Process Payment → Complete Cancellation
-```
-
-## Error Handling
-
-### Payment Failure Scenarios
-
-| Scenario | Card Payment | Wallet Payment | Result |
-|----------|--------------|----------------|---------|
-| No Payment Method | ❌ Failed | ✅ Attempted | Partial payment |
-| Insufficient Funds | ❌ Failed | ✅ Attempted | Partial payment |
-| Card Declined | ❌ Failed | ✅ Attempted | Partial payment |
-| Wallet Restrictions | ✅ Attempted | ❌ Skipped | Card-only payment |
-| No Wallets Available | ✅ Attempted | ❌ Skipped | Card-only payment |
-
-### Error Recovery
-
-1. **Alternative Methods**: System attempts wallet payment if card fails
-2. **Manual Intervention**: Admin can process offline payments
-3. **Customer Notification**: Failed payments trigger customer notifications
-
-
-## Payment Validation
-
-#### Stripe Connection Validation
-- **Connection Status**: Only published Stripe connections are used
-- **Entity Mapping**: Customer must have valid Stripe entity mapping
-- **Payment Method**: Valid payment method must be available
-
-#### Entity Mapping Requirements
-Before processing card payments, the system validates:
-1. **Stripe Connection**: Tenant has active Stripe connection
-2. **Customer Mapping**: Customer exists in Stripe with valid entity mapping
-3. **Payment Method**: Either default payment method or gateway_payment_method_id available
-
-### Wallet Security
-
-- **Balance Validation**: Real-time balance checks prevent overpayment
-- **Transaction Atomicity**: Wallet transactions are atomic and consistent
-- **Price Type Enforcement**: Strict enforcement of wallet restrictions
-
-## Testing Scenarios
-
-### Payment Method Testing
-
-| Test Case | Payment Method | Expected Result |
-|-----------|----------------|-----------------|
-| Valid Card | `CARD` | Payment succeeds |
-| Declined Card | `CARD` | Payment fails with decline error |
-| Insufficient Funds | `CARD` | Payment fails with insufficient funds |
-| Valid Wallet | `CREDITS` | Payment succeeds |
-| Insufficient Wallet | `CREDITS` | Partial payment or failure |
-| No Payment Method | `CARD` | Payment fails with no method error |
-
-### Behavior Testing
-
-| Test Case | Behavior | Collection Method | Expected Result |
-|-----------|----------|-------------------|-----------------|
-| Payment Success | `allow_incomplete` | `charge_automatically` | Subscription active |
-| Payment Failure | `allow_incomplete` | `charge_automatically` | Subscription active (status - incomplete) |
-| Payment Success | `error_if_incomplete` | `charge_automatically` | Subscription active |
-| Payment Failure | `error_if_incomplete` | `charge_automatically` | Subscription failed |
-| Payment Success | `default_active` | `charge_automatically` | Subscription active |
-| Payment Failure | `default_active` | `charge_automatically` | Subscription active |
-
-## API Reference
-
-### Payment Attempt Endpoint
-
-**Endpoint**: `POST /v1/invoices/{invoice_id}/payment/attempt`
-
-**Description**: Attempts to process payment for an invoice using available payment methods
-
-**Response**:
-```json
-{
-    "message": "payment processed successfully"
-}
-```
-
-### Subscription Payment Parameters
-
-**Endpoint**: `POST /v1/subscriptions`
-
-**Description**: Creates subscription with payment behavior configuration
+### **Endpoint**: `POST /v1/subscriptions`
 
 **Request**:
 ```json
 {
   "customer_id": "cust_123",
-  "plan_id": "plan_123",
+  "plan_id": "plan_456",
   "collection_method": "charge_automatically",
+  "payment_behavior": "allow_incomplete",
+  "gateway_payment_method_id": "pm_789"
+}
+```
+
+**Parameters**:
+- `collection_method`: `"charge_automatically"` | `"send_invoice" ` (default: `"charge_automatically"`)
+- `payment_behavior`: `"allow_incomplete"` | `"error_if_incomplete"` | `"default_active"` | `"default_incomplete"` (default: `"default_active"`)
+- `gateway_payment_method_id` (optional): Override default payment method
+
+## Payment Flow Architecture
+
+```mermaid
+graph TD
+    A[Invoice Created] --> B{Collection Method?}
+    
+    B -->|charge_automatically| C[Payment Behavior Handler]
+    B -->|send_invoice| D[Send Invoice to Customer]
+    
+    C --> E{Payment Behavior?}
+    E -->|allow_incomplete| F[Attempt Payment + Continue on Failure]
+    E -->|error_if_incomplete| G[Attempt Payment + Block on Failure]
+    E -->|default_active| H[Activate + Attempt Payment]
+    
+    F --> I[Payment Processing]
+    G --> I
+    H --> I
+    
+    I --> J[Card Payment First]
+    J --> K{Card Success?}
+    K -->|Yes| L[Process Wallet Payment]
+    K -->|No| M{Allow Partial Payment?}
+    
+    M -->|Yes| N[Attempt Wallet Payment]
+    M -->|No| O[Payment Failed - Stop]
+    
+    L --> P[Payment Complete]
+    N --> Q{Any Payment Made?}
+    Q -->|Yes| R[Partial Payment Success]
+    Q -->|No| O
+    
+    P --> S[Update Subscription Status]
+    R --> S
+    O --> S
+```
+
+### Card-First Strategy
+
+The system prioritizes card payments with intelligent wallet fallback:
+
+1. **Calculate Split**: Determine what wallets can pay based on price type restrictions
+2. **Card First**: Attempt card payment for the full eligible amount
+3. **Evaluate Result**: Check if card payment succeeded or failed  
+4. **Partial Decision**: Use behavior + flow type to decide on wallet fallback
+5. **Wallet Payment**: Process available wallet payments if allowed
+6. **Final Status**: Determine overall payment success and subscription status
+
+## Payment Flow Types
+
+### 1. Subscription Creation (`InvoiceFlowSubscriptionCreation`)
+
+**New subscription activation with payment collection**
+
+- **Behavior**: Applies full payment behavior logic
+- **Status Updates**: Subscription status depends on payment result and behavior
+- **Partial Payments**: Only allowed for `default_active` behavior
+
+### 2. Renewal (`InvoiceFlowRenewal`)
+
+**Periodic billing for existing subscriptions**
+
+- **Behavior**: Non-blocking payment processing
+- **Status Updates**: Subscription continues regardless of payment result
+- **Partial Payments**: Always allowed (partial payment better than none)
+
+### 3. Manual Payment (`InvoiceFlowManual`)
+
+**Customer-initiated payment attempts**
+
+- **Behavior**: Uses card-first logic with wallet fallback
+- **Status Updates**: Activates subscription only on full payment success
+- **Partial Payments**: Always allowed
+
+### 4. Cancellation (`InvoiceFlowCancel`)
+
+**Proration handling during subscription cancellation**
+
+- **Behavior**: Processes final charges/credits
+- **Status Updates**: No subscription status changes
+- **Partial Payments**: Always allowed
+
+## Payment Methods
+
+### 1. Card Payments (`CARD`)
+
+**Primary payment method for automatic billing**
+
+- **Processing**: Immediate via Stripe integration
+- **Requirements**: Customer must exist in Stripe with valid payment method
+- **Gateway Support**: Can specify `gateway_payment_method_id` for subscription-specific cards
+- **Fallback**: Wallet payment attempted if card fails (based on partial payment rules)
+
+
+### 2. Credits/Wallet Payments (`CREDITS`)
+
+**Prepaid balance payments with price type restrictions**
+
+- **Processing**: Instant, no external dependencies
+- **Restrictions**: Wallets can be limited to USAGE, FIXED, or ALL price types
+- **Multi-Wallet**: Supports multiple wallets per customer with intelligent selection
+- **Priority**: Promotional wallets used before paid wallets
+
+
+### 3. Offline Payments (`OFFLINE`)
+
+**Manually recorded payments for enterprise customers**
+
+- **Processing**: Manual reconciliation required
+- **Use Cases**: Wire transfers, checks, cash payments
+- **Status**: Immediate success upon manual confirmation
+
+### 4. Payment Link (`PAYMENT_LINK`)
+
+**Customer-initiated payments through hosted checkout**
+
+- **Processing**: Redirects to external payment page
+- **Features**: Supports 3D Secure, multiple payment methods
+- **Integration**: Webhook-based status updates
+
+
+## API Reference
+
+### Create Subscription with Payment Configuration
+
+**Endpoint**: `POST /v1/subscriptions`
+
+**Request**:
+```json
+{
+  "customer_id": "cust_123",
+  "plan_id": "plan_456",
+  "collection_method": "send_invoice",
   "payment_behavior": "default_active",
-  "gateway_payment_method_id": "pm_123"
+  "gateway_payment_method_id": "pm_789"
 }
 ```
 
 **Parameters**:
 - `collection_method`: `"charge_automatically"` | `"send_invoice"`
 - `payment_behavior`: `"allow_incomplete"` | `"error_if_incomplete"` | `"default_active"` | `"default_incomplete"`
-- `gateway_payment_method_id` (optional): Stripe payment method ID to use for this subscription
-  - Overrides customer's default payment method
-  - Must be a valid payment method attached to the customer
-  - Used for subscription-specific payment arrangements
+- `gateway_payment_method_id` (optional): Override default payment method
+
+
+## Payment Method Strategy
+
+- **Primary**: Configure card payments for automatic billing
+- **Fallback**: Set up wallet payments for partial payment scenarios
+- **Enterprise**: Enable offline payments for wire transfers
+- **Customer Choice**: Offer payment links for flexible payment options
+
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Payment Declined**: Check customer's payment method and billing address
-2. **Wallet Restrictions**: Verify wallet configuration allows invoice price types
-3. **Insufficient Balance**: Check wallet balances and top-up requirements
-4. **Subscription Status**: Verify payment behavior configuration matches requirements
-
-### Debug Information
-
-The system provides detailed logging for payment processing:
-
-- Payment attempt details
-- Wallet selection and restrictions
-- Price type breakdown
-- Payment method usage
-- Error conditions and recovery
-
-For complete API documentation, see the [API Reference - Subscription ](/api-reference/subscriptions/create-subscription). , [API Reference - Attempt Payment ](/api-reference/invoices/attempt-payment-for-an-invoice)
+1. **Payment Declined**: Verify customer's payment method and billing details
+2. **Wallet Restrictions**: Check wallet `allowed_price_types` match invoice charges  
+3. **Subscription Not Activating**: Verify payment behavior allows activation on failure
+4. **Partial Payments**: Check flow type and behavior combination in decision matrix
 
 
+
+For complete API documentation, see:
+- [Create Subscription API](/api-reference/subscriptions/create-subscription)
+- [Attempt Payment API](/api-reference/invoices/attempt-payment-for-an-invoice)
