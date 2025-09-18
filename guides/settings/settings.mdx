@@ -1,0 +1,338 @@
+# FlexPrice Settings Guide
+
+This guide documents the configuration settings available in FlexPrice, their usage, and implementation details. 
+Settings are managed at the tenant × environment level, providing complete isolation between different environments within and across tenants.
+
+## Table of Contents
+- [Settings Overview](#settings-overview)
+- [Available Settings](#available-settings)
+  - [Subscription Configuration](#subscription-configuration)
+  - [Invoice Configuration](#invoice-configuration)
+- [API Endpoints](#api-endpoints)
+- [Best Practices](#best-practices)
+
+## Settings Overview
+
+Settings in FlexPrice are:
+- **Scoped**: Per tenant and environment
+- **Cached**: With 1-hour TTL
+- **Validated**: With strict type checking and value constraints
+- **Audited**: All changes are tracked
+- **Isolated**: Complete tenant and environment isolation
+- **Mergeable**: Support partial updates without losing existing values
+
+## Available Settings
+
+### Subscription Configuration
+
+**Key**: `subscription_config`
+
+**Purpose**: Controls subscription auto-cancellation behavior for unpaid invoices.
+
+**Schema**:
+```json
+{
+  "grace_period_days": number,     // REQUIRED for new settings, Optional for updates
+  "auto_cancellation_enabled": boolean  // Optional, defaults to false if not provided
+}
+```
+
+**Default Values** (only applied when creating through API):
+```json
+{
+  "grace_period_days": 3,
+  "auto_cancellation_enabled": false
+}
+```
+
+**Validation Rules**:
+1. For NEW settings:
+   - `grace_period_days`:
+     - Required field
+     - Must be integer >= 1
+     - Must be a whole number (no decimals)
+   - `auto_cancellation_enabled`:
+     - Optional field
+     - Must be boolean if provided
+     - Defaults to false if not provided
+
+2. For UPDATES:
+   - Partial updates are supported
+   - Only provided fields are validated
+   - Same validation rules apply as for new settings
+   - Omitted fields preserve existing values
+
+**Auto-Cancellation Workflow**:
+1. System periodically checks all ACTIVE subscriptions in tenants with auto-cancellation enabled
+2. For each subscription, it evaluates unpaid invoices where:
+   - Invoice has remaining amount > 0 OR payment_status != succeeded
+   - Current time is after invoice due date
+   - Current time is after (due_date + grace_period_days)
+3. When eligible:
+   - Subscription is cancelled immediately (not at period end)
+   - Webhook event `subscription.canceled` is emitted
+   - All future credit grants are cancelled
+   - Final invoice is generated for the partial period if not end-of-period cancellation
+4. System logs and metadata capture:
+   - In application logs:
+     - Cancellation reason: "grace_period_expired"
+     - Cancelled by: "auto_cancellation_system"
+     - Grace period duration
+     - Tenant and environment IDs
+   - In subscription metadata:
+     - Cancellation type: "immediate"
+     - Effective date (in RFC3339 format)
+     - Cancellation timestamp (in cancelled_at field)
+
+### Invoice Configuration
+
+**Key**: `invoice_config`
+
+**Purpose**: Controls invoice number generation, formatting, and due date calculation.
+
+**Schema**:
+```json
+{
+  "prefix": string,           // REQUIRED for new settings, Optional for updates
+  "format": string,          // REQUIRED for new settings, Optional for updates
+  "start_sequence": number,  // REQUIRED for new settings, Optional for updates
+  "timezone": string,       // REQUIRED for new settings, Optional for updates
+  "separator": string,      // REQUIRED for new settings, Optional for updates
+  "suffix_length": number,  // REQUIRED for new settings, Optional for updates
+  "due_date_days": number   // Optional, defaults to 1 if not provided
+}
+```
+
+**Default Values** (only applied when creating through API):
+```json
+{
+  "prefix": "INV",
+  "format": "YYYYMM",
+  "start_sequence": 1,
+  "timezone": "UTC",
+  "separator": "-",
+  "suffix_length": 5,
+  "due_date_days": 1
+}
+```
+
+**Validation Rules**:
+1. For NEW settings:
+    - Invoice Sequence Prefix Settings
+        - `prefix`:
+            - Required field
+            - Must be non-empty string
+            - Cannot be only whitespace
+        - `format`:
+            - Required field
+            - Must be one of: `YYYYMM`, `YYYYMMDD`, `YYMMDD`, `YY`, `YYYY`
+        - `start_sequence`:
+            - Required field
+            - Must be integer >= 0
+            - Must be a whole number (no decimals)
+        - `timezone`:
+            - Required field
+            - Must be valid IANA timezone or common abbreviation
+            - Cannot be empty string
+        - `separator`:
+            - Required field
+            - Must be string (empty string allowed)
+        - `suffix_length`:
+            - Required field
+            - Must be integer between 1 and 10
+    - Auto Canellation Settings
+        - `due_date_days`:
+            - Must be integer >= 0 if provided
+            - Must be a whole number (no decimals)
+
+2. For UPDATES:
+   - Partial updates are supported
+   - Only provided fields are validated
+   - Same validation rules apply as for new settings
+   - Omitted fields preserve existing values
+   - Can update only `due_date_days` without other fields
+
+**Invoice Number Generation**:
+1. Format Pattern: `{prefix}{separator}{formatted_date}{separator}{padded_sequence}`
+2. Sequence numbers:
+   - Reset monthly based on the format (e.g., monthly for YYYYMM)
+   - Padded with zeros to match suffix_length
+   - Tenant and environment isolated
+3. Example with separator:
+   ```
+   Configuration:
+   - prefix: "INV"
+   - format: "YYYYMM"
+   - separator: "-"
+   - suffix_length: 5
+
+   Generated numbers:
+   INV-202501-00001
+   INV-202501-00002
+   ```
+
+4. Example without separator:
+   ```
+   Configuration:
+   - prefix: "INV"
+   - format: "YYYYMM"
+   - separator: ""
+   - suffix_length: 5
+
+   Generated numbers:
+   INV20250100001
+   INV20250100002
+   ```
+
+**Supported Timezone Formats**:
+1. IANA Timezone Names (Recommended):
+   - America/New_York
+   - Europe/London
+   - Asia/Tokyo
+   - UTC
+
+2. Common Abbreviations:
+   - US: EST, CST, MST, PST, HST, AKST
+   - Europe: GMT, CET, EET, WET, BST
+   - Asia: IST, JST, KST, CCT
+   - Australia: AEST, AWST
+   - Others: MSK, CAT, EAT, WAT
+
+## API Endpoints
+
+### Get Setting
+```
+GET /v1/settings/:key
+```
+
+**Parameters**:
+- `key` (path): Required. One of: `subscription_config`, `invoice_config`
+
+**Response**:
+```json
+{
+  "value": {
+    // Setting specific fields based on key type
+  },
+  "tenant_id": "string",
+  "environment_id": "string",
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
+}
+```
+
+**Error Responses**:
+- `404 Not Found`: Setting not found for tenant × environment
+- `400 Bad Request`: Invalid setting key
+- `403 Forbidden`: Missing tenant or environment context
+
+### Create/Update Setting
+```
+PUT /v1/settings/:key
+```
+
+**Parameters**:
+- `key` (path): Required. One of: `subscription_config`, `invoice_config`
+
+**Request**:
+```json
+{
+  "value": {
+    // Setting specific fields based on key type
+  }
+}
+```
+
+**Response**:
+```json
+{
+  "value": {
+    // Complete setting after operation
+  },
+  "tenant_id": "string",
+  "environment_id": "string",
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
+}
+```
+
+**Error Responses**:
+- `400 Bad Request`: Invalid setting key or validation failed
+- `403 Forbidden`: Missing tenant or environment context
+
+**Behavior**:
+- Single endpoint handles both creation and updates
+- If setting doesn't exist for tenant × environment:
+  - Creates new setting
+  - All required fields must be provided
+  - Default values applied for optional fields
+- If setting exists for tenant × environment:
+  - Updates existing setting
+  - Supports partial updates
+  - Only provided fields are validated
+  - Omitted fields retain their existing values
+  - No defaults are applied
+
+### Delete Setting
+```
+DELETE /v1/settings/:key
+```
+
+**Parameters**:
+- `key` (path): Required. One of: `subscription_config`, `invoice_config`
+
+**Response**:
+```json
+{
+  "message": "Setting deleted successfully"
+}
+```
+
+**Error Responses**:
+- `404 Not Found`: Setting not found for tenant × environment
+- `400 Bad Request`: Invalid setting key
+- `403 Forbidden`: Missing tenant or environment context
+
+**Notes for All Endpoints**:
+- All endpoints require authentication
+- All endpoints require tenant and environment context
+- All operations are audited with:
+  - User ID performing the action
+  - Timestamp
+  - Previous and new values (for updates)
+  - Action type (create/update/delete)
+- Settings are uniquely identified by (tenant_id, environment_id, key)
+- All responses include standard error format for validation failures
+- All endpoints respect tenant isolation
+
+## Best Practices
+
+1. **Initialization**:
+   - Always provide all required fields when creating new settings
+   - Default values only apply when using API creation
+   - Validate all required fields before submission
+   - Use IANA timezone names instead of abbreviations when possible
+
+2. **Updates**:
+   - Use partial updates to modify only needed fields
+   - Existing values are preserved automatically
+   - No need to provide all fields in updates
+   - Only provided fields are validated
+
+3. **Monitoring**:
+   - Track setting changes in audit logs
+   - Monitor auto-cancellation events
+   - Review grace period effectiveness
+   - Watch for timezone-related issues
+
+4. **Security**:
+   - Only admin users should modify settings
+   - Verify tenant context on all operations
+   - Use tenant-specific API keys
+   - Audit all setting changes
+
+5. **Performance**:
+   - Settings are cached with 1-hour TTL
+   - Use partial updates to minimize data transfer
+   - Consider timezone impact on operations
+   - Monitor sequence number resets
