@@ -10957,9 +10957,9 @@
                     "Tasks"
                 ],
                 "summary": "Create a new task",
-                "description": "Create a new import/export task",
+                "description": "Create a new task for processing files asynchronously",
                 "requestBody": {
-                    "description": "Task details",
+                    "description": "Task configuration",
                     "content": {
                         "application/json": {
                             "schema": {
@@ -10970,8 +10970,8 @@
                     "required": true
                 },
                 "responses": {
-                    "201": {
-                        "description": "Created",
+                    "202": {
+                        "description": "Accepted",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -11009,18 +11009,18 @@
                 "x-codegen-request-body-name": "task"
             }
         },
-        "/tasks/{id}": {
+        "/tasks/result": {
             "get": {
                 "tags": [
                     "Tasks"
                 ],
-                "summary": "Get a task by ID",
-                "description": "Get detailed information about a task",
+                "summary": "Get task processing result",
+                "description": "Get the result of a task processing workflow",
                 "parameters": [
                     {
-                        "name": "id",
-                        "in": "path",
-                        "description": "Task ID",
+                        "name": "workflow_id",
+                        "in": "query",
+                        "description": "Workflow ID",
                         "required": true,
                         "schema": {
                             "type": "string"
@@ -11033,7 +11033,17 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/dto.TaskResponse"
+                                    "$ref": "#/components/schemas/models.TemporalWorkflowResult"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
                                 }
                             }
                         }
@@ -11066,13 +11076,13 @@
                 ]
             }
         },
-        "/tasks/{id}/process": {
-            "post": {
+        "/tasks/{id}": {
+            "get": {
                 "tags": [
                     "Tasks"
                 ],
-                "summary": "Process a task",
-                "description": "Start processing a task",
+                "summary": "Get a task",
+                "description": "Get a task by ID",
                 "parameters": [
                     {
                         "name": "id",
@@ -11085,12 +11095,12 @@
                     }
                 ],
                 "responses": {
-                    "202": {
-                        "description": "Accepted",
+                    "200": {
+                        "description": "OK",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/gin.H"
+                                    "$ref": "#/components/schemas/dto.TaskResponse"
                                 }
                             }
                         }
@@ -11139,7 +11149,7 @@
                     "Tasks"
                 ],
                 "summary": "Update task status",
-                "description": "Update the status of a task",
+                "description": "Update a task's status",
                 "parameters": [
                     {
                         "name": "id",
@@ -11152,7 +11162,7 @@
                     }
                 ],
                 "requestBody": {
-                    "description": "New status",
+                    "description": "Status update",
                     "content": {
                         "application/json": {
                             "schema": {
@@ -11168,7 +11178,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/dto.TaskResponse"
+                                    "$ref": "#/components/schemas/gin.H"
                                 }
                             }
                         }
@@ -18746,6 +18756,9 @@
                     "entity_type": {
                         "$ref": "#/components/schemas/types.EntityType"
                     },
+                    "environment_id": {
+                        "type": "string"
+                    },
                     "error_summary": {
                         "type": "string"
                     },
@@ -18778,7 +18791,7 @@
                         "type": "string"
                     },
                     "status": {
-                        "type": "string"
+                        "$ref": "#/components/schemas/types.Status"
                     },
                     "successful_records": {
                         "type": "integer"
@@ -20183,6 +20196,9 @@
             "models.TemporalWorkflowResult": {
                 "type": "object",
                 "properties": {
+                    "message": {
+                        "type": "string"
+                    },
                     "run_id": {
                         "type": "string"
                     },
