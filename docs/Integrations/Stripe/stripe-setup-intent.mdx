@@ -1,0 +1,379 @@
+---
+title: 'Stripe Setup Intent API'
+description: 'Complete guide to saving customer payment methods using Flexprice Stripe integration'
+---
+
+## Overview
+
+Flexprice Setup Intent API allows you to save customer payment methods (cards, bank accounts) for future use without charging them immediately. 
+This is perfect for subscription billing, recurring payments, and one-click checkout experiences.
+
+### Multi-Provider Support
+
+The Setup Intent API is designed to support multiple payment providers. Currently, only Stripe is supported, but the API is built to easily accommodate additional providers like Razorpay in the future.
+
+| Provider | Status | Supported Payment Methods |
+|----------|--------|---------------------------|
+| **Stripe** | ✅ Supported | Cards, US Bank Accounts, SEPA Debit |
+
+### Key Features
+
+- **Save Payment Methods**: Store cards, bank accounts, and other payment methods securely
+- **Multi-Provider Architecture**: Built to support multiple payment providers
+- **Stripe Checkout Integration**: Uses Stripe's hosted checkout for secure payment method collection
+- **Default Payment Method**: Optionally set saved payment method as customer's default
+- **Webhook Processing**: Automatic handling of setup completion via webhooks
+- **Multiple Payment Types**: Support for cards, US bank accounts, and SEPA debit
+
+## What This Does
+
+Flexprice lets you save customer payment methods for future use without charging them immediately. Perfect for:
+
+- **Subscription billing** - Save payment method during signup, charge later
+- **Recurring payments** - Store payment details for monthly/yearly charges  
+- **One-click checkout** - Let returning customers pay without re-entering card details
+- **Deferred billing** - Collect payment info now, charge when service is delivered
+
+## How Flexprice Implements It
+
+Flexprice uses **Stripe Checkout in setup mode** under the hood:
+
+1. **You call Flexprice API** → Creates Stripe Setup Intent + Checkout Session
+2. **Customer enters details** → On Stripe's hosted checkout page
+3. **Stripe sends webhook** → `setup_intent.succeeded` to Flexprice
+4. **Flexprice processes webhook** → Sets default payment method if requested
+5. **Payment method saved** → Available for future charges
+
+### Customer Checkout Experience
+
+When customers complete the setup intent, they'll see Stripe's secure checkout page where they can save their payment information:
+
+![Stripe Setup Intent Card Checkout Page](/stripe-setup-intent-card-checkout.png)
+
+## Prerequisites
+
+Before using Setup Intents, you need:
+
+1. **Stripe Connection** - Configure Stripe API keys in Flexprice dashboard
+2. **Customer Created** - Customer must exist in Flexprice and be synced to Stripe
+3. **Webhook Configured** - Set up webhook endpoint to receive `setup_intent.succeeded` events
+4. **Valid Environment** - Active tenant and environment IDs
+
+## API Endpoints
+
+### 1. Create Setup Intent
+
+**POST** `/api/v1/payments/customers/{customer_id}/setup/intent`
+
+Creates a setup intent and returns a Stripe checkout URL for the customer to complete setup.
+
+#### Headers
+```http
+Authorization: Bearer your_api_key
+Content-Type: application/json
+X-Tenant-ID: your_tenant_id
+X-Environment-ID: your_environment_id
+```
+
+#### Request Body
+```json
+{
+  "provider": "stripe",
+  "success_url": "https://yourapp.com/setup/success",
+  "cancel_url": "https://yourapp.com/setup/cancel",
+  "set_default": true,
+  "usage": "off_session",
+  "payment_method_types": ["card", "us_bank_account"],
+  "metadata": {
+    "subscription_id": "sub_123",
+    "plan_name": "pro"
+  }
+}
+```
+
+#### Parameters
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `provider` | string | **Yes** | Payment provider to use (currently only `"stripe"` supported) |
+| `success_url` | string | **Yes** | Where to redirect after successful setup |
+| `cancel_url` | string | **Yes** | Where to redirect if customer cancels |
+| `set_default` | boolean | No | Set this payment method as default (default: false) |
+| `usage` | string | No | `"off_session"` or `"on_session"` (default: "off_session") |
+| `payment_method_types` | array | No | Supported: `["card", "us_bank_account", "sepa_debit"]` |
+| `metadata` | object | No | Custom data attached to setup intent |
+
+#### Response
+```json
+{
+  "setup_intent_id": "seti_1234567890abcdef",
+  "checkout_session_id": "cs_test_1234567890abcdef",
+  "checkout_url": "https://checkout.stripe.com/pay/cs_test_1234567890abcdef",
+  "client_secret": "seti_1234567890abcdef_secret_abcdef",
+  "status": "pending",
+  "usage": "off_session",
+  "customer_id": "cust_01K3TCX27CY88EFXFYAPVPB9V9",
+  "created_at": 1758017832,
+  "expires_at": 1758021432
+}
+```
+
+### 2. List Saved Payment Methods
+
+**GET** `/api/v1/payments/customers/{customer_id}/methods`
+
+Lists all successfully saved payment methods for a customer, grouped by provider.
+
+#### Request Body
+```json
+{
+  "provider": "stripe"
+}
+```
+
+#### Request Body Parameters
+- `provider` (required): Payment provider to query (currently only `"stripe"` supported)
+
+#### Response
+```json
+{
+  "stripe": [
+    {
+      "id": "pm_1234567890abcdef",
+      "status": "succeeded",
+      "usage": "off_session",
+      "customer_id": "cust_01K3TCX27CY88EFXFYAPVPB9V9",
+      "payment_method_id": "pm_1234567890abcdef",
+      "is_default": true,
+      "payment_method_details": {
+        "id": "pm_1234567890abcdef",
+        "type": "card",
+        "customer": "cus_stripe123abc",
+        "created": 1758017832,
+        "card": {
+          "brand": "visa",
+          "last4": "4242",
+          "exp_month": 12,
+          "exp_year": 2025,
+          "fingerprint": "abc123def456"
+        }
+      },
+      "created_at": 1758017832
+    }
+  ]
+}
+```
+
+## Webhook Processing
+
+### What Happens Behind the Scenes
+
+1. **Customer completes setup** on Stripe's hosted page
+2. **Stripe sends webhook** `setup_intent.succeeded` to Flexprice
+3. **Flexprice processes webhook**:
+   - Validates webhook signature
+   - Checks if `set_default: "true"` in metadata
+   - If true, calls Stripe API to set payment method as default
+   - Logs the successful setup
+
+### Webhook Configuration
+
+You need to configure Stripe webhooks to send `setup_intent.succeeded` events to Flexprice:
+
+**Webhook URL:** `https://your-flexprice-instance.com/api/v1/webhooks/stripe`
+
+**Listened Events:**
+- `setup_intent.succeeded`
+
+## Error Handling
+
+### Common Error Responses
+
+```json
+// Missing provider field
+{
+  "success": false,
+  "error": {
+    "message": "provider is required",
+    "code": "VALIDATION_ERROR"
+  }
+}
+
+// Unsupported provider
+{
+  "success": false,
+  "error": {
+    "message": "Currently only 'stripe' provider is supported",
+    "code": "VALIDATION_ERROR"
+  }
+}
+
+// Customer not found
+{
+  "success": false,
+  "error": {
+    "message": "Customer not found",
+    "code": "CUSTOMER_NOT_FOUND"
+  }
+}
+
+// Invalid request format
+{
+  "success": false,
+  "error": {
+    "message": "Invalid request format. Unknown fields are not allowed.",
+    "code": "VALIDATION_ERROR"
+  }
+}
+
+// Stripe connection issue
+{
+  "success": false,
+  "error": {
+    "message": "Unable to create Stripe setup intent",
+    "code": "STRIPE_ERROR",
+    "details": {
+      "customer_id": "cust_123",
+      "error": "Invalid API key"
+    }
+  }
+}
+```
+
+### Validation Rules
+
+- **Provider required**: `provider` field is mandatory for both endpoints
+- **Stripe only**: Currently only `"stripe"` provider is supported
+- **Strict JSON parsing**: Unknown fields in request body are rejected
+- **Required URLs**: `success_url` and `cancel_url` must be valid HTTP/HTTPS URLs
+- **Payment method types**: Only `card`, `us_bank_account`, `sepa_debit` are supported
+- **Usage parameter**: Must be `on_session` or `off_session`
+
+## Testing
+
+### Test Cards
+
+Use these Stripe test cards:
+
+| Card Number | Brand | Description |
+|-------------|-------|-------------|
+| `4242424242424242` | Visa | Successful payment method |
+| `4000000000000002` | Visa | Declined payment method |
+| `4000000000009995` | Visa | Insufficient funds |
+
+### Test Flow
+
+1. **Create setup intent** with test customer ID
+2. **Use test card** `4242424242424242` in Stripe checkout
+3. **Complete setup** - should redirect to success URL
+4. **Check webhook** - verify `setup_intent.succeeded` received
+5. **List payment methods** - confirm payment method is saved
+
+### Test with cURL
+
+```bash
+# Create setup intent
+curl -X POST "https://api.flexprice.io/api/v1/payments/customers/cust_test/setup/intent" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-ID: YOUR_TENANT_ID" \
+  -H "X-Environment-ID: YOUR_ENVIRONMENT_ID" \
+  -d '{
+    "provider": "stripe",
+    "success_url": "https://yourapp.com/success",
+    "cancel_url": "https://yourapp.com/cancel",
+    "set_default": true
+  }'
+
+# List payment methods
+curl -X GET "https://api.flexprice.io/api/v1/payments/customers/cust_test/methods" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-ID: YOUR_TENANT_ID" \
+  -H "X-Environment-ID: YOUR_ENVIRONMENT_ID" \
+  -d '{
+    "provider": "stripe"
+  }'
+```
+
+## Troubleshooting
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| `400 Bad Request` | Missing provider field | Include `"provider": "stripe"` in request body |
+| `400 Bad Request` | Unsupported provider | Use only `"stripe"` as provider value |
+| `400 Bad Request` | Invalid request body | Check required fields and JSON format |
+| `401 Unauthorized` | Invalid API key | Verify API key and headers |
+| `404 Not Found` | Customer not found | Ensure customer exists and is synced to Stripe |
+| Payment method not saved | Webhook not received | Verify webhook endpoint and `setup_intent.succeeded` event |
+| Payment method not set as default | `set_default` not in metadata | Ensure `set_default: true` in request body |
+
+## Security Considerations
+
+### Payment Security
+
+- **Stripe Hosted Checkout**: All payment method collection happens on Stripe's secure pages
+- **PCI Compliance**: No sensitive payment data stored in Flexprice systems
+- **Webhook Verification**: All webhook signatures are verified for security
+- **Encrypted Storage**: All payment method references encrypted at rest
+
+### Data Protection
+
+- **Access Controls**: Role-based access to payment method information
+- **Audit Logging**: All setup intent operations logged for compliance
+- **Data Retention**: Payment method data retained per compliance requirements
+- **Customer Privacy**: Payment methods only accessible to authorized users
+
+## Integration Examples
+
+### Subscription Signup Flow
+
+```javascript
+// 1. Create customer
+const customer = await createCustomer({
+  email: "user@example.com",
+  name: "John Doe"
+});
+
+// 2. Create setup intent for subscription
+const setupIntent = await createSetupIntent(customer.id, {
+  provider: "stripe",
+  success_url: "https://yourapp.com/subscription/success",
+  cancel_url: "https://yourapp.com/subscription/cancel",
+  set_default: true,
+  metadata: {
+    subscription_plan: "pro_monthly"
+  }
+});
+
+// 3. Redirect customer to Stripe checkout
+window.location.href = setupIntent.checkout_url;
+```
+
+### Recurring Payment Setup
+
+```javascript
+// Create setup intent for recurring payments
+const setupIntent = await createSetupIntent(customerId, {
+  provider: "stripe",
+  success_url: "https://yourapp.com/payments/success",
+  cancel_url: "https://yourapp.com/payments/cancel",
+  set_default: true,
+  usage: "off_session",
+  payment_method_types: ["card", "us_bank_account"],
+  metadata: {
+    billing_type: "recurring",
+    frequency: "monthly"
+  }
+});
+```
+
+## Next Steps
+
+After setting up payment method collection:
+
+1. **Test Setup Flow**: Use test cards to verify the complete flow
+2. **Configure Webhooks**: Ensure `setup_intent.succeeded` events are received
+3. **Implement Success Pages**: Create user-friendly success and cancel pages
+4. **Monitor Payment Methods**: Use the list endpoint to verify saved methods
+5. **Process Payments**: Use saved payment methods for future charges
