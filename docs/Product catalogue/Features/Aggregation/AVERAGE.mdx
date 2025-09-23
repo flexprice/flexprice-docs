@@ -1,0 +1,155 @@
+---
+title: "AVERAGE"
+description: "Calculates the average value of a specified property."
+---
+
+## AVERAGE Billable Metric 
+Step-by-Step Setup When creating an AVERAGE-based metered feature:
+
+1. **Navigate to Features**
+   - Go to Product Catalog → Features
+   - Click "Add Feature"
+
+2. **Basic Information**
+   - **Name**: "Response Time" (or descriptive name)
+   - **Type**: Select "Metered"
+
+3. **Event Configuration**
+   - **Event Name**: `api.response` (must match your event data)
+   - **Aggregation Function**: Average
+   - **Aggregation Field**: `response_time_ms` (the property to average)
+
+4. **Usage Settings**
+   - **Usage Reset**: Periodic (for monthly averages) or Cumulative
+   - **Unit Name**: `ms` (milliseconds)
+
+5. **Save Feature**
+
+## Calculation Example
+
+### Event Data
+```json
+[
+  {
+    "event_id": "evt_001",
+    "event_name": "api.response",
+    "external_customer_id": "customer_123",
+    "timestamp": "2024-01-15T10:00:00Z",
+    "properties": {
+      "response_time_ms": 150
+    }
+  },
+  {
+    "event_id": "evt_002", 
+    "event_name": "api.response",
+    "external_customer_id": "customer_123",
+    "timestamp": "2024-01-15T10:05:00Z",
+    "properties": {
+      "response_time_ms": 200
+    }
+  },
+  {
+    "event_id": "evt_003",
+    "event_name": "api.response",
+    "external_customer_id": "customer_123", 
+    "timestamp": "2024-01-15T10:10:00Z",
+    "properties": {
+      "response_time_ms": 250
+    }
+  },
+  {
+    "event_id": "evt_001", // Duplicate event ID
+    "event_name": "api.response",
+    "external_customer_id": "customer_123", 
+    "timestamp": "2024-01-15T10:15:00Z",
+    "properties": {
+      "response_time_ms": 180
+    }
+  }
+]
+```
+
+### Calculation Process
+1. **Event Matching**: All events with `event_name = "api.response"`
+2. **Deduplication**: Remove duplicate event IDs, keeping latest value
+   - `evt_001` → `180 ms` (latest value for this ID)
+   - `evt_002` → `200 ms`
+   - `evt_003` → `250 ms`
+3. **Average Calculation**: `(180 + 200 + 250) / 3 = 210 ms`
+
+**Result**: `210 ms`
+
+## Use Cases
+
+### Response Time Monitoring
+**Perfect for**: API response times, page load times, query performance
+```json
+{
+  "event_name": "api.response",
+  "external_customer_id": "acme_corp",
+  "properties": {
+    "response_time_ms": 185
+  }
+}
+```
+
+### Performance Metrics
+**Perfect for**: Processing duration, execution time, latency measurements
+```json
+{
+  "event_name": "job.processing",
+  "external_customer_id": "user_456",
+  "properties": {
+    "duration_seconds": 45.2
+  }
+}
+```
+
+### Quality Scores
+**Perfect for**: User ratings, quality metrics, satisfaction scores
+```json
+{
+  "event_name": "user.rating",
+  "external_customer_id": "merchant_789",
+  "properties": {
+    "score": 4.5
+  }
+}
+```
+
+### Resource Utilization
+**Perfect for**: CPU usage, memory consumption, bandwidth utilization
+```json
+{
+  "event_name": "resource.usage",
+  "external_customer_id": "customer_101",
+  "properties": {
+    "cpu_percent": 65.8
+  }
+}
+```
+
+### File Size Analysis
+**Perfect for**: Average file sizes, document lengths, data volumes
+```json
+{
+  "event_name": "file.processed",
+  "external_customer_id": "data_user",
+  "properties": {
+    "file_size_mb": 12.7
+  }
+}
+```
+
+### When to Use AVERAGE
+
+✅ **Use AVERAGE when:**
+- Need mean values over time periods
+- Tracking performance or quality metrics
+- Measuring typical behavior or usage patterns
+- Billing based on average consumption levels
+
+## Next Steps
+
+- **[Creating a Metered Feature](/docs/Event%20Ingestion/Creating%20a%20Metered%20Feature)** - Complete setup guide
+- **[Sending Events](/docs/Event%20Ingestion/Sending%20Events)** - How to transmit AVERAGE events

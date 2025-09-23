@@ -57,17 +57,35 @@ This means Flexprice will only aggregate token usage events where `model` is eit
 
    * **Aggregation**
 
-     * Common options include **SUM** or **COUNT**.
-
-     * **SUM**: Adds a numeric property (like tokens, price, etc.) across all matching events.
+     * FlexPrice supports 8 aggregation types (see [Aggregation Overview](/docs/Product%20catalogue/Features/Aggregation/Overview) for detailed explanations):
 
      * **COUNT**: Counts the total number of matching events, regardless of any numeric value in the event data.
 
+     * **SUM**: Adds a numeric property (like tokens, price, etc.) across all matching events.
+
+     * **AVERAGE**: Calculates the mean value of a specified property across all matching events.
+
+     * **COUNT UNIQUE**: Counts only the unique values of a specified event property.
+
+     * **LATEST**: Returns the most recent value of a specified property based on event timestamp.
+
+     * **SUM WITH MULTIPLIER**: Sums a property and applies a configurable multiplier for rate conversions.
+
+     * **MAX**: Returns the maximum value of a specified property (supports bucketed calculations).
+
+     * **WEIGHTED SUM**: Time-weighted sum for capacity-based billing where values are prorated by duration.
+
    * **Aggregation Value**
 
-     * The **property** that Flexprice sums or evaluates. For `SUM`, this property should be numeric (e.g., `tokens`).
+     * The **property** that Flexprice aggregates. Required for all aggregation functions except `COUNT`.
 
-     * If you choose **COUNT**, you typically don’t specify a numeric property (because you’re just counting occurrences).
+     * For numeric aggregations (`SUM`, `AVERAGE`, `SUM WITH MULTIPLIER`, `MAX`, `WEIGHTED SUM`): specify a numeric property (e.g., `tokens`, `gb`, `response_time`).
+
+     * For `COUNT UNIQUE`: specify any property whose distinct values you want to count (e.g., `user_id`, `session_id`).
+
+     * For `LATEST`: specify the property whose most recent value you want to track (e.g., `tier_level`, `status`).
+
+     * For `COUNT`: no field required (counts event occurrences only).
 
    * **Aggregation Type**
 
