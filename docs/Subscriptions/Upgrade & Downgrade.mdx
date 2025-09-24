@@ -1,0 +1,337 @@
+---
+title: "Upgrade & Downgrade"
+description: "Learn how to upgrade or downgrade subscription plans with automatic proration and billing adjustments"
+---
+
+## Overview
+
+Flexprice allows you to change subscription plans seamlessly with automatic proration calculations, billing adjustments, and invoice generation. Whether you're upgrading to a higher tier or downgrading to a more cost-effective plan, the system handles all the complex billing logic for you.
+
+## Key Features
+
+- **Automatic Proration**: Calculate credits and charges for unused time
+- **Immediate Billing**: Generate invoices for plan changes instantly
+- **Preview Changes**: See the impact before making changes
+- **Flexible Billing**: Support for different billing cycles and periods
+- **Audit Trail**: Complete history of all subscription changes
+
+## How It Works
+
+### The Process
+
+1. **Preview the Change**: Use the preview endpoint to see the financial impact
+2. **Execute the Change**: Confirm the change to apply it immediately
+3. **Automatic Processing**: The system handles proration, billing, and invoice generation
+4. **Subscription Update**: Your subscription is updated to the new plan
+
+### What Happens During a Plan Change
+
+When you change your subscription plan, Flexprice:
+
+1. **Archives the old subscription** and marks it as cancelled
+2. **Calculates proration** for unused time on the current plan
+3. **Creates a new subscription** with the target plan
+4. **Generates an invoice** with credits and charges
+5. **Resets usage counters** for the new plan
+6. **Sends notifications** about the change
+
+## API Reference
+
+### Preview Subscription Change
+
+Preview the financial impact of changing your subscription plan.
+
+```http
+POST /v1/subscriptions/{subscription_id}/change/preview
+```
+
+#### Request Body
+
+```json
+{
+  "target_plan_id": "plan_premium_monthly",
+  "proration_behavior": "create_prorations",
+  "billing_cadence": "monthly",
+  "billing_period": "month",
+  "billing_period_count": 1,
+  "billing_cycle": "monthly",
+  "metadata": {
+    "change_reason": "upgrade_requested"
+  }
+}
+```
+
+#### Request Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `target_plan_id` | string | Yes | ID of the new plan to change to |
+| `proration_behavior` | string | Yes | How to handle proration: `create_prorations` or `none` |
+| `billing_cadence` | string | Yes | Billing frequency: `monthly`, `quarterly`, `yearly` |
+| `billing_period` | string | Yes | Billing period: `month`, `quarter`, `year` |
+| `billing_period_count` | integer | Yes | Number of billing periods |
+| `billing_cycle` | string | Yes | Billing cycle type |
+| `metadata` | object | No | Additional key-value pairs |
+
+#### Response
+
+```json
+{
+  "subscription_id": "subs_abc123",
+  "current_plan": {
+    "id": "plan_basic_monthly",
+    "name": "Basic Monthly",
+    "amount": "29.00",
+    "currency": "usd"
+  },
+  "target_plan": {
+    "id": "plan_premium_monthly",
+    "name": "Premium Monthly",
+    "amount": "99.00",
+    "currency": "usd"
+  },
+  "change_type": "upgrade",
+  "proration_breakdown": {
+    "credit_amount": "14.50",
+    "credit_description": "Credit for unused time on Basic plan",
+    "charge_amount": "49.50",
+    "charge_description": "Charge for Premium plan from 2024-01-15",
+    "net_amount": "35.00",
+    "proration_date": "2024-01-15T10:00:00Z",
+    "current_period_start": "2024-01-01T00:00:00Z",
+    "current_period_end": "2024-02-01T00:00:00Z",
+    "days_used": 14,
+    "days_remaining": 17,
+    "currency": "usd"
+  },
+  "billing_cycle_info": {
+    "period_start": "2024-01-15T10:00:00Z",
+    "period_end": "2024-02-15T10:00:00Z",
+    "billing_anchor": "2024-01-01T00:00:00Z",
+    "billing_cadence": "monthly",
+    "billing_period": "month",
+    "billing_period_count": 1
+  },
+  "effective_date": "2024-01-15T10:00:00Z",
+  "warnings": []
+}
+```
+
+### Execute Subscription Change
+
+Execute the subscription plan change after previewing.
+
+```http
+POST /v1/subscriptions/{subscription_id}/change/execute
+```
+
+#### Request Body
+
+Same as preview request.
+
+#### Response
+
+```json
+{
+  "old_subscription": {
+    "id": "subs_abc123",
+    "status": "cancelled",
+    "plan_id": "plan_basic_monthly",
+    "current_period_start": "2024-01-01T00:00:00Z",
+    "current_period_end": "2024-02-01T00:00:00Z",
+    "billing_anchor": "2024-01-01T00:00:00Z",
+    "created_at": "2024-01-01T00:00:00Z",
+    "archived_at": "2024-01-15T10:00:00Z"
+  },
+  "new_subscription": {
+    "id": "subs_new456",
+    "status": "active",
+    "plan_id": "plan_premium_monthly",
+    "current_period_start": "2024-01-15T10:00:00Z",
+    "current_period_end": "2024-02-15T10:00:00Z",
+    "billing_anchor": "2024-01-01T00:00:00Z",
+    "created_at": "2024-01-15T10:00:00Z"
+  },
+  "change_type": "upgrade",
+  "effective_date": "2024-01-15T10:00:00Z",
+  "invoice": {
+    "id": "inv_change123",
+    "amount_due": "35.00",
+    "currency": "usd",
+    "status": "finalized",
+    "created_at": "2024-01-15T10:00:00Z"
+  },
+  "proration_applied": {
+    "credit_amount": "14.50",
+    "credit_description": "Credit for unused time on current plan",
+    "charge_amount": "49.50",
+    "charge_description": "Charge for new plan from 2024-01-15",
+    "net_amount": "35.00",
+    "proration_date": "2024-01-15T10:00:00Z",
+    "current_period_start": "2024-01-01T00:00:00Z",
+    "current_period_end": "2024-02-01T00:00:00Z",
+    "days_used": 14,
+    "days_remaining": 17,
+    "currency": "usd"
+  },
+  "metadata": {
+    "change_reason": "upgrade_requested"
+  }
+}
+```
+
+## Proration Behavior
+
+### Create Prorations (Recommended)
+
+When `proration_behavior` is set to `create_prorations`:
+
+- **Credits**: Unused portion of current plan is credited
+- **Charges**: New plan is charged for remaining time
+- **Invoice**: Single invoice with net amount due
+- **Immediate**: Changes take effect immediately
+
+### No Prorations
+
+When `proration_behavior` is set to `none`:
+
+- **No Credits**: No credit for unused time
+- **Full Charge**: New plan charged at full price
+- **Separate Billing**: Current plan continues until period end
+- **Delayed**: Changes take effect at next billing period
+
+## Change Types
+
+### Upgrade
+
+Moving to a higher-tier plan:
+
+- **Immediate Effect**: Changes apply immediately
+- **Proration**: Credits unused time, charges new plan
+- **Usage Reset**: Usage counters reset for new plan
+- **Feature Access**: Immediate access to new features
+
+### Downgrade
+
+Moving to a lower-tier plan:
+
+- **Immediate Effect**: Changes apply immediately
+- **Proration**: Credits unused time, charges new plan
+- **Usage Reset**: Usage counters reset for new plan
+- **Feature Limits**: Some features may be restricted
+
+## Billing Considerations
+
+### Invoice Generation
+
+- **Single Invoice**: One invoice for the entire change
+- **Line Items**: Clear breakdown of credits and charges
+- **Net Amount**: Final amount due after proration
+- **Immediate Payment**: Payment due immediately
+
+### Billing Cycle Changes
+
+- **Anchor Preservation**: Billing anchor can be maintained
+- **Period Adjustment**: New billing periods start from change date
+- **Cycle Synchronization**: Usage and billing cycles align
+
+## Usage and Limits
+
+### Usage Reset
+
+When changing plans:
+
+- **Counters Reset**: All usage counters reset to zero
+- **New Limits**: Usage limits updated to new plan
+- **Historical Data**: Previous usage data preserved
+- **Reporting**: Usage reports show both periods
+
+### Feature Access
+
+- **Immediate Access**: New features available immediately
+- **Restrictions**: Some features may be limited
+- **Addon Compatibility**: Existing addons may need adjustment
+
+## Error Handling
+
+### Common Errors
+
+| Error | Description | Solution |
+|-------|-------------|----------|
+| `INVALID_PLAN` | Target plan doesn't exist | Verify plan ID is correct |
+| `SAME_PLAN` | Cannot change to same plan | Choose a different plan |
+| `INVALID_SUBSCRIPTION` | Subscription not found | Verify subscription ID |
+| `PRORATION_ERROR` | Proration calculation failed | Contact support |
+| `BILLING_ERROR` | Invoice generation failed | Check billing configuration |
+
+### Validation Rules
+
+- **Active Subscription**: Only active subscriptions can be changed
+- **Valid Plan**: Target plan must exist and be available
+- **Different Plan**: Cannot change to the same plan
+- **Billing Setup**: Valid billing method required
+- **No Pending Changes**: Cannot change while other changes are pending
+
+## Best Practices
+
+### Before Making Changes
+
+1. **Preview First**: Always preview changes before executing
+2. **Check Compatibility**: Ensure new plan supports your needs
+3. **Review Billing**: Understand the financial impact
+4. **Plan Timing**: Consider billing cycle timing
+
+### After Making Changes
+
+1. **Verify Invoice**: Check the generated invoice
+2. **Update Integrations**: Update any external integrations
+3. **Monitor Usage**: Watch usage patterns with new plan
+4. **Review Features**: Test new features and limits
+
+## Examples
+
+### Basic Upgrade
+
+```bash
+curl -X POST "https://api.flexprice.io/v1/subscriptions/subs_abc123/change/preview" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "target_plan_id": "plan_premium_monthly",
+    "proration_behavior": "create_prorations",
+    "billing_cadence": "monthly",
+    "billing_period": "month",
+    "billing_period_count": 1,
+    "billing_cycle": "monthly"
+  }'
+```
+
+### Downgrade with Custom Billing
+
+```bash
+curl -X POST "https://api.flexprice.io/v1/subscriptions/subs_abc123/change/execute" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "target_plan_id": "plan_basic_quarterly",
+    "proration_behavior": "create_prorations",
+    "billing_cadence": "quarterly",
+    "billing_period": "quarter",
+    "billing_period_count": 1,
+    "billing_cycle": "quarterly",
+    "metadata": {
+      "change_reason": "cost_optimization"
+    }
+  }'
+```
+
+## Support
+
+If you encounter issues with subscription changes:
+
+1. **Check Documentation**: Review this guide and API reference
+2. **Preview Changes**: Use preview endpoint to understand impact
+3. **Contact Support**: Reach out to our support team
+4. **Check Status**: Monitor subscription status and billing
+
+For additional help, contact us at [support@flexprice.io](mailto:support@flexprice.io).
