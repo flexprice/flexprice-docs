@@ -1,0 +1,29 @@
+---
+title: "Overview"
+description: "**Aggregation types** define how usage is measured from incoming events. They are used to **calculate billable consumption** and form the foundation of usage-based billing.
+"
+---
+
+**FlexPrice supports the following aggregation types:**
+
+| Aggregation | Description | Transcription |
+|-------------|-------------|---------------|
+| **COUNT** | Counts event occurrences for basic usage tracking | COUNT(DISTINCT events.id) |
+| **SUM** | Aggregates numeric property values across events | SUM(events.properties.property_name) |
+| **COUNT UNIQUE** | Tracks distinct property values for unique metrics | COUNT_DISTINCT(events.properties.property_name) |
+| **LATEST** | Captures the most recent property value by timestamp | argMax(events.properties.property_name, timestamp) |
+| **SUM WITH MULTIPLIER** | Applies configurable rate multipliers to summed values | SUM(events.properties.property_name) * multiplier |
+| **MAX** | Identifies peak values with optional bucketing support | MAX(events.properties.property_name) |
+| **WEIGHTED SUM** | Time-proportional aggregation for capacity-based billing | Weighted calculation based on event duration |
+
+All aggregation types except **COUNT** operate on event properties. **The result of this aggregation will be used to calculate charges.**
+
+## Next Steps
+
+- [COUNT Aggregation](/docs/Product%20catalogue/Features/Aggregation/COUNT)
+- [SUM Aggregation](/docs/Product%20catalogue/Features/Aggregation/SUM)
+- [COUNT UNIQUE Aggregation](/docs/Product%20catalogue/Features/Aggregation/COUNT-UNIQUE)
+- [LATEST Aggregation](/docs/Product%20catalogue/Features/Aggregation/LATEST)
+- [SUM WITH MULTIPLIER Aggregation](/docs/Product%20catalogue/Features/Aggregation/SUM-WITH-MULTIPLIER)
+- [MAX Aggregation](/docs/Product%20catalogue/Features/Aggregation/MAX)
+- [WEIGHTED SUM Aggregation](/docs/Product%20catalogue/Features/Aggregation/WEIGHTED-SUM)

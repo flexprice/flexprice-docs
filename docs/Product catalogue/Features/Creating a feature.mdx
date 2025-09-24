@@ -63,14 +63,21 @@ The aggregation settings tell Flexprice how to measure your events.
 ![Aggregation Settings](/public/images/docs/Product%20catalogue/Features/Creating%20a%20feature/Screenshot_2025-03-08_at_8.46.31_PM.png)
 
 #### Function
-Choose one of these aggregation functions:
-- **SUM**: Adds a numeric property (like tokens, price, etc.) across all matching events
+Choose one of these aggregation functions (see [Aggregation Overview](/docs/Product%20catalogue/Features/Aggregation/Overview) for detailed explanations):
 - **COUNT**: Counts the total number of matching events, regardless of any numeric value in the event data
+- **SUM**: Adds a numeric property (like tokens, price, etc.) across all matching events
 - **COUNT UNIQUE**: Counts only the unique values of a specified event property
+- **LATEST**: Returns the most recent value of a specified property based on event timestamp
+- **SUM WITH MULTIPLIER**: Sums a property and applies a configurable multiplier for rate conversions
+- **MAX**: Returns the maximum value of a specified property (supports bucketed calculations)
+- **WEIGHTED SUM**: Time-weighted sum for capacity-based billing where values are prorated by duration
 
 #### Field
-- The property that Flexprice sums or evaluates. For `SUM` and `COUNT UNIQUE`, this property should be numeric (e.g., `tokens`)
-- If you choose `COUNT`, you typically don't specify a numeric property (because you're just counting occurrences)
+- The property that Flexprice aggregates. Required for all aggregation functions except `COUNT`
+- For numeric aggregations (`SUM`, `SUM WITH MULTIPLIER`, `MAX`, `WEIGHTED SUM`): specify a numeric property (e.g., `tokens`, `gb`, `response_time`)
+- For `COUNT UNIQUE`: specify any property whose distinct values you want to count (e.g., `user_id`, `session_id`)
+- For `LATEST`: specify the property whose most recent value you want to track (e.g., `tier_level`, `status`)
+- For `COUNT`: no field required (counts event occurrences only)
 
 #### Usage Reset
 - **Cumulative**: The meter never resets. Usage keeps accumulating across billing cycles, providing a running total. This is useful for features like storage.

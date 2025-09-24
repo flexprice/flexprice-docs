@@ -1,0 +1,189 @@
+---
+title: "WEIGHTED SUM"
+description: "Time-weighted sum calculation where values are prorated based on duration."
+---
+
+## WEIGHTED SUM Billable Metric 
+Step-by-Step Setup When creating a WEIGHTED SUM-based metered feature:
+
+1. **Navigate to Features**
+   - Go to Product Catalog → Features
+   - Click "Add Feature"
+
+2. **Basic Information**
+   - **Name**: "Reserved Storage" (or descriptive name)
+   - **Type**: Select "Metered"
+
+3. **Event Configuration**
+   - **Event Name**: `storage.reserved` (must match your event data)
+   - **Aggregation Function**: Weighted Sum
+   - **Aggregation Field**: `gb_reserved` (the property to weight by time)
+
+4. **Usage Settings**
+   - **Usage Reset**: Periodic (for capacity-based billing)
+   - **Unit Name**: `GB-time` (time-weighted unit)
+
+5. **Save Feature**
+
+## Calculation Example
+
+### Billing Period
+**Period:** July 31, 2025 18:30:00 UTC to August 31, 2025 18:30:00 UTC  
+**Total period duration:** 31 days = 2,678,400 seconds
+
+### Event Data
+```json
+[
+  {
+    "event_id": "evt_001",
+    "event_name": "storage.reserved",
+    "external_customer_id": "customer_123",
+    "timestamp": "2025-08-16T00:00:00Z",
+    "properties": {
+      "gb_reserved": 20
+    }
+  },
+  {
+    "event_id": "evt_002",
+    "event_name": "storage.reserved",
+    "external_customer_id": "customer_123",
+    "timestamp": "2025-08-18T00:00:00Z",
+    "properties": {
+      "gb_reserved": 10
+    }
+  },
+  {
+    "event_id": "evt_003",
+    "event_name": "storage.reserved",
+    "external_customer_id": "customer_123",
+    "timestamp": "2025-08-20T00:00:00Z",
+    "properties": {
+      "gb_reserved": 10
+    }
+  },
+  {
+    "event_id": "evt_004",
+    "event_name": "storage.reserved",
+    "external_customer_id": "customer_123",
+    "timestamp": "2025-08-25T00:00:00Z",
+    "properties": {
+      "gb_reserved": 5
+    }
+  }
+]
+```
+
+### Weighted Sum Formula
+```
+weighted_value = (property_value / total_period_seconds) × seconds_from_event_to_period_end
+```
+
+### Calculation Process
+
+#### Event 1: August 16, 2025 - 20 GB
+- **Event timestamp:** August 16, 2025 00:00:00 UTC
+- **Seconds until period end:** August 31 18:30:00 - August 16 00:00:00 = 15 days, 18.5 hours = 1,365,300 seconds
+- **Weighted contribution:** (20 / 2,678,400) × 1,365,300 = (20 × 1,365,300) / 2,678,400 = 27,306,000 / 2,678,400 = **10.198660714285714 GB**
+
+#### Event 2: August 18, 2025 - 10 GB
+- **Event timestamp:** August 18, 2025 00:00:00 UTC
+- **Seconds until period end:** August 31 18:30:00 - August 18 00:00:00 = 13 days, 18.5 hours = 1,197,300 seconds
+- **Weighted contribution:** (10 / 2,678,400) × 1,197,300 = (10 × 1,197,300) / 2,678,400 = 11,973,000 / 2,678,400 = **4.470982142857143 GB**
+
+#### Event 3: August 20, 2025 - 10 GB
+- **Event timestamp:** August 20, 2025 00:00:00 UTC
+- **Seconds until period end:** August 31 18:30:00 - August 20 00:00:00 = 11 days, 18.5 hours = 1,029,300 seconds
+- **Weighted contribution:** (10 / 2,678,400) × 1,029,300 = (10 × 1,029,300) / 2,678,400 = 10,293,000 / 2,678,400 = **3.843303571428571 GB**
+
+#### Event 4: August 25, 2025 - 5 GB
+- **Event timestamp:** August 25, 2025 00:00:00 UTC
+- **Seconds until period end:** August 31 18:30:00 - August 25 00:00:00 = 6 days, 18.5 hours = 573,300 seconds
+- **Weighted contribution:** (5 / 2,678,400) × 573,300 = (5 × 573,300) / 2,678,400 = 2,866,500 / 2,678,400 = **1.070200892857143 GB**
+
+### Total Weighted Sum
+**10.198660714285714 + 4.470982142857143 + 3.843303571428571 + 1.070200892857143 = 19.583147321428571 GB**
+
+**Result**: `19.583147321428571 GB-time`
+
+## Use Cases
+
+### Reserved Capacity Billing
+**Perfect for**: Cloud storage reservations, compute capacity, bandwidth reservations
+```json
+{
+  "event_name": "capacity.reserved",
+  "external_customer_id": "acme_corp",
+  "properties": {
+    "cpu_cores": 8
+  }
+}
+```
+
+### Time-Based Resource Usage
+**Perfect for**: Database connections, server instances, license usage
+```json
+{
+  "event_name": "database.connection",
+  "external_customer_id": "user_456",
+  "properties": {
+    "connection_count": 5
+  }
+}
+```
+
+### Subscription Changes
+**Perfect for**: Mid-cycle plan changes, prorated upgrades/downgrades
+```json
+{
+  "event_name": "plan.upgrade",
+  "external_customer_id": "merchant_789",
+  "properties": {
+    "new_tier_level": 3
+  }
+}
+```
+
+### Infrastructure Provisioning
+**Perfect for**: VM instances, container resources, network bandwidth
+```json
+{
+  "event_name": "vm.provisioned",
+  "external_customer_id": "customer_101",
+  "properties": {
+    "memory_gb": 16
+  }
+}
+```
+
+### License Allocation
+**Perfect for**: Software seats, user licenses, feature entitlements
+```json
+{
+  "event_name": "license.allocated",
+  "external_customer_id": "enterprise_user",
+  "properties": {
+    "seat_count": 25
+  }
+}
+```
+
+### When to Use WEIGHTED SUM
+
+✅ **Use WEIGHTED SUM when:**
+- Billing for reserved or allocated capacity
+- Need time-proportional calculations
+- Handling mid-cycle subscription changes
+- Measuring sustained resource usage over time
+- Events earlier in the period have more time remaining and get higher weight
+
+### Key Characteristics
+
+- **Time-weighted calculation** - Events earlier in the period have higher impact
+- **Perfect for capacity billing** - Bills based on how long resources were allocated
+- **Handles subscription changes** - Automatically prorates usage changes
+- **Complex formula** - More computationally intensive than other aggregations
+
+## Next Steps
+
+- **[Creating a Metered Feature](/docs/Event%20Ingestion/Creating%20a%20Metered%20Feature)** - Complete setup guide
+- **[Sending Events](/docs/Event%20Ingestion/Sending%20Events)** - How to transmit WEIGHTED SUM events

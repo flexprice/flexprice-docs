@@ -1,0 +1,249 @@
+---
+title: "MAX"
+description: "Get the maximum value of a property with optional bucketed calculations."
+---
+
+## MAX Billable Metric 
+Step-by-Step Setup When creating a MAX-based metered feature:
+
+1. **Navigate to Features**
+   - Go to Product Catalog → Features
+   - Click "Add Feature"
+
+2. **Basic Information**
+   - **Name**: "Peak Concurrent Users" (or descriptive name)
+   - **Type**: Select "Metered"
+
+3. **Event Configuration**
+   - **Event Name**: `concurrent.users` (must match your event data)
+   - **Aggregation Function**: Max
+   - **Aggregation Field**: `user_count` (the property to find maximum for)
+   - **Bucket Size**: Optional - Leave empty for standard MAX, or select (HOUR, DAY, etc.) for bucketed MAX
+
+4. **Usage Settings**
+   - **Usage Reset**: Periodic (for peak tracking per period)
+   - **Unit Name**: `user / users`
+
+5. **Save Feature**
+
+## MAX - Two Distinct Modes
+
+MAX aggregation operates in **two completely different modes** depending on whether `bucket_size` is specified:
+
+### Mode 1: Standard MAX (Non-Bucketed)
+**When:** `bucket_size` is NOT specified  
+**Returns:** Overall maximum value across all events  
+**Use for:** Simple peak detection
+
+### Mode 2: Bucketed MAX (Windowed)
+**When:** `bucket_size` IS specified  
+**Returns:** Sum of maximum values from each time bucket  
+**Use for:** Cumulative peak billing, tiered capacity models
+
+## Calculation Examples
+
+### Standard MAX Example
+
+#### Event Data
+```json
+[
+  {
+    "event_id": "evt_001",
+    "event_name": "concurrent.users",
+    "external_customer_id": "customer_123",
+    "timestamp": "2024-01-15T10:00:00Z",
+    "properties": {
+      "user_count": 25
+    }
+  },
+  {
+    "event_id": "evt_002",
+    "event_name": "concurrent.users",
+    "external_customer_id": "customer_123",
+    "timestamp": "2024-01-15T11:30:00Z",
+    "properties": {
+      "user_count": 40
+    }
+  },
+  {
+    "event_id": "evt_003",
+    "event_name": "concurrent.users",
+    "external_customer_id": "customer_123",
+    "timestamp": "2024-01-15T14:00:00Z",
+    "properties": {
+      "user_count": 35
+    }
+  }
+]
+```
+
+#### Standard MAX Calculation
+**Process:** Find the highest value across all events  
+**Result:** `40 users` (maximum from all events)
+
+---
+
+### Bucketed MAX Example
+
+#### Configuration
+- **Bucket Size:** HOUR
+- **Slab Pricing:**
+  - **0-5 GB:** 0 Rs (free tier)
+  - **5-10 GB:** 2 Rs per GB 
+  - **10+ GB:** 3 Rs per GB
+
+#### Event Data
+```json
+[
+  {
+    "event_id": "evt_001",
+    "event_name": "storage.usage",
+    "external_customer_id": "customer_123",
+    "timestamp": "2024-01-15T07:30:00Z",
+    "properties": {
+      "gb_used": 8
+    }
+  },
+  {
+    "event_id": "evt_002",
+    "event_name": "storage.usage",
+    "external_customer_id": "customer_123",
+    "timestamp": "2024-01-15T07:45:00Z",
+    "properties": {
+      "gb_used": 4
+    }
+  },
+  {
+    "event_id": "evt_003",
+    "event_name": "storage.usage",
+    "external_customer_id": "customer_123",
+    "timestamp": "2024-01-15T08:15:00Z",
+    "properties": {
+      "gb_used": 10
+    }
+  },
+  {
+    "event_id": "evt_004",
+    "event_name": "storage.usage",
+    "external_customer_id": "customer_123",
+    "timestamp": "2024-01-15T08:30:00Z",
+    "properties": {
+      "gb_used": 5
+    }
+  },
+  {
+    "event_id": "evt_005",
+    "event_name": "storage.usage",
+    "external_customer_id": "customer_123",
+    "timestamp": "2024-01-15T08:45:00Z",
+    "properties": {
+      "gb_used": 9
+    }
+  }
+]
+```
+
+#### Calculation Process
+
+**Hour 1 (7:00-8:00 UTC):**
+- Events: 8 GB, 4 GB
+- **Bucket Maximum:** 8 GB
+
+**Hour 2 (8:00-9:00 UTC):**
+- Events: 10 GB, 5 GB, 9 GB  
+- **Bucket Maximum:** 10 GB
+
+**Total Bucketed MAX:** 8 GB + 10 GB = **18 GB**
+
+#### Tiered Billing Calculation
+**Billing Calculation for 18 GB total:**
+- First 5 GB: 0 Rs
+- Next 5 GB (5-10): 5 × 2 = 10 Rs
+- Remaining 8 GB (10-18): 8 × 3 = 24 Rs
+- **Total: 34 Rs**
+
+## Use Cases
+
+### Standard MAX Use Cases
+
+#### Peak Concurrent Users
+**Perfect for**: Maximum simultaneous users, peak connections
+```json
+{
+  "event_name": "concurrent.users",
+  "external_customer_id": "acme_corp",
+  "properties": {
+    "active_users": 150
+  }
+}
+```
+
+#### Peak Resource Usage
+**Perfect for**: Maximum CPU, peak memory, highest bandwidth
+```json
+{
+  "event_name": "resource.peak",
+  "external_customer_id": "user_456",
+  "properties": {
+    "cpu_percent": 85
+  }
+}
+```
+
+### Bucketed MAX Use Cases
+
+#### Cumulative Peak Billing
+**Perfect for**: Pay-per-peak hour models, capacity-based pricing
+```json
+{
+  "event_name": "capacity.usage",
+  "external_customer_id": "merchant_789",
+  "properties": {
+    "gb_capacity": 50
+  }
+}
+```
+
+#### Infrastructure Peak Tracking
+**Perfect for**: Peak detection across time windows for billing
+```json
+{
+  "event_name": "server.load",
+  "external_customer_id": "customer_101",
+  "properties": {
+    "peak_instances": 12
+  }
+}
+```
+
+### When to Use Each Mode
+
+✅ **Use Standard MAX when:**
+- Need simple peak detection
+- Billing based on overall maximum
+- Single highest value matters
+
+✅ **Use Bucketed MAX when:**
+- Cumulative peak billing models
+- Time-series peak analysis
+- Tiered capacity pricing
+- Sum of peaks across time windows
+
+### Key Differences
+
+| Aspect | Standard MAX | Bucketed MAX |
+|--------|--------------|--------------|
+| **Configuration** | No bucket_size | Requires bucket_size |
+| **Calculation** | Single maximum value | Sum of bucket maximums |
+| **Use Case** | Overall peak detection | Cumulative peak billing |
+| **Result** | Simple max value | Sum of time-window peaks |
+
+### ⚠️ Critical Notes
+
+- **bucket_size can ONLY be used with MAX aggregation** - No other aggregation supports this
+- **Bucketed MAX sums the maximums** - Does NOT return max of maximums
+
+## Next Steps
+
+- **[Creating a Metered Feature](/docs/Event%20Ingestion/Creating%20a%20Metered%20Feature)** - Complete setup guide
+- **[Sending Events](/docs/Event%20Ingestion/Sending%20Events)** - How to transmit MAX events

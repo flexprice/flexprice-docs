@@ -1,0 +1,113 @@
+---
+title: "COUNT"
+description: "Counts the number of distinct events (by ID) that match the criteria."
+---
+
+## COUNT Billable Metric 
+Step-by-Step Setup When creating a COUNT-based metered feature:
+
+1. **Navigate to Features**
+   - Go to Product Catalog → Features
+   - Click "Add Feature"
+
+2. **Basic Information**
+   - **Name**: "API Calls" (or descriptive name)
+   - **Type**: Select "Metered"
+
+3. **Event Configuration**
+   - **Event Name**: `api.calls` (must match your event data)
+   - **Aggregation Function**: Count
+   - **Aggregation Field**: Leave empty (not required for COUNT)
+
+4. **Usage Settings**
+   - **Usage Reset**: Periodic (for monthly limits) or Cumulative
+   - **Unit Name**: `API call / API calls`
+
+5. **Save Feature**
+
+## Calculation Example
+
+### Event Data
+```json
+[
+  {
+    "event_id": "evt_001",
+    "event_name": "api.calls",
+    "external_customer_id": "customer_123",
+    "timestamp": "2024-01-15T10:00:00Z"
+  },
+  {
+    "event_id": "evt_002", 
+    "event_name": "api.calls",
+    "external_customer_id": "customer_123",
+    "timestamp": "2024-01-15T10:05:00Z"
+  },
+  {
+    "event_id": "evt_001", // Duplicate event ID
+    "event_name": "api.calls",
+    "external_customer_id": "customer_123", 
+    "timestamp": "2024-01-15T10:10:00Z"
+  }
+]
+```
+
+### Calculation Process
+1. **Event Matching**: All events with `event_name = "api.calls"`
+2. **Deduplication**: Remove duplicate event IDs
+   - `evt_001` (first occurrence)
+   - `evt_002` 
+   - `evt_001` (duplicate - ignored)
+3. **Count Result**: `2` (distinct events)
+
+**Result**: `2 API calls`
+
+## Use Cases
+
+### API Request Tracking
+**Perfect for**: RESTful APIs, GraphQL queries, webhook calls
+```json
+{
+  "event_name": "api.calls",
+  "external_customer_id": "acme_corp"
+}
+```
+
+### File Operations
+**Perfect for**: File uploads, downloads, processing tasks
+```json
+{
+  "event_name": "file.uploads", 
+  "external_customer_id": "user_456"
+}
+```
+
+### Transaction Counting
+**Perfect for**: Payment transactions, database operations, user actions
+```json
+{
+  "event_name": "transactions",
+  "external_customer_id": "merchant_789"
+}
+```
+
+### Feature Usage
+**Perfect for**: Feature activations, button clicks, page views
+```json
+{
+  "event_name": "feature.usage",
+  "external_customer_id": "customer_101"
+}
+```
+
+### When to Use COUNT
+
+✅ **Use COUNT when:**
+- Tracking discrete events or actions
+- You don't need to measure quantity/volume
+- Simple occurrence-based billing
+- High-volume event streams (best performance)
+
+## Next Steps
+
+- **[Creating a Metered Feature](/docs/Event%20Ingestion/Creating%20a%20Metered%20Feature)** - Complete setup guide
+- **[Sending Events](/docs/Event%20Ingestion/Sending%20Events)** - How to transmit COUNT events
