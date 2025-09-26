@@ -20,12 +20,12 @@ When you change plans, Flexprice:
 
 ### Example Scenario
 
-You have a monthly plan that costs $100/month, and you want to upgrade to a $200/month plan on day 15 of your billing cycle:
+You have a monthly plan that costs `$100/month`, and you want to upgrade to a `$200/month` plan on day 15 of your billing cycle:
 
 - **Days used**: 15 days
 - **Days remaining**: 15 days
-- **Credit for unused time**: $50 (50% of $100)
-- **Charge for new plan**: $100 (50% of $200)
+- **Credit for unused time**: `$50` (50% of `$100`)
+- **Charge for new plan**: `$100` (50% of `$200`)
 - **Net amount due**: $50
 
 ## Proration Calculations
@@ -47,52 +47,12 @@ Net Amount = Charge Amount - Credit Amount
 - **Yearly Plans**: Proration based on days in the year
 - **Leap Years**: February 29th is included in calculations
 
-## Proration Behavior Options
-
-### Create Prorations (Recommended)
-
-```json
-{
-  "proration_behavior": "create_prorations"
-}
-```
-
-**What happens:**
-- Credits unused time on current plan
-- Charges prorated amount for new plan
-- Generates immediate invoice
-- Changes take effect immediately
-
-**Best for:**
-- Most subscription changes
-- When you want immediate access to new features
-- When you want to optimize costs
-
-### No Prorations
-
-```json
-{
-  "proration_behavior": "none"
-}
-```
-
-**What happens:**
-- No credit for unused time
-- New plan charged at full price
-- Current plan continues until period end
-- Changes take effect at next billing period
-
-**Best for:**
-- When you want to avoid immediate charges
-- When you're near the end of your billing period
-- When you want to delay the change
-
 ## Proration Examples
 
 ### Example 1: Monthly Upgrade
 
-**Current Plan**: Basic Monthly ($50/month)
-**New Plan**: Premium Monthly ($100/month)
+**Current Plan**: Basic Monthly (`$50`/month)
+**New Plan**: Premium Monthly (`$100`/month)
 **Change Date**: Day 10 of 30-day month
 
 **Calculation:**
@@ -104,8 +64,8 @@ Net Amount = Charge Amount - Credit Amount
 
 ### Example 2: Quarterly Downgrade
 
-**Current Plan**: Premium Quarterly ($300/quarter)
-**New Plan**: Basic Quarterly ($150/quarter)
+**Current Plan**: Premium Quarterly (`$300`/quarter)
+**New Plan**: Basic Quarterly (`$150`/quarter)
 **Change Date**: Day 45 of 90-day quarter
 
 **Calculation:**
@@ -117,8 +77,8 @@ Net Amount = Charge Amount - Credit Amount
 
 ### Example 3: Yearly Plan Change
 
-**Current Plan**: Basic Yearly ($600/year)
-**New Plan**: Premium Yearly ($1200/year)
+**Current Plan**: Basic Yearly (`$600`/year)
+**New Plan**: Premium Yearly (`$1200`/year)
 **Change Date**: Day 100 of 365-day year
 
 **Calculation:**
