@@ -1,0 +1,82 @@
+---
+title: "Upgrade & Downgrade"
+description: "Learn how to upgrade or downgrade subscription plans with automatic proration and billing adjustments"
+---
+
+## Overview
+
+Flexprice allows you to change subscription plans seamlessly with automatic proration calculations, billing adjustments, and invoice generation. Whether you're upgrading to a higher tier or downgrading to a more cost-effective plan, the system handles all the complex billing logic for you.
+
+## Key Features
+
+- **Automatic Proration**: Calculate credits and charges for unused time
+- **Immediate Billing**: Generate invoices for plan changes instantly
+- **Preview Changes**: See the impact before making changes
+- **Flexible Billing**: Support for different billing cycles and periods
+- **Audit Trail**: Complete history of all subscription changes
+
+## How It Works
+
+### The Process
+
+1. **Preview the Change**: Use the preview endpoint to see the financial impact
+2. **Execute the Change**: Confirm the change to apply it immediately
+3. **Automatic Processing**: The system handles proration, billing, and invoice generation
+4. **Subscription Update**: Your subscription is updated to the new plan
+
+### API Endpoints
+
+- [**Preview Change**](/api-reference/subscriptions/preview-subscription-plan-change) - See the financial impact before making changes
+- [**Execute Change**](/api-reference/subscriptions/execute-subscription-plan-change) - Apply the subscription plan change
+
+## API Reference
+
+### 1. Preview Subscription Plan Change
+**Endpoint:** `POST /subscriptions/{id}/change/preview`
+
+Preview the financial impact of changing a subscription plan before making the actual change.
+
+#### Request Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `target_plan_id` | string | ✅ | The ID of the new plan you want to change to |
+| `billing_cadence` | enum | ✅ | How often billing occurs: `RECURRING` or `ONETIME` |
+| `billing_cycle` | enum | ✅ | When billing cycles start: `anniversary` or `calendar` |
+| `billing_period` | enum | ✅ | Billing frequency: `MONTHLY`, `ANNUAL`, `WEEKLY`, `DAILY`, `QUARTERLY`, `HALF_YEARLY` |
+| `billing_period_count` | integer | ✅ | Number of billing periods for the new subscription |
+| `proration_behavior` | enum | ✅ | How to handle proration: `create_prorations` (default) or `none` |
+| `metadata` | object | ❌ | Additional key-value pairs for storing extra information |
+
+
+### 2. Execute Subscription Plan Change
+**Endpoint:** `POST /subscriptions/{id}/change/execute`
+
+Execute the subscription plan change after previewing the impact.
+
+#### Request Fields
+Uses the same `SubscriptionChangeRequest` as the preview endpoint.
+
+
+### Field Explanations
+
+#### Billing Configuration
+- **`billing_cadence`**: Whether this is a one-time charge (`ONETIME`) or recurring billing (`RECURRING`)
+- **`billing_cycle`**: 
+  - `anniversary`: Billing starts from the subscription start date
+  - `calendar`: Billing aligns with calendar periods (e.g., monthly on the 1st)
+- **`billing_period`**: How often the customer is billed (daily, weekly, monthly, etc.)
+- **`billing_period_count`**: How many periods the subscription lasts (e.g., 12 for annual)
+
+#### Proration Behavior
+- **`create_prorations`**: Calculate and apply credits/charges for unused time
+- **`none`**: No proration
+
+### What Happens During a Plan Change
+
+When you change your subscription plan, Flexprice:
+
+1. **Archives the old subscription** and marks it as cancelled
+2. **Calculates proration** for unused time on the current plan
+3. **Creates a new subscription** with the target plan
+4. **Generates an invoice** with credits and charges
