@@ -1,0 +1,195 @@
+---
+title: 'Stripe Integration Workflow'
+---
+
+## Overview
+
+This comprehensive guide walks you through integrating **FlexPrice** with **Stripe** to enable seamless payment processing and advanced usage-based billing. This integration combines FlexPrice's powerful usage tracking capabilities with Stripe's robust billing & payment infrastructure.
+
+**What you'll achieve with this integration:**
+- Process payments securely through Stripe's infrastructure
+- Automatically sync customers, plans, and subscriptions
+- Handle complex usage-based billing scenarios
+- Receive real-time updates via webhooks 
+
+---
+
+## System Architecture
+
+The FlexPrice-Stripe integration follows a clear division of responsibilities, ensuring each system handles what it does best while maintaining seamless data flow between platforms.
+
+### Division of Responsibilities
+
+**FlexPrice specializes in:**
+
+- Usage-based charge calculation and metering
+- Complex billing logic and usage invoice generation
+- Plan configuration with usage components
+
+**Stripe handles:**
+- Secure payment processing and compliance
+- Customer payment method storage
+- Transaction processing and failure handling
+- Recurring billing infrastructure
+
+## Prerequisites
+Before you begin, ensure the following:
+- You have an **active FlexPrice account**  
+- You have a **Stripe account** (in test or live mode)  
+- You possess **admin access** to both platforms  
+- You have a **basic understanding of webhooks** (optional but helpful)
+
+---
+	
+## Step 1: Set Up the Connection
+
+Follow the connection setup guide below to link Stripe with FlexPrice:  
+👉 [Stripe Connection Setup Guide](https://docs.flexprice.io/docs/Integrations/Stripe/stripe-connection-setup)
+
+### Required Webhook Events
+```
+
+customer.created  
+payment_intent.succeeded  
+payment_intent.payment_failed  
+setup_intent.succeeded  
+invoice_payment.paid
+
+```
+
+### Optional Webhook Events (based on your sync preferences)
+```
+
+product.created  
+product.updated  
+product.deleted  
+customer.subscription.created  
+customer.subscription.updated  
+customer.subscription.deleted
+
+```
+
+---
+
+### 1.2 Configure Sync Settings
+
+Select which data types you want to sync between **FlexPrice** and **Stripe**:
+
+| Sync Type             | Direction | Status          | Description                                   |
+| --------------------- | --------- | --------------- | --------------------------------------------- |
+| **Plan Sync**         | Inbound   | ✅               | Sync Stripe products into FlexPrice as plans  |
+| **Plan Sync**         | Outbound  | ❌ Not available |                                               |
+| **Subscription Sync** | Inbound   | ✅               | Sync Stripe subscriptions into FlexPrice      |
+| **Subscription Sync** | Outbound  | ❌ Not available |                                               |
+| **Invoice Sync**      | Inbound   | ❌ Not available |                                               |
+| **Invoice Sync**      | Outbound  | ✅               | Send FlexPrice invoices to Stripe for payment |
+
+---
+
+## Step 2: Sync Configuration Details
+
+### Plan Inbound Sync (Stripe → FlexPrice)
+- **What it does:** Automatically imports Stripe products as FlexPrice plans  
+- **Webhook events used:**  
+  `product.created`, `product.updated`, `product.deleted`
+- When you enable **Plan Inbound Sync**:
+	- Stripe products are imported as FlexPrice plans
+	- Plans will initially have **empty pricing structures**
+	- You must manually add usage charges to imported plans
+	- Usage charges can be rolled out to existing subscriptions
+
+**Important:** FlexPrice focuses on usage-based billing, so imported plans serve as containers for your usage pricing models.
+
+#### 2.1 Adding Usage Charges to Plans
+
+After importing plans from Stripe:
+
+1. **Navigate to Plans** in FlexPrice
+2. **Select an imported plan**
+3. **Add usage charges:**
+    - Metered billing components
+    - Tiered pricing structures
+    - Per-unit charges
+
+#### 2.2 Rolling Out Usage Charges
+
+When you add or modify usage charges:
+- Changes can be applied to **existing subscriptions**
+- Set **effective dates** for pricing changes
+
+### Subscription Inbound Sync (Stripe → FlexPrice)
+- **What it does:** Automatically imports Stripe subscriptions into FlexPrice  
+- **When to enable:** Customers subscribe via Stripe and you want billing data managed in FlexPrice  
+- **Webhook events used:**  
+  `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`
+
+#### 2.3 Subscription Upgrades and Downgrades
+
+FlexPrice handles subscription changes through a **cancel-and-recreate** process:
+
+**The Process:**
+1. Customer initiates upgrade/downgrade request on Stripe
+2. FlexPrice cancels the existing subscription internally
+3. **Usage charges are calculated immediately** for the canceled period
+4. If invoice outbound sync is enabled, usage invoice is sent to Stripe
+5. New subscription is created with exact start and end dates
+6. Customer receives confirmation of the change
+
+**Benefits of this approach:**
+- **Accurate usage billing** for partial periods
+- **Clean subscription transitions**
+- **Precise proration** handling
+- **Audit trail** for all changes
+
+#### 2.4 Subscription Cancellations
+
+When a subscription is canceled:
+
+1. **Immediate usage invoice generation** for the current period
+2. **Conditional sync** to Stripe based on your settings
+3. **Subscription marked as canceled** in both systems
+4. **Final confirmation** sent to customer
+
+**Key Features:**
+- No usage charges are lost during cancellation
+- Immediate billing for consumed resources
+- Seamless integration with Stripe's payment collection
+
+#### 2.5 Invoice Outbound Sync (FlexPrice → Stripe)
+- **What it does:** Sends invoices generated in FlexPrice to Stripe for payment processing  
+- **When to enable:** You create invoices in FlexPrice but want Stripe to handle payment collection  
+- **Benefits:** Unified payment experience and centralized transaction history  
+
+---
+
+## Step 3: Payment Flow Setup
+
+### 3.1 Supported Payment Methods
+
+FlexPrice supports multiple Stripe payment flows:
+1. **Checkout Sessions** – For one-time payments via Stripe Checkout  
+2. **Saved Payment Methods** – Store customer cards for future billing  
+3. **Setup Intents** – Save payment methods without immediate charge  
+
+### 3.2 Payment Collection Modes
+
+You can choose how customer payments are collected:
+
+| Mode | Description |
+|-------|--------------|
+| **Automatic** | Stripe automatically charges customers when invoices are due |
+| **Manual** | Customers receive payment links to complete transactions manually |
+
+---
+
+## Support
+
+Need assistance? We're here to help.
+
+- **FlexPrice Support:** [support@flexprice.com](mailto:support@flexprice.com)  
+- **Integration Documentation:** [FlexPrice Docs](https://docs.flexprice.com)  
+- **Stripe Documentation:** [Stripe Docs](https://stripe.com/docs)
+
+💡 **Need help setting up?**  
+Our team can assist with configuration, testing, and troubleshooting.  
+Reach out to **FlexPrice Support** to schedule a setup session.
