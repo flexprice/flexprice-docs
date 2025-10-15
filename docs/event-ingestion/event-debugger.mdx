@@ -1,0 +1,174 @@
+---
+title: "Event Debugger"
+description: "Monitor and debug event processing in real-time"
+---
+
+The Event Debugger provides visibility into your event processing pipeline, helping you track events, identify issues, and ensure accurate billing.
+
+## Overview
+
+When you send events to Flexprice, they go through multiple processing steps—validation, meter matching, aggregation, and billing. The Event Debugger lets you see this entire journey and quickly identify any issues.
+
+## Accessing the Event Debugger
+
+Navigate to **Usage Tracking** → **Events Debugger** in your Flexprice dashboard.
+
+<Frame>
+  ![Event Debugger](/public/images/docs/Event%20Ingestion/event-debugger-1.png)
+</Frame>
+
+## Viewing Events
+
+### Event Stream
+
+The Event Debugger displays a real-time stream of events entering your system. Each event shows:
+
+- Event ID 
+- Event Name
+- Customer Lookup Key
+- Source
+- Timestamp
+
+### Event Details
+
+Click on any event to view complete details:
+
+```json
+{
+  "id": "event_01",
+  "external_customer_id": "cust-new",
+  "event_name": "api_calls",
+  "timestamp": "2025-10-15T11:38:47.962Z",
+  "properties": {},
+  "source": "onboarding",
+  "environment_id": "env_10"
+}
+```
+
+## Sorting Events
+
+Click the Sort button to order events by:
+- Name
+- Email
+- Created At
+- Updated At
+
+The sort order can be ascending or descending.
+
+## Filtering Events
+
+Use the Filter button to narrow down events. You can combine multiple filters:
+
+### Filter by Event ID
+
+Search for a specific event by its ID:
+
+```
+event_id contains "123"
+```
+
+### Filter by Event Name
+
+Filter by event type:
+
+```
+event_name contains "api_calls"
+```
+
+### Filter by Customer
+
+Find events for a specific customer:
+
+```
+external_customer_id contains "cust_new"
+```
+
+### Filter by Time Range
+
+Find events after a specific time period using Start Time:
+
+**Start Time (After):**
+```
+start_time after "October 1st, 2025"
+```
+
+Find events before a specific time period using End Time:
+**End Time (Before):**
+```
+end_time before "October 10th, 2025"
+```
+
+### Filter by Source
+
+Filter events by their source:
+
+```
+source contains "onboarding"
+```
+
+You can apply multiple filters simultaneously and click "Add filter" to combine conditions.
+
+## Common Use Cases
+
+### Verify Events Are Being Received
+
+After setting up event ingestion, check the Event Debugger to confirm events are arriving:
+
+1. Navigate to the Events Debugger
+2. Look for your recent events in the list
+3. Click on an event to view its full details
+
+### Debug Missing Events
+
+If expected events aren't showing up:
+
+1. Check that `event_name` matches your metered feature exactly
+2. Verify `external_customer_id` is correct
+3. Confirm the timestamp format is valid ISO 8601
+4. Check the source parameter matches your expected value
+
+### Find Events for a Specific Customer
+
+To review all events for a customer:
+
+1. Click the Filter button
+2. Add a filter: External Customer ID contains "your_customer_id"
+3. Click Apply to see filtered results
+
+### Review Events in a Time Period
+
+To see events within a specific date range:
+
+1. Click the Filter button
+2. Set Start Time (After) to your beginning date
+3. Set End Time (Before) to your ending date
+4. Apply the filters
+
+## Best Practices
+
+**Test Event Integration Early**
+Send test events and verify they appear in the debugger before going to production.
+
+**Monitor Regularly**
+Check the debugger periodically to ensure events are being received correctly.
+
+**Verify After Changes**
+After updating metered features or plans, use the debugger to confirm events still process correctly.
+
+**Use Filters Effectively**
+Combine multiple filters to quickly find specific events you need to review.
+
+## Related Documentation
+
+- [Creating a Metered Feature](/docs/event-ingestion/creating-a-metered-feature)
+- [Sending Events](/docs/event-ingestion/sending-events)
+- [Validating Events](/docs/event-ingestion/validating-events)
+- [Troubleshooting](/docs/event-ingestion/troubleshooting)
+
+## Need Help?
+
+If events aren't appearing as expected:
+
+1. Review the [Sending Events](/docs/event-ingestion/sending-events) guide to verify your integration
+2. Check the [Validating Events](/docs/event-ingestion/validating-events) documentation
+3. See the [Troubleshooting](/docs/event-ingestion/troubleshooting) guide for common issues
