@@ -1,0 +1,176 @@
+---
+title: "AVERAGE"
+description: "Calculates the average value of a specified property across all matching events."
+---
+
+
+Step-by-Step Setup when creating an AVERAGE-based metered feature:
+
+1. **Navigate to Features**
+   - Go to Product Catalog → Features
+   - Click "Add Feature"
+
+2. **Basic Information**
+   - **Name**: "Response Time" (or descriptive name)
+   - **Type**: Select "Metered"
+
+3. **Event Configuration**
+   - **Event Name**: `api.response` (must match your event data)
+   - **Aggregation Function**: Average
+   - **Aggregation Field**: `response_time_ms` (the property to average)
+
+4. **Usage Settings**
+   - **Usage Reset**: Periodic (for monthly averages) or Cumulative
+   - **Unit Name**: `ms` (milliseconds)
+
+5. **Save Feature**
+
+## Calculation Example
+
+### Event Data
+```json
+[
+  {
+    "event_id": "evt_001",
+    "event_name": "api.response",
+    "external_customer_id": "customer_123",
+    "timestamp": "2024-01-15T10:00:00Z",
+    "properties": {
+      "response_time_ms": 10
+    }
+  },
+  {
+    "event_id": "evt_002", 
+    "event_name": "api.response",
+    "external_customer_id": "customer_123",
+    "timestamp": "2024-01-15T10:05:00Z",
+    "properties": {
+      "response_time_ms": 20
+    }
+  },
+  {
+    "event_id": "evt_003",
+    "event_name": "api.response",
+    "external_customer_id": "customer_123", 
+    "timestamp": "2024-01-15T10:10:00Z",
+    "properties": {
+      "response_time_ms": 30
+    }
+  },
+  {
+    "event_id": "evt_004",
+    "event_name": "api.response",
+    "external_customer_id": "customer_123", 
+    "timestamp": "2024-01-15T10:15:00Z",
+    "properties": {
+      "response_time_ms": 40
+    }
+  },
+  {
+    "event_id": "evt_005",
+    "event_name": "api.response",
+    "external_customer_id": "customer_123", 
+    "timestamp": "2024-01-15T10:20:00Z",
+    "properties": {
+      "response_time_ms": -1
+    }
+  },
+  {
+    "event_id": "evt_006",
+    "event_name": "api.response",
+    "external_customer_id": "customer_123", 
+    "timestamp": "2024-01-15T10:25:00Z",
+    "properties": {
+      "response_time_ms": 0
+    }
+  }
+]
+```
+
+### Calculation Process
+1. **Event Matching**: All events with `event_name = "api.response"`
+2. **Deduplication**: Remove duplicate event IDs using `anyLast()` (each event has unique ID in this case)
+   - `evt_001` → `10 ms`
+   - `evt_002` → `20 ms`
+   - `evt_003` → `30 ms`
+   - `evt_004` → `40 ms`
+   - `evt_005` → `-1 ms`
+   - `evt_006` → `0 ms`
+3. **Average Calculation**: `(10 + 20 + 30 + 40 + (-1) + 0) / 6 = 99 / 6 = 16.5 ms`
+
+**Result**: `16.5 ms`
+
+## Use Cases
+
+### Response Time Monitoring
+**Perfect for**: API response times, page load times, query performance
+```json
+{
+  "event_name": "api.response",
+  "external_customer_id": "acme_corp",
+  "properties": {
+    "response_time_ms": 185
+  }
+}
+```
+
+### Performance Metrics
+**Perfect for**: Processing duration, execution time, latency measurements
+```json
+{
+  "event_name": "job.processing",
+  "external_customer_id": "user_456",
+  "properties": {
+    "duration_seconds": 45.2
+  }
+}
+```
+
+### Business Analytics
+**Perfect for**: Order values, session lengths, transaction amounts
+```json
+{
+  "event_name": "order.placed",
+  "external_customer_id": "merchant_789",
+  "properties": {
+    "order_value": 125.50
+  }
+}
+```
+
+### System Monitoring
+**Perfect for**: CPU usage, memory consumption, bandwidth utilization
+```json
+{
+  "event_name": "system.metrics",
+  "external_customer_id": "customer_101",
+  "properties": {
+    "cpu_percent": 65.8
+  }
+}
+```
+
+### File Size Analysis
+**Perfect for**: Average file sizes, document lengths, data volumes
+```json
+{
+  "event_name": "file.processed",
+  "external_customer_id": "data_user",
+  "properties": {
+    "file_size_mb": 12.7
+  }
+}
+```
+
+### When to Use AVERAGE
+
+✅ **Use AVERAGE when:**
+- Need mean values over time periods
+- Tracking performance or quality metrics
+- Measuring typical behavior or usage patterns
+- Billing based on average consumption levels
+
+## Next Steps
+
+- **[Creating a Metered Feature](/docs/event-ingestion/creating-a-metered-feature)** - Complete setup guide
+- **[Sending Events](/docs/event-ingestion/sending-events)** - How to transmit AVERAGE events

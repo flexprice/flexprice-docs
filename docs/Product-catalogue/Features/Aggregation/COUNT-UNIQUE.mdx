@@ -1,0 +1,155 @@
+---
+title: "COUNT UNIQUE"
+description: "Counts the number of distinct values for a specified property."
+---
+
+Step-by-Step Setup when creating a COUNT UNIQUE-based metered feature:
+
+1. **Navigate to Features**
+   - Go to Product Catalog → Features
+   - Click "Add Feature"
+
+2. **Basic Information**
+   - **Name**: "Active Users" (or descriptive name)
+   - **Type**: Select "Metered"
+
+3. **Event Configuration**
+   - **Event Name**: `user.activity` (must match your event data)
+   - **Aggregation Function**: Count Unique
+   - **Aggregation Field**: `user_id` (the property to count unique values for)
+
+4. **Usage Settings**
+   - **Usage Reset**: Periodic (for monthly limits) or Cumulative
+   - **Unit Name**: `user / users`
+
+5. **Save Feature**
+
+## Calculation Example
+
+### Event Data
+```json
+[
+  {
+    "event_id": "evt_001",
+    "event_name": "user.activity",
+    "external_customer_id": "customer_123",
+    "timestamp": "2024-01-15T10:00:00Z",
+    "properties": {
+      "user_id": "user_alice"
+    }
+  },
+  {
+    "event_id": "evt_002", 
+    "event_name": "user.activity",
+    "external_customer_id": "customer_123",
+    "timestamp": "2024-01-15T10:05:00Z",
+    "properties": {
+      "user_id": "user_bob"
+    }
+  },
+  {
+    "event_id": "evt_003",
+    "event_name": "user.activity",
+    "external_customer_id": "customer_123", 
+    "timestamp": "2024-01-15T10:10:00Z",
+    "properties": {
+      "user_id": "user_alice"
+    }
+  },
+  {
+    "event_id": "evt_004",
+    "event_name": "user.activity",
+    "external_customer_id": "customer_123", 
+    "timestamp": "2024-01-15T10:15:00Z",
+    "properties": {
+      "user_id": "user_charlie"
+    }
+  }
+]
+```
+
+### Calculation Process
+1. **Event Matching**: All events with `event_name = "user.activity"`
+2. **Property Extraction**: Extract `user_id` values from each event
+   - `evt_001` → `"user_alice"`
+   - `evt_002` → `"user_bob"`
+   - `evt_003` → `"user_alice"` (duplicate)
+   - `evt_004` → `"user_charlie"`
+3. **Count Unique Result**: `3` distinct users (`user_alice`, `user_bob`, `user_charlie`)
+
+**Result**: `3 users`
+
+## Use Cases
+
+### Active Users Tracking
+**Perfect for**: Monthly active users, daily active users, unique visitors
+```json
+{
+  "event_name": "user.activity",
+  "external_customer_id": "acme_corp",
+  "properties": {
+    "user_id": "user_12345"
+  }
+}
+```
+
+### Unique Sessions
+**Perfect for**: Session tracking, device identification, unique connections
+```json
+{
+  "event_name": "session.activity",
+  "external_customer_id": "user_456",
+  "properties": {
+    "session_id": "sess_abc123"
+  }
+}
+```
+
+### Feature Usage
+**Perfect for**: Unique feature users, distinct tool usage, unique resource access
+```json
+{
+  "event_name": "feature.usage",
+  "external_customer_id": "merchant_789",
+  "properties": {
+    "feature_name": "advanced_analytics"
+  }
+}
+```
+
+### IP Address Tracking
+**Perfect for**: Unique IP addresses, geographic distribution, security monitoring
+```json
+{
+  "event_name": "api.request",
+  "external_customer_id": "customer_101",
+  "properties": {
+    "ip_address": "192.168.1.100"
+  }
+}
+```
+
+### Device Tracking
+**Perfect for**: Unique devices, platform analytics, hardware usage
+```json
+{
+  "event_name": "app.usage",
+  "external_customer_id": "mobile_user",
+  "properties": {
+    "device_id": "device_xyz789"
+  }
+}
+```
+
+### When to Use COUNT UNIQUE
+
+✅ **Use COUNT UNIQUE when:**
+- Tracking distinct users, sessions, or resources
+- Need to count unique values, not occurrences
+- Measuring reach or adoption metrics
+- Eliminating duplicates for billing purposes
+
+## Next Steps
+
+- **[Creating a Metered Feature](/docs/event-ingestion/creating-a-metered-feature)** - Complete setup guide
+- **[Sending Events](/docs/event-ingestion/sending-events)** - How to transmit COUNT UNIQUE events

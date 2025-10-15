@@ -1,0 +1,155 @@
+---
+title: "LATEST"
+description: "Returns the most recent value of a property based on event timestamp."
+---
+
+Step-by-Step Setup when creating a LATEST-based metered feature:
+
+1. **Navigate to Features**
+   - Go to Product Catalog → Features
+   - Click "Add Feature"
+
+2. **Basic Information**
+   - **Name**: "Current Tier" (or descriptive name)
+   - **Type**: Select "Metered"
+
+3. **Event Configuration**
+   - **Event Name**: `subscription.tier` (must match your event data)
+   - **Aggregation Function**: Latest
+   - **Aggregation Field**: `tier_level` (the property to get latest value for)
+
+4. **Usage Settings**
+   - **Usage Reset**: Periodic (for current period values) or Cumulative
+   - **Unit Name**: `tier` (descriptive unit)
+
+5. **Save Feature**
+
+## Calculation Example
+
+### Event Data
+```json
+[
+  {
+    "event_id": "evt_001",
+    "event_name": "subscription.tier",
+    "external_customer_id": "customer_123",
+    "timestamp": "2024-01-15T10:00:00Z",
+    "properties": {
+      "tier_level": 1
+    }
+  },
+  {
+    "event_id": "evt_002", 
+    "event_name": "subscription.tier",
+    "external_customer_id": "customer_123",
+    "timestamp": "2024-01-15T12:00:00Z",
+    "properties": {
+      "tier_level": 2
+    }
+  },
+  {
+    "event_id": "evt_003",
+    "event_name": "subscription.tier",
+    "external_customer_id": "customer_123", 
+    "timestamp": "2024-01-15T09:00:00Z",
+    "properties": {
+      "tier_level": 3
+    }
+  },
+  {
+    "event_id": "evt_004",
+    "event_name": "subscription.tier",
+    "external_customer_id": "customer_123", 
+    "timestamp": "2024-01-15T14:00:00Z",
+    "properties": {
+      "tier_level": 4
+    }
+  }
+]
+```
+
+### Calculation Process
+1. **Event Matching**: All events with `event_name = "subscription.tier"`
+2. **Timestamp Ordering**: Find the event with the latest timestamp
+   - `evt_003` → `09:00:00Z` (tier_level: 3)
+   - `evt_001` → `10:00:00Z` (tier_level: 1)
+   - `evt_002` → `12:00:00Z` (tier_level: 2)
+   - `evt_004` → `14:00:00Z` (tier_level: 4) **← Latest**
+3. **Latest Result**: `4` (most recent tier_level value)
+
+**Result**: `4 tier`
+
+## Use Cases
+
+### Current Subscription Tier
+**Perfect for**: Subscription levels, plan tiers, service grades
+```json
+{
+  "event_name": "subscription.tier",
+  "external_customer_id": "acme_corp",
+  "properties": {
+    "tier_level": 3
+  }
+}
+```
+
+### Configuration Settings
+**Perfect for**: Feature flags, settings values, configuration states
+```json
+{
+  "event_name": "config.update",
+  "external_customer_id": "user_456",
+  "properties": {
+    "max_users": 50
+  }
+}
+```
+
+### Status Tracking
+**Perfect for**: Account status, service health, operational states
+```json
+{
+  "event_name": "account.status",
+  "external_customer_id": "merchant_789",
+  "properties": {
+    "status_code": 2
+  }
+}
+```
+
+### Resource Limits
+**Perfect for**: Current quotas, capacity limits, threshold values
+```json
+{
+  "event_name": "quota.update",
+  "external_customer_id": "customer_101",
+  "properties": {
+    "storage_gb_limit": 1000
+  }
+}
+```
+
+### Version Tracking
+**Perfect for**: Software versions, API versions, schema versions
+```json
+{
+  "event_name": "version.update",
+  "external_customer_id": "api_user",
+  "properties": {
+    "api_version": 3
+  }
+}
+```
+
+### When to Use LATEST
+
+✅ **Use LATEST when:**
+- Need current state or most recent configuration
+- Tracking subscription tiers or plan levels
+- Billing based on current settings or status
+- Want the final value in a sequence of changes
+
+## Next Steps
+
+- **[Creating a Metered Feature](/docs/event-ingestion/creating-a-metered-feature)** - Complete setup guide
+- **[Sending Events](/docs/event-ingestion/sending-events)** - How to transmit LATEST events
