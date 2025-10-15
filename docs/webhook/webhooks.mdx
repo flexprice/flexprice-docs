@@ -3,137 +3,165 @@ title: 'Webhooks'
 description: 'Learn about webhook events in Flexprice'
 ---
 
-# Webhooks
+Webhooks let you receive real-time notifications about events in your Flexprice account, such as invoice creation, payment status updates, subscription changes, and more.
+There are **two ways** webhooks can be delivered:
 
-Webhooks allow your application to receive real-time notifications about events that occur in your Flexprice account. Each time an event is generated, Flexprice sends an HTTP POST request to the webhook endpoints you've configured, containing information about the event.
+* **Native Flexprice Webhooks**: Simple, direct POST to your endpoint.
+* **Svix Webhooks**: Advanced, robust delivery with retries, history, signatures, and more (powered by [Svix](https://docs.svix.com/)).
 
-## Setting Up Webhooks
+**Flexprice Cloud uses Svix for webhook delivery. For self hosting, if you haven't explicitly enabled Svix, you're using native webhooks by default.**
 
-To set up a webhook endpoint:
+## Webhook Event Types
 
-1. Go to the **Developers** section in the Flexprice dashboard
-2. Navigate to the **Webhooks** tab
-3. Click **Add a webhook**
-4. Enter your webhook URL
-5. Choose your preferred webhook signature method
-6. Click **Add webhook** to confirm
-
-You can add multiple webhook endpoints to receive notifications at different URLs.
-
-## Webhook Format
-
-All webhook events follow a consistent format:
-
-```json
-{
-  "webhook_type": "event.name",
-  "object_type": "object_type",
-  "data": {
-    "object": {
-      // Object details specific to the event type
-    }
-  }
-}
-```
-
-## Webhook Signature
-
-Webhook requests include a signature in the headers to verify that the request came from Flexprice. You can use this signature to validate the authenticity of the webhook request.
-
-## Webhook Events
-
-Below is a comprehensive list of webhook events that Flexprice can send to your application.
-
-### Billable Metrics Events
-
-| Event | Description |
-|-------|-------------|
-| `billable_metric.created` | Sent when a new billable metric is created |
-| `billable_metric.updated` | Sent when a billable metric is updated |
-| `billable_metric.archived` | Sent when a billable metric is archived |
-
-### Customer Events
-
-| Event | Description |
-|-------|-------------|
-| `customer.created` | Sent when a new customer is created |
-| `customer.updated` | Sent when a customer's information is updated |
-| `customer.payment_provider_created` | Sent when a customer is successfully created in the payment provider's system |
-| `customer.payment_provider_error` | Sent when there's an error creating a customer in the payment provider's system |
-| `customer.checkout_url_generated` | Sent when a checkout link is generated for a customer |
-
-### Subscription Events
-
-| Event | Description |
-|-------|-------------|
-| `subscription.started` | Sent when a subscription starts |
-| `subscription.terminated` | Sent when a subscription is terminated |
-| `subscription.trial_ended` | Sent when a subscription's trial period ends |
-| `subscription.usage_threshold_reached` | Sent when a progressive billing threshold has been crossed |
+You can receive webhook notifications for a range of events:
 
 ### Invoice Events
 
-| Event | Description |
-|-------|-------------|
-| `invoice.drafted` | Sent when a new invoice is created in draft status |
-| `invoice.created` | Sent when an invoice is finalized |
-| `invoice.one_off_created` | Sent when a one-off invoice is created |
-| `invoice.generated` | Sent when a PDF invoice has been generated |
-| `invoice.payment_status_updated` | Sent when an invoice's payment status is updated |
-| `invoice.payment_failure` | Sent when there's an error processing payment for an invoice |
-| `invoice.payment_overdue` | Sent when an invoice payment is overdue |
-| `invoice.voided` | Sent when an invoice is voided |
+* `invoice.create.drafted` - Fired when a new invoice is created in draft state
+* `invoice.update.finalized` - Fired when an invoice is finalized and ready for payment
+* `invoice.update.payment` - Fired when a payment is recorded on an invoice
+* `invoice.update.voided` - Fired when an invoice is voided
+* `invoice.payment.overdue` - Fired when an invoice payment is overdue
+
+### Subscription Events
+
+* `subscription.created` - Fired when a new subscription is created
+* `subscription.updated` - Fired when a subscription is updated
+* `subscription.paused` - Fired when a subscription is paused
+* `subscription.cancelled` - Fired when a subscription is cancelled
+* `subscription.resumed` - Fired when a paused subscription is resumed
+
+### Feature Events
+
+* `feature.created` - Fired when a new feature is created
+* `feature.updated` - Fired when feature details are updated
+* `feature.deleted` - Fired when a feature is deleted
+
+### Entitlement Events
+
+* `entitlement.created` - Fired when a new entitlement is created
+* `entitlement.updated` - Fired when entitlement details are updated
+* `entitlement.deleted` - Fired when an entitlement is deleted
 
 ### Wallet Events
 
-| Event | Description |
-|-------|-------------|
-| `wallet.created` | Sent when a new wallet is created for a customer |
-| `wallet.updated` | Sent when a wallet is updated |
-| `wallet.terminated` | Sent when a wallet is terminated |
-| `wallet.depleted_ongoing_balance` | Sent when a wallet's balance reaches zero or becomes negative |
-| `wallet_transaction.updated` | Sent when a wallet transaction is updated |
-| `wallet_transaction.payment_failure` | Sent when a wallet transaction payment fails |
+* `wallet.created` - Fired when a new wallet is created
+* `wallet.updated` - Fired when wallet details are updated
+* `wallet.terminated` - Fired when a wallet is terminated
+* `wallet.transaction.created` - Fired when a new wallet transaction is created
 
-### Credit Note Events
+### Payment Events
 
-| Event | Description |
-|-------|-------------|
-| `credit_note.created` | Sent when a new credit note is issued |
-| `credit_note.generated` | Sent when a PDF credit note has been generated |
-| `credit_note.refund_failure` | Sent when there's an error processing a refund |
+* `payment.created` - Fired when a new payment is created
+* `payment.updated` - Fired when payment details are updated
+* `payment.failed` - Fired when a payment attempt fails
+* `payment.success` - Fired when a payment is successful
+* `payment.pending` - Fired when a payment is awaiting processing
 
-### Fee Events
+### Customer Events
 
-| Event | Description |
-|-------|-------------|
-| `fee.created` | Sent when a fee for a charge to be paid in advance is created |
+* `customer.created` - Fired when a new customer is created
+* `customer.updated` - Fired when customer information is updated
+* `customer.deleted` - Fired when a customer is deleted
 
-### Event Ingestion
+*(More event types may be added in the future.)*
 
-| Event | Description |
-|-------|-------------|
-| `events.errors` | Sent when events received do not match validation rules |
+## Webhook Payload Format
 
-## Handling Webhook Events
+Every webhook payload follows this structure:
 
-Your webhook endpoint should:
+```json
+{
+  "subscription": "<subscription object>"
+}
+```
 
-1. Respond with a 2xx status code (200, 201, 202, or 204) to acknowledge receipt
-2. Process the event asynchronously if needed
-3. Be idempotent (able to handle the same event multiple times without issues)
+* All event types use this base schema
+* The payload field contains event-specific data
 
-## Error Handling and Retries
+## How Webhook Delivery Works
 
-If your endpoint fails to respond with a 2xx status code, Flexprice will retry sending the webhook several times with an exponential backoff. You can view failed webhook deliveries and manually retry them from the Flexprice dashboard.
+### Native Webhook System
 
-## Webhook Logs
+* **Default mode.**
+* When a subscribed event occurs, Flexprice makes a simple HTTP POST to your provided webhook URL.
+* A JSON payload with event data is sent.
+* If your endpoint responds with a `2xx` status, the event is marked as delivered.
+* If your endpoint fails (non-2xx, timeout, etc.), Flexprice attempts retries with the following configuration:
+  * Maximum retries: 3 (default)
+  * Initial interval: 1 second
+  * Maximum interval: 10 seconds
+  * Multiplier: 2.0
+  * Maximum elapsed time: 2 minutes
 
-You can view the history of webhook events sent to your endpoints:
+**Summary:**
+Fast, direct, and simple. Good for lightweight use-cases or internal integrations.
 
-1. Go to the **Developers** section in the Flexprice dashboard
-2. Navigate to the **Webhooks** tab
-3. Click on a webhook endpoint to view its event history
-4. Click on an event to see its details, including the payload and response
+### Svix Webhook System
 
-This helps you debug issues with webhook delivery and ensure your application is correctly processing events. 
+* **Advanced mode** (opt-in; see [Svix docs](https://docs.svix.com/) for more on their delivery system).
+* When enabled, Flexprice hands off event delivery to Svix.
+* Svix provides:
+  * **Robust retries:** Automatic, exponential backoff, no event lost due to transient issues
+  * **Delivery guarantees:** At-least-once delivery, dead-letter queues for persistent failures
+  * **Message history and logs:** Track every delivery, status, and error online
+  * **Signature verification:** Every request is signed with HMAC-SHA256 for security
+  * **Versioning & secret management:** Change secrets or endpoint URLs safely without missed events
+
+The retry schedule for failed deliveries is:
+- 5 minutes after the first failure
+- 30 minutes after the second failure
+- 2 hours after the third failure
+- 5 hours after the fourth failure
+- 10 hours after the fifth failure
+
+**Summary:**
+Svix is the recommended choice for production, customer-facing, or high-uptime integrations. If you want reliability, observability, and security, use Svix.
+
+## Setting Up Webhooks
+
+To enable webhooks on flexprice:
+
+1. Go to the **Webhooks** section in your Flexprice dashboard
+2. Click the **Add Endpoint** button
+3. Enter your endpoint URL (e.g., `https://play.svix.com/in/e_...`)
+4. The endpoint will be created with a 0.0% error rate initially
+5. You can monitor message delivery, view logs, and track activity in the dashboard
+
+Your configured webhook endpoint will be displayed in the **Endpoints** tab, where you can:
+- View the error rate for message delivery
+- Access message logs with detailed delivery information
+- See historical delivery attempts and statistics
+- Monitor webhook activity in real-time
+
+The **Event Catalog** tab shows all available event types you can subscribe to, with detailed descriptions of when each event is fired.
+
+The **Logs** tab provides a comprehensive view of message delivery attempts, including:
+- Event type
+- Message ID
+- Timestamp
+- Delivery status
+- Detailed error information if delivery fails
+
+The **Activity** tab shows historical delivery metrics and attempts over time.
+
+## Security & Verification
+
+* Every payload is signed using HMAC-SHA256 (default) or Ed25519
+* Verify signatures using:
+  * Svix's official SDKs
+  * Manual verification using `svix-signature`, `svix-id`, and `svix-timestamp` headers
+* Automatic timestamp validation prevents replay attacks
+* Optional IP address validation
+
+For detailed signature verification instructions, see the [Svix signature docs](https://docs.svix.com/receiving/verifying-payloads).
+
+## Best Practices
+
+1. **Use Svix for Production**: If you're building a production system, use Svix for its reliability and security features.
+2. **Always Verify Signatures**: Whether using native or Svix webhooks, always verify the authenticity of incoming webhooks.
+3. **Process Asynchronously**: Handle webhook processing in the background to avoid timeouts.
+4. **Be Idempotent**: Design your handlers to safely process duplicate events.
+5. **Use HTTPS**: Always use HTTPS endpoints for webhook delivery.
+6. **Monitor Deliveries**: Regularly check webhook logs for failed deliveries.
+7. **Quick Response**: Your endpoint should respond within 5 seconds to avoid timeouts.
