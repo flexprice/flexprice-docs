@@ -12903,6 +12903,51 @@
     },
     "components": {
         "schemas": {
+            "addon.Addon": {
+                "type": "object",
+                "properties": {
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "created_by": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "environment_id": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "lookup_key": {
+                        "type": "string"
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "additionalProperties": true
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.Status"
+                    },
+                    "tenant_id": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "$ref": "#/components/schemas/types.AddonType"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "updated_by": {
+                        "type": "string"
+                    }
+                }
+            },
             "coupon.Coupon": {
                 "type": "object",
                 "properties": {
@@ -14373,6 +14418,9 @@
                 ],
                 "type": "object",
                 "properties": {
+                    "alert_settings": {
+                        "$ref": "#/components/schemas/types.AlertSettings"
+                    },
                     "description": {
                         "type": "string"
                     },
@@ -15928,6 +15976,9 @@
             "dto.FeatureResponse": {
                 "type": "object",
                 "properties": {
+                    "alert_settings": {
+                        "$ref": "#/components/schemas/types.AlertSettings"
+                    },
                     "created_at": {
                         "type": "string"
                     },
@@ -16134,6 +16185,13 @@
                 "properties": {
                     "end_time": {
                         "type": "string"
+                    },
+                    "expand": {
+                        "type": "array",
+                        "description": "allowed values: \"price\", \"meter\", \"feature\", \"subscription_line_item\",\"plan\",\"addon\"",
+                        "items": {
+                            "type": "string"
+                        }
                     },
                     "external_customer_id": {
                         "type": "string"
@@ -19276,6 +19334,9 @@
             "dto.UpdateFeatureRequest": {
                 "type": "object",
                 "properties": {
+                    "alert_settings": {
+                        "$ref": "#/components/schemas/types.AlertSettings"
+                    },
                     "description": {
                         "type": "string"
                     },
@@ -19781,6 +19842,12 @@
             "dto.UsageAnalyticItem": {
                 "type": "object",
                 "properties": {
+                    "add_on_id": {
+                        "type": "string"
+                    },
+                    "addon": {
+                        "$ref": "#/components/schemas/addon.Addon"
+                    },
                     "aggregation_type": {
                         "$ref": "#/components/schemas/types.AggregationType"
                     },
@@ -19794,10 +19861,26 @@
                     "event_name": {
                         "type": "string"
                     },
+                    "feature": {
+                        "$ref": "#/components/schemas/feature.Feature"
+                    },
                     "feature_id": {
                         "type": "string"
                     },
+                    "meter": {
+                        "$ref": "#/components/schemas/meter.Meter"
+                    },
+                    "meter_id": {
+                        "type": "string",
+                        "description": "Meter ID"
+                    },
                     "name": {
+                        "type": "string"
+                    },
+                    "plan": {
+                        "$ref": "#/components/schemas/plan.Plan"
+                    },
+                    "plan_id": {
                         "type": "string"
                     },
                     "points": {
@@ -19805,6 +19888,13 @@
                         "items": {
                             "$ref": "#/components/schemas/dto.UsageAnalyticPoint"
                         }
+                    },
+                    "price": {
+                        "$ref": "#/components/schemas/price.Price"
+                    },
+                    "price_id": {
+                        "type": "string",
+                        "description": "Price ID used for this usage"
                     },
                     "properties": {
                         "type": "object",
@@ -19815,6 +19905,17 @@
                     },
                     "source": {
                         "type": "string"
+                    },
+                    "sub_line_item_id": {
+                        "type": "string",
+                        "description": "Subscription line item ID"
+                    },
+                    "subscription_id": {
+                        "type": "string",
+                        "description": "Subscription ID"
+                    },
+                    "subscription_line_item": {
+                        "$ref": "#/components/schemas/subscription.SubscriptionLineItem"
                     },
                     "total_cost": {
                         "type": "number"
@@ -20145,6 +20246,62 @@
                     }
                 }
             },
+            "feature.Feature": {
+                "type": "object",
+                "properties": {
+                    "alert_settings": {
+                        "$ref": "#/components/schemas/types.AlertSettings"
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "created_by": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "environment_id": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "lookup_key": {
+                        "type": "string"
+                    },
+                    "metadata": {
+                        "$ref": "#/components/schemas/types.Metadata"
+                    },
+                    "meter_id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.Status"
+                    },
+                    "tenant_id": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "$ref": "#/components/schemas/types.FeatureType"
+                    },
+                    "unit_plural": {
+                        "type": "string"
+                    },
+                    "unit_singular": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "updated_by": {
+                        "type": "string"
+                    }
+                }
+            },
             "gin.H": {
                 "type": "object",
                 "additionalProperties": {
@@ -20209,6 +20366,58 @@
                     }
                 }
             },
+            "meter.Meter": {
+                "type": "object",
+                "properties": {
+                    "aggregation": {
+                        "$ref": "#/components/schemas/meter.Aggregation"
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "created_by": {
+                        "type": "string"
+                    },
+                    "environment_id": {
+                        "type": "string",
+                        "description": "EnvironmentID is the environment identifier for the meter"
+                    },
+                    "event_name": {
+                        "type": "string",
+                        "description": "EventName is the unique identifier for the event that this meter is tracking\nIt is a mandatory field in the events table and hence being used as the primary matching field\nWe can have multiple meters tracking the same event but with different filters and aggregation"
+                    },
+                    "filters": {
+                        "type": "array",
+                        "description": "Filters define the criteria for the meter to be applied on the events before aggregation\nIt also defines the possible values on which later the charges will be applied",
+                        "items": {
+                            "$ref": "#/components/schemas/meter.Filter"
+                        }
+                    },
+                    "id": {
+                        "type": "string",
+                        "description": "ID is the unique identifier for the meter"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "Name is the display name of the meter"
+                    },
+                    "reset_usage": {
+                        "$ref": "#/components/schemas/types.ResetUsage"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.Status"
+                    },
+                    "tenant_id": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "updated_by": {
+                        "type": "string"
+                    }
+                }
+            },
             "models.TemporalWorkflowResult": {
                 "type": "object",
                 "properties": {
@@ -20219,6 +20428,50 @@
                         "type": "string"
                     },
                     "workflow_id": {
+                        "type": "string"
+                    }
+                }
+            },
+            "plan.Plan": {
+                "type": "object",
+                "properties": {
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "created_by": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "display_order": {
+                        "type": "integer"
+                    },
+                    "environment_id": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "lookup_key": {
+                        "type": "string"
+                    },
+                    "metadata": {
+                        "$ref": "#/components/schemas/types.Metadata"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.Status"
+                    },
+                    "tenant_id": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "updated_by": {
                         "type": "string"
                     }
                 }
@@ -20756,10 +21009,35 @@
                     "AggregationWeightedSum"
                 ]
             },
+            "types.AlertCondition": {
+                "type": "string",
+                "enum": [
+                    "above",
+                    "below"
+                ],
+                "x-enum-varnames": [
+                    "AlertConditionAbove",
+                    "AlertConditionBelow"
+                ]
+            },
             "types.AlertConfig": {
                 "type": "object",
                 "properties": {
                     "threshold": {
+                        "$ref": "#/components/schemas/types.WalletAlertThreshold"
+                    }
+                }
+            },
+            "types.AlertSettings": {
+                "type": "object",
+                "properties": {
+                    "alert_enabled": {
+                        "type": "boolean"
+                    },
+                    "critical": {
+                        "$ref": "#/components/schemas/types.AlertThreshold"
+                    },
+                    "warning": {
                         "$ref": "#/components/schemas/types.AlertThreshold"
                     }
                 }
@@ -20767,10 +21045,10 @@
             "types.AlertThreshold": {
                 "type": "object",
                 "properties": {
-                    "type": {
-                        "$ref": "#/components/schemas/types.AlertThresholdType"
+                    "condition": {
+                        "$ref": "#/components/schemas/types.AlertCondition"
                     },
-                    "value": {
+                    "threshold": {
                         "type": "number"
                     }
                 }
@@ -22351,6 +22629,17 @@
                     "TransactionTypeCredit",
                     "TransactionTypeDebit"
                 ]
+            },
+            "types.WalletAlertThreshold": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "$ref": "#/components/schemas/types.AlertThresholdType"
+                    },
+                    "value": {
+                        "type": "number"
+                    }
+                }
             },
             "types.WalletConfig": {
                 "type": "object",
