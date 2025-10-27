@@ -680,18 +680,18 @@
                             "enum": [
                                 "flexprice",
                                 "stripe",
-                                "razorpay"
+                                "s3"
                             ],
                             "x-enum-varnames": [
                                 "SecretProviderFlexPrice",
                                 "SecretProviderStripe",
-                                "SecretProviderRazorpay"
+                                "SecretProviderS3"
                             ]
                         },
                         "x-enum-varnames": [
                             "SecretProviderFlexPrice",
                             "SecretProviderStripe",
-                            "SecretProviderRazorpay"
+                            "SecretProviderS3"
                         ]
                     },
                     {
@@ -7536,40 +7536,6 @@
                         }
                     },
                     {
-                        "name": "entity_ids",
-                        "in": "query",
-                        "style": "form",
-                        "explode": false,
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    {
-                        "name": "entity_type",
-                        "in": "query",
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "PLAN",
-                                "SUBSCRIPTION",
-                                "ADDON"
-                            ],
-                            "x-enum-varnames": [
-                                "ENTITLEMENT_ENTITY_TYPE_PLAN",
-                                "ENTITLEMENT_ENTITY_TYPE_SUBSCRIPTION",
-                                "ENTITLEMENT_ENTITY_TYPE_ADDON"
-                            ]
-                        },
-                        "x-enum-varnames": [
-                            "ENTITLEMENT_ENTITY_TYPE_PLAN",
-                            "ENTITLEMENT_ENTITY_TYPE_SUBSCRIPTION",
-                            "ENTITLEMENT_ENTITY_TYPE_ADDON"
-                        ]
-                    },
-                    {
                         "name": "expand",
                         "in": "query",
                         "schema": {
@@ -10777,6 +10743,13 @@
                         }
                     },
                     {
+                        "name": "scheduled_task_id",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
                         "name": "sort",
                         "in": "query",
                         "schema": {
@@ -11017,6 +10990,440 @@
                         "ApiKeyAuth": []
                     }
                 ]
+            }
+        },
+        "/tasks/scheduled": {
+            "get": {
+                "tags": [
+                    "ScheduledTasks"
+                ],
+                "summary": "List scheduled tasks",
+                "description": "Get a list of scheduled tasks with optional filters",
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "Limit",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "description": "Offset",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "connection_id",
+                        "in": "query",
+                        "description": "Filter by connection ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "entity_type",
+                        "in": "query",
+                        "description": "Filter by entity type",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "interval",
+                        "in": "query",
+                        "description": "Filter by interval",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "enabled",
+                        "in": "query",
+                        "description": "Filter by enabled status",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.ListScheduledTasksResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "ScheduledTasks"
+                ],
+                "summary": "Create a scheduled task",
+                "description": "Create a new scheduled task for data export",
+                "requestBody": {
+                    "description": "Scheduled Task",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/dto.CreateScheduledTaskRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.ScheduledTaskResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "x-codegen-request-body-name": "scheduled_task"
+            }
+        },
+        "/tasks/scheduled/{id}": {
+            "get": {
+                "tags": [
+                    "ScheduledTasks"
+                ],
+                "summary": "Get a scheduled task",
+                "description": "Get a scheduled task by ID",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Scheduled Task ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.ScheduledTaskResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "ScheduledTasks"
+                ],
+                "summary": "Update a scheduled task",
+                "description": "Update a scheduled task by ID - Only enabled field can be changed (pause/resume)",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Scheduled Task ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Update request (enabled: true/false to pause/resume)",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/dto.UpdateScheduledTaskRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.ScheduledTaskResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request or task is archived",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Scheduled task not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to update Temporal schedule",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "x-codegen-request-body-name": "scheduled_task"
+            },
+            "delete": {
+                "tags": [
+                    "ScheduledTasks"
+                ],
+                "summary": "Delete a scheduled task",
+                "description": "Archive a scheduled task by ID (soft delete) - Sets status to archived and deletes from Temporal",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Scheduled Task ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Scheduled task archived successfully",
+                        "content": {}
+                    },
+                    "400": {
+                        "description": "Task already archived",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Scheduled task not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to archive task",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            }
+        },
+        "/tasks/scheduled/{id}/run": {
+            "post": {
+                "tags": [
+                    "ScheduledTasks"
+                ],
+                "summary": "Trigger force run",
+                "description": "Trigger a force run export immediately for a scheduled task with optional custom time range",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Scheduled Task ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Optional start and end time for custom range",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/dto.TriggerForceRunRequest"
+                            }
+                        }
+                    },
+                    "required": false
+                },
+                "responses": {
+                    "200": {
+                        "description": "Returns workflow details and time range",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.TriggerForceRunResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "x-codegen-request-body-name": "request"
             }
         },
         "/tasks/{id}": {
@@ -15101,6 +15508,32 @@
                     }
                 }
             },
+            "dto.CreateScheduledTaskRequest": {
+                "required": [
+                    "connection_id",
+                    "entity_type",
+                    "interval",
+                    "job_config"
+                ],
+                "type": "object",
+                "properties": {
+                    "connection_id": {
+                        "type": "string"
+                    },
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "entity_type": {
+                        "$ref": "#/components/schemas/types.ScheduledTaskEntityType"
+                    },
+                    "interval": {
+                        "$ref": "#/components/schemas/types.ScheduledTaskInterval"
+                    },
+                    "job_config": {
+                        "$ref": "#/components/schemas/types.S3JobConfig"
+                    }
+                }
+            },
             "dto.CreateSubscriptionRequest": {
                 "required": [
                     "billing_cadence",
@@ -17173,6 +17606,20 @@
                     }
                 }
             },
+            "dto.ListScheduledTasksResponse": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.ScheduledTaskResponse"
+                        }
+                    },
+                    "pagination": {
+                        "$ref": "#/components/schemas/types.PaginationResponse"
+                    }
+                }
+            },
             "dto.ListSecretsResponse": {
                 "type": "object",
                 "properties": {
@@ -17614,6 +18061,9 @@
             "dto.PriceResponse": {
                 "type": "object",
                 "properties": {
+                    "addon": {
+                        "$ref": "#/components/schemas/dto.AddonResponse"
+                    },
                     "amount": {
                         "type": "number",
                         "description": "Amount stored in main currency units (e.g., dollars, not cents)\nFor USD: 12.50 means $12.50"
@@ -17696,6 +18146,9 @@
                     "parent_price_id": {
                         "type": "string",
                         "description": "ParentPriceID references the root price (always set for price lineage tracking)"
+                    },
+                    "plan": {
+                        "$ref": "#/components/schemas/dto.PlanResponse"
                     },
                     "plan_id": {
                         "type": "string",
@@ -17985,6 +18438,44 @@
                     }
                 },
                 "description": "Request object for resuming a paused subscription"
+            },
+            "dto.ScheduledTaskResponse": {
+                "type": "object",
+                "properties": {
+                    "connection_id": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "entity_type": {
+                        "$ref": "#/components/schemas/types.ScheduledTaskEntityType"
+                    },
+                    "environment_id": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "interval": {
+                        "$ref": "#/components/schemas/types.ScheduledTaskInterval"
+                    },
+                    "job_config": {
+                        "$ref": "#/components/schemas/types.S3JobConfig"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "tenant_id": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    }
+                }
             },
             "dto.SecretResponse": {
                 "type": "object",
@@ -18799,6 +19290,9 @@
                     "processed_records": {
                         "type": "integer"
                     },
+                    "scheduled_task_id": {
+                        "type": "string"
+                    },
                     "started_at": {
                         "type": "string"
                     },
@@ -18824,6 +19318,9 @@
                         "type": "string"
                     },
                     "updated_by": {
+                        "type": "string"
+                    },
+                    "workflow_id": {
                         "type": "string"
                     }
                 }
@@ -19164,6 +19661,38 @@
                     },
                     "transaction_reason": {
                         "$ref": "#/components/schemas/types.TransactionReason"
+                    }
+                }
+            },
+            "dto.TriggerForceRunRequest": {
+                "type": "object",
+                "properties": {
+                    "end_time": {
+                        "type": "string"
+                    },
+                    "start_time": {
+                        "type": "string"
+                    }
+                }
+            },
+            "dto.TriggerForceRunResponse": {
+                "type": "object",
+                "properties": {
+                    "end_time": {
+                        "type": "string"
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "mode": {
+                        "type": "string",
+                        "description": "\"custom\" or \"automatic\""
+                    },
+                    "start_time": {
+                        "type": "string"
+                    },
+                    "workflow_id": {
+                        "type": "string"
                     }
                 }
             },
@@ -19716,6 +20245,17 @@
                     "symbol": {
                         "maxLength": 10,
                         "type": "string"
+                    }
+                }
+            },
+            "dto.UpdateScheduledTaskRequest": {
+                "required": [
+                    "enabled"
+                ],
+                "type": "object",
+                "properties": {
+                    "enabled": {
+                        "type": "boolean"
                     }
                 }
             },
@@ -21037,6 +21577,9 @@
                     "critical": {
                         "$ref": "#/components/schemas/types.AlertThreshold"
                     },
+                    "info": {
+                        "$ref": "#/components/schemas/types.AlertThreshold"
+                    },
                     "warning": {
                         "$ref": "#/components/schemas/types.AlertThreshold"
                     }
@@ -21219,6 +21762,9 @@
                 "properties": {
                     "generic": {
                         "$ref": "#/components/schemas/types.GenericConnectionMetadata"
+                    },
+                    "s3": {
+                        "$ref": "#/components/schemas/types.S3ConnectionMetadata"
                     },
                     "settings": {
                         "$ref": "#/components/schemas/types.ConnectionSettings"
@@ -22020,15 +22566,6 @@
                     "end_time": {
                         "type": "string"
                     },
-                    "entity_ids": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "entity_type": {
-                        "$ref": "#/components/schemas/types.EntitlementEntityType"
-                    },
                     "expand": {
                         "type": "string"
                     },
@@ -22185,6 +22722,70 @@
                     "ResumeModeAuto"
                 ]
             },
+            "types.S3CompressionType": {
+                "type": "string",
+                "enum": [
+                    "none",
+                    "gzip"
+                ],
+                "x-enum-varnames": [
+                    "S3CompressionTypeNone",
+                    "S3CompressionTypeGzip"
+                ]
+            },
+            "types.S3ConnectionMetadata": {
+                "type": "object",
+                "properties": {
+                    "aws_access_key_id": {
+                        "type": "string",
+                        "description": "AWS access key (encrypted)"
+                    },
+                    "aws_secret_access_key": {
+                        "type": "string",
+                        "description": "AWS secret access key (encrypted)"
+                    },
+                    "aws_session_token": {
+                        "type": "string",
+                        "description": "AWS session token for temporary credentials (encrypted)"
+                    }
+                }
+            },
+            "types.S3EncryptionType": {
+                "type": "string",
+                "enum": [
+                    "AES256",
+                    "aws:kms",
+                    "aws:kms:dsse"
+                ],
+                "x-enum-varnames": [
+                    "S3EncryptionTypeAES256",
+                    "S3EncryptionTypeAwsKms",
+                    "S3EncryptionTypeAwsKmsDsse"
+                ]
+            },
+            "types.S3JobConfig": {
+                "type": "object",
+                "properties": {
+                    "bucket": {
+                        "type": "string",
+                        "description": "S3 bucket name"
+                    },
+                    "compression": {
+                        "$ref": "#/components/schemas/types.S3CompressionType"
+                    },
+                    "encryption": {
+                        "$ref": "#/components/schemas/types.S3EncryptionType"
+                    },
+                    "key_prefix": {
+                        "type": "string",
+                        "description": "Optional prefix for S3 keys (e.g., \"flexprice-exports/\")"
+                    },
+                    "region": {
+                        "type": "string",
+                        "description": "AWS region (e.g., \"us-west-2\")"
+                    }
+                }
+            },
             "types.ScheduleEndBehavior": {
                 "type": "string",
                 "enum": [
@@ -22196,17 +22797,49 @@
                     "EndBehaviorCancel"
                 ]
             },
+            "types.ScheduledTaskEntityType": {
+                "type": "string",
+                "enum": [
+                    "events",
+                    "invoice"
+                ],
+                "x-enum-varnames": [
+                    "ScheduledTaskEntityTypeEvents",
+                    "ScheduledTaskEntityTypeInvoice"
+                ]
+            },
+            "types.ScheduledTaskInterval": {
+                "type": "string",
+                "enum": [
+                    "custom",
+                    "hourly",
+                    "daily"
+                ],
+                "x-enum-comments": {
+                    "ScheduledTaskIntervalCustom": "10 minutes for testing"
+                },
+                "x-enum-descriptions": [
+                    "10 minutes for testing",
+                    "",
+                    ""
+                ],
+                "x-enum-varnames": [
+                    "ScheduledTaskIntervalCustom",
+                    "ScheduledTaskIntervalHourly",
+                    "ScheduledTaskIntervalDaily"
+                ]
+            },
             "types.SecretProvider": {
                 "type": "string",
                 "enum": [
                     "flexprice",
                     "stripe",
-                    "razorpay"
+                    "s3"
                 ],
                 "x-enum-varnames": [
                     "SecretProviderFlexPrice",
                     "SecretProviderStripe",
-                    "SecretProviderRazorpay"
+                    "SecretProviderS3"
                 ]
             },
             "types.SecretType": {
