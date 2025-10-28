@@ -150,15 +150,77 @@ Warning threshold **requires** a critical threshold. You cannot configure a warn
 - At $1,000 → Critical alert (spending limit reached, action required)
 
 
-## Configuring Alerts
+## Configuring Alerts via Dashboard
+
+Follow these steps to configure feature wallet balance alerts:
+
+### Step 1: Navigate to Features
+
+1. In the main navigation menu, select **Features** from **Product Catalogue**
+2. Locate and select the feature you want to configure alerts for from the features list
+
+### Step 2: Access Alert Settings
+
+1. In the feature details page, click the **three-dot menu (⋮)** in the top right corner
+2. Select **Alert Settings** from the dropdown menu
 
 <Frame>
   ![Alert Settings Dropdown](/public/images/docs/Product%20catalogue/Features/Wallet-balance-alerts/alert-settings-dropdown.png)
 </Frame>
 
+### Step 3: Configure Alert Thresholds
+
+A dialog box titled "Feature Alert Settings" will appear with the following configuration options:
+
 <Frame>
-  ![Configure Feature Alert Settings](/public/images/docs/Product%20catalogue/Features/Wallet-balance-alerts/update-feat-add-alert.png)
+  ![Configure Feature Alert Settings](/public/images/docs/Product%20catalogue/Features/Wallet-balance-alerts/update-feat-add-alerts.png)
 </Frame>
+
+#### Configuration Options
+
+**Enable Alerts**
+- Toggle the switch to activate balance monitoring for this feature
+- When disabled, no alerts will be triggered regardless of threshold settings
+
+**Alert Condition**
+- **Below**: Alert when balance drops below the threshold (for monitoring balance depletion)
+- **Above**: Alert when balance rises above the threshold (for monitoring spending/usage)
+
+<Warning>
+All thresholds must use the same condition. You cannot mix "above" and "below" within the same feature.
+</Warning>
+
+**Critical Threshold** (Required when Warning is set)
+- Enter the balance amount that triggers a critical alert
+- This is the highest priority alert level
+- Example for "below": \$0 (service will be interrupted)
+- Example for "above": \$1000 (spending limit reached)
+
+**Warning Threshold** (Optional, requires Critical)
+- Enter the balance amount that triggers a warning alert
+- Medium priority alert level
+- Example for "below": \$10 (low balance, needs attention)
+- Example for "above": \$500 (approaching spending limit)
+
+**Info Threshold** (Optional, can be standalone)
+- Enter the balance amount that triggers an info alert
+- Lowest priority alert level, informational only
+- Example for "below": \$20 (early warning indicator)
+- Example for "above": \$100 (usage milestone)
+
+**Save Changes**
+- Click to apply the alert configuration
+- Alerts will begin monitoring immediately after saving
+
+**Cancel**
+- Click to discard changes and close the dialog
+
+### Step 4: Verify Alert Configuration
+
+After saving:
+1. The feature will display an alert indicator showing alerts are enabled
+2. Webhook notifications will be sent when thresholds are breached
+3. You can view alert history in the feature's activity log
 
 ## State Transitions
 
