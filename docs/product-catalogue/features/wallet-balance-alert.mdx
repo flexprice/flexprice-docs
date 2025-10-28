@@ -1,0 +1,430 @@
+---
+title: 'Feature-Wallet Balance Alert'
+description: 'Set up automated alerts to monitor feature wallet balances and receive notifications when thresholds are crossed'
+---
+
+The Feature Wallet Balance Alert system enables real-time monitoring of wallet balances for specific features and triggers automated notifications when configured thresholds are breached. This powerful monitoring tool helps prevent service interruptions, manage usage limits, and track spending across your feature offerings.
+
+## Overview
+
+Feature Wallet Balance Alerts provide a flexible, multi-level alerting system that monitors wallet balances associated with specific features. When a wallet balance crosses defined thresholds, the system automatically triggers alerts and sends webhook notifications, allowing you to take proactive action before critical issues arise.
+
+**Key Benefits:**
+
+- **Prevent Service Interruptions**: Get notified before wallet balance reaches critical levels
+- **Multi-Level Alerting**: Configure up to three independent alert levels (Critical, Warning, Info)
+- **Real-Time Monitoring**: Instant notifications via webhooks when thresholds are breached
+- **Flexible Configuration**: Set thresholds for "above" or "below" conditions based on your use case
+- **Automated Tracking**: No manual checking required—continuous background monitoring
+
+## Alert Levels
+
+The system supports three independent alert levels, each with its own priority and purpose:
+
+### 1. Critical (In Alarm) - Highest Priority
+**When to Use**: When immediate action is required to prevent service disruption or critical issues.
+
+**Example**: Balance falls below $0, meaning service may be interrupted within hours.
+
+### 2. Warning - Medium Priority
+**When to Use**: When attention is needed soon, but there's still time to take action.
+
+**Example**: Balance falls below $10, indicating low balance that needs replenishment soon.
+
+### 3. Info - Lowest Priority
+**When to Use**: For informational tracking and usage milestones.
+
+**Example**: Balance falls below $20, serving as an early tracking indicator.
+
+### 4. OK - No Alert
+**Example**: Balance is healthy and above all configured thresholds.
+
+## Alert States
+
+The system evaluates wallet balance against configured thresholds and determines the current alert state:
+
+- **OK**: Balance is healthy, no action needed
+- **Info**: Balance crossed info threshold, informational tracking only
+- **Warning**: Balance crossed warning threshold, attention needed
+- **In Alarm**: Balance crossed critical threshold, immediate action required
+
+## How It Works
+
+### Threshold Configuration
+
+Each threshold consists of two components:
+
+1. **Threshold Value**: The numeric value to monitor (e.g., 100.00)
+2. **Condition**: The direction that triggers an alert
+   - **"below"**: Alert when balance drops below the threshold
+   - **"above"**: Alert when balance rises above the threshold
+
+### Threshold Ordering Rules
+
+The system enforces proper ordering of thresholds based on the condition:
+
+**For "below" condition** (monitoring real-time ongoing-balance depletion):
+```
+Critical < Warning < Info
+```
+Example: Critical: \$0, Warning: \$10, Info: \$20
+
+**For "above" condition** (monitoring usage/spending):
+```
+Critical > Warning > Info
+```
+Example: Critical: \$1000, Warning: \$500, Info: \$100
+
+
+
+### Configuration Flexibility
+
+The system supports multiple configuration patterns:
+
+- **Critical Only**: Critical threshold without warning or info
+- **Critical + Warning**: Critical and warning thresholds without info
+- **Critical + Info**: Critical and info thresholds without warning
+- **Info Only**: Standalone info threshold without critical or warning
+- **Full Stack**: All three thresholds (critical, warning, and info)
+
+<Warning>
+Warning threshold **requires** a critical threshold. You cannot configure a warning threshold without also configuring a critical threshold.
+</Warning>
+
+## Real-World Use Cases
+
+### Use Case 1: Prepaid Wallet Balance Monitoring
+
+**Scenario**: Track prepaid wallet balance to prevent service interruption
+
+**Configuration**:
+```json
+{
+  "critical": {
+    "threshold": "0.00",
+    "condition": "below"
+  },
+  "warning": {
+    "threshold": "10.00",
+    "condition": "below"
+  },
+  "info": {
+    "threshold": "20.00",
+    "condition": "below"
+  },
+  "alert_enabled": true
+}
+```
+
+**How it works**: Customer has a prepaid wallet starting with $100. As ongoing-balance depletes:
+- At $20 → Info alert (informational milestone, balance getting low)
+- At $10 → Warning alert (low balance, needs top-up soon)
+- At $0 → Critical alert (urgent, service will be interrupted)
+
+### Use Case 2: Monthly Spending Limit Monitoring
+
+**Scenario**: Monitor spending against monthly spending limit
+
+**Configuration**:
+```json
+{
+  "info": {
+    "threshold": "100.00",
+    "condition": "above"
+  },
+  "warning": {
+    "threshold": "500.00",
+    "condition": "above"
+  },
+  "critical": {
+    "threshold": "1000.00",
+    "condition": "above"
+  },
+  "alert_enabled": true
+}
+```
+
+**How it works**: Monthly spending limit of $1,000 set. As spending increases:
+- At $100 → Info alert (spending milestone reached)
+- At $500 → Warning alert (halfway to spending limit)
+- At $1,000 → Critical alert (spending limit reached, action required)
+
+
+## Configuring Alerts
+
+<Frame>
+  ![Alert Settings Dropdown](/public/images/docs/Product%20catalogue/Features/Wallet-balance-alerts/alert-settings-dropdown.png)
+</Frame>
+
+<Frame>
+  ![Configure Feature Alert Settings](/public/images/docs/Product%20catalogue/Features/Wallet-balance-alerts/update-feat-add-alert.png)
+</Frame>
+
+## State Transitions
+
+The alert system evaluates balance changes and transitions between states automatically:
+
+### State Transition Examples
+
+**Scenario 1: Balance decreasing from $50 (below condition)**
+
+Starting balance: $50 (above all thresholds)
+
+1. Balance drops to $20 → **OK → Info**
+2. Balance drops to $10 → **Info → Warning**
+3. Balance drops to $0 → **Warning → In Alarm**
+4. Balance increases to $50 (top-up) → **In Alarm → OK**
+
+**Scenario 2: Rapid balance decrease (below condition)**
+
+Starting balance: $100 (above all thresholds)
+
+1. Large transaction: Balance drops to $5 → **OK → Warning** (skips info)
+2. Another transaction: Balance drops to -$2 → **Warning → In Alarm**
+
+**Scenario 3: Usage increase (above condition)**
+
+Starting balance/usage: $0 (below all thresholds)
+
+1. Usage reaches $100 → **OK → Info**
+2. Usage reaches $500 → **Info → Warning**
+3. Usage reaches $1000 → **Warning → In Alarm**
+4. New billing cycle resets usage to $0 → **In Alarm → OK**
+
+<Note>
+State transitions are unidirectional based on threshold crossings. The system never transitions "backwards" (e.g., Warning → Info) unless the balance crosses back over the threshold.
+</Note>
+
+## Webhook Integration
+
+### Webhook Event Type
+
+When an alert threshold is breached, the system sends a webhook with the following event type:
+
+```
+feature.wallet_balance.alert
+```
+
+### Webhook Payload Structure
+
+```json
+{
+  "alert_status": "in_alarm",
+  "alert_type": "feature_wallet_balance",
+  "event_type": "feature.wallet_balance.alert",
+  "feature": {
+    "id": "feat_01K8DBMBN87CY36DEFY62PEXBT",
+    "name": "Alert Feat 1",
+    "type": "metered",
+    "alert_settings": {
+      "alert_enabled": true,
+      "critical": {
+        "condition": "below",
+        "threshold": "-15"
+      },
+      "warning": {
+        "condition": "below",
+        "threshold": "-5"
+      },
+      "info": {
+        "condition": "below",
+        "threshold": "0"
+      }
+    },
+    "status": "published",
+    "meter_id": "meter_01K8DBMBN5NRFNYBMXN1G3WDWY",
+    "created_at": "2025-10-25T09:36:40.616655Z",
+    "updated_at": "2025-10-25T11:14:15.925198Z"
+  },
+  "wallet": {
+    "id": "wallet_01K8DC3ZAH6R55GTPFTWSR2EHF",
+    "name": "Prepaid Wallet",
+    "wallet_type": "PRE_PAID",
+    "balance": "10",
+    "credit_balance": "10",
+    "currency": "usd",
+    "alert_enabled": true,
+    "alert_state": "in_alarm",
+    "wallet_status": "active",
+    "customer_id": "cust_01K8DBYJ0ST5GD57EB6EATEACE",
+    "created_at": "2025-10-25T09:45:12.273036Z",
+    "updated_at": "2025-10-25T09:58:22.259833Z"
+  }
+}
+```
+
+### Webhook Fields Explained
+
+| Field | Description |
+|-------|-------------|
+| `alert_status` | Current alert state: `ok`, `info`, `warning`, or `in_alarm` |
+| `alert_type` | Type of alert: `feature_wallet_balance` |
+| `event_type` | Webhook event identifier: `feature.wallet_balance.alert` |
+| `feature.id` | Unique identifier of the feature |
+| `feature.name` | Name of the feature being monitored |
+| `feature.alert_settings` | Complete alert configuration including all thresholds |
+| `wallet.id` | Unique identifier of the wallet |
+| `wallet.balance` | Current wallet balance (total balance) |
+| `wallet.credit_balance` | Current credit balance |
+| `wallet.alert_state` | Current alert state of the wallet |
+| `wallet.currency` | Currency of the wallet |
+
+### Webhook Behavior
+
+- **All alert states trigger webhooks**: Info, Warning, and Critical all send notifications
+- **Immediate delivery**: Webhooks are sent instantly when state transitions occur
+- **Retry logic**: Failed webhook deliveries are automatically retried (up to 3 attempts)
+- **Rate limiting**: Webhook delivery is rate-limited to prevent spam (10 webhooks/second max)
+
+## Monitoring Implementation
+
+The system uses two complementary monitoring approaches:
+
+### 1. Real-Time Monitoring
+- **Trigger**: Wallet transactions (credit/debit operations)
+- **Behavior**: Immediate state evaluation on balance changes
+- **Notifications**: Instant webhook delivery
+- **Use case**: Primary monitoring mechanism for active wallets
+
+### 2. Cron-Based Monitoring
+- **Frequency**: Every 5 minutes
+- **Behavior**: Periodic balance checks across all feature wallets
+- **Purpose**: Catches edge cases and ensures no alert is missed
+- **Use case**: Backup monitoring for reliability
+
+## Validation Rules
+
+When configuring alerts, the system enforces the following validation rules:
+
+<Warning>
+**Required Fields**
+
+When `alert_enabled` is `true`, at least one threshold (critical, warning, or info) must be provided.
+</Warning>
+
+### Validation Error Examples
+
+**Error 1: Warning without Critical**
+```json
+{
+  "warning": {
+    "threshold": "10.00",
+    "condition": "below"
+  },
+  "alert_enabled": true
+}
+```
+❌ **Error**: "critical threshold is required when warning threshold is provided"
+
+**Error 2: Incorrect Threshold Ordering**
+```json
+{
+  "critical": {
+    "threshold": "20.00",
+    "condition": "below"
+  },
+  "warning": {
+    "threshold": "10.00",
+    "condition": "below"
+  },
+  "info": {
+    "threshold": "0.00",
+    "condition": "below"
+  },
+  "alert_enabled": true
+}
+```
+❌ **Error**: "info threshold must be greater than warning threshold for 'below' condition"
+
+**Error 3: No Thresholds Provided**
+```json
+{
+  "alert_enabled": true
+}
+```
+❌ **Error**: "at least one threshold (critical, warning, or info) is required when alert_enabled is true"
+
+## Best Practices
+
+<Check>
+**Set Critical Thresholds at Service Interruption Points**
+
+Configure critical thresholds at the exact point where service would be interrupted or severely degraded.
+</Check>
+
+<Check>
+**Use 2-5x Multiplier for Warning Thresholds**
+
+Set warning thresholds at 2-5 times the critical threshold to provide adequate warning time.
+</Check>
+
+<Check>
+**Use 5-10x Multiplier for Info Thresholds**
+
+Set info thresholds at 5-10 times the critical threshold for early tracking indicators.
+</Check>
+
+<Check>
+**Test Alert Thresholds in Staging**
+
+Always test alert configurations in a staging environment before deploying to production.
+</Check>
+
+<Check>
+**Document Threshold Decisions**
+
+Document why each threshold value was chosen for future reference and optimization.
+</Check>
+
+<Check>
+**Use "below" for Credit Depletion**
+
+Use the "below" condition when monitoring balance depletion or credit consumption.
+</Check>
+
+<Check>
+**Use "above" for Usage Limits**
+
+Use the "above" condition when monitoring spending, usage limits, or consumption milestones.
+</Check>
+
+## Troubleshooting
+
+### Alerts Not Triggering
+
+**Possible causes**:
+- `alert_enabled` is set to `false`
+- Threshold configuration is incorrect
+- Balance has not crossed the configured threshold
+- Webhook endpoint is not configured
+
+**Solution**: 
+1. Verify `alert_enabled` is `true`
+2. Check threshold values and conditions
+3. Review current wallet balance
+4. Confirm webhook endpoint is configured correctly
+
+### Wrong Alert State
+
+**Possible causes**:
+- Threshold ordering is incorrect for the condition
+- Multiple thresholds using different conditions
+- Balance calculation is incorrect
+
+**Solution**:
+1. Verify threshold ordering matches condition (below: ascending, above: descending)
+2. Ensure all thresholds use the same condition
+3. Check wallet balance calculation logic
+
+## Summary
+
+Feature Wallet Balance Alerts provide a comprehensive, flexible monitoring solution for tracking wallet balances across your feature offerings. Key takeaways:
+
+- **Three independent alert levels**: Critical, Warning, and Info
+- **Flexible configurations**: Standalone info, critical+info, or full stack
+- **Real-time monitoring**: Instant webhook notifications on threshold breaches
+- **Multiple monitoring approaches**: Real-time transaction monitoring + cron-based backup
+- **Comprehensive error handling**: Robust validation and error messages
+- **Production-ready**: Extensive logging, retry logic, and rate limiting
+
+By implementing Feature Wallet Balance Alerts, you can proactively monitor usage, prevent service interruptions, and maintain a superior customer experience.
