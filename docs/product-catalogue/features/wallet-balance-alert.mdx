@@ -24,17 +24,17 @@ The system supports three independent alert levels, each with its own priority a
 ### 1. Critical (In Alarm) - Highest Priority
 **When to Use**: When immediate action is required to prevent service disruption or critical issues.
 
-**Example**: Balance falls below $0, meaning service may be interrupted within hours.
+**Example**: Balance reaches \$0 or less, meaning service may be interrupted within hours.
 
 ### 2. Warning - Medium Priority
 **When to Use**: When attention is needed soon, but there's still time to take action.
 
-**Example**: Balance falls below $10, indicating low balance that needs replenishment soon.
+**Example**: Balance reaches \$10 or less, indicating low balance that needs replenishment soon.
 
 ### 3. Info - Lowest Priority
 **When to Use**: For informational tracking and usage milestones.
 
-**Example**: Balance falls below $20, serving as an early tracking indicator.
+**Example**: Balance reaches \$20 or less, serving as an early tracking indicator.
 
 ### 4. OK - No Alert
 **Example**: Balance is healthy and above all configured thresholds.
@@ -56,8 +56,12 @@ Each threshold consists of two components:
 
 1. **Threshold Value**: The numeric value to monitor (e.g., 100.00)
 2. **Condition**: The direction that triggers an alert
-   - **"below"**: Alert when balance drops below the threshold
-   - **"above"**: Alert when balance rises above the threshold
+   - **"below"**: Alert when balance is **less than or equal to** (≤) the threshold
+   - **"above"**: Alert when balance is **greater than or equal to** (≥) the threshold
+
+<Note>
+**Important**: Alerts trigger on **equality**, not just when crossing the threshold. For example, if your critical threshold is set to \$0 with "below" condition, the alert triggers when balance is exactly \$0 **or** negative.
+</Note>
 
 ### Threshold Ordering Rules
 
@@ -116,10 +120,10 @@ Warning threshold **requires** a critical threshold. You cannot configure a warn
 }
 ```
 
-**How it works**: Customer has a prepaid wallet starting with $100. As ongoing-balance depletes:
-- At $20 → Info alert (informational milestone, balance getting low)
-- At $10 → Warning alert (low balance, needs top-up soon)
-- At $0 → Critical alert (urgent, service will be interrupted)
+**How it works**: Customer has a prepaid wallet starting with $100. As balance depletes:
+- Balance reaches \$20 or less → Info alert (informational milestone, balance getting low)
+- Balance reaches \$10 or less → Warning alert (low balance, needs top-up soon)
+- Balance reaches \$0 or less → Critical alert (urgent, service will be interrupted)
 
 ### Use Case 2: Monthly Spending Limit Monitoring
 
@@ -145,9 +149,9 @@ Warning threshold **requires** a critical threshold. You cannot configure a warn
 ```
 
 **How it works**: Monthly spending limit of $1,000 set. As spending increases:
-- At $100 → Info alert (spending milestone reached)
-- At $500 → Warning alert (halfway to spending limit)
-- At $1,000 → Critical alert (spending limit reached, action required)
+- Spending reaches \$100 or more → Info alert (spending milestone reached)
+- Spending reaches \$500 or more → Warning alert (halfway to spending limit)
+- Spending reaches \$1,000 or more → Critical alert (spending limit reached, action required)
 
 
 ## Configuring Alerts via Dashboard
@@ -183,8 +187,8 @@ A dialog box titled "Feature Alert Settings" will appear with the following conf
 - When disabled, no alerts will be triggered regardless of threshold settings
 
 **Alert Condition**
-- **Below**: Alert when balance drops below the threshold (for monitoring balance depletion)
-- **Above**: Alert when balance rises above the threshold (for monitoring spending/usage)
+- **Below**: Alert when balance is **less than or equal to** (≤) the threshold (for monitoring balance depletion)
+- **Above**: Alert when balance is **greater than or equal to** (≥) the threshold (for monitoring spending/usage)
 
 **Critical Threshold** (Required when Warning is set)
 - Enter the balance amount that triggers a critical alert
@@ -228,25 +232,25 @@ The alert system evaluates balance changes and transitions between states automa
 
 Starting balance: $50 (above all thresholds)
 
-1. Balance drops to $20 → **OK → Info**
-2. Balance drops to $10 → **Info → Warning**
-3. Balance drops to $0 → **Warning → In Alarm**
+1. Balance reaches \$20 or less → **OK → Info**
+2. Balance reaches \$10 or less → **Info → Warning**
+3. Balance reaches \$0 or less → **Warning → In Alarm**
 4. Balance increases to $50 (top-up) → **In Alarm → OK**
 
 **Scenario 2: Rapid balance decrease (below condition)**
 
 Starting balance: $100 (above all thresholds)
 
-1. Large transaction: Balance drops to $5 → **OK → Warning** (skips info)
-2. Another transaction: Balance drops to -$2 → **Warning → In Alarm**
+1. Large transaction: Balance reaches \$5 or less → **OK → Warning** (skips info, as \$5 is ≤ \$10 but > \$0)
+2. Another transaction: Balance reaches -\$2 → **Warning → In Alarm** (balance is ≤ \$0)
 
 **Scenario 3: Usage increase (above condition)**
 
 Starting balance/usage: $0 (below all thresholds)
 
-1. Usage reaches $100 → **OK → Info**
-2. Usage reaches $500 → **Info → Warning**
-3. Usage reaches $1000 → **Warning → In Alarm**
+1. Usage reaches \$100 or more → **OK → Info**
+2. Usage reaches \$500 or more → **Info → Warning**
+3. Usage reaches \$1000 or more → **Warning → In Alarm**
 4. New billing cycle resets usage to $0 → **In Alarm → OK**
 
 <Note>
