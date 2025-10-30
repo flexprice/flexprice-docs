@@ -680,18 +680,21 @@
                             "enum": [
                                 "flexprice",
                                 "stripe",
-                                "s3"
+                                "s3",
+                                "hubspot"
                             ],
                             "x-enum-varnames": [
                                 "SecretProviderFlexPrice",
                                 "SecretProviderStripe",
-                                "SecretProviderS3"
+                                "SecretProviderS3",
+                                "SecretProviderHubSpot"
                             ]
                         },
                         "x-enum-varnames": [
                             "SecretProviderFlexPrice",
                             "SecretProviderStripe",
-                            "SecretProviderS3"
+                            "SecretProviderS3",
+                            "SecretProviderHubSpot"
                         ]
                     },
                     {
@@ -1080,143 +1083,19 @@
                 ]
             }
         },
-        "/cost": {
-            "get": {
-                "tags": [
-                    "CostSheets"
-                ],
-                "summary": "List cost sheets",
-                "description": "List cost sheets with optional filtering",
-                "parameters": [
-                    {
-                        "name": "costsheetIDs",
-                        "in": "query",
-                        "description": "CostsheetIDs allows filtering by specific costsheet IDs",
-                        "style": "form",
-                        "explode": false,
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    {
-                        "name": "environmentID",
-                        "in": "query",
-                        "description": "EnvironmentID filters by specific environment ID",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "meterIDs",
-                        "in": "query",
-                        "description": "MeterIDs filters by specific meter IDs",
-                        "style": "form",
-                        "explode": false,
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    {
-                        "name": "priceIDs",
-                        "in": "query",
-                        "description": "PriceIDs filters by specific price IDs",
-                        "style": "form",
-                        "explode": false,
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    {
-                        "name": "status",
-                        "in": "query",
-                        "description": "Status filters by costsheet status",
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "published",
-                                "deleted",
-                                "archived"
-                            ],
-                            "x-enum-varnames": [
-                                "StatusPublished",
-                                "StatusDeleted",
-                                "StatusArchived"
-                            ]
-                        },
-                        "x-enum-varnames": [
-                            "StatusPublished",
-                            "StatusDeleted",
-                            "StatusArchived"
-                        ]
-                    },
-                    {
-                        "name": "tenantID",
-                        "in": "query",
-                        "description": "TenantID filters by specific tenant ID",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/dto.ListCostSheetsResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/errors.ErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/errors.ErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
-            },
+        "/costs": {
             "post": {
                 "tags": [
-                    "CostSheets"
+                    "Costs"
                 ],
-                "summary": "Create a new cost sheet",
-                "description": "Create a new cost sheet with the specified configuration",
+                "summary": "Create a new costsheet",
+                "description": "Create a new costsheet with the specified name",
                 "requestBody": {
-                    "description": "Cost sheet configuration",
+                    "description": "Costsheet configuration",
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/dto.CreateCostSheetRequest"
+                                "$ref": "#/components/schemas/dto.CreateCostsheetRequest"
                             }
                         }
                     },
@@ -1228,7 +1107,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/dto.CostSheetResponse"
+                                    "$ref": "#/components/schemas/dto.CreateCostsheetResponse"
                                 }
                             }
                         }
@@ -1272,53 +1151,26 @@
                 "x-codegen-request-body-name": "costsheet"
             }
         },
-        "/cost/breakdown/{subscription_id}": {
+        "/costs/active": {
             "get": {
                 "tags": [
-                    "CostSheets"
+                    "Costs"
                 ],
-                "summary": "Get cost breakdown",
-                "description": "Get cost breakdown for a time period",
-                "parameters": [
-                    {
-                        "name": "subscription_id",
-                        "in": "path",
-                        "description": "Subscription ID",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "start_time",
-                        "in": "query",
-                        "description": "Start time (RFC3339)",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "end_time",
-                        "in": "query",
-                        "description": "End time (RFC3339)",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
+                "summary": "Get active costsheet for tenant",
+                "description": "Get the active costsheet for the current tenant",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/dto.CostBreakdownResponse"
+                                    "$ref": "#/components/schemas/dto.CostsheetResponse"
                                 }
                             }
                         }
                     },
-                    "400": {
-                        "description": "Bad Request",
+                    "404": {
+                        "description": "Not Found",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1345,19 +1197,19 @@
                 ]
             }
         },
-        "/cost/roi": {
+        "/costs/analytics": {
             "post": {
                 "tags": [
-                    "CostSheets"
+                    "Costs"
                 ],
-                "summary": "Calculate ROI for cost sheet",
-                "description": "Calculate ROI (Return on Investment) for a given cost sheet",
+                "summary": "Get combined revenue and cost analytics",
+                "description": "Retrieve combined analytics with ROI, margin, and detailed breakdowns. If start_time and end_time are not provided, defaults to last 7 days.",
                 "requestBody": {
-                    "description": "ROI calculation request",
+                    "description": "Combined analytics request (start_time/end_time optional - defaults to last 7 days)",
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/dto.CalculateROIRequest"
+                                "$ref": "#/components/schemas/dto.GetCostAnalyticsRequest"
                             }
                         }
                     },
@@ -1369,7 +1221,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/dto.ROIResponse"
+                                    "$ref": "#/components/schemas/dto.GetDetailedCostAnalyticsResponse"
                                 }
                             }
                         }
@@ -1403,31 +1255,31 @@
                 "x-codegen-request-body-name": "request"
             }
         },
-        "/cost/{id}": {
-            "get": {
+        "/costs/search": {
+            "post": {
                 "tags": [
-                    "CostSheets"
+                    "Costs"
                 ],
-                "summary": "Get a cost sheet by ID",
-                "description": "Get a cost sheet by ID",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "description": "Cost Sheet ID",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
+                "summary": "List costsheets by filter",
+                "description": "List costsheet records by filter with POST body",
+                "requestBody": {
+                    "description": "Filter",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/costsheet.Filter"
+                            }
                         }
-                    }
-                ],
+                    },
+                    "required": true
+                },
                 "responses": {
                     "200": {
                         "description": "OK",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/dto.CostSheetResponse"
+                                    "$ref": "#/components/schemas/dto.ListCostsheetResponse"
                                 }
                             }
                         }
@@ -1457,19 +1309,95 @@
                     {
                         "ApiKeyAuth": []
                     }
-                ]
-            },
-            "put": {
-                "tags": [
-                    "CostSheets"
                 ],
-                "summary": "Update a cost sheet",
-                "description": "Update a cost sheet with the specified configuration",
+                "x-codegen-request-body-name": "filter"
+            }
+        },
+        "/costs/{id}": {
+            "get": {
+                "tags": [
+                    "Costs"
+                ],
+                "summary": "Get a costsheet by ID",
+                "description": "Get a costsheet by ID with optional price expansion",
                 "parameters": [
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "Cost Sheet ID",
+                        "description": "Costsheet ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "expand",
+                        "in": "query",
+                        "description": "Comma-separated list of fields to expand (e.g., 'prices')",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.GetCostsheetResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Costs"
+                ],
+                "summary": "Update a costsheet",
+                "description": "Update a costsheet with the specified configuration",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Costsheet ID",
                         "required": true,
                         "schema": {
                             "type": "string"
@@ -1477,11 +1405,11 @@
                     }
                 ],
                 "requestBody": {
-                    "description": "Cost sheet configuration",
+                    "description": "Costsheet configuration",
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/dto.UpdateCostSheetRequest"
+                                "$ref": "#/components/schemas/dto.UpdateCostsheetRequest"
                             }
                         }
                     },
@@ -1493,13 +1421,33 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/dto.CostSheetResponse"
+                                    "$ref": "#/components/schemas/dto.UpdateCostsheetResponse"
                                 }
                             }
                         }
                     },
                     "400": {
                         "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1528,15 +1476,15 @@
             },
             "delete": {
                 "tags": [
-                    "CostSheets"
+                    "Costs"
                 ],
-                "summary": "Delete a cost sheet",
-                "description": "Delete a cost sheet. If status is published/draft, it will be archived. If already archived, it will be deleted from database.",
+                "summary": "Delete a costsheet",
+                "description": "Soft delete a costsheet by setting its status to deleted",
                 "parameters": [
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "Cost Sheet ID",
+                        "description": "Costsheet ID",
                         "required": true,
                         "schema": {
                             "type": "string"
@@ -1544,9 +1492,15 @@
                     }
                 ],
                 "responses": {
-                    "204": {
-                        "description": "No Content",
-                        "content": {}
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.DeleteCostsheetResponse"
+                                }
+                            }
+                        }
                     },
                     "400": {
                         "description": "Bad Request",
@@ -3422,6 +3376,96 @@
                 "x-codegen-request-body-name": "filter"
             }
         },
+        "/customers/usage": {
+            "get": {
+                "tags": [
+                    "Customers"
+                ],
+                "summary": "Get customer usage summary",
+                "description": "Get customer usage summary by customer_id or customer_lookup_key (external_customer_id)",
+                "parameters": [
+                    {
+                        "name": "customer_id",
+                        "in": "query",
+                        "description": "Customer ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "customer_lookup_key",
+                        "in": "query",
+                        "description": "Customer Lookup Key (external_customer_id)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "feature_ids",
+                        "in": "query",
+                        "description": "Feature IDs",
+                        "style": "form",
+                        "explode": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    {
+                        "name": "subscription_ids",
+                        "in": "query",
+                        "description": "Subscription IDs",
+                        "style": "form",
+                        "explode": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.CustomerUsageSummaryResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            }
+        },
         "/customers/wallets": {
             "get": {
                 "tags": [
@@ -3784,87 +3828,6 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/dto.CustomerMultiCurrencyInvoiceSummary"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/errors.ErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/errors.ErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
-            }
-        },
-        "/customers/{id}/usage": {
-            "get": {
-                "tags": [
-                    "Customers"
-                ],
-                "summary": "Get customer usage summary",
-                "description": "Get customer usage summary",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "description": "Customer ID",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "feature_ids",
-                        "in": "query",
-                        "style": "form",
-                        "explode": false,
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    {
-                        "name": "subscription_ids",
-                        "in": "query",
-                        "style": "form",
-                        "explode": false,
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/dto.CustomerUsageSummaryResponse"
                                 }
                             }
                         }
@@ -5563,6 +5526,18 @@
                         }
                     },
                     {
+                        "name": "lookup_keys",
+                        "in": "query",
+                        "style": "form",
+                        "explode": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    {
                         "name": "meter_ids",
                         "in": "query",
                         "style": "form",
@@ -5953,6 +5928,294 @@
                                 }
                             }
                         }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            }
+        },
+        "/groups": {
+            "post": {
+                "tags": [
+                    "Groups"
+                ],
+                "summary": "Create a group",
+                "description": "Create a new group for organizing entities (prices, plans, customers, etc.)",
+                "requestBody": {
+                    "description": "Group",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/dto.CreateGroupRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.GroupResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "x-codegen-request-body-name": "group"
+            }
+        },
+        "/groups/search": {
+            "post": {
+                "tags": [
+                    "Groups"
+                ],
+                "summary": "Get groups",
+                "description": "Get groups with optional filtering via query parameters",
+                "parameters": [
+                    {
+                        "name": "entity_type",
+                        "in": "query",
+                        "description": "Filter by entity type (e.g., 'price')",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "name",
+                        "in": "query",
+                        "description": "Filter by group name (contains search)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "lookup_key",
+                        "in": "query",
+                        "description": "Filter by lookup key (exact match)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "Number of items to return (default: 20)",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "description": "Number of items to skip (default: 0)",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "sort_by",
+                        "in": "query",
+                        "description": "Field to sort by (name, created_at, updated_at)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "sort_order",
+                        "in": "query",
+                        "description": "Sort order (asc, desc)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.ListGroupsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            }
+        },
+        "/groups/{id}": {
+            "get": {
+                "tags": [
+                    "Groups"
+                ],
+                "summary": "Get a group",
+                "description": "Get a group by ID",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Group ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.GroupResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Groups"
+                ],
+                "summary": "Delete a group",
+                "description": "Delete a group and remove all entity associations",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Group ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "content": {}
                     },
                     "400": {
                         "description": "Bad Request",
@@ -7552,6 +7815,13 @@
                         }
                     },
                     {
+                        "name": "lookup_key",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
                         "name": "offset",
                         "in": "query",
                         "schema": {
@@ -8229,20 +8499,23 @@
                                 "PLAN",
                                 "SUBSCRIPTION",
                                 "ADDON",
-                                "PRICE"
+                                "PRICE",
+                                "COSTSHEET"
                             ],
                             "x-enum-varnames": [
                                 "PRICE_ENTITY_TYPE_PLAN",
                                 "PRICE_ENTITY_TYPE_SUBSCRIPTION",
                                 "PRICE_ENTITY_TYPE_ADDON",
-                                "PRICE_ENTITY_TYPE_PRICE"
+                                "PRICE_ENTITY_TYPE_PRICE",
+                                "PRICE_ENTITY_TYPE_COSTSHEET"
                             ]
                         },
                         "x-enum-varnames": [
                             "PRICE_ENTITY_TYPE_PLAN",
                             "PRICE_ENTITY_TYPE_SUBSCRIPTION",
                             "PRICE_ENTITY_TYPE_ADDON",
-                            "PRICE_ENTITY_TYPE_PRICE"
+                            "PRICE_ENTITY_TYPE_PRICE",
+                            "PRICE_ENTITY_TYPE_COSTSHEET"
                         ]
                     },
                     {
@@ -9926,6 +10199,73 @@
                         "application/json": {
                             "schema": {
                                 "$ref": "#/components/schemas/dto.UpdateSubscriptionLineItemRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.SubscriptionLineItemResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "x-codegen-request-body-name": "request"
+            },
+            "delete": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Delete subscription line item",
+                "description": "Delete a subscription line item by setting its end date",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Line Item ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Delete Line Item Request",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/dto.DeleteSubscriptionLineItemRequest"
                             }
                         }
                     },
@@ -13234,6 +13574,57 @@
                 ]
             }
         },
+        "/webhooks/hubspot/{tenant_id}/{environment_id}": {
+            "post": {
+                "tags": [
+                    "Webhooks"
+                ],
+                "summary": "Handle HubSpot webhook events",
+                "description": "Process incoming HubSpot webhook events for deal closed won and customer creation",
+                "parameters": [
+                    {
+                        "name": "tenant_id",
+                        "in": "path",
+                        "description": "Tenant ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "environment_id",
+                        "in": "path",
+                        "description": "Environment ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "X-HubSpot-Signature-v3",
+                        "in": "header",
+                        "description": "HubSpot webhook signature",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Webhook received (always returns 200)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": true
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/webhooks/stripe/{tenant_id}/{environment_id}": {
             "post": {
                 "tags": [
@@ -13352,6 +13743,57 @@
                     },
                     "updated_by": {
                         "type": "string"
+                    }
+                }
+            },
+            "costsheet.Filter": {
+                "type": "object",
+                "properties": {
+                    "costsheetIDs": {
+                        "type": "array",
+                        "description": "CostsheetIDs allows filtering by specific costsheet IDs",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "environmentID": {
+                        "type": "string",
+                        "description": "EnvironmentID filters by specific environment ID"
+                    },
+                    "filters": {
+                        "type": "array",
+                        "description": "Filters contains custom filtering conditions",
+                        "items": {
+                            "$ref": "#/components/schemas/types.FilterCondition"
+                        }
+                    },
+                    "lookupKey": {
+                        "type": "string",
+                        "description": "LookupKey filters by lookup key"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "Name filters by costsheet name"
+                    },
+                    "queryFilter": {
+                        "$ref": "#/components/schemas/types.QueryFilter"
+                    },
+                    "sort": {
+                        "type": "array",
+                        "description": "Sort specifies result ordering preferences",
+                        "items": {
+                            "$ref": "#/components/schemas/types.SortCondition"
+                        }
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.Status"
+                    },
+                    "tenantID": {
+                        "type": "string",
+                        "description": "TenantID filters by specific tenant ID"
+                    },
+                    "timeRangeFilter": {
+                        "$ref": "#/components/schemas/types.TimeRangeFilter"
                     }
                 }
             },
@@ -13893,33 +14335,6 @@
                     }
                 }
             },
-            "dto.CalculateROIRequest": {
-                "required": [
-                    "subscription_id"
-                ],
-                "type": "object",
-                "properties": {
-                    "meter_id": {
-                        "type": "string",
-                        "description": "MeterID references the meter to track usage"
-                    },
-                    "period_end": {
-                        "type": "string"
-                    },
-                    "period_start": {
-                        "type": "string",
-                        "description": "Optional time range. If not provided, uses entire subscription period"
-                    },
-                    "price_id": {
-                        "type": "string",
-                        "description": "PriceID references the price configuration"
-                    },
-                    "subscription_id": {
-                        "type": "string",
-                        "description": "SubscriptionID is required to get subscription details"
-                    }
-                }
-            },
             "dto.CancelSubscriptionRequest": {
                 "required": [
                     "cancellation_type"
@@ -14024,62 +14439,129 @@
                     }
                 }
             },
-            "dto.CostBreakdownItem": {
+            "dto.CostAnalyticItem": {
                 "type": "object",
                 "properties": {
-                    "cost": {
-                        "type": "number",
-                        "description": "Cost is the calculated cost for this meter"
+                    "cost_by_period": {
+                        "type": "array",
+                        "description": "Breakdown",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.CostPoint"
+                        }
+                    },
+                    "costsheet_id": {
+                        "type": "string"
+                    },
+                    "currency": {
+                        "type": "string",
+                        "description": "Metadata"
+                    },
+                    "customer_id": {
+                        "type": "string"
+                    },
+                    "external_customer_id": {
+                        "type": "string"
+                    },
+                    "meter": {
+                        "$ref": "#/components/schemas/meter.Meter"
                     },
                     "meter_id": {
-                        "type": "string",
-                        "description": "MeterID identifies the usage meter"
+                        "type": "string"
                     },
                     "meter_name": {
-                        "type": "string",
-                        "description": "MeterName is the display name of the meter"
+                        "type": "string"
                     },
-                    "usage": {
-                        "type": "number",
-                        "description": "Usage is the quantity consumed"
-                    }
-                }
-            },
-            "dto.CostBreakdownResponse": {
-                "type": "object",
-                "properties": {
-                    "items": {
-                        "type": "array",
-                        "description": "Items contains the breakdown by meter",
-                        "items": {
-                            "$ref": "#/components/schemas/dto.CostBreakdownItem"
+                    "price": {
+                        "$ref": "#/components/schemas/price.Price"
+                    },
+                    "price_id": {
+                        "type": "string"
+                    },
+                    "properties": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
                         }
+                    },
+                    "source": {
+                        "type": "string"
                     },
                     "total_cost": {
                         "type": "number",
-                        "description": "TotalCost is the sum of all meter costs"
+                        "description": "Aggregated metrics"
+                    },
+                    "total_events": {
+                        "type": "integer"
+                    },
+                    "total_quantity": {
+                        "type": "number"
                     }
                 }
             },
-            "dto.CostSheetResponse": {
+            "dto.CostPoint": {
+                "type": "object",
+                "properties": {
+                    "cost": {
+                        "type": "number"
+                    },
+                    "event_count": {
+                        "type": "integer"
+                    },
+                    "quantity": {
+                        "type": "number"
+                    },
+                    "timestamp": {
+                        "type": "string"
+                    }
+                }
+            },
+            "dto.CostsheetResponse": {
                 "type": "object",
                 "properties": {
                     "created_at": {
                         "type": "string"
                     },
+                    "created_by": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "environment_id": {
+                        "type": "string"
+                    },
                     "id": {
                         "type": "string"
                     },
-                    "meter_id": {
+                    "lookup_key": {
                         "type": "string"
                     },
-                    "price_id": {
+                    "metadata": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "name": {
                         "type": "string"
+                    },
+                    "prices": {
+                        "type": "array",
+                        "description": "Associated prices",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.PriceResponse"
+                        }
                     },
                     "status": {
                         "$ref": "#/components/schemas/types.Status"
                     },
+                    "tenant_id": {
+                        "type": "string"
+                    },
                     "updated_at": {
+                        "type": "string"
+                    },
+                    "updated_by": {
                         "type": "string"
                     }
                 }
@@ -14479,20 +14961,38 @@
                     }
                 }
             },
-            "dto.CreateCostSheetRequest": {
+            "dto.CreateCostsheetRequest": {
                 "required": [
-                    "meter_id",
-                    "price_id"
+                    "name"
                 ],
                 "type": "object",
                 "properties": {
-                    "meter_id": {
-                        "type": "string",
-                        "description": "MeterID references the meter to track usage"
+                    "description": {
+                        "type": "string"
                     },
-                    "price_id": {
-                        "type": "string",
-                        "description": "PriceID references the price configuration"
+                    "lookup_key": {
+                        "maxLength": 255,
+                        "minLength": 1,
+                        "type": "string"
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "name": {
+                        "maxLength": 255,
+                        "minLength": 1,
+                        "type": "string"
+                    }
+                }
+            },
+            "dto.CreateCostsheetResponse": {
+                "type": "object",
+                "properties": {
+                    "costsheet": {
+                        "$ref": "#/components/schemas/dto.CostsheetResponse"
                     }
                 }
             },
@@ -14853,6 +15353,25 @@
                         "type": "string"
                     },
                     "unit_singular": {
+                        "type": "string"
+                    }
+                }
+            },
+            "dto.CreateGroupRequest": {
+                "required": [
+                    "entity_type",
+                    "lookup_key",
+                    "name"
+                ],
+                "type": "object",
+                "properties": {
+                    "entity_type": {
+                        "type": "string"
+                    },
+                    "lookup_key": {
+                        "type": "string"
+                    },
+                    "name": {
                         "type": "string"
                     }
                 }
@@ -15266,6 +15785,10 @@
                             }
                         }
                     },
+                    "group_id": {
+                        "type": "string",
+                        "description": "GroupID is the id of the group to add the price to"
+                    },
                     "invoice_cadence": {
                         "$ref": "#/components/schemas/types.InvoiceCadence"
                     },
@@ -15406,6 +15929,10 @@
                                 "type": "string"
                             }
                         }
+                    },
+                    "group_id": {
+                        "type": "string",
+                        "description": "GroupID is the id of the group to add the price to"
                     },
                     "invoice_cadence": {
                         "$ref": "#/components/schemas/types.InvoiceCadence"
@@ -16197,6 +16724,25 @@
                     }
                 }
             },
+            "dto.DeleteCostsheetResponse": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "message": {
+                        "type": "string"
+                    }
+                }
+            },
+            "dto.DeleteSubscriptionLineItemRequest": {
+                "type": "object",
+                "properties": {
+                    "end_date": {
+                        "type": "string"
+                    }
+                }
+            },
             "dto.EntitlementResponse": {
                 "type": "object",
                 "properties": {
@@ -16494,6 +17040,95 @@
                     },
                     "usage_percent": {
                         "type": "number"
+                    }
+                }
+            },
+            "dto.GetCostAnalyticsRequest": {
+                "type": "object",
+                "properties": {
+                    "end_time": {
+                        "type": "string"
+                    },
+                    "expand": {
+                        "type": "array",
+                        "description": "Expand options - specify which entities to expand",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "external_customer_id": {
+                        "type": "string",
+                        "description": "Optional - for specific customer"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Pagination"
+                    },
+                    "meter_ids": {
+                        "type": "array",
+                        "description": "Additional filters",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "offset": {
+                        "type": "integer"
+                    },
+                    "start_time": {
+                        "type": "string",
+                        "description": "Time range fields (optional - defaults to last 7 days if not provided)"
+                    }
+                }
+            },
+            "dto.GetCostsheetResponse": {
+                "type": "object",
+                "properties": {
+                    "costsheet": {
+                        "$ref": "#/components/schemas/dto.CostsheetResponse"
+                    }
+                }
+            },
+            "dto.GetDetailedCostAnalyticsResponse": {
+                "type": "object",
+                "properties": {
+                    "cost_analytics": {
+                        "type": "array",
+                        "description": "Cost analytics array (flattened from nested structure)",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.CostAnalyticItem"
+                        }
+                    },
+                    "currency": {
+                        "type": "string"
+                    },
+                    "end_time": {
+                        "type": "string"
+                    },
+                    "margin": {
+                        "type": "number",
+                        "description": "Revenue - Cost"
+                    },
+                    "margin_percent": {
+                        "type": "number",
+                        "description": "(Margin / Revenue) * 100"
+                    },
+                    "roi": {
+                        "type": "number",
+                        "description": "(Revenue - Cost) / Cost"
+                    },
+                    "roi_percent": {
+                        "type": "number",
+                        "description": "ROI * 100"
+                    },
+                    "start_time": {
+                        "type": "string"
+                    },
+                    "total_cost": {
+                        "type": "number"
+                    },
+                    "total_revenue": {
+                        "type": "number",
+                        "description": "Derived metrics"
                     }
                 }
             },
@@ -16876,6 +17511,44 @@
                     },
                     "value": {
                         "type": "number"
+                    }
+                }
+            },
+            "dto.GroupResponse": {
+                "type": "object",
+                "properties": {
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "entity_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "entity_type": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "lookup_key": {
+                        "type": "string"
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "string"
                     }
                 }
             },
@@ -17403,17 +18076,17 @@
                     }
                 }
             },
-            "dto.ListCostSheetsResponse": {
+            "dto.ListCostsheetResponse": {
                 "type": "object",
                 "properties": {
                     "items": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/components/schemas/dto.CostSheetResponse"
+                            "$ref": "#/components/schemas/dto.CostsheetResponse"
                         }
                     },
-                    "total": {
-                        "type": "integer"
+                    "pagination": {
+                        "$ref": "#/components/schemas/types.PaginationResponse"
                     }
                 }
             },
@@ -17529,6 +18202,20 @@
                         "type": "array",
                         "items": {
                             "$ref": "#/components/schemas/dto.FeatureResponse"
+                        }
+                    },
+                    "pagination": {
+                        "$ref": "#/components/schemas/types.PaginationResponse"
+                    }
+                }
+            },
+            "dto.ListGroupsResponse": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.GroupResponse"
                         }
                     },
                     "pagination": {
@@ -18122,6 +18809,13 @@
                         "type": "string",
                         "description": "EnvironmentID is the environment identifier for the price"
                     },
+                    "group": {
+                        "$ref": "#/components/schemas/dto.GroupResponse"
+                    },
+                    "group_id": {
+                        "type": "string",
+                        "description": "GroupID references the group this price belongs to"
+                    },
                     "id": {
                         "type": "string",
                         "description": "ID uuid identifier for the price"
@@ -18358,43 +19052,6 @@
                     "proration_date": {
                         "type": "string",
                         "description": "proration_date is the date used for proration calculations"
-                    }
-                }
-            },
-            "dto.ROIResponse": {
-                "type": "object",
-                "properties": {
-                    "cost": {
-                        "type": "number",
-                        "description": "Cost and Revenue"
-                    },
-                    "cost_breakdown": {
-                        "type": "array",
-                        "description": "Cost breakdown by meter",
-                        "items": {
-                            "$ref": "#/components/schemas/dto.CostBreakdownItem"
-                        }
-                    },
-                    "markup": {
-                        "type": "number",
-                        "description": "Markup (Revenue - Cost / Cost)"
-                    },
-                    "markup_percentage": {
-                        "type": "number"
-                    },
-                    "net_margin": {
-                        "type": "number",
-                        "description": "Net Margin (ROI)"
-                    },
-                    "net_margin_percentage": {
-                        "type": "number"
-                    },
-                    "net_revenue": {
-                        "type": "number",
-                        "description": "Net Revenue (Revenue - Cost)"
-                    },
-                    "revenue": {
-                        "type": "number"
                     }
                 }
             },
@@ -18766,6 +19423,9 @@
                     },
                     "plan_display_name": {
                         "type": "string"
+                    },
+                    "price": {
+                        "$ref": "#/components/schemas/dto.PriceResponse"
                     },
                     "price_id": {
                         "type": "string"
@@ -19727,19 +20387,35 @@
                     }
                 }
             },
-            "dto.UpdateCostSheetRequest": {
-                "required": [
-                    "id"
-                ],
+            "dto.UpdateCostsheetRequest": {
                 "type": "object",
                 "properties": {
-                    "id": {
-                        "type": "string",
-                        "description": "ID of the costsheet to update"
+                    "description": {
+                        "type": "string"
                     },
-                    "status": {
-                        "type": "string",
-                        "description": "Status updates the costsheet's status (optional)"
+                    "lookup_key": {
+                        "maxLength": 255,
+                        "minLength": 1,
+                        "type": "string"
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "name": {
+                        "maxLength": 255,
+                        "minLength": 1,
+                        "type": "string"
+                    }
+                }
+            },
+            "dto.UpdateCostsheetResponse": {
+                "type": "object",
+                "properties": {
+                    "costsheet": {
+                        "$ref": "#/components/schemas/dto.CostsheetResponse"
                     }
                 }
             },
@@ -20097,6 +20773,10 @@
                             }
                         }
                     },
+                    "group_id": {
+                        "type": "string",
+                        "description": "GroupID is the id of the group to add the price to"
+                    },
                     "id": {
                         "type": "string",
                         "description": "The ID of the price to update (present if the price is being updated)"
@@ -20202,6 +20882,10 @@
                     },
                     "effective_from": {
                         "type": "string"
+                    },
+                    "group_id": {
+                        "type": "string",
+                        "description": "GroupID is the id of the group to update the price in"
                     },
                     "lookup_key": {
                         "type": "string",
@@ -20430,7 +21114,7 @@
                         }
                     },
                     "price": {
-                        "$ref": "#/components/schemas/price.Price"
+                        "$ref": "#/components/schemas/dto.PriceResponse"
                     },
                     "price_id": {
                         "type": "string",
@@ -21105,6 +21789,10 @@
                         "type": "string",
                         "description": "EnvironmentID is the environment identifier for the price"
                     },
+                    "group_id": {
+                        "type": "string",
+                        "description": "GroupID references the group this price belongs to"
+                    },
                     "id": {
                         "type": "string",
                         "description": "ID uuid identifier for the price"
@@ -21305,6 +21993,9 @@
                     },
                     "plan_display_name": {
                         "type": "string"
+                    },
+                    "price": {
+                        "$ref": "#/components/schemas/price.Price"
                     },
                     "price_id": {
                         "type": "string"
@@ -21763,6 +22454,9 @@
                     "generic": {
                         "$ref": "#/components/schemas/types.GenericConnectionMetadata"
                     },
+                    "hubspot": {
+                        "$ref": "#/components/schemas/types.HubSpotConnectionMetadata"
+                    },
                     "s3": {
                         "$ref": "#/components/schemas/types.S3ConnectionMetadata"
                     },
@@ -22162,6 +22856,12 @@
                     "lookup_key": {
                         "type": "string"
                     },
+                    "lookup_keys": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
                     "meter_ids": {
                         "type": "array",
                         "items": {
@@ -22266,6 +22966,23 @@
                     "data": {
                         "type": "object",
                         "additionalProperties": true
+                    }
+                }
+            },
+            "types.HubSpotConnectionMetadata": {
+                "type": "object",
+                "properties": {
+                    "access_token": {
+                        "type": "string",
+                        "description": "Private App Access Token (encrypted)"
+                    },
+                    "app_id": {
+                        "type": "string",
+                        "description": "HubSpot App ID (optional, not encrypted)"
+                    },
+                    "client_secret": {
+                        "type": "string",
+                        "description": "Private App Client Secret for webhook verification (encrypted)"
                     }
                 }
             },
@@ -22581,6 +23298,9 @@
                         "minimum": 1,
                         "type": "integer"
                     },
+                    "lookup_key": {
+                        "type": "string"
+                    },
                     "offset": {
                         "minimum": 0,
                         "type": "integer"
@@ -22618,13 +23338,15 @@
                     "PLAN",
                     "SUBSCRIPTION",
                     "ADDON",
-                    "PRICE"
+                    "PRICE",
+                    "COSTSHEET"
                 ],
                 "x-enum-varnames": [
                     "PRICE_ENTITY_TYPE_PLAN",
                     "PRICE_ENTITY_TYPE_SUBSCRIPTION",
                     "PRICE_ENTITY_TYPE_ADDON",
-                    "PRICE_ENTITY_TYPE_PRICE"
+                    "PRICE_ENTITY_TYPE_PRICE",
+                    "PRICE_ENTITY_TYPE_COSTSHEET"
                 ]
             },
             "types.PriceType": {
@@ -22834,12 +23556,14 @@
                 "enum": [
                     "flexprice",
                     "stripe",
-                    "s3"
+                    "s3",
+                    "hubspot"
                 ],
                 "x-enum-varnames": [
                     "SecretProviderFlexPrice",
                     "SecretProviderStripe",
-                    "SecretProviderS3"
+                    "SecretProviderS3",
+                    "SecretProviderHubSpot"
                 ]
             },
             "types.SecretType": {
@@ -23058,6 +23782,9 @@
             "types.SyncConfig": {
                 "type": "object",
                 "properties": {
+                    "deal": {
+                        "$ref": "#/components/schemas/types.EntitySyncConfig"
+                    },
                     "invoice": {
                         "$ref": "#/components/schemas/types.EntitySyncConfig"
                     },
