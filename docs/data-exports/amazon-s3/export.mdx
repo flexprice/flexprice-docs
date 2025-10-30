@@ -1,11 +1,11 @@
 ---
-title: 'S3 Export - Automated Data Export to Amazon S3'
+title: 'Automated Data Export to Amazon S3'
 description: 'Automate data exports to Amazon S3 with flexible scheduling and configuration'
 ---
 
 ## Overview
 
-The S3 Export feature enables automated, scheduled exports of your FlexPrice data directly to Amazon S3 buckets. This robust, enterprise-grade solution allows you to configure scheduled tasks to export data at regular intervals, trigger manual exports on-demand, and track all export operations with comprehensive execution history.
+The Amazon S3 Export feature enables automated, scheduled exports of your FlexPrice data directly to Amazon S3 buckets. This robust, enterprise-grade solution allows you to configure scheduled tasks to export data at regular intervals, trigger manual exports on-demand, and track all export operations with comprehensive execution history.
 
 **Key Benefits:**
 
@@ -14,21 +14,46 @@ The S3 Export feature enables automated, scheduled exports of your FlexPrice dat
 - **Secure Storage**: Data encrypted at rest with multiple encryption options
 - **Compression Support**: Reduce storage costs with GZIP compression
 - **Execution Tracking**: Monitor all export runs with detailed execution history
-- **On-Demand Exports**: Trigger force runs for immediate data exports
+- **On-Demand Exports**: Trigger manual exports for immediate data exports
 
 ## Supported Data Types
 
 FlexPrice currently supports exporting the following data types to S3:
 
-| Data Type | Description |
-|-----------|-------------|
-| **Invoices** | Finalized invoices with line items, taxes, and payment details |
-| **Events** | Feature usage events and billing-related activity data |
+### Invoices
+
+Finalized invoices without line items, taxes, and payment details.
+
+**Example Export (First Row):**
+
+```csv
+id,tenant_id,environment_id,customer_id,subscription_id,invoice_number,invoice_type,invoice_status,payment_status,currency,amount_due,amount_paid,amount_remaining,subtotal,total,total_discount,total_tax,adjustment_amount,refunded_amount,billing_sequence,description,due_date,paid_at,voided_at,finalized_at,billing_period,period_start,period_end,invoice_pdf_url,billing_reason,metadata,idempotency_key,version,status,created_by,updated_by,created_at,updated_at
+inv_01K76TCFSQX6JY5C43WT2G1EE8,tenant_01K0F7AQCZR5THSG9MHEZE8VKR,env_01K0F7AQEQFTV06P178C1KTR6X,cust_01K4CGWJ4493R9V2Y5PZW7CNRZ,subs_01K4M3DVXZNFRN50P9T5EKB9HV,INV-202510-00079,SUBSCRIPTION,FINALIZED,PENDING,usd,10,0,10,10,10,0,0,0,0,2,Invoice for subscription subs_01K4M3DVXZNFRN50P9T5EKB9HV,2025-10-09T05:47:27Z,,,2025-10-10T10:24:09Z,MONTHLY,2025-09-08T05:47:27Z,2025-10-08T05:47:27Z,https://pay.stripe.com/invoice/...,SUBSCRIPTION_CYCLE,"{""stripe_hosted_invoice_url"":""...""}",subscription_invoice-ff29843f8cde4859,3,published,d95842bc-7d6c-4a4e-8dc9-eb9d0780d9f3,d95842bc-7d6c-4a4e-8dc9-eb9d0780d9f3,2025-10-10T10:24:08Z,2025-10-10T10:24:12Z
+```
+
+<Note>
+**Full Example File**: Download [invoice-example.csv](/images/docs/data-exports/amazon-s3/invoice-example.csv) to see the complete CSV structure.
+</Note>
+
+### Events
+
+Feature usage events and billing-related activity data.
+
+**Example Export (First Row):**
+
+```csv
+id,tenant_id,environment_id,external_customer_id,customer_id,subscription_id,sub_line_item_id,price_id,meter_id,feature_id,event_name,source,timestamp,ingested_at,period_id,qty_total,properties,unique_hash
+event_01K8D3HHYJVAC90K3X8R0YZA5N,tenant_01K0F7AQCZR5THSG9MHEZE8VKR,env_01K0F7AQEQFTV06P178C1KTR6X,cus_TIciSJDL8QS8OU,cust_01K8D2PERMJ6TX8ATP9C8WCP1Z,subs_01K8D3BJ78M7F0FCPFBBXJWJPG,subs_line_01K8D2Q72ESN6FPP72RA2SWWQR,price_01K42Q7VQEDETDGSA80A8WRJ2Y,meter_01K42Q6R916Q4KB9MC6S46PWQ2,feat_01K42Q6R941C3QS6Q59CGGSPFB,api_call,onboarding,2025-10-25T07:15:20Z,1970-01-01T00:00:00Z,1761376322000,20,"{""api_calls"":20}",baae5efc04d556dc97407d259169b46390946ec4330c974304e70b037aebadcb
+```
+
+<Note>
+**Full Example File**: Download [events-example.csv](/images/docs/data-exports/amazon-s3/events-example.csv) to see the complete CSV structure.
+</Note>
 
 ## Setting Up S3 Export
 
 <Frame>
-  ![S3 Data Exports Page](/images/docs/s3-export/s3-export-page.png)
+  ![S3 Data Exports Page](/images/docs/data-exports/amazon-s3/s3-export-page.png)
 </Frame>
 
 ### Prerequisites
@@ -45,7 +70,7 @@ Before configuring S3 exports, ensure you have:
 An S3 connection stores your AWS credentials and serves as the authentication mechanism for all export operations.
 
 <Frame>
-  ![Create S3 Connection](/images/docs/s3-export/create-connection.png)
+  ![Create S3 Connection](/images/docs/data-exports/amazon-s3/create-connection.png)
 </Frame>
 
 **Required Information:**
@@ -89,6 +114,12 @@ Create an IAM policy with the following permissions:
         "arn:aws:s3:::your-bucket-name/*",
         "arn:aws:s3:::your-bucket-name"
       ]
+    },
+    {
+      "Sid": "HeadObject",
+      "Effect": "Allow",
+      "Action": "s3:HeadObject",
+      "Resource": "*"
     }
   ]
 }
@@ -103,7 +134,7 @@ Replace `your-bucket-name` with your actual S3 bucket name. Ensure the IAM user 
 Once your S3 connection is established, create a scheduled task to automate exports.
 
 <Frame>
-  ![Create Export Task](/images/docs/s3-export/create-export-task.png)
+  ![Create Export Task](/images/docs/data-exports/amazon-s3/create-export-task.png)
 </Frame>
 
 #### Configuration Options
@@ -118,7 +149,7 @@ Choose what data to export:
 
 | Entity Type | Description | Data Included |
 |------------|-------------|---------------|
-| **invoice** | Finalized invoices | All invoice data, line items, taxes, payments |
+| **invoice** | Finalized invoices | All invoice data, without line items, taxes, payments |
 | **events** | Feature usage events | Event data, usage metrics, customer activity |
 
 **3. Schedule Interval** (Required)
@@ -206,10 +237,10 @@ After creating a scheduled task:
 1. **Verify Connection**: Ensure your S3 connection is validated and active
 2. **Check Schedule**: Confirm the interval matches your requirements
 3. **Review S3 Settings**: Double-check bucket name, region, and paths
-4. **Test with Force Run**: Trigger a manual export to verify the setup
+4. **Test with Manual Export**: Trigger a manual export to verify the setup
 
 <Frame>
-  ![Export Tasks List](/images/docs/s3-export/export-tasks-list.png)
+  ![Export Tasks List](/images/docs/data-exports/amazon-s3/export-tasks-list.png)
 </Frame>
 
 ### Viewing Export Details
@@ -221,29 +252,29 @@ Once you've created an export task, you can view its configuration and status by
 - **Timestamps**: Creation date and last update time
 
 <Frame>
-  ![Export Details](/images/docs/s3-export/export-details.png)
+  ![Export Details](/images/docs/data-exports/amazon-s3/export-details.png)
 </Frame>
 
-## Force Run - Manual Export Trigger
+## Manual Export
 
-Force Run allows you to trigger an immediate export without waiting for the next scheduled execution. This is useful for:
+Manual Export allows you to trigger an immediate export without waiting for the next scheduled execution. This is useful for:
 
 - Testing your export configuration
 - Backfilling historical data
 - Responding to urgent data requests
 - Exporting specific time ranges
 
-### How to Trigger a Force Run
+### How to Trigger a Manual Export
 
-Navigate to the export details page and click the "Force Run" button to trigger a manual export.
+Navigate to the export details page and click the "Manual Export" button to trigger a manual export.
 
 <Frame>
-  ![Force Run Modal](/images/docs/s3-export/force-run-modal.png)
+  ![Manual Export Modal](/images/docs/data-exports/amazon-s3/force-run-modal.png)
 </Frame>
 
 #### Option 1: Automatic Time Range (Default)
 
-Trigger a force run without specifying time ranges. The system automatically calculates the export window based on the task's interval:
+Trigger a manual export without specifying time ranges. The system automatically calculates the export window based on the task's interval:
 
 **Example - Hourly Task:**
 - Current time: 10:30 AM
@@ -264,10 +295,10 @@ POST /api/v1/tasks/scheduled/{task_id}/run
 ```json
 {
   "workflow_id": "task_export_01HK8DBMBN87CY36DEFY62PEXBT",
-  "message": "Force run triggered successfully",
+  "message": "Manual export triggered successfully",
   "start_time": "2025-10-16T10:00:00Z",
   "end_time": "2025-10-16T11:00:00Z",
-  "mode": "force run"
+  "mode": "manual"
 }
 ```
 
@@ -292,7 +323,7 @@ Content-Type: application/json
 ```json
 {
   "workflow_id": "task_export_01HK8DBMBN87CY36DEFY62PEXBT",
-  "message": "Force run triggered successfully",
+  "message": "Manual export triggered successfully",
   "start_time": "2025-10-01T00:00:00Z",
   "end_time": "2025-10-15T23:59:59Z",
   "mode": "custom"
@@ -303,20 +334,20 @@ Content-Type: application/json
 Custom time ranges must be valid timestamps in RFC3339 format (ISO 8601). The end time must be after the start time.
 </Warning>
 
-### Force Run Behavior
+### Manual Export Behavior
 
-- **Independent Execution**: Force runs don't affect the regular schedule
+- **Independent Execution**: Manual exports don't affect the regular schedule
 - **Parallel Execution**: Can run alongside scheduled exports
-- **Tracked Separately**: Appears in the Runs tab with "force run" or "custom" mode
+- **Tracked Separately**: Appears in the Runs tab with "manual" or "custom" mode
 - **Same Configuration**: Uses the same S3 settings as the scheduled task
 - **Immediate Processing**: Starts execution within seconds
 
 ## Runs Tab - Execution History
 
-The Runs tab displays a comprehensive history of all export executions for a scheduled task, including both automatic scheduled runs and manual force runs.
+The Runs tab displays a comprehensive history of all export executions for a scheduled task, including both automatic scheduled runs and manual exports.
 
 <Frame>
-  ![Runs History](/images/docs/s3-export/runs-history.png)
+  ![Runs History](/images/docs/data-exports/amazon-s3/runs-history.png)
 </Frame>
 
 Each run record shows the execution status, time range, file details, and any errors that occurred. Use this to monitor export health and access exported files.
@@ -386,9 +417,9 @@ Use GZIP compression for exports with thousands of records to reduce storage cos
 </Check>
 
 <Check>
-**Test with Force Run**
+**Test with Manual Export**
 
-Always test a new scheduled task with a force run before relying on automatic execution.
+Always test a new scheduled task with a manual export before relying on automatic execution.
 </Check>
 
 <Check>
@@ -426,7 +457,7 @@ Configure S3 lifecycle policies to automatically archive or delete old exports:
 **Solution:**
 1. Verify the task is enabled in the dashboard
 2. Check the S3 connection status
-3. Test with a force run to isolate the issue
+3. Test with a manual export to isolate the issue
 4. Review Temporal workflow logs
 
 ### Files Not Appearing in S3
@@ -504,7 +535,7 @@ Authorization: Bearer {token}
 }
 ```
 
-### Trigger Force Run
+### Trigger Manual Export
 
 ```bash
 POST /api/v1/tasks/scheduled/{task_id}/run
@@ -538,7 +569,7 @@ S3 Export provides a comprehensive solution for automated data exports to Amazon
 - **Two Data Types**: Export invoices and events data
 - **Flexible Scheduling**: Hourly or daily automated exports
 - **Secure Storage**: Multiple encryption options for data at rest
-- **Force Run Capability**: Trigger manual exports anytime
+- **Manual Export Capability**: Trigger manual exports anytime
 - **Execution Tracking**: Comprehensive run history and monitoring
 - **Enterprise-Ready**: Compression, encryption, and scalable architecture
 - **Easy Integration**: Standard CSV format for downstream processing
