@@ -1,0 +1,184 @@
+---
+title: "Frontend Development Setup"
+description: "Complete guide to setting up the FlexPrice frontend development environment"
+---
+
+This guide will help you set up the FlexPrice frontend development environment and get you ready to contribute to the dashboard and user interface components.
+
+## Getting Started
+
+### Prerequisites
+
+Before getting started, ensure you have:
+
+- **Node.js 16+** and npm/yarn
+- **Git** for version control
+- **VS Code** (recommended) or any modern editor
+- **Docker** (optional, for containerized development)
+
+### One-Click Setup Script
+
+```bash
+# Clone the flexprice frontend repository
+git clone https://github.com/flexprice/flexprice-front
+cd flexprice-front
+
+# Run the automated setup script
+./setup
+```
+
+### Alternative: Install Latest Release
+
+```bash
+# Download and install the latest release
+curl -s https://api.github.com/repos/flexprice/flexprice-front/releases/latest | grep "browser_download_url.*tar.gz" | cut -d '"' -f 4 | wget -qi -
+tar -xzf flexprice-front-*.tar.gz
+cd flexprice-front-*
+./setup
+```
+
+The setup script will automatically:
+
+✅ Set up environment variables  
+✅ Install all dependencies  
+✅ Build Docker image (if Docker is available)  
+✅ Start the development server  
+✅ Open your browser to http://localhost:3000  
+
+## Manual Development Setup
+
+### Clone & Install
+
+```bash
+git clone https://github.com/flexprice/flexprice-front
+cd flexprice-front
+npm install
+```
+
+### Environment Setup
+
+```bash
+# Copy environment template
+cp .env.example .env
+
+# Configure these variables in .env.local:
+VITE_SUPABASE_URL=your-supabase-url
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+VITE_API_URL=http://localhost:8080/v1 # or <your-backend-url>
+VITE_ENVIRONMENT=development
+```
+
+### Start Development
+
+```bash
+npm run dev
+```
+
+Visit http://localhost:3000 to see your app running!
+
+
+## Self-Hosting Guide
+
+### Docker Deployment
+
+```bash
+# Build the Docker image
+docker build -t flexprice-frontend .
+
+# Run the container
+docker run -p 80:80 \
+  -e VITE_API_URL=your-api-url \
+  -e VITE_AUTH_DOMAIN=your-auth-domain \
+  flexprice-frontend
+```
+
+### Manual Deployment
+
+```bash
+# Build the application
+npm run build
+
+# Serve the static files
+# Using nginx
+cp nginx.conf /etc/nginx/conf.d/flexprice.conf
+nginx -s reload
+
+# Or using serve
+npx serve -s dist
+```
+
+## Available Scripts
+
+```bash
+# Development
+npm run dev           # Start development server
+npm run build        # Build for production
+npm run preview      # Preview production build
+
+# Code Quality
+npm run lint        # Run ESLint
+npm run lint:fix    # Fix ESLint errors
+npm run format      # Format with Prettier
+```
+
+## Common Development Tasks
+
+### Adding New Features
+
+1. **Create a feature branch:**
+```bash
+git checkout -b feat/new-feature
+```
+
+2. **Create component structure:**
+```bash
+mkdir -p src/components/organisms/NewFeature
+touch src/components/organisms/NewFeature/index.tsx
+touch src/components/organisms/NewFeature/NewFeature.test.tsx
+```
+
+3. **Add route (if needed):**
+```typescript
+// src/core/routes/Routes.tsx
+import NewFeature from '@/components/organisms/NewFeature'
+
+// Add to routes array
+{
+  path: '/new-feature',
+  element: <NewFeature />
+}
+```
+
+### Styling Components
+
+We use Tailwind CSS with custom configurations:
+
+```typescript
+// Example component with Tailwind
+const Button = ({ children }) => (
+  <button className="px-4 py-2 bg-primary hover:bg-primary-dark rounded-md">
+    {children}
+  </button>
+);
+```
+
+##  Troubleshooting
+
+### Common Issues
+
+#### Build Failures
+```bash
+# Clear dependencies and cache
+rm -rf node_modules
+rm -rf .vite
+npm install
+```
+
+#### Stale Development Server
+```bash
+# Reset development server
+rm -rf node_modules
+rm -rf .vite
+npm install
+npm run dev
+```
