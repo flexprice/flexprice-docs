@@ -32,7 +32,7 @@ inv_01K76TCFSQX6JY5C43WT2G1EE8,tenant_01K0F7AQCZR5THSG9MHEZE8VKR,env_01K0F7AQEQF
 ```
 
 <Note>
-**Full Example File**: Download [invoice-example.csv](/images/docs/data-exports/amazon-s3/invoice-example.csv) to see the complete CSV structure.
+**Full Example File**: Download [invoice-example.csv](/images/docs/data-exports/amazon-s3/csv/invoice-example.csv) to see the complete CSV structure.
 </Note>
 
 ### Events
@@ -47,7 +47,22 @@ event_01K8D3HHYJVAC90K3X8R0YZA5N,tenant_01K0F7AQCZR5THSG9MHEZE8VKR,env_01K0F7AQE
 ```
 
 <Note>
-**Full Example File**: Download [events-example.csv](/images/docs/data-exports/amazon-s3/events-example.csv) to see the complete CSV structure.
+**Full Example File**: Download [events-example.csv](/images/docs/data-exports/amazon-s3/csv/events-example.csv) to see the complete CSV structure.
+</Note>
+
+### Credit Top-Ups
+
+Completed credit wallet transactions for customers.
+
+**Example Export (First Row):**
+
+```csv
+topup_id,external_id,name,wallet_id,amount,credit_balance_before,credit_balance_after,reference_id,transaction_reason,created_at
+wt_01K9X5HJKM9PQR2ST3UV4WXY6Z,cust_ext_123abc,Acme Corporation,wallet_01K9X5HJKM9PQR2ST3UV4WXY6Z,500.00,1000.00,1500.00,topup_ref_abc123,Manual credit top-up for Q1 usage,2025-10-15T14:30:00Z
+```
+
+<Note>
+**Full Example File**: Download [credit_topups-report-example.csv](/images/docs/data-exports/amazon-s3/csv/credit_topups-report-example.csv) to see the complete CSV structure.
 </Note>
 
 ## Setting Up S3 Export
@@ -151,6 +166,7 @@ Choose what data to export:
 |------------|-------------|---------------|
 | **invoice** | Finalized invoices | All invoice data, without line items, taxes, payments |
 | **events** | Feature usage events | Event data, usage metrics, customer activity |
+| **credit_topups** | Credit wallet transactions | Completed credit top-ups with wallet balance details |
 
 **3. Schedule Interval** (Required)
 
@@ -510,7 +526,7 @@ Authorization: Bearer {token}
 
 {
   "connection_id": "conn_01HK8DBMBN87CY36DEFY62PEXBT",
-  "entity_type": "invoice",
+  "entity_type": "invoice",  // Options: "invoice", "events", "credit_topups"
   "interval": "daily",
   "enabled": true,
   "job_config": {
@@ -566,7 +582,7 @@ Authorization: Bearer {token}
 
 S3 Export provides a comprehensive solution for automated data exports to Amazon S3. Key takeaways:
 
-- **Two Data Types**: Export invoices and events data
+- **Three Data Types**: Export invoices, events, and credit top-ups data
 - **Flexible Scheduling**: Hourly or daily automated exports
 - **Secure Storage**: Multiple encryption options for data at rest
 - **Manual Export Capability**: Trigger manual exports anytime
