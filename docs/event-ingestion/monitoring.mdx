@@ -1,0 +1,169 @@
+---
+title: "Event Monitoring"
+description: "Monitor the health and performance of your event ingestion and processing pipeline"
+---
+
+The Event Monitoring endpoint helps you track event ingestion and processing in real-time, allowing you to identify bottlenecks and ensure events are flowing correctly through your system.
+
+## API Endpoint
+
+```
+GET /v1/events/monitoring
+```
+
+### Authentication
+
+Include your API key in the request header:
+
+```
+x-api-key: <your_api_key>
+```
+
+### Request Parameters
+
+This endpoint accepts no query parameters. It automatically monitors the last 24 hours of data for your tenant and environment.
+
+### Response
+
+```json
+{
+  "total_count": 15432,
+  "consumption_lag": 245,
+  "post_processing_lag": 78
+}
+```
+
+**Response Fields:**
+
+- `total_count` - Total distinct events stored in ClickHouse in the last 24 hours
+- `consumption_lag` - Kafka consumer lag for event processing (number of unprocessed messages)
+- `post_processing_lag` - Kafka consumer lag for feature usage tracking (number of unprocessed messages)
+
+## Understanding the Metrics
+
+### Total Event Count
+
+The count of distinct events in the `events` table in ClickHouse from the last 24 hours. This verifies that:
+
+- Events are being sent from your application
+- The ingestion API is receiving events
+- Events are being written to ClickHouse
+
+### Consumption Lag
+
+**What it measures:** Kafka consumer lag between event ingestion and event processing.
+
+Consumer lag = Latest offset in topic - Consumer's committed offset
+
+**What it means:**
+- **0-100**: Near real-time processing ✅
+- **100-1000**: Acceptable during spikes
+- **> 1000**: Processing bottleneck ⚠️
+
+### Post-Processing Lag
+
+**What it measures:** Kafka consumer lag between event processing and feature usage tracking.
+
+**What it means:**
+- **0-100**: Feature tracking keeping up ✅
+- **100-1000**: Acceptable during spikes
+- **> 1000**: Tracking delayed ⚠️
+
+## How Events Flow
+
+Understanding the pipeline helps interpret the lag metrics:
+
+```
+1. Event Ingestion (API)
+   POST /v1/events → Events published to Kafka
+   ↓
+2. Event Consumption (Worker Service)
+   Validates, transforms, writes to ClickHouse
+   [consumption_lag measures backlog here]
+   ↓
+3. Event Post-Processing (Worker Service)
+   Tracks feature usage, updates credits
+   [post_processing_lag measures backlog here]
+```
+
+## Example Usage
+
+### Basic Request
+
+```bash
+curl --request GET \
+  --url https://api.cloud.flexprice.io/v1/events/monitoring \
+  --header 'x-api-key: <your_api_key>'
+```
+
+### Example: Healthy System
+
+```json
+{
+  "total_count": 15432,
+  "consumption_lag": 0,
+  "post_processing_lag": 0
+}
+```
+
+System is healthy. Events are processing in real-time.
+
+### Example: System Under Load
+
+```json
+{
+  "total_count": 50000,
+  "consumption_lag": 1245,
+  "post_processing_lag": 523
+}
+```
+
+High event volume with some backlog. Monitor to ensure lag decreases.
+
+### Example: Critical Backlog
+
+```json
+{
+  "total_count": 100000,
+  "consumption_lag": 15000,
+  "post_processing_lag": 8500
+}
+```
+
+Significant backlog. Consider scaling worker instances.
+
+## Troubleshooting
+
+### High Consumption Lag
+
+If consumption lag stays high:
+
+1. Check if events are being sent faster than they can be processed
+2. Review worker service logs for errors
+3. Monitor ClickHouse write performance
+4. Consider scaling worker instances
+
+### High Post-Processing Lag
+
+If post-processing lag stays high:
+
+1. Review feature usage calculations for complexity
+2. Check for slow database queries
+3. Monitor credit deduction operations
+4. Consider scaling worker instances
+
+### Zero Events
+
+If `total_count` is 0:
+
+1. Verify events are being sent from your application
+2. Check API key is valid
+3. Confirm events aren't being rejected during validation
+4. Use the [Event Debugger](/docs/event-ingestion/event-debugger) to check for incoming events
+
+## Related Documentation
+
+- [Sending Events](/docs/event-ingestion/sending-events)
+- [Event Debugger](/docs/event-ingestion/event-debugger)
+- [Troubleshooting](/docs/event-ingestion/troubleshooting)
+
