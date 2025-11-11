@@ -207,6 +207,21 @@ Configure S3-specific settings for your exports:
 Use key prefixes to organize exports by environment, data type, or date. This makes it easier to manage and query exported data.
 </Tip>
 
+##### Endpoint URL (Optional)
+
+Custom endpoint URL for S3-compatible storage services:
+
+- **Use Case**: Connect to S3-compatible storage providers other than AWS S3
+- **Examples**:
+  - MinIO: `https://minio.example.com`
+  - DigitalOcean Spaces: `https://nyc3.digitaloceanspaces.com`
+  - Backblaze B2: `https://s3.us-west-002.backblazeb2.com`
+- **Default**: Leave empty to use AWS S3 (default)
+
+<Note>
+When using a custom endpoint, ensure your credentials and bucket configuration are compatible with that provider's S3 API implementation.
+</Note>
+
 ##### Compression (Optional)
 
 Control file compression to reduce storage costs:
@@ -533,6 +548,7 @@ Authorization: Bearer {token}
     "bucket": "flexprice-exports",
     "region": "us-west-2",
     "key_prefix": "invoices/",
+    "endpoint_url": "",  // Optional: Custom S3-compatible endpoint
     "compression": "gzip",
     "encryption": "AES256"
   }
