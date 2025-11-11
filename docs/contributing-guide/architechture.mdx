@@ -5,11 +5,11 @@ description: "Understanding the project structure and architecture"
 
 ## Overview
 
-FlexPrice is a comprehensive **usage-based billing and subscription management platform** built in Go. The system handles the complete billing lifecycle from event ingestion through invoice generation and payment processing, designed for B2B SaaS companies requiring flexible pricing models.
+Flexprice is a comprehensive **usage-based billing and subscription management platform** built in Go. The system handles the complete billing lifecycle from event ingestion through invoice generation and payment processing, designed for B2B SaaS companies requiring flexible pricing models.
 
 ## High-Level Architecture
 
-FlexPrice implements a **three-tier layered architecture** with clear separation of concerns, bootstrapped using **Uber FX dependency injection framework**: 
+Flexprice implements a **three-tier layered architecture** with clear separation of concerns, bootstrapped using **Uber FX dependency injection framework**: 
 
 ### Architecture Layers
 
@@ -65,7 +65,7 @@ graph TB
 
 ### Core Technologies
 
-FlexPrice uses a modern Go stack with specialized components:
+Flexprice uses a modern Go stack with specialized components:
 
 **Key Dependencies:**
 - **Gin** - HTTP routing and middleware
@@ -78,7 +78,7 @@ FlexPrice uses a modern Go stack with specialized components:
 
 ## Dual-Database Strategy
 
-FlexPrice employs a **specialized database strategy** for different workloads:
+Flexprice employs a **specialized database strategy** for different workloads:
 
 ### PostgreSQL (Transactional Data)
 - **Purpose**: ACID transactions, relational data
@@ -94,7 +94,7 @@ FlexPrice employs a **specialized database strategy** for different workloads:
 
 ## Event Processing Pipeline
 
-The core of FlexPrice's usage-based billing is an **asynchronous event processing pipeline** powered by Kafka:
+The core of Flexprice's usage-based billing is an **asynchronous event processing pipeline** powered by Kafka:
 
 ### Pipeline Stages
 
@@ -125,7 +125,7 @@ Usage metrics are aggregated by meter and feature for billing:
 
 ## Deployment Modes
 
-FlexPrice supports **multiple deployment configurations** to separate concerns and scale independently:
+Flexprice supports **multiple deployment configurations** to separate concerns and scale independently:
 
 ### Available Modes
 
@@ -188,7 +188,7 @@ The API layer uses **Gin framework** with a comprehensive middleware stack for s
 
 ### Authentication & Authorization
 
-FlexPrice supports multiple authentication methods:
+Flexprice supports multiple authentication methods:
 
 - **API Keys**: Tenant-scoped keys for programmatic access
 - **JWT Tokens**: User session tokens with role-based permissions
@@ -211,7 +211,7 @@ FlexPrice supports multiple authentication methods:
 
 ## Multi-Tenancy Architecture
 
-FlexPrice implements **row-level multi-tenancy** with environment isolation enforced at multiple architectural layers:
+Flexprice implements **row-level multi-tenancy** with environment isolation enforced at multiple architectural layers:
 
 ### Tenant Isolation Strategy
 - **Database Level**: All tables include `tenant_id` and `environment` columns
@@ -279,7 +279,7 @@ All repositories are created through factory functions that receive shared depen
 
 ## Message Processing with PubSub Router
 
-FlexPrice uses **Watermill** for message routing with built-in retry mechanisms and rate limiting:
+Flexprice uses **Watermill** for message routing with built-in retry mechanisms and rate limiting:
 
 ### Kafka Integration
 ```go
@@ -358,7 +358,7 @@ func StartTemporalWorker(config *config.Config) {
 
 ### Payment Gateway Abstraction
 
-FlexPrice uses a factory pattern for payment integrations supporting multiple providers:
+Flexprice uses a factory pattern for payment integrations supporting multiple providers:
 
 ```go
 type PaymentGateway interface {

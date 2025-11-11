@@ -1,6 +1,6 @@
 ---
 title: "Backend Development Setup"
-description: "Complete guide to setting up the FlexPrice backend development environment"
+description: "Complete guide to setting up the Flexprice backend development environment"
 ---
 
 ## Prerequisites
@@ -28,15 +28,15 @@ make dev-setup
 This command will:
 
 1. Start all required infrastructure (PostgreSQL, Kafka, ClickHouse, Temporal)
-2. Build the FlexPrice application image
+2. Build the Flexprice application image
 3. Run database migrations and initialize Kafka
-4. Start all FlexPrice services (API, Consumer, Worker)
+4. Start all Flexprice services (API, Consumer, Worker)
 
 ## Accessing Services
 
 Once setup is complete, you can access:
 
-- FlexPrice API: http://localhost:8080
+- Flexprice API: http://localhost:8080
 - Temporal UI: http://localhost:8088
 - Kafka UI: http://localhost:8084 (with profile 'dev')
 - ClickHouse UI: http://localhost:8123
@@ -44,7 +44,7 @@ Once setup is complete, you can access:
 ## Useful Commands
 
 ```bash
-# Restart only the FlexPrice services
+# Restart only the Flexprice services
 make restart-flexprice
 
 # Stop all services
@@ -53,10 +53,10 @@ make down
 # Clean everything and start fresh
 make clean-start
 
-# Build the FlexPrice image separately
+# Build the Flexprice image separately
 make build-image
 
-# Start only the FlexPrice services
+# Start only the Flexprice services
 make start-flexprice
 ```
 
@@ -74,7 +74,7 @@ go run cmd/server/main.go
 
 ## Project Structure
 
-FlexPrice follows a **clean architecture** pattern with clear separation of concerns:
+Flexprice follows a **clean architecture** pattern with clear separation of concerns:
 
 ```
 internal/
@@ -287,84 +287,9 @@ docker compose exec kafka kafka-topics --bootstrap-server kafka:9092 --list
 ## Additional Resources
 
 - [Contribution Guidelines](https://github.com/flexprice/flexprice/blob/main/CONTRIBUTING.md)
-- [API Documentation](https://docs.flexprice.io/)
+- [API Documentation](https://docs.flexprice.io)
 - [Code of Conduct](https://github.com/flexprice/flexprice/blob/main/CODE_OF_CONDUCT.md)
-- [FlexPrice Website](https://flexprice.io)
-
-## Optional S3 Setup
-
-If you wish to enable S3 storage for your FlexPrice API, follow these steps to configure your AWS S3 access:
-
-### 1. Create an S3 Bucket
-
-1. Log in to your AWS Management Console.
-2. Navigate to the S3 service.
-3. Create a new bucket named `<YOUR BUCKET NAME>` (or use an existing bucket).
-4. Ensure that the bucket is in the desired region.
-5. It is highly recommended to disable public access to the bucket, the API generates presigned URLs in the response which can be used to download the invoice.
-
-### 2. Configure Bucket Policy
-
-To allow FlexPrice to access the S3 bucket, you need to set up a bucket policy. Use the following policy, remembering to replace the bucket name with the name of your bucket.
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "VisualEditor0",
-      "Effect": "Allow",
-      "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
-      "Resource": "arn:aws:s3:::<YOUR BUCKET NAME>/*"
-    },
-    {
-      "Sid": "VisualEditor1",
-      "Effect": "Allow",
-      "Action": "s3:ListBucket",
-      "Resource": "arn:aws:s3:::<YOUR BUCKET NAME>"
-    }
-  ]
-}
-```
-
-### 3. Set Up AWS Credentials
-
-Ensure that your AWS credentials are configured on the server where the FlexPrice API will run. You can set up your credentials in the `~/.aws/credentials` file as follows:
-
-```ini
-[default]
-aws_access_key_id = YOUR_ACCESS_KEY_ID
-aws_secret_access_key = YOUR_SECRET_ACCESS_KEY
-```
-
-If using a different profile, you can set the profile name in the `~/.aws/config` file:
-
-```ini
-[<YOUR PROFILE NAME>]
-aws_access_key_id = YOUR_ACCESS_KEY_ID
-aws_secret_access_key = YOUR_SECRET_ACCESS_KEY
-```
-
-Do remember to set the `AWS_PROFILE` environment variable to the profile name you just set up.
-
-### 4. Configure the S3 Settings
-
-Edit the `internal/config/config.yaml` file and set the `s3` section to the following:
-
-```yaml
-s3:
-  enabled: false
-  region: <YOUR BUCKET REGION>
-  invoice:
-    bucket: <YOUR BUCKET NAME>
-    presign_expiry_duration: "1h" # The duration for which the presigned URL is valid (https://pkg.go.dev/time#ParseDuration)
-    key_prefix: ""
-    # The prefix for the invoice key in the bucket (defaults to empty and the invoice is stored under the tenant id folder - eg. {tenant_id}/{invoice_id}.pdf)
-```
-
-### 5. Running the Application
-
-Once you have configured the S3 bucket and set the necessary environment variables, you can start your FlexPrice API. The application will now be able to interact with the S3 bucket for storing and retrieving invoices.
+- [Flexprice Website](https://flexprice.io)
 
 ### 6. Troubleshooting
 
@@ -374,4 +299,4 @@ If you encounter issues with S3 access, check the following:
 - Verify that your AWS credentials have the necessary permissions.
 - Check the logs for any errors related to S3 operations.
 
-By following these steps, you can successfully set up S3 as an optional storage solution for your self-hosted FlexPrice API.  
+By following these steps, you can successfully set up S3 as an optional storage solution for your self-hosted Flexprice API.  
