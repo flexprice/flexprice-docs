@@ -1,0 +1,262 @@
+---
+title: 'Overview'
+description: 'Control access to your Flexprice resources with role-based permissions'
+---
+
+Flexprice's Role-Based Access Control (RBAC) system allows you to create service accounts with specific permissions for automated services and integrations. Instead of sharing your main account credentials, create dedicated service accounts with only the access they need.
+
+## What is RBAC?
+
+RBAC lets you create service accounts for your automated systems - like event ingestion services, analytics dashboards, or CI/CD pipelines - and assign each one specific roles that control what it can access.
+
+**Key Benefits:**
+
+- **Enhanced Security**: Limit what each service can access
+- **Controlled Access**: Assign specific permissions based on what each service needs to do
+- **Easy Management**: Create and revoke service account access without affecting your main account
+- **Clear Separation**: Different API keys for different purposes
+
+## How It Works
+
+When you create a service account, you assign it one or more roles. Each role grants specific permissions to access certain resources.
+
+**Example Flow:**
+
+1. Create a service account and assign it the `event_ingestor` role
+2. Generate an API key for that service account
+3. The API key inherits the `event_ingestor` permissions
+4. Your service can now ingest events but cannot access customer data or billing information
+
+## User Types
+
+### Regular Users (User Accounts)
+
+Your standard user accounts for people. These accounts:
+- Can log in to the dashboard
+- Have full access to all Flexprice resources
+- API keys from user accounts have full access
+
+### Service Accounts
+
+Automated accounts for your services and integrations. These accounts:
+- Cannot log in to the dashboard
+- Must have at least one role assigned
+- Access Flexprice only through API keys
+- API keys from service accounts have restricted access based on assigned roles
+
+## Available Roles
+
+### event_ingestor
+
+For services that send events to Flexprice.
+
+**Can do:**
+- Send events
+
+**Cannot do:**
+- Read events
+- Access any other resources
+
+**Use for:** Event ingestion services, usage tracking tools
+
+### event_reader
+
+For services that read event data.
+
+**Can do:**
+- Read events
+
+**Cannot do:**
+- Send events
+- Modify any data
+
+**Use for:** Analytics dashboards, reporting tools
+
+## Real-World Use Cases
+
+### Use Case 1: Event Ingestion Service
+
+**Scenario**: You have a microservice that sends usage events to Flexprice.
+
+**Solution**: Create a service account with the `event_ingestor` role and generate an API key.
+
+**What happens**:
+- ✅ Your service can send events successfully
+- ❌ If it tries to read events, it gets 403 Forbidden
+- ❌ It cannot access any other resources
+
+### Use Case 2: Analytics Dashboard  
+
+**Scenario**: Your analytics dashboard needs to read events for reporting.
+
+**Solution**: Create a service account with the `event_reader` role and generate an API key.
+
+**What happens**:
+- ✅ Your dashboard can read event data
+- ❌ If it tries to send events, it gets 403 Forbidden
+- ❌ It cannot modify any data
+
+## Validation Rules
+
+<Warning>
+**Service Accounts Require Roles**
+
+Every service account must have at least one role assigned. You cannot create a service account without specifying roles.
+</Warning>
+
+### Common Validation Errors
+
+**Error: No Roles Assigned**
+```json
+{
+  "error": "Service accounts must have at least one role assigned"
+}
+```
+
+**Error: Invalid Role**
+```json
+{
+  "error": "Invalid role: custom_role"
+}
+```
+
+## Error Responses
+
+### 403 Forbidden
+
+When a service account tries to access a resource it doesn't have permission for:
+
+```json
+{
+  "error": "Forbidden",
+  "message": "Insufficient permissions to write event"
+}
+```
+
+**What this means**: The API key doesn't have the required permission. You need to:
+1. Check which role the service account has
+2. Verify that role includes the permission you need
+3. If needed, assign a different role to the service account
+4. Generate a new API key (permissions are set when the key is created)
+
+## Getting Started
+
+### Step 1: Create a Service Account
+
+Choose the appropriate role for your use case and create a service account:
+
+```bash
+curl --request POST \
+  --url https://api.cloud.flexprice.io/v1/users \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: <api-key>' \
+  --data '{
+  "roles": [
+    "<string>"
+  ],
+  "type": "user"
+}'
+```
+
+### Step 2: Generate an API Key
+
+Create an API key for your service account:
+
+```bash
+curl --request POST \
+  --url https://api.cloud.flexprice.io/v1/secrets/api/keys \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: <api-key>' \
+  --data '{
+  "expires_at": "<string>",
+  "name": "<string>",
+  "service_account_id": "<string>",
+  "type": "private_key"
+}'
+```
+
+<Warning>
+The API key is only shown once. Copy and store it securely immediately.
+</Warning>
+
+### Step 3: Use the API Key
+
+Use the API key in your service:
+
+```bash
+curl --request POST \
+  --url https://api.cloud.flexprice.io/v1/events \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: <api-key>' \
+  --data '{
+  "customer_id": "customer456",
+  "event_id": "event123",
+  "event_name": "api_request",
+  "external_customer_id": "customer456",
+  "properties": {
+    "\"response_status\"": "200}",
+    "{\"request_size\"": "100"
+  },
+  "source": "api",
+  "timestamp": "2024-03-20T15:04:05Z"
+}'
+```
+
+
+## Best Practices
+
+<Check>
+**Use Specific Roles**
+
+Assign only the roles your service needs. Don't use broader permissions than necessary.
+</Check>
+
+<Check>
+**Rotate API Keys Regularly**
+
+Generate new API keys periodically (recommended: every 90 days) and delete old ones.
+</Check>
+
+<Check>
+**Store Keys Securely**
+
+Use environment variables or secret management systems. Never commit API keys to your code repository.
+</Check>
+
+## Troubleshooting
+
+### Getting 403 Errors
+
+**Symptom**: Your service is getting "Forbidden" errors when making API calls.
+
+**Possible Causes**:
+- The service account doesn't have the role that grants the required permission
+- The API key was created before you assigned roles to the service account
+- You're trying to access a resource that the assigned role doesn't cover
+
+**Solution**:
+1. Check what roles the service account has
+2. Verify those roles include the permission you need
+3. If you recently added roles, create a new API key
+4. Test with a simple request to verify permissions
+
+### Cannot Create Service Account
+
+**Symptom**: Getting an error when trying to create a service account.
+
+**Possible Causes**:
+- Didn't specify any roles
+- Specified an invalid role name
+
+**Solution**: Make sure you're providing at least one valid role in the `roles` array.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Create Service Account" icon="user-plus" href="/docs/rbac/service-accounts/create">
+    Learn how to create service accounts →
+  </Card>
+  <Card title="Manage API Keys" icon="key" href="/docs/rbac/api">
+    Learn how to generate and manage API keys →
+  </Card>
+</CardGroup>
