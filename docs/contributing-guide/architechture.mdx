@@ -5,11 +5,11 @@ description: "Understanding the project structure and architecture"
 
 ## Overview
 
-FlexPrice is a comprehensive **usage-based billing and subscription management platform** built in Go. The system handles the complete billing lifecycle from event ingestion through invoice generation and payment processing, designed for B2B SaaS companies requiring flexible pricing models.
+Flexprice is a comprehensive **usage-based billing and subscription management platform** built in Go. The system handles the complete billing lifecycle from event ingestion through invoice generation and payment processing, designed for B2B SaaS companies requiring flexible pricing models.
 
 ## High-Level Architecture
 
-FlexPrice implements a **three-tier layered architecture** with clear separation of concerns, bootstrapped using **Uber FX dependency injection framework**: 
+Flexprice implements a **three-tier layered architecture** with clear separation of concerns, bootstrapped using **Uber FX dependency injection framework**: 
 
 ### Architecture Layers
 
@@ -65,7 +65,7 @@ graph TB
 
 ### Core Technologies
 
-FlexPrice uses a modern Go stack with specialized components:
+Flexprice uses a modern Go stack with specialized components:
 
 **Key Dependencies:**
 - **Gin** - HTTP routing and middleware
@@ -78,7 +78,7 @@ FlexPrice uses a modern Go stack with specialized components:
 
 ## Dual-Database Strategy
 
-FlexPrice employs a **specialized database strategy** for different workloads:
+Flexprice employs a **specialized database strategy** for different workloads:
 
 ### PostgreSQL (Transactional Data)
 - **Purpose**: ACID transactions, relational data
@@ -88,53 +88,47 @@ FlexPrice employs a **specialized database strategy** for different workloads:
 
 ### ClickHouse (Analytical Data)
 - **Purpose**: High-volume inserts, aggregation queries
-- **Data**: Events (raw), processed_events, feature_usage
+- **Data**: Events (raw), events_lazy, processed_events, system_events
 - **Access Pattern**: Append-only writes, time-series queries
 - **Tables**: Optimized for usage metering and analytics 
 
 ## Event Processing Pipeline
 
-The core of FlexPrice's usage-based billing is an **asynchronous event processing pipeline** powered by Kafka:
+The core of Flexprice's usage-based billing is an **asynchronous event processing pipeline** powered by Kafka:
 
 ### Pipeline Stages
 
 ```mermaid
 graph LR
-    API["API Ingestion"] --> Kafka1["Kafka: events"]
-    Kafka1 --> Store["Store Raw Events"]
-    Store --> Kafka2["Kafka: events_post_processing"]
-    Kafka2 --> Enrich["Enrich with Pricing"]
-    Enrich --> Kafka3["Kafka: feature_usage"]
-    Kafka3 --> Aggregate["Aggregate Usage"]
-    Aggregate --> Billing["Billing Calculations"]
+    A[Application] --> B[events]
+    A --> C[events_lazy] 
+    B --> D[Real-time Processing]
+    C --> E[Deferred Processing]
+    D --> F[events_post_processing]
+    F --> G[Post Actions]
+    D --> H[system_events]
+    H --> I[Webhooks]
 ```
-
-### 1. Event Ingestion
-Events are ingested via REST API and published to Kafka:
-
-### 2. Event Consumption & Storage
-Consumers process events from Kafka and store in ClickHouse:
-
-### 3. Event Post-Processing
-Events are enriched with subscription context and pricing data:
-
-### 4. Feature Usage Tracking
-Usage metrics are aggregated by meter and feature for billing:
-
-### Kafka Topics Configuration 
 
 ## Deployment Modes
 
-FlexPrice supports **multiple deployment configurations** to separate concerns and scale independently:
+Flexprice supports **multiple deployment configurations** to separate concerns and scale independently:
 
 ### Available Modes
 
 | Mode | Components | Purpose |
 |------|-----------|---------|
-| **`local`** | API + Consumer + Worker | Development environment |
-| **`api`** | API Server only | Handle HTTP requests |
-| **`consumer`** | Event processing only | Process Kafka messages |
-| **`temporal_worker`** | Background workers only | Execute workflows |
+| **`local`** | API Server + Router (with event consumption handlers) + Temporal Worker | Full development environment with all services enabled |
+| **`api`** | API Server + Router (event consumption disabled) | Handle HTTP requests with routing but no event processing |
+| **`consumer`** | Router only (with event consumption handlers) | Dedicated event processing without HTTP API |
+| **`temporal_worker`** | Temporal workers only | Background workflows and scheduled tasks execution |
+
+### Mode Implementation Details
+
+- **`local`**: Starts API server, registers all router handlers with event consumption enabled (`true`), starts router, and starts Temporal worker
+- **`api`**: Starts API server, registers router handlers with event consumption disabled (`false`), starts router only
+- **`consumer`**: Requires Kafka consumer, registers all router handlers with event consumption enabled (`true`), starts router without API server
+- **`temporal_worker`**: Starts only Temporal worker service, no API server or router
 
 ## Service Layer Architecture
 
@@ -155,21 +149,32 @@ All services are instantiated through factory functions that receive a centraliz
 
 ```go
 type ServiceParams struct {
-    PostgresRepository *repository.PostgresRepository
-    ClickHouseRepository *repository.ClickHouseRepository
-    KafkaProducer kafka.Producer
-    TemporalClient temporal.Client
-    Config *config.Config
-    Logger *logger.Logger
-}
+    // Individual Repository Interfaces
+    AuthRepo                     auth.Repository
+	UserRepo                     user.Repository
+	EventRepo                    events.Repository
+	ProcessedEventRepo           events.ProcessedEventRepository
+    // ... 40+ more domain specific repositories
 
-func NewBillingService(params ServiceParams) *BillingService {
-    return &BillingService{
-        repo: params.PostgresRepository,
-        analytics: params.ClickHouseRepository,
-        kafka: params.KafkaProducer,
-        // ...
-    }
+    // Publishers
+	EventPublisher   publisher.EventPublisher
+	WebhookPublisher webhookPublisher.WebhookPublisher
+
+    // Services
+    Logger       *logger.Logger
+	Config       *config.Configuration
+	DB           postgres.IClient
+	PDFGenerator pdf.Generator
+	S3           s3.Service
+
+    // http client
+	Client httpclient.Client
+
+	// Proration
+	ProrationCalculator proration.Calculator
+
+	// Integration Factory
+	IntegrationFactory *integration.Factory
 }
 ```
 
@@ -188,7 +193,7 @@ The API layer uses **Gin framework** with a comprehensive middleware stack for s
 
 ### Authentication & Authorization
 
-FlexPrice supports multiple authentication methods:
+Flexprice supports multiple authentication methods:
 
 - **API Keys**: Tenant-scoped keys for programmatic access
 - **JWT Tokens**: User session tokens with role-based permissions
@@ -211,7 +216,7 @@ FlexPrice supports multiple authentication methods:
 
 ## Multi-Tenancy Architecture
 
-FlexPrice implements **row-level multi-tenancy** with environment isolation enforced at multiple architectural layers:
+Flexprice implements **row-level multi-tenancy** with environment isolation enforced at multiple architectural layers:
 
 ### Tenant Isolation Strategy
 - **Database Level**: All tables include `tenant_id` and `environment` columns
@@ -221,17 +226,14 @@ FlexPrice implements **row-level multi-tenancy** with environment isolation enfo
 
 ### Middleware Enforcement
 
+Tenant and environment isolation is enforced through the `AuthenticateMiddleware`, which handles both authentication and tenant context extraction:
+
 ```go
-func TenantMiddleware() gin.HandlerFunc {
+func AuthenticateMiddleware(cfg *config.Configuration, secretService service.SecretService, logger *logger.Logger) gin.HandlerFunc {
     return func(c *gin.Context) {
-        // Extract tenant from API key or JWT
-        tenantID := extractTenantFromAuth(c)
-        environment := extractEnvironmentFromAuth(c)
+        // Check for API key in X-API-Key header
         
-        // Set tenant context
-        ctx := context.WithValue(c.Request.Context(), "tenant_id", tenantID)
-        ctx = context.WithValue(ctx, "environment", environment)
-        c.Request = c.Request.WithContext(ctx)
+        // Check for JWT token in Authorization header
         
         c.Next()
     }
@@ -260,11 +262,11 @@ type Repository interface {
 ```
 
 ### Automatic Tenant Filtering
-All repositories automatically append tenant and environment filters to queries:
+All repositories automatically append tenant and environment filters to queries using typed context constants:
 ```go
 func (r *PostgresRepository) GetCustomer(ctx context.Context, customerID string) (*Customer, error) {
-    tenantID := getTenantFromContext(ctx)
-    environment := getEnvironmentFromContext(ctx)
+    tenantID := ctx.Value(types.CtxTenantID).(string)
+    environment := ctx.Value(types.CtxEnvironmentID).(string)
     
     return r.db.Customer.
         Query().
@@ -279,7 +281,7 @@ All repositories are created through factory functions that receive shared depen
 
 ## Message Processing with PubSub Router
 
-FlexPrice uses **Watermill** for message routing with built-in retry mechanisms and rate limiting:
+Flexprice uses **Watermill** for message routing with built-in retry mechanisms and rate limiting:
 
 ### Kafka Integration
 ```go
@@ -293,16 +295,6 @@ router.AddHandler(
     "events_post_processing",
     publisher,
     eventProcessingHandler,
-)
-
-// Usage aggregation
-router.AddHandler(
-    "usage_aggregator",
-    "events_post_processing", 
-    subscriber,
-    "feature_usage",
-    publisher,
-    usageAggregationHandler,
 )
 ```
 
@@ -356,48 +348,61 @@ func StartTemporalWorker(config *config.Config) {
 
 ## External Integrations
 
-### Payment Gateway Abstraction
-
-FlexPrice uses a factory pattern for payment integrations supporting multiple providers:
+FlexPrice uses a factory pattern for external service integrations, supporting multiple providers through specific integration implementations:
 
 ```go
-type PaymentGateway interface {
-    CreatePaymentIntent(amount int64, currency string) (*PaymentIntent, error)
-    ProcessPayment(paymentID string) (*Payment, error)
-    CreateCustomer(customerData CustomerData) (*Customer, error)
-    HandleWebhook(payload []byte, signature string) (*WebhookEvent, error)
+// Integration Factory creates specific integration instances
+type Factory struct {
+    config *config.Configuration
+    logger *logger.Logger
 }
 
-// Supported gateways
-func NewPaymentGateway(provider string, config GatewayConfig) PaymentGateway {
-    switch provider {
-    case "stripe":
-        return NewStripeGateway(config)
-    case "adyen":
-        return NewAdyenGateway(config)
-    default:
-        return NewMockGateway()
-    }
+// Specific integration getters with proper error handling
+func (f *Factory) GetStripeIntegration(ctx context.Context) (*StripeIntegration, error) {
+    // Initialize and return Stripe integration with configuration
+    return NewStripeIntegration(f.config, f.logger), nil
+}
+
+func (f *Factory) GetHubSpotIntegration(ctx context.Context) (*HubSpotIntegration, error) {
+    // Initialize and return HubSpot integration with configuration
+    return NewHubSpotIntegration(f.config, f.logger), nil
+}
+
+func (f *Factory) GetRazorpayIntegration(ctx context.Context) (*RazorpayIntegration, error) {
+    // Initialize and return Razorpay integration with configuration
+    return NewRazorpayIntegration(f.config, f.logger), nil
 }
 ```
 
 ### Webhook Delivery
 
-Webhooks are delivered through **Svix** for reliable event notification with automatic retries and delivery guarantees:
+FlexPrice has a flexible webhook delivery system with **optional Svix integration**. By default, it uses an internal webhook system with in-memory or Kafka pub/sub:
 
 ```go
 type WebhookService struct {
-    svixClient *svix.Client
-    eventStore EventStore
+    config    *config.Configuration
+    publisher publisher.WebhookPublisher
+    handler   handler.Handler
+    factory   payload.PayloadBuilderFactory
+    client    httpclient.Client
+    logger    *logger.Logger
 }
 
 func (w *WebhookService) DeliverEvent(event *Event, endpoints []WebhookEndpoint) error {
-    // Svix handles retries, signatures, and delivery tracking
-    return w.svixClient.Message.Create(event.TenantID, &svix.MessageIn{
-        EventType: event.Type,
-        Payload:   event.Data,
-    })
+    // Route based on configuration
+    if w.config.Webhook.SvixConfig.Enabled {
+        w.logger.Info("Using Svix for webhook delivery")
+        return w.deliverViaSvix(event)
+    }
+    
+    w.logger.Info("Using internal webhook system")
+    return w.deliverViaInternalSystem(event, endpoints)
 }
+
+// Configuration controls webhook delivery method
+// svix_config:
+//   enabled: false  # Default - uses internal system
+//   enabled: true   # Optional - uses Svix for delivery
 ```
 
 ## Infrastructure Services
@@ -452,33 +457,52 @@ func (s *S3Service) StoreInvoice(invoiceID string, pdfData []byte) (string, erro
 
 ### Caching Layer
 
-In-memory caching for performance optimization using Redis and local caches:
+FlexPrice uses **in-memory caching only** for performance optimization. Caching can be enabled/disabled via configuration:
+
 ```go
-type CacheService struct {
-    redis    *redis.Client
-    local    *bigcache.BigCache
-    ttl      time.Duration
+// Cache interface in internal/cache/
+type Cache interface {
+    // Get retrieves a value from the cache
+    // Returns the value and a boolean indicating whether the key was found
+    Get(ctx context.Context, key string) (interface{}, bool)
+
+    // Set adds a value to the cache with the specified expiration
+    // If expiration is 0, the item never expires (but may be evicted)
+    Set(ctx context.Context, key string, value interface{}, expiration time.Duration)
+
+    // Delete removes a key from the cache
+    Delete(ctx context.Context, key string)
+
+    // DeleteByPrefix removes all keys with the given prefix
+    DeleteByPrefix(ctx context.Context, prefix string)
+
+    // Flush removes all items from the cache
+    Flush(ctx context.Context)
 }
 
-func (c *CacheService) GetPlan(planID string) (*Plan, error) {
-    // Try local cache first
-    if data, err := c.local.Get(planID); err == nil {
-        return unmarshalPlan(data)
+// Usage example
+func (s *PlanService) GetPlan(ctx context.Context, planID string) (*Plan, error) {
+    // Check if caching is enabled
+    if !s.config.Cache.Enabled {
+        return s.repo.GetPlan(ctx, planID)
     }
     
-    // Fall back to Redis
-    if data, err := c.redis.Get(planID).Bytes(); err == nil {
-        c.local.Set(planID, data) // Populate local cache
-        return unmarshalPlan(data)
+    // Try cache first
+    if cached, found := s.cache.Get(ctx, planID); found {
+        return cached.(*Plan), nil
     }
     
     // Cache miss - fetch from database
-    plan, err := c.repo.GetPlan(planID)
+    plan, err := s.repo.GetPlan(ctx, planID)
     if err == nil {
-        c.SetPlan(planID, plan)
+        s.cache.Set(ctx, planID, plan, time.Hour)
     }
     return plan, err
 }
+
+// Configuration
+// cache:
+//   enabled: true/false  # Simple boolean to enable/disable caching
 ```
 
 ## Configuration Management
@@ -504,8 +528,9 @@ kafka:
   brokers: ${KAFKA_BROKERS:localhost:29092}
   topics:
     events: "events"
+    events_lazy: "events_lazy"
     processed_events: "events_post_processing"
-    feature_usage: "feature_usage"
+    system_events: "system_events"
 
 temporal:
   host: ${TEMPORAL_HOST:localhost:7233}
@@ -515,14 +540,32 @@ temporal:
 ### Configuration Structure
 
 ```go
-type Config struct {
-    Server     ServerConfig     `yaml:"server"`
-    Database   DatabaseConfig   `yaml:"database"`
-    Kafka      KafkaConfig      `yaml:"kafka"`
-    Temporal   TemporalConfig   `yaml:"temporal"`
-    Redis      RedisConfig      `yaml:"redis"`
-    S3         S3Config         `yaml:"s3"`
-    Payment    PaymentConfig    `yaml:"payment"`
+type Configuration struct {
+    Deployment               DeploymentConfig
+    Server                   ServerConfig
+    Auth                     AuthConfig
+    Kafka                    KafkaConfig
+    ClickHouse               ClickHouseConfig
+    Logging                  LoggingConfig
+    Postgres                 PostgresConfig
+    Sentry                   SentryConfig
+    Pyroscope                PyroscopeConfig
+    Event                    EventConfig
+    DynamoDB                 DynamoDBConfig
+    Temporal                 TemporalConfig
+    Webhook                  Webhook
+    Secrets                  SecretsConfig
+    Billing                  BillingConfig
+    S3                       S3Config
+    Cache                    CacheConfig
+    EventProcessing          EventProcessingConfig 
+    EventProcessingLazy      EventProcessingLazyConfig
+    EventPostProcessing      EventPostProcessingConfig
+    FeatureUsageTracking     FeatureUsageTrackingConfig
+    FeatureUsageTrackingLazy FeatureUsageTrackingLazyConfig
+    EnvAccess                EnvAccessConfig
+    FeatureFlag              FeatureFlagConfig
+    Email                    EmailConfig
 }
 ```
 
