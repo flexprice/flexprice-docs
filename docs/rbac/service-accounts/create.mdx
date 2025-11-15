@@ -1,0 +1,232 @@
+---
+title: 'Creating a Service Account'
+description: 'Create a service account with specific permissions for your automated services'
+---
+
+A service account is a special type of account for automated services, integrations, and scripts. Unlike your regular user account, service accounts are assigned specific roles that control what resources they can access in Flexprice.
+
+## Why Use Service Accounts?
+
+Service accounts let you:
+
+- **Isolate access**: Each service gets its own account with only the permissions it needs
+- **Improve security**: If an API key is compromised, the damage is limited to that service's permissions
+- **Track usage**: See which service is making which API calls
+- **Manage easily**: Revoke access for one service without affecting others
+
+## Creating a Service Account
+
+### Choose the Right Role
+
+Before creating a service account, decide which role fits your use case:
+
+Flexprice currently supports following custom roles:
+
+| Role | Use When |
+|------|----------|
+| `event_ingestor` | Your service needs to send events to Flexprice |
+| `event_reader` | Your service needs to read event data |
+
+### Via Dashboard
+
+Navigate to **Developers > Service Accounts** and click **Create** to open the service account creation dialog.
+
+<Frame>
+  ![Create Service Account](/public/images/docs/rbac/create-service-acc.png)
+</Frame>
+
+In the dialog:
+1. Select the roles you want to assign (Event Ingestor, Event Reader, or both)
+2. Click **Create Service Account**
+
+The service account is created with the selected roles and you can now generate API keys for it.
+
+### Via API
+
+<CodeGroup>
+```bash cURL
+curl --request POST \
+  --url https://api.cloud.flexprice.io/v1/users \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: <api-key>' \
+  --data '{
+  "roles": [
+    "<string>"
+  ],
+  "type": "user"
+}'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.cloud.flexprice.io/v1/users', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'x-api-key': '<api-key>'
+  },
+  body: JSON.stringify({
+    type: 'user',
+    roles: ['event_ingestor']
+  })
+});
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://api.cloud.flexprice.io/v1/users',
+    headers={
+        'Content-Type': 'application/json',
+        'x-api-key': '<api-key>'
+    },
+    json={
+        'type': 'user',
+        'roles': ['event_ingestor']
+    }
+)
+```
+</CodeGroup>
+
+### Response
+
+```json
+{
+  "id": "usr_abc123",
+  "type": "service_account",
+  "roles": ["event_ingestor"],
+  "created_at": "2025-11-14T10:00:00Z"
+}
+```
+
+<Tip>
+Save the `id` from the response. You'll need it when creating API keys.
+</Tip>
+
+## Required Fields
+
+<ParamField path="type" type="string" required>
+  Must be set to `"service_account"`.
+</ParamField>
+
+<ParamField path="roles" type="array" required>
+  List of roles to assign. Must include at least one role.
+  
+  Available roles:
+  - `event_ingestor` - Can send events
+  - `event_reader` - Can read events
+</ParamField>
+
+## Validation Rules
+
+<Warning>
+**At Least One Role Required**
+
+You must assign at least one role when creating a service account. Empty roles will return an error.
+</Warning>
+
+### Common Errors
+
+**No Roles Provided**
+```json
+{
+  "error": "Service accounts must have at least one role assigned"
+}
+```
+
+**Invalid Role Name**
+```json
+{
+  "error": "Invalid role: custom_role"
+}
+```
+
+## Real-World Examples
+
+### Example 1: Event Ingestion Service
+
+**Scenario**: You have a service that sends user events to Flexprice.
+
+**Create service account with**:
+- Role: `event_ingestor`
+
+**What happens**:
+- ✅ Service can send events
+- ❌ Service cannot read events (403 Forbidden)
+- ❌ Service cannot access other resources (403 Forbidden)
+
+### Example 2: Analytics Dashboard
+
+**Scenario**: You have a dashboard that displays event data.
+
+**Create service account with**:
+- Role: `event_reader`
+
+**What happens**:
+- ✅ Dashboard can read events
+- ❌ Dashboard cannot send events (403 Forbidden)
+- ❌ Dashboard cannot modify anything (403 Forbidden)
+
+## Assigning Multiple Roles
+
+You can assign both roles to give combined permissions:
+
+**Service account with both roles**:
+- Roles: `event_ingestor` and `event_reader`
+
+**What happens**:
+- ✅ Can send events (from `event_ingestor`)
+- ✅ Can read events (from `event_reader`)
+
+## Best Practices
+
+<Check>
+**One Service Account Per Service**
+
+Create separate service accounts for each automated service or integration.
+</Check>
+
+<Check>
+**Assign Minimal Permissions**
+
+Only assign the roles your service actually needs.
+</Check>
+
+## Troubleshooting
+
+### Service Getting 403 Errors
+
+**Symptom**: Your service is getting "Forbidden" errors when making API calls.
+
+**Possible Causes**:
+1. The service account doesn't have the required role
+2. The API key was created before you assigned roles
+3. The role doesn't include permission for that endpoint
+
+**Solution**:
+1. Check what roles the service account has: `GET /v1/users/usr_abc123`
+2. Verify those roles include the permission you need
+3. If you recently added roles, create a new API key
+
+### Cannot Create Service Account
+
+**Symptom**: Getting an error when creating the service account.
+
+**Possible Causes**:
+1. Forgot to include `roles` in the request
+2. Used an invalid role name
+3. Specified `roles` as an empty array
+
+**Solution**: Make sure your request includes at least one valid role:
+```json
+{
+  "type": "service_account",
+  "roles": ["event_ingestor"]
+}
+```
+
+## Next Steps
+
+<Card title="Generate API Keys" icon="key" href="/docs/rbac/api">
+  Create API keys for your service account →
+</Card>
