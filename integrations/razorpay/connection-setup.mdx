@@ -1,0 +1,161 @@
+---
+title: 'Razorpay Connection Setup'
+description: 'Complete guide to setting up and configuring Razorpay connections in Flexprice'
+---
+
+## Overview
+
+A Razorpay connection in Flexprice stores encrypted credentials that allow the system to interact with your Razorpay account for:
+- Creating customers in Razorpay
+- Processing payment links via Razorpay Checkout
+- Receiving webhook notifications from Razorpay
+- Synchronizing customer data between systems
+- Syncing invoices to Razorpay for payment collection
+
+## Prerequisites
+
+Before setting up your Razorpay connection, ensure you have:
+
+1. **Active Razorpay Account** - Sign up at [razorpay.com](https://razorpay.com)
+2. **API Keys** - Available in your Razorpay Dashboard
+3. **Webhook Endpoint** - Configured in Razorpay Dashboard
+4. **Flexprice Environment** - Valid tenant and environment IDs
+
+## Step 1: Gather Razorpay Credentials
+
+### Required Credentials
+
+| Credential | Location in Razorpay Dashboard | Required | Purpose |
+|------------|-------------------------------|----------|---------|
+| **Key ID** | Settings → API Keys | ✅ | API authentication |
+| **Secret Key** | Settings → API Keys | ✅ | API authentication |
+| **Webhook Secret** | Settings → Webhooks → [Your Endpoint] | ✅ | Webhook signature verification |
+
+### Finding Your Credentials
+
+1. **API Keys:**
+   - Go to Razorpay Dashboard → Settings → API Keys
+   - Copy your `Key ID` 
+   - Copy your `Secret Key`
+   - Use test keys for development
+
+2. **Webhook Secret:**
+   - Go to Razorpay Dashboard → Settings → Webhooks
+   - Create or select your webhook endpoint
+   - Copy the webhook secret (used for signature verification)
+
+## Step 2: Configure Webhook Endpoint in Razorpay
+
+### Webhook URL Format
+
+```
+https://api.cloud.flexprice.io/v1/webhooks/razorpay/tenant_01K1TJDVNSN7TWY8CZY870QMNV/env_01K1TJJF0CJR410C6QVPYQTNV0
+```
+
+### Required Webhook Events
+
+Configure these events in your Razorpay webhook endpoint:
+
+| Event Type | Purpose |
+|------------|---------|
+| `payment.captured` | Track successful payment completions |
+| `payment.failed` | Handle payment failures and errors |
+
+### Setting Up the Webhook
+
+1. Go to Razorpay Dashboard → Settings → Webhooks
+2. Click **+ Add New Webhook**
+3. Enter your webhook URL
+4. Select the required events listed above
+5. Click **Create Webhook**
+6. Copy the **Webhook Secret** for your connection
+
+## Step 3: Create Razorpay Connection via API
+
+### Using Flexprice Dashboard
+
+You can create a Razorpay connection directly from the Flexprice dashboard.
+
+### API Request
+
+**Endpoint:** `POST /api/v1/connections`
+
+**Headers:**
+```http
+Content-Type: application/json
+Authorization: Bearer your_api_key
+X-Tenant-ID: your_tenant_id
+X-Environment-ID: your_environment_id
+```
+
+**Request Body:**
+```json
+{
+  "name": "Razorpay Production",
+  "provider_type": "razorpay",
+  "encrypted_secret_data": {
+    "key_id": "rzp_live_...",
+    "secret_key": "rzp_live_...",
+    "webhook_secret": "..."
+  }
+}
+```
+
+### Response
+
+```json
+{
+  "id": "conn_1234567890abcdef",
+  "name": "Razorpay Production",
+  "provider_type": "razorpay",
+  "status": "active",
+  "created_at": "2024-01-20T10:30:00Z",
+  "updated_at": "2024-01-20T10:30:00Z"
+}
+```
+
+## Security Best Practices
+
+### Credential Management
+
+1. **Environment Separation**: Use different keys for test/production
+2. **Key Rotation**: Regularly rotate your Razorpay API keys
+3. **Access Control**: Limit API key permissions in Razorpay
+4. **Encryption**: All credentials are encrypted at rest in Flexprice
+
+### Webhook Security
+
+1. **HTTPS Only**: Always use HTTPS for webhook endpoints
+2. **Signature Verification**: Flexprice verifies all webhook signatures
+3. **Secret Management**: Keep webhook secrets secure and rotate regularly
+4. **Rate Limiting**: Implement rate limiting on webhook endpoints
+
+## Troubleshooting
+
+### Common Issues
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| Connection test fails | Invalid API keys | Verify keys in Razorpay Dashboard |
+| Webhook not received | Incorrect webhook URL | Check URL format and endpoint |
+| Signature verification fails | Wrong webhook secret | Update webhook secret in connection |
+| Customer sync fails | Missing account permissions | Check Razorpay account permissions |
+
+### Debug Steps
+
+1. **Check Razorpay Dashboard**: Verify API keys and webhook configuration
+2. **Test API Keys**: Use Razorpay API to test key validity
+3. **Monitor Webhooks**: Check webhook delivery logs in Razorpay
+4. **Review Logs**: Check Flexprice application logs for errors
+
+## Next Steps
+
+After setting up your Razorpay connection:
+
+1. **Test Customer Sync**: Create a test customer and sync to Razorpay
+2. **Create Payment Links**: Test payment link creation and flow
+3. **Monitor Webhooks**: Ensure webhook events are being received
+4. **Go Live**: Switch to production keys when ready
+
+For detailed API documentation, see the [API Reference](/api-reference/connections/create-a-connection).
+

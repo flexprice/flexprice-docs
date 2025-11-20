@@ -1,0 +1,264 @@
+---
+title: 'Razorpay Integration Workflow'
+description: 'Complete guide to integrating Flexprice with Razorpay for payment processing'
+---
+
+## Overview
+
+This comprehensive guide walks you through integrating **FlexPrice** with **Razorpay** to enable seamless payment processing and advanced usage-based billing. This integration combines FlexPrice's powerful usage tracking capabilities with Razorpay's robust billing & payment infrastructure.
+
+**What you'll achieve with this integration:**
+- Process payments securely through Razorpay's infrastructure
+- Automatically sync customers and invoices
+- Handle complex usage-based billing scenarios
+- Receive real-time updates via webhooks
+
+## System Architecture
+
+The FlexPrice-Razorpay integration follows a clear division of responsibilities, ensuring each system handles what it does best while maintaining seamless data flow between platforms.
+
+### Division of Responsibilities
+
+**FlexPrice specializes in:**
+
+- Usage-based charge calculation and metering
+- Complex billing logic and usage invoice generation
+- Plan configuration with usage components
+
+**Razorpay handles:**
+- Secure payment processing and compliance
+- Customer payment method storage
+- Transaction processing and failure handling
+- Payment link generation and checkout
+
+## Prerequisites
+
+Before you begin, ensure the following:
+- You have an **active FlexPrice account**  
+- You have a **Razorpay account** (in test or live mode)  
+- You possess **admin access** to both platforms  
+- You have a **basic understanding of webhooks** (optional but helpful)
+
+---
+
+## Step 1: Set Up the Connection
+
+Follow the connection setup guide below to link Razorpay with FlexPrice:  
+👉 [Razorpay Connection Setup Guide](/integrations/razorpay/connection-setup)
+
+### Required Webhook Events
+
+```
+payment.captured
+payment.failed
+```
+
+---
+
+## Step 2: Sync Configuration Details
+
+### Invoice Outbound Sync (FlexPrice → Razorpay)
+
+- **What it does:** Sends invoices generated in FlexPrice to Razorpay for payment processing  
+- **When to enable:** You create invoices in FlexPrice but want Razorpay to handle payment collection  
+- **Benefits:** Unified payment experience and centralized transaction history
+
+#### Invoice Sync Timing
+
+Invoices are automatically synced to Razorpay when:
+- Invoice is finalized (status changes from `DRAFT` to `FINALIZED`)
+- Invoice outbound sync is enabled in the Razorpay connection
+- Customer is successfully synced to Razorpay
+
+#### Invoice Sync Process
+
+1. **Invoice Finalization**: Invoice is finalized in FlexPrice
+2. **Customer Sync Check**: System ensures customer exists in Razorpay
+3. **Invoice Creation**: Invoice is created in Razorpay with all line items
+4. **Payment URL Generation**: Razorpay automatically generates payment URL
+5. **Mapping Storage**: FlexPrice stores the mapping between FlexPrice and Razorpay invoices
+
+#### Invoice Sync Features
+
+- **Automatic Sync**: Invoices sync automatically when finalized
+- **Line Item Preservation**: All invoice line items are preserved in Razorpay
+- **Payment URL**: Razorpay generates payment URL automatically
+- **Duplicate Prevention**: System prevents duplicate invoice creation
+
+---
+
+## Step 3: Payment Flow Setup
+
+### 3.1 Supported Payment Methods
+
+FlexPrice supports multiple Razorpay payment flows:
+1. **Payment Links** – For one-time payments via Razorpay Checkout  
+2. **Invoice Payments** – Payments made through synced invoices
+
+### 3.2 Payment Collection Modes
+
+You can choose how customer payments are collected:
+
+| Mode | Description |
+|-------|--------------|
+| **Payment Links** | Customers receive payment links to complete transactions manually |
+| **Invoice Sync** | Invoices are synced to Razorpay with auto-generated payment URLs |
+
+### 3.3 Currency Minimums
+
+Razorpay requires minimum amounts in the smallest currency subunit:
+
+| Currency | Minimum amount (in smallest subunit) | Equivalent Minimum Value |
+|----------|-------------------------------------|-------------------------|
+| INR | 100 | ₹1.00 |
+| USD | 1 | $0.01 |
+
+**Important**: 
+- Amounts are automatically converted to smallest currency units (paise for INR, cents for USD)
+- Ensure all payment amounts meet these minimums
+- Invoice amounts must also meet minimum requirements
+
+---
+
+## Step 4: Customer Synchronization
+
+### On-Demand Customer Sync
+
+Customers are automatically synced to Razorpay when needed:
+
+- **Payment Link Creation**: Customer is synced before creating payment link
+- **Invoice Sync**: Customer is synced before syncing invoice
+
+**Note**: Customer sync is **one-way only** (Flexprice → Razorpay). Customers are only synced when payment interactions occur.
+
+### Customer Sync Features
+
+- **Automatic Sync**: No manual intervention required
+- **Duplicate Prevention**: System prevents duplicate customer creation
+- **Metadata Linking**: Customer IDs are stored in metadata for quick lookup
+- **Email-Based Matching**: Uses email for customer matching
+
+For detailed information, see [Customer Synchronization Documentation](/integrations/razorpay/customer-sync).
+
+---
+
+## Step 5: Payment Links
+
+### Creating Payment Links
+
+Payment links can be created for any invoice:
+
+**Endpoint:** `POST /api/v1/payments`
+
+**Request:**
+```json
+{
+    "amount": 100,
+    "currency": "inr",
+    "destination_id": "inv_01K34HYZN03V6X8Q6V3T8X6G4F",
+    "destination_type": "INVOICE",
+    "payment_method_type": "PAYMENT_LINK",
+    "process_payment": true,
+    "payment_gateway": "razorpay",
+    "success_url": "https://admin.flexprice.io/customer-management/invoices/inv_01K34HYZN03V6X8Q6V3T8X6G4F?page=1"
+}
+```
+
+### Payment Link Features
+
+- **Auto-generated URLs**: Razorpay automatically generates short payment URLs
+- **Multiple Payment Methods**: Supports cards, UPI, netbanking, wallets
+- **Mobile Optimized**: Responsive checkout experience
+- **Real-time Updates**: Webhook-driven status updates
+
+For detailed information, see [Payment Links Documentation](/integrations/razorpay/payment-links).
+
+---
+
+## Step 6: Webhook Configuration
+
+### Required Webhooks
+
+Configure these webhooks in your Razorpay dashboard:
+
+| Event | Purpose |
+|-------|---------|
+| `payment.captured` | Track successful payment completions |
+| `payment.failed` | Handle payment failures and errors |
+
+### Webhook URL Format
+
+```
+https://api.cloud.flexprice.io/v1/webhooks/razorpay/{tenant_id}/{environment_id}
+```
+
+### Webhook Processing
+
+- **Signature Verification**: All webhooks are verified for security
+- **Idempotency**: Duplicate webhooks are handled gracefully
+- **Error Handling**: Errors are logged but don't fail webhook processing
+- **Automatic Reconciliation**: Payments are automatically reconciled with invoices
+
+---
+
+## Best Practices
+
+### Currency Handling
+
+1. **Minimum Amounts**: Always ensure amounts meet currency minimums
+2. **Currency Conversion**: Amounts are automatically converted to smallest units
+3. **Consistent Currency**: Use consistent currency across invoice and payment
+
+### Invoice Sync
+
+1. **Enable Sync**: Enable invoice outbound sync in connection settings
+2. **Finalize Invoices**: Only finalized invoices are synced
+3. **Customer Sync**: Ensure customers are synced before invoice sync
+
+### Payment Links
+
+1. **Amount Validation**: Validate amounts against invoice remaining balance
+2. **Currency Matching**: Ensure payment currency matches invoice currency
+3. **Callback URLs**: Provide callback URLs for better user experience
+
+### Error Handling
+
+1. **Monitor Webhooks**: Regularly check webhook delivery logs
+2. **Review Logs**: Check application logs for sync errors
+3. **Retry Failed Syncs**: Retry failed syncs manually if needed
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+| Issue | Solution |
+|-------|----------|
+| Payment link creation fails | Check customer sync status |
+| Invoice sync fails | Verify invoice is finalized and customer is synced |
+| Webhook not received | Verify webhook URL and events in Razorpay dashboard |
+| Amount below minimum | Ensure amount meets currency minimum (₹1.00 for INR, $0.01 for USD) |
+
+### Debug Steps
+
+1. **Check Connection**: Verify Razorpay connection is active
+2. **Check Customer Sync**: Ensure customer is synced to Razorpay
+3. **Check Invoice Status**: Verify invoice is finalized
+4. **Check Webhooks**: Verify webhook configuration in Razorpay
+5. **Review Logs**: Check application logs for detailed error messages
+
+---
+
+## Support
+
+Need assistance? We're here to help.
+
+- **FlexPrice Support:** [support@flexprice.com](mailto:support@flexprice.com)  
+- **Integration Documentation:** [FlexPrice Docs](https://docs.flexprice.com)  
+- **Razorpay Documentation:** [Razorpay Docs](https://razorpay.com/docs)
+
+💡 **Need help setting up?**  
+Our team can assist with configuration, testing, and troubleshooting.  
+Reach out to **FlexPrice Support** to schedule a setup session.
+
