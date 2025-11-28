@@ -116,14 +116,6 @@ Since invoices are assigned to the parent (invoicing customer), all payment oper
 
 > [!WARNING] > **Immutable Assignment**: The `invoicing_customer_id` can only be set during subscription creation and cannot be modified later. To change the billing relationship, you must cancel the existing subscription and create a new one.
 
-## API Reference
-
-For detailed API documentation on implementing Customer Hierarchy, see:
-
-- [Create Subscription API](/api-reference) - Set `invoicing_customer_id` during subscription creation
-- [Customer Management API](/api-reference) - Create and manage parent and child customer entities
-- [Invoice API](/api-reference) - View consolidated invoices for parent customers
-
 ---
 
 > [!NOTE]
