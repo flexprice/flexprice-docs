@@ -21,7 +21,7 @@ Customer Hierarchy allows you to decouple **who uses the service** from **who pa
 
 ### Parent-Child Relationships
 
-In FlexPrice, you establish a customer hierarchy by specifying an `invoicing_customer_id` when creating a subscription. This creates a clear separation between:
+In Flexprice, you establish a customer hierarchy by specifying an `invoicing_customer_id` when creating a subscription. This creates a clear separation between:
 
 - **Subscription Owner** (Child): The customer entity that owns and uses the subscription
 - **Invoicing Customer** (Parent): The customer entity that receives invoices and handles payment
@@ -49,16 +49,19 @@ POST /subscriptions
 3. Usage is tracked under the subsidiary but billed to the parent
 4. Payment methods and wallets from the parent customer are used for settlement
 
+**Multiple Subscriptions:** You can create multiple subscriptions for different child customers, all invoiced to the same parent customer. This allows you to aggregate usage and charges from multiple entities onto a single parent invoice while maintaining separate subscription management for each child customer.
+
 ### Invoice Generation & Billing
 
 When invoices are generated:
 
-1. FlexPrice checks for the `invoicing_customer_id` on each subscription
+1. Flexprice checks for the `invoicing_customer_id` on each subscription
 2. Invoices are created with the parent customer as the billing entity
 3. All charges appear in the parent customer's billing history
 4. Payment processing uses the parent customer's payment methods and wallet balance
+5. Invoice line items reflect the source subscription owned by the child customer
 
-This ensures complete separation between service consumption and financial responsibility.
+This ensures complete separation between service consumption and financial responsibility. The child customer's usage is tracked and attributed correctly, while all financial operations (invoicing, payment, wallet deductions) occur at the parent customer level.
 
 ## Use Cases
 
@@ -110,13 +113,52 @@ Since invoices are assigned to the parent (invoicing customer), all payment oper
 - **Payment Methods**: Saved cards and payment gateway configurations from the parent customer are used
 - **Payment History**: All transactions appear in the parent customer's payment records
 
-## Current Limitations
+### Wallet and Ledger Deductions
 
-> [!IMPORTANT] > **API-Only Feature**: Customer Hierarchy is currently available exclusively through the FlexPrice API. UI support is under development.
+The wallet and credit ledger are scoped to a specific customer. Since invoicing for a subscription using customer hierarchy happens at the parent customer level, all usage (from the child customer's subscription) will be deducted from the parent customer's wallet or ledger balance.
 
-> [!WARNING] > **Immutable Assignment**: The `invoicing_customer_id` can only be set during subscription creation and cannot be modified later. To change the billing relationship, you must cancel the existing subscription and create a new one.
+The ledger will show entries for usage deductions from the parent customer, reflecting the aggregated charges from child customer subscriptions.
 
----
+## Invoices
 
-> [!NOTE]
-> Customer Hierarchy is designed for enterprise use cases. If you have questions about implementing this feature for your organization, contact our support team at support@flexprice.io.
+Customer hierarchy leads to usage aggregation at the parent customer level. This means that all invoices for subscriptions using an `invoicing_customer_id` will be generated for the parent (invoicing) customer.
+
+### Invoice Line Items
+
+Invoice line items will reflect charges from the child customer's subscription, but the invoice itself will be assigned to the parent customer. This allows you to see which subscriptions and usage contributed to the invoice while maintaining consolidated billing.
+
+### Viewing Invoices
+
+- All invoices appear in the parent customer's billing history
+- Invoice line items show the source subscription and usage details
+- Payment processing and wallet deductions occur at the parent customer level
+
+## Frequently Asked Questions
+
+### Can I create a hierarchy relationship between a parent and child in different currencies?
+
+A subscription can be created with a child customer in one currency and an invoicing customer (parent) in a different currency. However, since usage will be aggregated and invoiced to the parent customer, only the currency of the parent (invoicing) customer will be used for the invoice.
+
+### Can I create a hierarchy relationship between a parent and child with different tax applications?
+
+Similar to differing currencies, since usage will be aggregated and invoiced to the parent customer, only the tax application of the parent (invoicing) customer will be used for the invoice.
+
+### Will a newly created subscription with an invoicing_customer_id inherit pricing from the parent customer?
+
+No. The subscription is owned by the child customer and uses the plan and pricing associated with that subscription. The `invoicing_customer_id` only determines which customer receives the invoice and handles payment.
+
+### How does this feature interact with deductions from a customer's wallet or ledger?
+
+The wallet and credit ledger are scoped to a specific customer. Since invoicing for a subscription using customer hierarchy happens at the parent customer level, all usage from the child customer's subscription will be deducted from the parent customer's wallet or ledger balance.
+
+In other words, usage on a subscription owned by a child customer but invoiced to a parent customer will drawdown from the parent customer's wallet/ledger, not the child customer's.
+
+### How does this feature interact with the subscription lifecycle?
+
+#### Plan Changes
+
+When you change a subscription's plan, the `invoicing_customer_id` relationship is preserved. The subscription continues to be owned by the child customer but invoiced to the parent customer.
+
+#### Subscription Cancellation
+
+If you cancel a subscription that uses customer hierarchy, the final invoice will be generated for the parent (invoicing) customer, and any remaining charges will be billed accordingly.

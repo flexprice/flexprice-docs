@@ -1,9 +1,10 @@
-# FlexPrice Settings Guide
+# Flexprice Settings Guide
 
-This guide documents the configuration settings available in FlexPrice, their usage, and implementation details. 
+This guide documents the configuration settings available in Flexprice, their usage, and implementation details.
 Settings are managed at the tenant × environment level, providing complete isolation between different environments within and across tenants.
 
 ## Table of Contents
+
 - [Settings Overview](#settings-overview)
 - [Available Settings](#available-settings)
   - [Subscription Configuration](#subscription-configuration)
@@ -13,7 +14,8 @@ Settings are managed at the tenant × environment level, providing complete isol
 
 ## Settings Overview
 
-Settings in FlexPrice are:
+Settings in Flexprice are:
+
 - **Scoped**: Per tenant and environment
 - **Cached**: With 1-hour TTL
 - **Validated**: With strict type checking and value constraints
@@ -30,6 +32,7 @@ Settings in FlexPrice are:
 **Purpose**: Controls subscription auto-cancellation behavior for unpaid invoices.
 
 **Schema**:
+
 ```json
 {
   "grace_period_days": number,     // REQUIRED for new settings, Optional for updates
@@ -38,6 +41,7 @@ Settings in FlexPrice are:
 ```
 
 **Default Values** (only applied when creating through API):
+
 ```json
 {
   "grace_period_days": 3,
@@ -46,7 +50,9 @@ Settings in FlexPrice are:
 ```
 
 **Validation Rules**:
+
 1. For NEW settings:
+
    - `grace_period_days`:
      - Required field
      - Must be integer >= 1
@@ -63,6 +69,7 @@ Settings in FlexPrice are:
    - Omitted fields preserve existing values
 
 **Auto-Cancellation Workflow**:
+
 1. System periodically checks all ACTIVE subscriptions in tenants with auto-cancellation enabled
 2. For each subscription, it evaluates unpaid invoices where:
    - Invoice has remaining amount > 0 OR payment_status != succeeded
@@ -91,6 +98,7 @@ Settings in FlexPrice are:
 **Purpose**: Controls invoice number generation, formatting, and due date calculation.
 
 **Schema**:
+
 ```json
 {
   "prefix": string,           // REQUIRED for new settings, Optional for updates
@@ -104,6 +112,7 @@ Settings in FlexPrice are:
 ```
 
 **Default Values** (only applied when creating through API):
+
 ```json
 {
   "prefix": "INV",
@@ -117,33 +126,35 @@ Settings in FlexPrice are:
 ```
 
 **Validation Rules**:
+
 1. For NEW settings:
-    - Invoice Sequence Prefix Settings
-        - `prefix`:
-            - Required field
-            - Must be non-empty string
-            - Cannot be only whitespace
-        - `format`:
-            - Required field
-            - Must be one of: `YYYYMM`, `YYYYMMDD`, `YYMMDD`, `YY`, `YYYY`
-        - `start_sequence`:
-            - Required field
-            - Must be integer >= 0
-            - Must be a whole number (no decimals)
-        - `timezone`:
-            - Required field
-            - Must be valid IANA timezone or common abbreviation
-            - Cannot be empty string
-        - `separator`:
-            - Required field
-            - Must be string (empty string allowed)
-        - `suffix_length`:
-            - Required field
-            - Must be integer between 1 and 10
-    - Auto Canellation Settings
-        - `due_date_days`:
-            - Must be integer >= 0 if provided
-            - Must be a whole number (no decimals)
+
+   - Invoice Sequence Prefix Settings
+     - `prefix`:
+       - Required field
+       - Must be non-empty string
+       - Cannot be only whitespace
+     - `format`:
+       - Required field
+       - Must be one of: `YYYYMM`, `YYYYMMDD`, `YYMMDD`, `YY`, `YYYY`
+     - `start_sequence`:
+       - Required field
+       - Must be integer >= 0
+       - Must be a whole number (no decimals)
+     - `timezone`:
+       - Required field
+       - Must be valid IANA timezone or common abbreviation
+       - Cannot be empty string
+     - `separator`:
+       - Required field
+       - Must be string (empty string allowed)
+     - `suffix_length`:
+       - Required field
+       - Must be integer between 1 and 10
+   - Auto Canellation Settings
+     - `due_date_days`:
+       - Must be integer >= 0 if provided
+       - Must be a whole number (no decimals)
 
 2. For UPDATES:
    - Partial updates are supported
@@ -153,12 +164,14 @@ Settings in FlexPrice are:
    - Can update only `due_date_days` without other fields
 
 **Invoice Number Generation**:
+
 1. Format Pattern: `{prefix}{separator}{formatted_date}{separator}{padded_sequence}`
 2. Sequence numbers:
    - Reset monthly based on the format (e.g., monthly for YYYYMM)
    - Padded with zeros to match suffix_length
    - Tenant and environment isolated
 3. Example with separator:
+
    ```
    Configuration:
    - prefix: "INV"
@@ -172,6 +185,7 @@ Settings in FlexPrice are:
    ```
 
 4. Example without separator:
+
    ```
    Configuration:
    - prefix: "INV"
@@ -185,7 +199,9 @@ Settings in FlexPrice are:
    ```
 
 **Supported Timezone Formats**:
+
 1. IANA Timezone Names (Recommended):
+
    - America/New_York
    - Europe/London
    - Asia/Tokyo
@@ -201,14 +217,17 @@ Settings in FlexPrice are:
 ## API Endpoints
 
 ### Get Setting
+
 ```
 GET /v1/settings/:key
 ```
 
 **Parameters**:
+
 - `key` (path): Required. One of: `subscription_config`, `invoice_config`
 
 **Response**:
+
 ```json
 {
   "value": {
@@ -222,19 +241,23 @@ GET /v1/settings/:key
 ```
 
 **Error Responses**:
+
 - `404 Not Found`: Setting not found for tenant × environment
 - `400 Bad Request`: Invalid setting key
 - `403 Forbidden`: Missing tenant or environment context
 
 ### Create/Update Setting
+
 ```
 PUT /v1/settings/:key
 ```
 
 **Parameters**:
+
 - `key` (path): Required. One of: `subscription_config`, `invoice_config`
 
 **Request**:
+
 ```json
 {
   "value": {
@@ -244,6 +267,7 @@ PUT /v1/settings/:key
 ```
 
 **Response**:
+
 ```json
 {
   "value": {
@@ -257,10 +281,12 @@ PUT /v1/settings/:key
 ```
 
 **Error Responses**:
+
 - `400 Bad Request`: Invalid setting key or validation failed
 - `403 Forbidden`: Missing tenant or environment context
 
 **Behavior**:
+
 - Single endpoint handles both creation and updates
 - If setting doesn't exist for tenant × environment:
   - Creates new setting
@@ -274,14 +300,17 @@ PUT /v1/settings/:key
   - No defaults are applied
 
 ### Delete Setting
+
 ```
 DELETE /v1/settings/:key
 ```
 
 **Parameters**:
+
 - `key` (path): Required. One of: `subscription_config`, `invoice_config`
 
 **Response**:
+
 ```json
 {
   "message": "Setting deleted successfully"
@@ -289,11 +318,13 @@ DELETE /v1/settings/:key
 ```
 
 **Error Responses**:
+
 - `404 Not Found`: Setting not found for tenant × environment
 - `400 Bad Request`: Invalid setting key
 - `403 Forbidden`: Missing tenant or environment context
 
 **Notes for All Endpoints**:
+
 - All endpoints require authentication
 - All endpoints require tenant and environment context
 - All operations are audited with:
@@ -308,24 +339,28 @@ DELETE /v1/settings/:key
 ## Best Practices
 
 1. **Initialization**:
+
    - Always provide all required fields when creating new settings
    - Default values only apply when using API creation
    - Validate all required fields before submission
    - Use IANA timezone names instead of abbreviations when possible
 
 2. **Updates**:
+
    - Use partial updates to modify only needed fields
    - Existing values are preserved automatically
    - No need to provide all fields in updates
    - Only provided fields are validated
 
 3. **Monitoring**:
+
    - Track setting changes in audit logs
    - Monitor auto-cancellation events
    - Review grace period effectiveness
    - Watch for timezone-related issues
 
 4. **Security**:
+
    - Only admin users should modify settings
    - Verify tenant context on all operations
    - Use tenant-specific API keys

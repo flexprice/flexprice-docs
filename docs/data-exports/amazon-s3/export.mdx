@@ -1,11 +1,11 @@
 ---
-title: 'Automated Data Export to Amazon S3'
-description: 'Automate data exports to Amazon S3 with flexible scheduling and configuration'
+title: "Automated Data Export to Amazon S3"
+description: "Automate data exports to Amazon S3 with flexible scheduling and configuration"
 ---
 
 ## Overview
 
-The Amazon S3 Export feature enables automated, scheduled exports of your FlexPrice data directly to Amazon S3 buckets. This robust, enterprise-grade solution allows you to configure scheduled tasks to export data at regular intervals, trigger manual exports on-demand, and track all export operations with comprehensive execution history.
+The Amazon S3 Export feature enables automated, scheduled exports of your Flexprice data directly to Amazon S3 buckets. This robust, enterprise-grade solution allows you to configure scheduled tasks to export data at regular intervals, trigger manual exports on-demand, and track all export operations with comprehensive execution history.
 
 **Key Benefits:**
 
@@ -18,7 +18,7 @@ The Amazon S3 Export feature enables automated, scheduled exports of your FlexPr
 
 ## Supported Data Types
 
-FlexPrice currently supports exporting the following data types to S3:
+Flexprice currently supports exporting the following data types to S3:
 
 ### Invoices
 
@@ -32,7 +32,9 @@ inv_01K76TCFSQX6JY5C43WT2G1EE8,tenant_01K0F7AQCZR5THSG9MHEZE8VKR,env_01K0F7AQEQF
 ```
 
 <Note>
-**Full Example File**: Download [invoice-example.csv](/images/docs/data-exports/amazon-s3/csv/invoice-example.csv) to see the complete CSV structure.
+  **Full Example File**: Download
+  [invoice-example.csv](/images/docs/data-exports/amazon-s3/csv/invoice-example.csv)
+  to see the complete CSV structure.
 </Note>
 
 ### Events
@@ -47,7 +49,9 @@ event_01K8D3HHYJVAC90K3X8R0YZA5N,tenant_01K0F7AQCZR5THSG9MHEZE8VKR,env_01K0F7AQE
 ```
 
 <Note>
-**Full Example File**: Download [events-example.csv](/images/docs/data-exports/amazon-s3/csv/events-example.csv) to see the complete CSV structure.
+  **Full Example File**: Download
+  [events-example.csv](/images/docs/data-exports/amazon-s3/csv/events-example.csv)
+  to see the complete CSV structure.
 </Note>
 
 ### Credit Top-Ups
@@ -62,13 +66,16 @@ wt_01K9X5HJKM9PQR2ST3UV4WXY6Z,cust_ext_123abc,Acme Corporation,wallet_01K9X5HJKM
 ```
 
 <Note>
-**Full Example File**: Download [credit_topups-report-example.csv](/images/docs/data-exports/amazon-s3/csv/credit_topups-report-example.csv) to see the complete CSV structure.
+  **Full Example File**: Download
+  [credit_topups-report-example.csv](/images/docs/data-exports/amazon-s3/csv/credit_topups-report-example.csv)
+  to see the complete CSV structure.
 </Note>
 
 ## Setting Up S3 Export
 
 <Frame>
-  ![S3 Data Exports Page](/images/docs/data-exports/amazon-s3/s3-export-page.png)
+  ![S3 Data Exports
+  Page](/images/docs/data-exports/amazon-s3/s3-export-page.png)
 </Frame>
 
 ### Prerequisites
@@ -85,7 +92,8 @@ Before configuring S3 exports, ensure you have:
 An S3 connection stores your AWS credentials and serves as the authentication mechanism for all export operations.
 
 <Frame>
-  ![Create S3 Connection](/images/docs/data-exports/amazon-s3/create-connection.png)
+  ![Create S3
+  Connection](/images/docs/data-exports/amazon-s3/create-connection.png)
 </Frame>
 
 **Required Information:**
@@ -93,11 +101,13 @@ An S3 connection stores your AWS credentials and serves as the authentication me
 1. **Connection Name**: A descriptive name for your S3 connection (e.g., "Production S3 Export")
 
 2. **AWS Access Key ID**: Your AWS access key ID
+
    - Format: Starts with `AKIA` for permanent credentials
    - Format: Starts with `ASIA` for temporary/session credentials
    - Required for authentication
 
 3. **AWS Secret Access Key**: Your AWS secret access key
+
    - This credential is encrypted and stored securely
    - Never exposed in API responses
 
@@ -106,7 +116,9 @@ An S3 connection stores your AWS credentials and serves as the authentication me
    - Leave empty for permanent IAM user credentials
 
 <Note>
-**Security Best Practice**: Create a dedicated IAM user with minimal permissions for S3 exports. Grant only the necessary S3 permissions (`s3:PutObject`, `s3:GetObject`, `s3:ListBucket`).
+  **Security Best Practice**: Create a dedicated IAM user with minimal
+  permissions for S3 exports. Grant only the necessary S3 permissions
+  (`s3:PutObject`, `s3:GetObject`, `s3:ListBucket`).
 </Note>
 
 #### AWS IAM Policy Example
@@ -120,11 +132,7 @@ Create an IAM policy with the following permissions:
     {
       "Sid": "FlexPriceS3ExportAccess",
       "Effect": "Allow",
-      "Action": [
-        "s3:PutObject",
-        "s3:GetObject",
-        "s3:ListBucket"
-      ],
+      "Action": ["s3:PutObject", "s3:GetObject", "s3:ListBucket"],
       "Resource": [
         "arn:aws:s3:::your-bucket-name/*",
         "arn:aws:s3:::your-bucket-name"
@@ -141,7 +149,8 @@ Create an IAM policy with the following permissions:
 ```
 
 <Warning>
-Replace `your-bucket-name` with your actual S3 bucket name. Ensure the IAM user or role has this policy attached before creating the connection.
+  Replace `your-bucket-name` with your actual S3 bucket name. Ensure the IAM
+  user or role has this policy attached before creating the connection.
 </Warning>
 
 ### Step 2: Configure a Scheduled Task
@@ -149,12 +158,14 @@ Replace `your-bucket-name` with your actual S3 bucket name. Ensure the IAM user 
 Once your S3 connection is established, create a scheduled task to automate exports.
 
 <Frame>
-  ![Create Export Task](/images/docs/data-exports/amazon-s3/create-export-task.png)
+  ![Create Export
+  Task](/images/docs/data-exports/amazon-s3/create-export-task.png)
 </Frame>
 
 #### Configuration Options
 
 **1. Connection**
+
 - Select the S3 connection created in Step 1
 - Each scheduled task can use different connections if needed
 
@@ -162,25 +173,26 @@ Once your S3 connection is established, create a scheduled task to automate expo
 
 Choose what data to export:
 
-| Entity Type | Description | Data Included |
-|------------|-------------|---------------|
-| **invoice** | Finalized invoices | All invoice data, without line items, taxes, payments |
-| **events** | Feature usage events | Event data, usage metrics, customer activity |
-| **credit_topups** | Credit wallet transactions | Completed credit top-ups with wallet balance details |
+| Entity Type       | Description                | Data Included                                         |
+| ----------------- | -------------------------- | ----------------------------------------------------- |
+| **invoice**       | Finalized invoices         | All invoice data, without line items, taxes, payments |
+| **events**        | Feature usage events       | Event data, usage metrics, customer activity          |
+| **credit_topups** | Credit wallet transactions | Completed credit top-ups with wallet balance details  |
 
 **3. Schedule Interval** (Required)
 
 Select how frequently exports should run:
 
-| Interval | Frequency | Cron Schedule | Best For |
-|----------|-----------|---------------|----------|
-| **hourly** | Every hour at :15 minutes past | `15 * * * *` | Real-time data needs, high-frequency updates |
-| **daily** | Every day at 00:15 AM | `15 0 * * *` | Standard backups, daily reporting |
+| Interval   | Frequency                      | Cron Schedule | Best For                                     |
+| ---------- | ------------------------------ | ------------- | -------------------------------------------- |
+| **hourly** | Every hour at :15 minutes past | `15 * * * *`  | Real-time data needs, high-frequency updates |
+| **daily**  | Every day at 00:15 AM          | `15 0 * * *`  | Standard backups, daily reporting            |
 
 <Info>
 **Why the 15-minute buffer?**
 
 Scheduled exports include a 15-minute buffer after the interval boundary to ensure all data has been ingested and processed. For example, an hourly export scheduled at 10:15 AM will export data from 9:00 AM to 10:00 AM.
+
 </Info>
 
 **4. S3 Configuration** (Required)
@@ -188,23 +200,27 @@ Scheduled exports include a 15-minute buffer after the interval boundary to ensu
 Configure S3-specific settings for your exports:
 
 ##### Bucket (Required)
+
 - The name of your S3 bucket where files will be stored
 - Example: `flexprice-exports-prod`
 - Must exist before creating the scheduled task
 
 ##### Region (Required)
+
 - AWS region where your bucket is located
 - Example: `us-west-2`, `eu-central-1`, `ap-south-1`
 - Must match your bucket's region
 
 ##### Key Prefix (Optional)
+
 - Directory path prefix for organizing files in your bucket
 - Example: `flexprice-exports/invoices/`
 - Example: `production/events/2024/`
 - Files will be stored as: `{key_prefix}/{filename}.csv`
 
 <Tip>
-Use key prefixes to organize exports by environment, data type, or date. This makes it easier to manage and query exported data.
+  Use key prefixes to organize exports by environment, data type, or date. This
+  makes it easier to manage and query exported data.
 </Tip>
 
 ##### Endpoint URL (Optional)
@@ -219,24 +235,27 @@ Custom endpoint URL for S3-compatible storage services:
 - **Default**: Leave empty to use AWS S3 (default)
 
 <Note>
-When using a custom endpoint, ensure your credentials and bucket configuration are compatible with that provider's S3 API implementation.
+  When using a custom endpoint, ensure your credentials and bucket configuration
+  are compatible with that provider's S3 API implementation.
 </Note>
 
 ##### Compression (Optional)
 
 Control file compression to reduce storage costs:
 
-| Option | Description | File Extension | Compression Ratio |
-|--------|-------------|----------------|-------------------|
-| **none** | No compression (default) | `.csv` | N/A (original size) |
-| **gzip** | GZIP compression | `.csv.gz` | ~70-80% size reduction |
+| Option   | Description              | File Extension | Compression Ratio      |
+| -------- | ------------------------ | -------------- | ---------------------- |
+| **none** | No compression (default) | `.csv`         | N/A (original size)    |
+| **gzip** | GZIP compression         | `.csv.gz`      | ~70-80% size reduction |
 
 **When to use compression:**
+
 - Large datasets with many records
 - Storage cost optimization
 - Bandwidth-limited environments
 
 **When to skip compression:**
+
 - Small datasets (< 1MB)
 - Files need to be immediately readable
 - Downstream systems don't support GZIP
@@ -245,14 +264,15 @@ Control file compression to reduce storage costs:
 
 Secure your data at rest with server-side encryption:
 
-| Option | Description | Key Management | Best For |
-|--------|-------------|----------------|----------|
-| **AES256** | S3-managed AES-256 encryption (default) | AWS manages keys | Standard security needs |
-| **aws:kms** | AWS KMS encryption | You control keys via KMS | Compliance requirements |
-| **aws:kms:dsse** | KMS with dual-layer encryption | Enhanced KMS security | Maximum security needs |
+| Option           | Description                             | Key Management           | Best For                |
+| ---------------- | --------------------------------------- | ------------------------ | ----------------------- |
+| **AES256**       | S3-managed AES-256 encryption (default) | AWS manages keys         | Standard security needs |
+| **aws:kms**      | AWS KMS encryption                      | You control keys via KMS | Compliance requirements |
+| **aws:kms:dsse** | KMS with dual-layer encryption          | Enhanced KMS security    | Maximum security needs  |
 
 <Note>
-All encryption options are server-side encryption (SSE). Data is encrypted at rest in S3. AES256 is the default and recommended for most use cases.
+  All encryption options are server-side encryption (SSE). Data is encrypted at
+  rest in S3. AES256 is the default and recommended for most use cases.
 </Note>
 
 **5. Enable/Disable Toggle**
@@ -271,7 +291,8 @@ After creating a scheduled task:
 4. **Test with Manual Export**: Trigger a manual export to verify the setup
 
 <Frame>
-  ![Export Tasks List](/images/docs/data-exports/amazon-s3/export-tasks-list.png)
+  ![Export Tasks
+  List](/images/docs/data-exports/amazon-s3/export-tasks-list.png)
 </Frame>
 
 ### Viewing Export Details
@@ -300,7 +321,8 @@ Manual Export allows you to trigger an immediate export without waiting for the 
 Navigate to the export details page and click the "Manual Export" button to trigger a manual export.
 
 <Frame>
-  ![Manual Export Modal](/images/docs/data-exports/amazon-s3/force-run-modal.png)
+  ![Manual Export
+  Modal](/images/docs/data-exports/amazon-s3/force-run-modal.png)
 </Frame>
 
 #### Option 1: Automatic Time Range (Default)
@@ -308,10 +330,12 @@ Navigate to the export details page and click the "Manual Export" button to trig
 Trigger a manual export without specifying time ranges. The system automatically calculates the export window based on the task's interval:
 
 **Example - Hourly Task:**
+
 - Current time: 10:30 AM
 - Export window: 10:00 AM to 11:00 AM (current hour)
 
 **Example - Daily Task:**
+
 - Current date: October 16, 2025
 - Export window: October 16, 00:00 to October 17, 00:00 (current day)
 
@@ -362,7 +386,8 @@ Content-Type: application/json
 ```
 
 <Warning>
-Custom time ranges must be valid timestamps in RFC3339 format (ISO 8601). The end time must be after the start time.
+  Custom time ranges must be valid timestamps in RFC3339 format (ISO 8601). The
+  end time must be after the start time.
 </Warning>
 
 ### Manual Export Behavior
@@ -401,6 +426,7 @@ events-251016000000-251017000000.csv.gz
 ```
 
 **Time Format in Filename:**
+
 - `YYMMDDHHMMSS` (Year, Month, Day, Hour, Minute, Second)
 - Example: `251016100000` = October 16, 2025, 10:00:00
 
@@ -410,13 +436,13 @@ When a run fails, the error summary provides details about what went wrong:
 
 **Common Failure Reasons:**
 
-| Error | Cause | Solution |
-|-------|-------|----------|
-| **Connection Failed** | Invalid AWS credentials | Verify and update S3 connection credentials |
-| **Bucket Not Found** | S3 bucket doesn't exist or wrong region | Check bucket name and region in task configuration |
-| **Permission Denied** | Insufficient IAM permissions | Review and update IAM policy |
-| **No Data Found** | No records in the specified time range | Verify the time range or check data availability |
-| **Timeout** | Export took longer than 15 minutes | Contact support or split into smaller time ranges |
+| Error                 | Cause                                   | Solution                                           |
+| --------------------- | --------------------------------------- | -------------------------------------------------- |
+| **Connection Failed** | Invalid AWS credentials                 | Verify and update S3 connection credentials        |
+| **Bucket Not Found**  | S3 bucket doesn't exist or wrong region | Check bucket name and region in task configuration |
+| **Permission Denied** | Insufficient IAM permissions            | Review and update IAM policy                       |
+| **No Data Found**     | No records in the specified time range  | Verify the time range or check data availability   |
+| **Timeout**           | Export took longer than 15 minutes      | Contact support or split into smaller time ranges  |
 
 ## Best Practices
 
@@ -424,20 +450,23 @@ When a run fails, the error summary provides details about what went wrong:
 **Use Descriptive Connection Names**
 
 Name your S3 connections based on environment and purpose (e.g., "Production Invoice Exports", "Staging Events Backup").
+
 </Check>
 
 <Check>
 **Organize with Key Prefixes**
 
 Use key prefixes to organize exports by environment, data type, and date:
+
 - `production/invoices/2025/`
 - `staging/events/`
-</Check>
+  </Check>
 
 <Check>
 **Enable Compression for Large Datasets**
 
 Use GZIP compression for exports with thousands of records to reduce storage costs by 70-80%.
+
 </Check>
 
 <Check>
@@ -445,18 +474,20 @@ Use GZIP compression for exports with thousands of records to reduce storage cos
 
 - **Hourly**: Real-time analytics, high-frequency reporting
 - **Daily**: Standard backups, daily batch processing
-</Check>
+  </Check>
 
 <Check>
 **Test with Manual Export**
 
 Always test a new scheduled task with a manual export before relying on automatic execution.
+
 </Check>
 
 <Check>
 **Monitor Execution History**
 
 Regularly review the Runs tab to ensure exports are completing successfully and adjust configuration if needed.
+
 </Check>
 
 <Check>
@@ -466,26 +497,29 @@ Regularly review the Runs tab to ensure exports are completing successfully and 
 - Grant minimal required permissions
 - Rotate credentials regularly
 - Enable CloudTrail for audit logging
-</Check>
+  </Check>
 
 <Check>
 **Plan for S3 Lifecycle Policies**
 
 Configure S3 lifecycle policies to automatically archive or delete old exports:
+
 - Transition to S3 Glacier after 90 days
 - Delete files older than 1 year
-</Check>
+  </Check>
 
 ## Troubleshooting
 
 ### Scheduled Task Not Running
 
 **Possible causes:**
+
 - Task is disabled
 - S3 connection is invalid
 - Temporal workflow service is down
 
 **Solution:**
+
 1. Verify the task is enabled in the dashboard
 2. Check the S3 connection status
 3. Test with a manual export to isolate the issue
@@ -494,11 +528,13 @@ Configure S3 lifecycle policies to automatically archive or delete old exports:
 ### Files Not Appearing in S3
 
 **Possible causes:**
+
 - Incorrect bucket name or region
 - Missing IAM permissions
 - Key prefix typo
 
 **Solution:**
+
 1. Verify bucket name matches exactly (case-sensitive)
 2. Confirm region matches the bucket's region
 3. Review IAM policy and ensure `s3:PutObject` permission
@@ -507,11 +543,13 @@ Configure S3 lifecycle policies to automatically archive or delete old exports:
 ### Export Timeout Errors
 
 **Possible causes:**
+
 - Very large time range (months of data)
 - Thousands of records in a single export
 - S3 upload speed issues
 
 **Solution:**
+
 1. Reduce the time range for custom exports
 2. Use hourly intervals instead of daily for high-volume data
 3. Enable GZIP compression to reduce upload time
@@ -520,11 +558,13 @@ Configure S3 lifecycle policies to automatically archive or delete old exports:
 ### Invalid Credentials Error
 
 **Possible causes:**
+
 - AWS credentials expired or rotated
 - Incorrect Access Key ID or Secret Key
 - Session token expired (for temporary credentials)
 
 **Solution:**
+
 1. Verify credentials in AWS IAM console
 2. Update the S3 connection with new credentials
 3. For temporary credentials, refresh the session token
@@ -606,5 +646,4 @@ S3 Export provides a comprehensive solution for automated data exports to Amazon
 - **Enterprise-Ready**: Compression, encryption, and scalable architecture
 - **Easy Integration**: Standard CSV format for downstream processing
 
-By implementing S3 Export, you can automate data backups, feed data warehouses, meet compliance requirements, and integrate FlexPrice data with your broader data infrastructure.
-
+By implementing S3 Export, you can automate data backups, feed data warehouses, meet compliance requirements, and integrate Flexprice data with your broader data infrastructure.

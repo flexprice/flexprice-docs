@@ -1,30 +1,36 @@
-The FlexPrice API provides endpoints to manage and retrieve customer data. This document outlines the available endpoints for customer operations.
+The Flexprice API provides endpoints to manage and retrieve customer data. This document outlines the available endpoints for customer operations.
 
 ---
 
 ## **Get All Customers**
 
 ### **Endpoint**
+
 `GET http://api.flexprice.io/gw/customers/?status=published`
 
 ### **Description**
+
 Retrieve all customers filtered by the provided `status` parameter. This allows fetching customers based on their current state (e.g., `published`).
 
 ### **Parameters**
-| Parameter | Type   | Required | Description                       |
-|-----------|--------|----------|-----------------------------------|
-| `status`  | string | Yes      | Status filter (e.g., `published`).|
+
+| Parameter | Type   | Required | Description                        |
+| --------- | ------ | -------- | ---------------------------------- |
+| `status`  | string | Yes      | Status filter (e.g., `published`). |
 
 ### **Authorization**
+
 This endpoint requires a valid Bearer token. Include the token in the `Authorization` header.
 
 ### **Request Example (CURL)**
+
 ```bash
 curl --location 'http://api.flexprice.io/gw/customers/?status=published' \
 --header 'Authorization: Bearer {your_token}'
 ```
 
 ### **Response Example**
+
 ```json
 [
   {
@@ -41,30 +47,36 @@ curl --location 'http://api.flexprice.io/gw/customers/?status=published' \
 ```
 
 ### **Errors**
-| Status Code | Error                  | Description                             |
-|-------------|------------------------|-----------------------------------------|
-| `401`       | Unauthorized           | The Bearer token is missing or invalid. |
-| `404`       | Not Found              | No customers were found for the given status. |
+
+| Status Code | Error        | Description                                   |
+| ----------- | ------------ | --------------------------------------------- |
+| `401`       | Unauthorized | The Bearer token is missing or invalid.       |
+| `404`       | Not Found    | No customers were found for the given status. |
 
 ---
 
 ## **Create Customer**
 
 ### **Endpoint**
+
 `POST http://api.flexprice.io/gw/customers/submit`
 
 ### **Description**
+
 This endpoint allows you to create a new customer. Provide the customer data in the request body in JSON format.
 
 ### **Headers**
-| Header            | Value                                     |
-|--------------------|-------------------------------------------|
-| `accept`          | `application/json, text/plain, */*`       |
-| `content-type`    | `application/json`                       |
-| `authorization`   | `Bearer {your_token}`                    |
+
+| Header          | Value                               |
+| --------------- | ----------------------------------- |
+| `accept`        | `application/json, text/plain, */*` |
+| `content-type`  | `application/json`                  |
+| `authorization` | `Bearer {your_token}`               |
 
 ### **Request Body**
+
 The request body should be a JSON object containing the customer details. For example:
+
 ```json
 {
   "name": "Pratham Sham Khodwe",
@@ -73,9 +85,11 @@ The request body should be a JSON object containing the customer details. For ex
 ```
 
 ### **Authorization**
+
 This endpoint requires a valid Bearer token. Include the token in the `Authorization` header.
 
 ### **Request Example (CURL)**
+
 ```bash
 curl --location --request POST 'http://api.flexprice.io/gw/customers/submit' \
 --header 'accept: application/json, text/plain, */*' \
@@ -88,6 +102,7 @@ curl --location --request POST 'http://api.flexprice.io/gw/customers/submit' \
 ```
 
 ### **Response Example**
+
 ```json
 {
   "customer_id": "12345",
@@ -98,10 +113,11 @@ curl --location --request POST 'http://api.flexprice.io/gw/customers/submit' \
 ```
 
 ### **Errors**
-| Status Code | Error                  | Description                             |
-|-------------|------------------------|-----------------------------------------|
-| `400`       | Bad Request            | Invalid or malformed request body.      |
-| `401`       | Unauthorized           | The Bearer token is missing or invalid. |
-| `500`       | Internal Server Error  | A server error occurred.                |
+
+| Status Code | Error                 | Description                             |
+| ----------- | --------------------- | --------------------------------------- |
+| `400`       | Bad Request           | Invalid or malformed request body.      |
+| `401`       | Unauthorized          | The Bearer token is missing or invalid. |
+| `500`       | Internal Server Error | A server error occurred.                |
 
 ---

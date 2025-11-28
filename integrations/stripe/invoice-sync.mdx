@@ -1,15 +1,15 @@
 ---
-title: 'Stripe Invoice Sync Flow'
-description: 'Comprehensive guide to Stripe invoice synchronization, collection methods, and payment reconciliation'
+title: "Stripe Invoice Sync Flow"
+description: "Comprehensive guide to Stripe invoice synchronization, collection methods, and payment reconciliation"
 ---
 
 ## Overview
 
-The Stripe Invoice Sync Flow enables FlexPrice to synchronize invoices with Stripe, allowing for seamless payment processing and reconciliation across both platforms. This system handles different collection methods, webhook processing, and ensures accurate payment tracking.
+The Stripe Invoice Sync Flow enables Flexprice to synchronize invoices with Stripe, allowing for seamless payment processing and reconciliation across both platforms. This system handles different collection methods, webhook processing, and ensures accurate payment tracking.
 
 ### Key Features
 
-- **Invoice Synchronization**: Automatic sync of FlexPrice invoices to Stripe
+- **Invoice Synchronization**: Automatic sync of Flexprice invoices to Stripe
 - **Collection Methods**: Support for `charge_automatically` and `send_invoice` methods
 - **Payment Reconciliation**: Real-time payment tracking across platforms
 - **Webhook Processing**: Comprehensive webhook handling for all payment events
@@ -20,7 +20,7 @@ The Stripe Invoice Sync Flow enables FlexPrice to synchronize invoices with Stri
 
 ```mermaid
 graph TD
-    A[Invoice Created in FlexPrice] --> B{Invoice Sync Enabled?}
+    A[Invoice Created in Flexprice] --> B{Invoice Sync Enabled?}
     B -->|No| C[Skip Sync]
     B -->|Yes| D[Check Stripe Connection]
     D --> E{Customer Synced?}
@@ -50,6 +50,7 @@ When `collection_method` is set to `charge_automatically`:
 4. **Webhook Events**: Listen for `invoice_payment.paid` and `payment_intent.succeeded`
 
 **Behavior:**
+
 - Immediate payment attempt upon invoice finalization
 - Uses customer's default payment method
 - Automatic retry on failure (based on Stripe settings)
@@ -60,12 +61,13 @@ When `collection_method` is set to `charge_automatically`:
 When `collection_method` is set to `send_invoice`:
 
 1. **Invoice Creation**: Creates a invoice in Stripe with `send_invoice` collection method
-2. **Due Date**: Sets the invoice due date from FlexPrice invoice
+2. **Due Date**: Sets the invoice due date from Flexprice invoice
 3. **Send Invoice**: Automatically sends the invoice to the customer via email
 4. **Customer Action**: Customer must manually pay using Stripe's hosted invoice page
 5. **Webhook Events**: Listen for `invoice_payment.paid` and `payment_intent.succeeded`
 
 **Behavior:**
+
 - Customer receives email with payment link
 - Manual payment required by customer
 - Subscription status depends on payment behavior setting
@@ -78,6 +80,7 @@ When `collection_method` is set to `send_invoice`:
 #### 1. Invoice Link (Stripe Hosted)
 
 **Flow:**
+
 ```mermaid
 graph TD
     A[Customer Receives Invoice Email] --> B[Clicks Payment Link]
@@ -86,93 +89,101 @@ graph TD
     D --> E{Payment Successful?}
     E -->|Yes| F[Stripe: invoice_payment.paid]
     E -->|No| G[No Webhook - Failure Handled by Stripe]
-    F --> H[FlexPrice: Process Payment]
+    F --> H[Flexprice: Process Payment]
     G --> I[Customer Can Retry Payment]
 ```
 
 **Webhook Handler:** `payment_intent.succeeded`
+
 - **Trigger**: Customer pays via Stripe invoice link
-- **Action**: Creates payment record in FlexPrice
+- **Action**: Creates payment record in Flexprice
 - **Reconciliation**: Uses `flexprice_invoice_id` from invoice metadata
 - **Note**: We don't listen to failure webhooks, only success
 
 #### 2. Charge Customer (Stripe Direct)
 
 **Flow:**
+
 ```mermaid
 graph TD
-    A[FlexPrice Initiates Charge] --> B[Stripe: Create PaymentIntent]
+    A[Flexprice Initiates Charge] --> B[Stripe: Create PaymentIntent]
     B --> C[Stripe: Charge Customer]
     C --> D{Charge Successful?}
     D -->|Yes| E[Stripe: invoice_payment.paid]
     D -->|No| F[No Webhook - Failure Handled by Stripe]
-    E --> G[FlexPrice: Update Payment Status]
+    E --> G[Flexprice: Update Payment Status]
 ```
 
 **Webhook Handler:** `invoice_payment.paid`
+
 - **Trigger**: Direct charge to customer's payment method succeeds
 - **Action**: Updates existing payment record
 - **Reconciliation**: Uses `flexprice_invoice_id` from invoice metadata
 
-### FlexPrice Payment Methods
+### Flexprice Payment Methods
 
-#### 1. Checkout Link (FlexPrice Hosted)
+#### 1. Checkout Link (Flexprice Hosted)
 
 **Flow:**
+
 ```mermaid
 graph TD
     A[Create Payment Link] --> B[Generate Stripe Checkout Session]
     B --> C[Customer Redirected to Stripe]
     C --> D[Customer Completes Payment]
     D --> E[Stripe: checkout.session.completed]
-    E --> F[FlexPrice: Process Payment]
+    E --> F[Flexprice: Process Payment]
     F --> G[Update Invoice Status and Reconcile flexprice invoice ]
     G --> H[If invoice sync enabled : Reconcile stripe invoice]
 ```
 
 **Webhook Handler:** `checkout.session.completed`
+
 - **Trigger**: Customer completes payment via Stripe Checkout
 - **Action**: Updates payment status to `SUCCEEDED`
 - **Reconciliation**: Uses `flexprice_payment_id` from PaymentIntent metadata
 - **Note**: We get the invoice ID from the PaymentIntent and don't listen to failure webhooks
 
-#### 2. Charge Card (FlexPrice Direct)
+#### 2. Charge Card (Flexprice Direct)
 
 **Flow:**
+
 ```mermaid
 graph TD
-    A[FlexPrice: Charge Card API] --> B[Stripe: Create PaymentIntent]
+    A[Flexprice: Charge Card API] --> B[Stripe: Create PaymentIntent]
     B --> C[Stripe: Charge Card]
     C --> D{Charge Successful?}
-    D -->|Yes| E[FlexPrice: Update Payment Status]
-    D -->|No| F[FlexPrice: Return Error]
+    D -->|Yes| E[Flexprice: Update Payment Status]
+    D -->|No| F[Flexprice: Return Error]
     E --> G[Update Invoice Status]
 ```
 
 **No Webhook Processing:**
+
 - **Reason**: Payment is processed synchronously
-- **Action**: Immediate status update in FlexPrice
+- **Action**: Immediate status update in Flexprice
 - **Reconciliation**: Direct API response handling
 
 ## Webhook Processing
 
 ### Webhook Event Types
 
-| Event Type | Trigger | Action | Reconciliation Method |
-|------------|---------|--------|----------------------|
-| `checkout.session.completed` | Payment link completed | Update payment status | `flexprice_payment_id` from session metadata |
-| `payment_intent.succeeded` | Checkout payment succeeded | Update payment status | `flexprice_payment_id` from PaymentIntent metadata |
-| `payment_intent.payment_failed` | Direct charge failed | Update payment status | `flexprice_payment_id` from PaymentIntent metadata |
-| `invoice_payment.paid` | Invoice payment succeeded | Create/update payment record | `flexprice_invoice_id` from invoice metadata |
+| Event Type                      | Trigger                    | Action                       | Reconciliation Method                              |
+| ------------------------------- | -------------------------- | ---------------------------- | -------------------------------------------------- |
+| `checkout.session.completed`    | Payment link completed     | Update payment status        | `flexprice_payment_id` from session metadata       |
+| `payment_intent.succeeded`      | Checkout payment succeeded | Update payment status        | `flexprice_payment_id` from PaymentIntent metadata |
+| `payment_intent.payment_failed` | Direct charge failed       | Update payment status        | `flexprice_payment_id` from PaymentIntent metadata |
+| `invoice_payment.paid`          | Invoice payment succeeded  | Create/update payment record | `flexprice_invoice_id` from invoice metadata       |
 
 ### Metadata Requirements
 
 **Critical:** Never delete `flexprice_payment_id` or `flexprice_invoice_id` from Stripe metadata. These are essential for payment reconciliation.
 
 **Required Metadata Fields:**
-- `flexprice_payment_id`: Links Stripe payment to FlexPrice payment record
-- `flexprice_invoice_id`: Links Stripe invoice to FlexPrice invoice record
-- `flexprice_customer_id`: Links Stripe customer to FlexPrice customer record
+
+- `flexprice_payment_id`: Links Stripe payment to Flexprice payment record
+- `flexprice_invoice_id`: Links Stripe invoice to Flexprice invoice record
+- `flexprice_customer_id`: Links Stripe customer to Flexprice customer record
 
 ## Payment Reconciliation
 
@@ -180,7 +191,7 @@ graph TD
 
 1. **Webhook Received**: Stripe sends webhook with payment event
 2. **Metadata Extraction**: Extract `flexprice_payment_id` or `flexprice_invoice_id`
-3. **Record Lookup**: Find corresponding FlexPrice record
+3. **Record Lookup**: Find corresponding Flexprice record
 4. **Status Update**: Update payment/invoice status
 5. **Amount Verification**: Ensure payment amounts match
 6. **Event Triggering**: Send internal events for downstream processing
@@ -190,11 +201,13 @@ graph TD
 ### When Invoice Sync is Enabled
 
 **Disabled Payment Methods:**
+
 - ❌ **Credit Payments**: Cannot use wallet credits for payment
 - ❌ **Offline Payments**: Cannot mark payments as offline
 - ❌ **Manual Payment Recording**: Must use Stripe payment methods
 
 **Reasoning:**
+
 - Invoice sync requires payment reconciliation with Stripe
 - Credit and offline payments bypass Stripe's payment tracking
 - This ensures accurate financial reporting and reconciliation
@@ -202,18 +215,21 @@ graph TD
 ### Edge Cases
 
 #### 1. Partial Payments
+
 - **Stripe**: Handles partial payments automatically
-- **FlexPrice**: Syncs partial payment amounts
+- **Flexprice**: Syncs partial payment amounts
 - **Reconciliation**: Tracks cumulative payment amounts
 
 #### 2. Refunds
+
 - **Stripe**: Process refunds through Stripe dashboard
-- **FlexPrice**: Manual reconciliation required
+- **Flexprice**: Manual reconciliation required
 
 #### 3. Failed Payments
+
 - **Retry Logic**: Handled by Stripe's retry mechanism
 - **Webhook**: `payment_intent.payment_failed` for direct charges only
-- **FlexPrice**: Updates payment status to `FAILED`
+- **Flexprice**: Updates payment status to `FAILED`
 - **Note**: Invoice payment failures are not tracked via webhooks
 
 ## Configuration
@@ -232,6 +248,7 @@ POST /api/v1/webhooks/stripe/{tenant_id}/{environment_id}
 ```
 
 **Required Events:**
+
 - `checkout.session.completed`
 - `payment_intent.succeeded`
 - `payment_intent.payment_failed`
@@ -241,12 +258,12 @@ POST /api/v1/webhooks/stripe/{tenant_id}/{environment_id}
 
 ### Common Errors
 
-| Error | Cause | Resolution |
-|-------|-------|------------|
-| "Invoice not synced to Stripe" | Invoice sync disabled | Enable invoice sync or use manual payment |
-| "Customer not found in Stripe" | Customer not synced | Sync customer to Stripe first |
-| "Payment already exists" | Duplicate webhook | Skip processing (idempotent) |
-| "Metadata missing" | Webhook without required metadata | Log warning and skip |
+| Error                          | Cause                             | Resolution                                |
+| ------------------------------ | --------------------------------- | ----------------------------------------- |
+| "Invoice not synced to Stripe" | Invoice sync disabled             | Enable invoice sync or use manual payment |
+| "Customer not found in Stripe" | Customer not synced               | Sync customer to Stripe first             |
+| "Payment already exists"       | Duplicate webhook                 | Skip processing (idempotent)              |
+| "Metadata missing"             | Webhook without required metadata | Log warning and skip                      |
 
 ### Error Recovery
 
@@ -266,6 +283,7 @@ POST /api/v1/webhooks/stripe/{tenant_id}/{environment_id}
 ### Test Data
 
 **Test Cards:**
+
 - `4242424242424242`: Successful payment
 - `4000000000000002`: Card declined
 - `4000000000009995`: Insufficient funds
