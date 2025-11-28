@@ -1,16 +1,17 @@
 ---
-title: 'Architecture'
-description: 'This document outlines the core architecture components of the FlexPrice platform, how they interact, and their respective responsibilities.'
+title: "Architecture"
+description: "This document outlines the core architecture components of the Flexprice platform, how they interact, and their respective responsibilities."
 ---
-
 
 ## Building Blocks
 
 ### Core Services
 
 #### API Service
-The API service is the primary entry point for client applications interacting with FlexPrice. It handles all HTTP requests, processes them through appropriate business logic, and returns responses. The API service:
-- Exposes RESTful endpoints for various FlexPrice functionalities
+
+The API service is the primary entry point for client applications interacting with Flexprice. It handles all HTTP requests, processes them through appropriate business logic, and returns responses. The API service:
+
+- Exposes RESTful endpoints for various Flexprice functionalities
 - Handles authentication and authorization
 - Writes data to PostgreSQL for persistent storage
 - Publishes events to Kafka for asynchronous processing
@@ -27,7 +28,7 @@ graph LR
     postgres[(PostgreSQL)]:::infrastructure
     kafka[Kafka]:::infrastructure
     temporal[Temporal]:::infrastructure
-    
+
     client -- "HTTP Request" --> api
     api -- "Read/Write" --> postgres
     api -- "Publish Events" --> kafka
@@ -36,7 +37,9 @@ graph LR
 ```
 
 #### Worker Service
+
 The Worker service consumes messages from Kafka and processes them asynchronously:
+
 - Subscribes to configured Kafka topics
 - Processes incoming events (usage data, system events, etc.)
 - Writes aggregated data to ClickHouse for analytics
@@ -52,14 +55,16 @@ graph LR
     worker["Worker Service"]:::services
     clickhouse[(ClickHouse)]:::infrastructure
     postgres[(PostgreSQL)]:::infrastructure
-    
+
     kafka -- "Message Consumption" --> worker
     worker -- "Store Events" --> clickhouse
     worker -- "Update State" --> postgres
 ```
 
 #### Temporal Worker
+
 The Temporal Worker executes scheduled and long-running workflows:
+
 - Runs background job workflows such as billing cycles
 - Processes multi-step operations that require state management
 - Handles cron jobs for scheduled tasks
@@ -75,7 +80,7 @@ graph LR
     temporal_worker["Temporal Worker"]:::services
     postgres[(PostgreSQL)]:::infrastructure
     kafka[Kafka]:::infrastructure
-    
+
     temporal -- "Execute Workflow" --> temporal_worker
     temporal_worker -- "Read/Write Data" --> postgres
     temporal_worker -- "Publish Events" --> kafka
@@ -84,7 +89,9 @@ graph LR
 ### Infrastructure Components
 
 #### PostgreSQL
+
 PostgreSQL serves as the primary transactional database storing all core business data:
+
 - Customer data
 - Subscription information
 - Plan configurations
@@ -92,21 +99,27 @@ PostgreSQL serves as the primary transactional database storing all core busines
 - User accounts and authorization data
 
 #### ClickHouse
+
 ClickHouse is an OLAP database optimized for high-performance analytics:
+
 - Stores usage metrics and events
 - Supports real-time analytics queries
 - Enables fast aggregation for billing calculations
 - Provides data for usage dashboards and reporting
 
 #### Kafka
+
 Kafka serves as the message broker and event streaming platform:
+
 - Decouples services for async processing
 - Enables event-driven architecture
 - Ensures reliable delivery of events between services
 - Provides buffering during traffic spikes
 
 #### Temporal
+
 Temporal is a workflow orchestration platform that manages complex, stateful processes:
+
 - Coordinates long-running business processes
 - Provides durability and reliability for mission-critical workflows
 - Manages scheduled jobs via cron-like functionality
@@ -114,15 +127,18 @@ Temporal is a workflow orchestration platform that manages complex, stateful pro
 
 ## Functional Building Blocks
 
-FlexPrice is architected as a set of composable building blocks, each handling specific aspects of usage-based billing and subscription management. These blocks can be used independently or together, providing flexibility in how the platform is deployed and utilized.
+Flexprice is architected as a set of composable building blocks, each handling specific aspects of usage-based billing and subscription management. These blocks can be used independently or together, providing flexibility in how the platform is deployed and utilized.
 
 #### Usage Metering Layer
+
 **Core Functionality:**
+
 - Collection and processing of usage events
 - Real-time event ingestion
 - Usage analytics and reporting
 
 **Interactions:**
+
 - Provides usage data to the Pricing Layer for cost calculations
 - Feeds data to the Subscription Layer for usage-based billing
 - Supports the Entitlement Layer with metering for feature limits
@@ -138,7 +154,7 @@ graph TB
     clickhouse[(ClickHouse)]:::infrastructure
     pricing["Pricing Layer"]:::functional
     subscription["Subscription Layer"]:::functional
-    
+
     client -- "Send Events" --> metrics
     metrics -- "Store Data" --> clickhouse
     metrics -- "Usage Data" --> pricing
@@ -146,12 +162,15 @@ graph TB
 ```
 
 #### Pricing Layer
+
 **Core Functionality:**
+
 - Defines flexible pricing models
 - Supports various pricing strategies (tiered, volume, graduated, etc.)
 - Handles price calculations based on usage
 
 **Interactions:**
+
 - Works with Usage Metrics to calculate costs
 - Feeds into Subscription & Billing for invoice generation
 - Can be configured differently per subscription
@@ -165,20 +184,23 @@ graph TB
     pricing["Pricing Layer"]:::functional
     subscription["Subscription & Billing"]:::functional
     postgres[(PostgreSQL)]:::infrastructure
-    
+
     metrics -- "Usage Data" --> pricing
     pricing -- "Store Models" --> postgres
     pricing -- "Cost Calculation" --> subscription
 ```
 
 #### Subscription & Billing Layer
+
 **Core Functionality:**
+
 - Manages subscription lifecycle
 - Handles recurring and usage-based billing
 - Processes invoices and payments
 - Manages customer accounts and balances
 
 **Interactions:**
+
 - Uses Pricing Layer to determine charges
 - Leverages Entitlement Layer to provision appropriate access
 - Coordinates with Usage Metrics for consumption-based billing
@@ -196,7 +218,7 @@ graph TB
     metrics["Usage Metrics"]:::functional
     temporal[Temporal]:::infrastructure
     postgres[(PostgreSQL)]:::infrastructure
-    
+
     pricing -- "Pricing Data" --> subscription
     metrics -- "Usage Data" --> subscription
     subscription -- "Store Data" --> postgres
@@ -205,13 +227,16 @@ graph TB
 ```
 
 #### Feature & Entitlement Layer
+
 **Core Functionality:**
+
 - Controls access to features
 - Enforces usage limits and quotas
 - Provides feature flagging capabilities
 - Manages customer entitlements
 
 **Interactions:**
+
 - References Subscription data to determine entitlements
 - Uses Usage Metrics to enforce limits
 - Can be queried by client applications for access control
@@ -227,7 +252,7 @@ graph TB
     subscription["Subscription Layer"]:::functional
     metrics["Usage Metrics"]:::functional
     postgres[(PostgreSQL)]:::infrastructure
-    
+
     client -- "Access Check" --> entitlement
     subscription -- "Entitlement Data" --> entitlement
     metrics -- "Usage Limits" --> entitlement
