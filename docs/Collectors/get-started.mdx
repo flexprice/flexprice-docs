@@ -1,0 +1,181 @@
+---
+title: "Get Started"
+description: "Install and run the Flexprice Bento Collector with Docker or Kubernetes"
+---
+
+Get the Flexprice Bento Collector running in minutes.
+
+## Prerequisites
+
+- Flexprice API key
+- Event source (Kafka, webhooks, database)
+
+## Quick Start with Docker
+
+**1. Create `config.yaml`:**
+
+```yaml
+input:
+  kafka:
+    addresses: [${KAFKA_BROKERS}]
+    topics: [usage-events]
+    consumer_group: flexprice-collector
+
+pipeline:
+  processors:
+    - mapping: |
+        root.event_name = this.event_name
+        root.external_customer_id = this.customer_id
+        root.properties = this.properties.map_each(p -> p.value.string())
+        root.timestamp = this.timestamp.or(now().format_timestamp("2006-01-02T15:04:05Z07:00"))
+
+output:
+  flexprice:
+    api_host: https://api.flexprice.io
+    api_key: ${FLEXPRICE_API_KEY}
+    scheme: https
+    batching:
+      count: 10
+      period: 2s
+```
+
+**2. Run with Docker:**
+
+```bash
+docker run -d \
+  --name bento-collector \
+  -e FLEXPRICE_API_KEY=fp_live_xxxxx \
+  -e KAFKA_BROKERS=broker:9092 \
+  -v $(pwd)/config.yaml:/bento.yaml:ro \
+  ghcr.io/flexprice/bento-collector:latest \
+  -c /bento.yaml
+```
+
+**3. Check logs:**
+
+```bash
+docker logs -f bento-collector
+
+# Expected:
+# INFO Flexprice output connected and ready
+# INFO Input type kafka is now active
+```
+
+## Kubernetes Deployment
+
+**1. Create Secret:**
+
+```bash
+kubectl create secret generic bento-collector \
+  --from-literal=FLEXPRICE_API_KEY=fp_live_xxxxx \
+  --from-literal=KAFKA_BROKERS=broker:9092
+```
+
+**2. Deploy:**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bento-collector
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bento-collector
+  template:
+    metadata:
+      labels:
+        app: bento-collector
+    spec:
+      containers:
+      - name: bento
+        image: ghcr.io/flexprice/bento-collector:latest
+        args: ["-c", "/config/config.yaml"]
+        envFrom:
+        - secretRef:
+            name: bento-collector
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+```
+
+## Configuration
+
+### Batching
+
+Tune based on event volume:
+
+```yaml
+output:
+  flexprice:
+    batching:
+      count: 10      # Events per batch
+      period: 2s     # Max wait time
+    max_in_flight: 10  # Concurrent requests
+```
+
+**Guidelines:**
+- Low volume (< 100/min): `count: 5, period: 5s`
+- Medium volume: `count: 10, period: 2s` (default)
+- High volume (> 1000/min): `count: 50, period: 1s`
+
+### Kafka Performance
+
+```yaml
+input:
+  kafka:
+    fetch_buffer_cap: 256        # Fetch more messages for batching
+    commit_period: 1s
+    max_processing_period: 100ms
+```
+
+## Troubleshooting
+
+**Events not batching?**
+- Increase `fetch_buffer_cap` in Kafka input
+- Check event volume is sufficient
+- Rebuild binary if code changed
+
+**Connection errors?**
+- Verify API key is correct
+- Check Kafka broker addresses
+- Ensure `external_customer_id` exists in Flexprice
+
+**Memory issues?**
+- Reduce `fetch_buffer_cap`
+- Lower `max_in_flight`
+- Set resource limits
+
+## Environment Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `FLEXPRICE_API_KEY` | Flexprice API key | `fp_live_abc123...` |
+| `FLEXPRICE_API_HOST` | API hostname | `https://api.flexprice.io` |
+| `KAFKA_BROKERS` | Kafka brokers | `broker:9092` |
+
+## Observability
+
+The collector exposes Prometheus metrics at `/metrics`:
+
+```yaml
+metrics:
+  prometheus:
+    enabled: true
+    prefix: bento
+
+http:
+  enabled: true
+  address: 0.0.0.0:4195
+```
+
+Access metrics: `http://localhost:4195/metrics`
+
+## Next Steps
+
+- [How It Works](/docs/bento-collector/how-it-works) - Architecture and advanced config
+- [Bento Docs](https://warpstreamlabs.github.io/bento/docs/about) - Full Bento documentation
+
+Need help? Contact **support@flexprice.io**
