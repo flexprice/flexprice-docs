@@ -1,0 +1,313 @@
+---
+title: "Customer Hierarchy"
+description: "Enable parent-child relationships for flexible pricing, usage aggregation, and consolidated billing"
+---
+
+**Customer Hierarchy** is an enterprise-grade feature that enables you to establish parent-child relationships between customers for consolidated billing and flexible organizational structures. This powerful capability allows you to aggregate usage across multiple entities while maintaining separate subscription ownership and entitlements.
+
+## Overview
+
+Customer Hierarchy allows you to decouple **who uses the service** from **who pays for it**. This is essential for enterprises with multiple business units, reseller partnerships, or complex organizational structures that require centralized billing while maintaining granular usage tracking.
+
+Customer hierarchy works in two parts:
+
+1. Create a hierarchy relationship between a parent and child customer(s)
+2. Configure subscription invoicing to use the hierarchy relationship
+
+### Key Benefits
+
+- **Consolidated Invoicing**: Roll up charges from multiple child customers onto a single parent invoice
+- **Flexible Pricing**: Apply different pricing configurations across business units while maintaining unified billing
+- **Usage Aggregation**: Track usage at the entity level while billing at the parent level
+- **Simplified Procurement**: Streamline vendor management with a single billing relationship
+- **Organizational Flexibility**: Support complex corporate structures, reseller models, and multi-entity operations
+
+## Setting Up Customer Hierarchy
+
+### Step 1: Create Parent and Child Customers
+
+First, you need to create both parent and child customers in Flexprice. You can create customers through the dashboard or API.
+
+#### Creating Customers via Dashboard
+
+1. Navigate to the **Customers** page in your Flexprice dashboard
+2. Click **"Create Customer"** to add a new customer
+3. Fill in the customer details (name, email, etc.)
+4. Save the customer
+
+Repeat this process to create both your parent customer (e.g., "Global Corporation HQ") and child customers (e.g., "APAC Division", "EMEA Division").
+
+#### Creating Customers via API
+
+You can also create customers programmatically using the Flexprice API. To create a child customer with a parent relationship, include the `parent_customer_id` field:
+
+```json
+POST /customers
+{
+  "name": "APAC Division",
+  "email": "apac@globalcorp.com",
+  "parent_customer_id": "cus_parent_corp_456"
+}
+```
+
+Or create a parent customer first, then assign children later:
+
+```json
+POST /customers
+{
+  "name": "Global Corporation HQ",
+  "email": "billing@globalcorp.com"
+}
+```
+
+### Step 2: Set Parent-Child Relationships
+
+Once you have created your customers, you can establish the hierarchy relationship through the customer edit drawer.
+
+#### Setting Parent Customer via Dashboard
+
+1. Go to the **Customers** page
+2. Find the child customer you want to assign to a parent
+3. Click on the customer to open their details page
+4. Click the **"Edit"** button (pencil icon) next to "Customer Details" to open the customer edit drawer
+5. Scroll to the **"Invoice Config"** section
+6. In the **"Parent Customer"** dropdown, select the parent customer from the list
+7. Click **"Save Customer"** to save the changes
+
+![Customer Edit Drawer showing Parent Customer dropdown selection in Invoice Config section](../../../../customer-edit-drawer.png)
+
+#### Setting Parent Customer via API
+
+You can also update a customer's parent relationship using the API:
+
+```json
+PATCH /customers/{customer_id}
+{
+  "parent_customer_id": "cus_parent_corp_456"
+}
+```
+
+<Note>A parent customer can have no more than 100 child customers.</Note>
+
+<Warning>
+  Customers with existing hierarchy relationships cannot be added to another
+  hierarchy. You must first remove the existing parent relationship before
+  assigning a new one.
+</Warning>
+
+### Step 3: View Customer Hierarchy Information
+
+#### Viewing Parent Customer Information
+
+On any customer's information page, you can see their hierarchy relationship:
+
+1. Navigate to the customer details page
+2. Click on the **"Information"** tab
+3. In the **"Customer Details"** section, you'll see:
+   - **Parent Customer**: If this is a child customer, the parent customer name will be displayed with a link icon (you can click it to navigate to the parent customer's page)
+   - If this is a parent customer, you can view all associated child customers
+
+![Customer Information tab showing Parent Customer field with link icon](../../../../cust-info-tab.png)
+
+## How It Works
+
+### Parent-Child Relationships
+
+In Flexprice, customer hierarchy creates a clear separation between:
+
+- **Subscription Owner** (Child): The customer entity that owns and uses the subscription
+- **Invoicing Customer** (Parent): The customer entity that receives invoices and handles payment
+
+### Step 4: Create Subscriptions with Invoice Billing Configuration
+
+When creating a subscription for a customer in a hierarchy, you can configure whether to invoice the subscription to the customer themselves or to their parent customer.
+
+#### Creating Subscriptions via Dashboard
+
+1. Navigate to the **Subscriptions** page
+2. Click **"Create Subscription"**
+3. Select the **customer** (this will be the subscription owner)
+4. Choose your **plan** and configure other subscription details (name, billing cycle, start date, etc.)
+5. Scroll to the **"Invoice Customer"** section
+6. Choose one of the following options:
+   - **"Invoice To Self"**: The subscription owner receives and pays the invoices directly
+   - **"Invoice To Parent"**: The parent customer receives and pays the invoices (this option is only available if the selected customer has a parent customer assigned)
+7. Click **"Create Subscription"** to save
+
+<Note>
+  This setting cannot be changed after the subscription is created. If you need
+  to change the invoicing customer, you must cancel the existing subscription
+  and create a new one.
+</Note>
+
+![Subscription creation page showing Invoice Customer section with Invoice To Parent and Invoice To Self radio button options](../../../../invoice-billing.png)
+
+#### Creating Subscriptions via API
+
+You can also create subscriptions with hierarchy billing through the API by specifying the `invoice_billing` field:
+
+```json
+POST /subscriptions
+{
+  "customer_id": "cus_subsidiary_123",
+  "plan_id": "plan_enterprise",
+  "invoice_billing": "invoice_to_parent",
+  "currency": "usd",
+  "billing_period": "month",
+  "billing_period_count": 1
+}
+```
+
+The `invoice_billing` field accepts two values:
+
+- `"invoice_to_self"`: Invoices are sent to the subscription's customer (the customer specified in `customer_id`)
+- `"invoice_to_parent"`: Invoices are sent to the parent customer (only available if the customer has a parent customer assigned)
+
+**What happens when `invoice_billing` is set to `"invoice_to_parent"`:**
+
+1. The subscription is owned by `cus_subsidiary_123` (the child entity)
+2. Flexprice automatically determines the parent customer from the customer's hierarchy relationship
+3. All invoices are generated for the parent customer
+4. Usage is tracked under the subsidiary but billed to the parent
+5. Payment methods and wallets from the parent customer are used for settlement
+
+<Note>
+  The `invoice_billing` field determines which customer receives invoices. The
+  actual invoicing customer ID is set internally by Flexprice based on this
+  configuration and the customer's hierarchy relationship.
+</Note>
+
+### Step 5: View Subscription Invoicing Information
+
+#### Viewing Invoicing Customer in Subscription Details
+
+On the subscription details page, you can see the invoicing configuration:
+
+1. Navigate to the subscription details page
+2. In the **"Subscription details"** card, you'll see:
+   - **Subscription name**: The name of the subscription
+   - **Status**: Current subscription status (e.g., Active)
+   - **Billing cycle**: The billing frequency (e.g., anniversary)
+   - **Invoicing Customer**: The customer who receives invoices and handles payment (displays the parent customer name if "Invoice To Parent" was selected, with a link icon to navigate to that customer)
+   - **Start date**: When the subscription started
+
+If the subscription is configured to invoice to parent, the **Invoicing Customer** field will show the parent customer's name instead of the subscription owner's name.
+
+![Subscription details card showing Invoicing Customer field with parent customer name and link icon](../../../../sub-infor-tab.png)
+
+**Multiple Subscriptions:** You can create multiple subscriptions for different child customers, all invoiced to the same parent customer. This allows you to aggregate usage and charges from multiple entities onto a single parent invoice while maintaining separate subscription management for each child customer.
+
+### Invoice Generation & Billing
+
+When invoices are generated:
+
+1. Flexprice checks the `invoice_billing` configuration on each subscription
+2. If `invoice_billing` is set to `"invoice_to_parent"`, Flexprice determines the parent customer from the customer's hierarchy relationship
+3. Invoices are created with the parent customer as the billing entity
+4. All charges appear in the parent customer's billing history
+5. Payment processing uses the parent customer's payment methods and wallet balance
+6. Invoice line items reflect the source subscription owned by the child customer
+
+This ensures complete separation between service consumption and financial responsibility. The child customer's usage is tracked and attributed correctly, while all financial operations (invoicing, payment, wallet deductions) occur at the parent customer level.
+
+## Use Cases
+
+### Enterprise with Multiple Subsidiaries
+
+A global corporation with regional subsidiaries needs centralized billing while maintaining separate usage tracking for each business unit.
+
+**Setup:**
+
+- **Parent**: Global Corporation HQ
+- **Children**: Regional subsidiaries (APAC, EMEA, Americas)
+- **Benefit**: Each subsidiary has its own subscription and usage tracking, but HQ receives a single consolidated invoice
+
+### Reseller & Partner Models
+
+A channel partner resells your software to their clients and handles billing to end customers separately.
+
+**Setup:**
+
+- **Parent**: Reseller/Partner
+- **Children**: End customer organizations
+- **Benefit**: Reseller receives all invoices and manages payment, while end customers maintain their own subscriptions and usage
+
+### Multi-Brand Organizations
+
+A holding company operates multiple brands, each with their own customer identity but centralized finance operations.
+
+**Setup:**
+
+- **Parent**: Holding Company Finance Department
+- **Children**: Individual brand entities
+- **Benefit**: Brands operate independently with their own subscriptions, but finance handles all vendor payments centrally
+
+### Departmental Billing
+
+Large organizations with multiple departments where a central finance or IT department manages vendor relationships.
+
+**Setup:**
+
+- **Parent**: Finance or IT Department
+- **Children**: Engineering, Marketing, Sales teams
+- **Benefit**: Teams use services independently, but billing is centralized for budget management
+
+## Payment & Wallet Behavior
+
+Since invoices are assigned to the parent (invoicing customer), all payment operations use the parent's financial resources:
+
+- **Wallet Credits**: Parent customer's prepaid or promotional wallet balance is applied to invoices
+- **Payment Methods**: Saved cards and payment gateway configurations from the parent customer are used
+- **Payment History**: All transactions appear in the parent customer's payment records
+
+### Wallet and Ledger Deductions
+
+The wallet and credit ledger are scoped to a specific customer. Since invoicing for a subscription using customer hierarchy happens at the parent customer level, all usage (from the child customer's subscription) will be deducted from the parent customer's wallet or ledger balance.
+
+The ledger will show entries for usage deductions from the parent customer, reflecting the aggregated charges from child customer subscriptions.
+
+## Invoices
+
+Customer hierarchy leads to usage aggregation at the parent customer level. This means that all invoices for subscriptions with `invoice_billing` set to `"invoice_to_parent"` will be generated for the parent (invoicing) customer.
+
+### Invoice Line Items
+
+Invoice line items will reflect charges from the child customer's subscription, but the invoice itself will be assigned to the parent customer. This allows you to see which subscriptions and usage contributed to the invoice while maintaining consolidated billing.
+
+### Viewing Invoices
+
+- All invoices appear in the parent customer's billing history
+- Invoice line items show the source subscription and usage details
+- Payment processing and wallet deductions occur at the parent customer level
+
+## Frequently Asked Questions
+
+### Can I create a hierarchy relationship between a parent and child in different currencies?
+
+In Flexprice, currency is set at the subscription level, not at the customer level. When you create a subscription with `invoice_billing` set to `"invoice_to_parent"`, the subscription's currency (specified in the `currency` field when creating the subscription) will be used for all invoices generated for that subscription.
+
+The invoice will be sent to the parent customer, but it will use the currency specified on the subscription itself. This means you can have subscriptions with different currencies all invoiced to the same parent customer, and each subscription's invoices will use its own currency.
+
+### Can I create a hierarchy relationship between a parent and child with different tax applications?
+
+Similar to differing currencies, since usage will be aggregated and invoiced to the parent customer, only the tax application of the parent (invoicing) customer will be used for the invoice.
+
+### Will a newly created subscription with invoice_billing set to "invoice_to_parent" inherit pricing from the parent customer?
+
+No. The subscription is owned by the child customer and uses the plan and pricing associated with that subscription. The `invoice_billing` configuration only determines which customer receives the invoice and handles payment.
+
+### How does this feature interact with deductions from a customer's wallet or ledger?
+
+The wallet and credit ledger are scoped to a specific customer. Since invoicing for a subscription using customer hierarchy happens at the parent customer level, all usage from the child customer's subscription will be deducted from the parent customer's wallet or ledger balance.
+
+In other words, usage on a subscription owned by a child customer but invoiced to a parent customer will drawdown from the parent customer's wallet/ledger, not the child customer's.
+
+### How does this feature interact with the subscription lifecycle?
+
+#### Plan Changes
+
+When you change a subscription's plan, the invoice customer setting is preserved. The subscription continues to be owned by the child customer but invoiced to the parent customer (if "Invoice To Parent" was selected).
+
+#### Subscription Cancellation
+
+If you cancel a subscription that uses customer hierarchy, the final invoice will be generated for the parent (invoicing) customer, and any remaining charges will be billed accordingly.
