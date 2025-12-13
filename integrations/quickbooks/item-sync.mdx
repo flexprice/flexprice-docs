@@ -1,0 +1,99 @@
+---
+title: 'Item Sync to QuickBooks'
+description: 'Learn how Flexprice automatically creates and manages items in QuickBooks for invoice line items'
+---
+
+## Overview
+
+When syncing invoices from Flexprice to QuickBooks, each invoice line item must reference a QuickBooks **Item** (product or service). Flexprice automatically handles item creation and management, ensuring your line items are properly tracked in QuickBooks.
+
+**Key Points**:
+- Items are synced when QuickBooks connection is active
+- Each Flexprice price is mapped to a QuickBooks service item
+- Items are linked to your configured Income Account
+- Item mappings are stored to prevent duplicates
+
+### When Items Are Created
+
+Items are created automatically when:
+1. **New Price**: A Flexprice price hasn't been synced to QuickBooks before
+2. **Active Connection**: QuickBooks connection is active and authenticated
+
+### Why Service Items?
+
+QuickBooks has different item types (Inventory, Non-Inventory, Service). Flexprice uses **Service** items because:
+- ✅ Best fit for SaaS and subscription businesses
+- ✅ No inventory tracking required
+- ✅ Simplifies accounting for digital services
+- ✅ Requires only Income Account (no COGS account)
+
+## Entity Integration Mapping
+
+### Mapping Structure
+
+When an item is created, Flexprice stores a mapping record:
+
+```json
+{
+  "entity_id": "price_01ABC123",
+  "entity_type": "price",
+  "provider_type": "quickbooks",
+  "provider_entity_id": "125",
+  "metadata": {
+    "synced_at": "2025-11-25T09:50:21Z",
+    "quickbooks_item_name": "Pro Plan-API Calls"
+  }
+}
+```
+
+### Why Mapping Matters
+
+**Prevents Duplicates**:
+- Before creating an item, Flexprice checks if mapping exists
+- If found, uses existing QuickBooks item ID
+- Avoids creating duplicate items for the same price
+
+**Enables Sync**:
+- Maps Flexprice prices to QuickBooks items
+- Allows consistent line item references across invoices
+- Maintains data integrity between systems
+
+## Troubleshooting
+
+### Common Issues
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| Item creation fails | Missing Income Account | Configure Income Account ID in connection |
+| Item creation fails | Invalid account ID | Verify Income Account exists and is active |
+| Duplicate items created | Mapping not found | Check entity_integration_mapping table |
+
+
+## Best Practices
+
+### Income Account
+
+💡 **Use a Dedicated Account**: Create a specific Income account like "Flexprice Revenue" for easy tracking
+
+💡 **Keep Account Active**: Ensure the Income account is always active in QuickBooks
+
+💡 **Document Account ID**: Store the account ID in your configuration documentation
+
+### Item Management
+
+💡 **Don't Manually Edit**: Avoid manually editing Flexprice-created items in QuickBooks
+
+💡 **Use Consistent Naming**: Follow Flexprice naming conventions for clarity
+
+💡 **Monitor Mappings**: Regularly check entity_integration_mapping for data integrity
+
+## Related Documentation
+
+- [Connection Setup](/integrations/quickbooks/connection-setup) - Set up QuickBooks connection
+- [Integration Workflow](/integrations/quickbooks/integration-workflow) - Complete sync workflow
+
+## QuickBooks Resources
+
+- [QuickBooks Item API](https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/item)
+- [QuickBooks Account API](https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/account)
+

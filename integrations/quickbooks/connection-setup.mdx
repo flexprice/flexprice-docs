@@ -1,0 +1,216 @@
+---
+title: 'QuickBooks Connection Setup'
+description: 'Complete guide to setting up and configuring QuickBooks Online connections in Flexprice'
+---
+
+## Overview
+
+A QuickBooks connection in Flexprice stores encrypted credentials that allow the system to interact with your QuickBooks Online account for:
+- Syncing invoices from Flexprice to QuickBooks
+- Creating customers in QuickBooks automatically
+- Creating items (products/services) for invoice line items
+- Inbound Payment sync
+
+**Important**: The QuickBooks integration is **one-way only** (Flexprice → QuickBooks). Invoices created in Flexprice are automatically synced to QuickBooks when enabled.
+
+## Prerequisites
+
+Before setting up your QuickBooks connection, ensure you have:
+
+1. **Intuit Developer Account** - Create an app at [developer.intuit.com](https://developer.intuit.com)
+2. **OAuth 2.0 Credentials** - Client ID and Client Secret from your app
+3. **Income Account in QuickBooks** - At least one active Income account (for creating items)
+
+## Step 1: Create a QuickBooks App
+
+### Create App in Intuit Developer Portal
+
+1. Go to [Intuit Developer Portal](https://developer.intuit.com/app/developer/myapps)
+2. Click **Create an app**
+3. Select **QuickBooks Online and Payments**
+4. Fill in app details:
+   - **App Name**: "My App" (or your preferred name) following the naming quickbooks' naming conventions. Go to [View naming guidelines](https://developer.intuit.com/app/developer/qbo/docs/go-live/list-on-the-app-store/naming-and-logo-guidelines)
+5. Define the authorization scope of your app
+   - You will be provided with two options (you can select either or both as per your requirements):
+      - [com.intuit.quickbooks.accounting](https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/account)
+      - [com.intuit.quickbooks.payment](https://developer.intuit.com/app/developer/qbpayments/docs/api/resources/all-entities/bankaccounts)
+6. Click **Create app**
+
+### Configure OAuth Settings
+
+1. In your app dashboard, go to **Settings**
+2. Configure redirect URIs:
+   - Add flexprice resource `https://admin.flexprice.io/tools/integrations/oauth/callback` as one of your redirect uri
+3. Go to **Keys & Credentials** and copy your credentials:
+   - **Client ID**
+   - **Client Secret**
+
+## Step 2: Configure Webhook (Optional but Recommended)
+
+Webhooks allow Flexprice to receive real-time payment notifications from QuickBooks.
+
+### Webhook URL Format
+
+```
+https://api.cloud.flexprice.io/v1/webhooks/quickbooks/{tenant_id}/{environment_id}
+```
+
+### Setting Up Webhooks
+
+1. Go to Intuit Developer Portal → Your App → **Webhooks**
+2. Set up your webhook endpoint to receive live events.
+   - Enter the webhook URL you were provided with from flexprice
+4. Subscribe to these events:
+   - `Payment` entity (Create)
+5. Copy the **Webhook Verifier Token**
+6. Click **Save**
+
+**Note**: Webhook verifier token is used to verify webhook signatures for security.
+
+## Step 3: Create QuickBooks Connection
+
+### Using Flexprice Dashboard
+
+You can create a QuickBooks connection through OAuth flow in the Flexprice dashboard:
+
+<Steps>
+  <Step title="Navigate to Integrations">
+    Go to **Settings** → **Integrations** → **QuickBooks**
+  </Step>
+</Steps>
+
+<Frame>
+  ![QuickBooks Connection Setup](/public/images/docs/integrations/quickbooks/QB-Connection-Setup.png)
+</Frame>
+
+<Steps>
+  <Step title="Enter Connection Details">
+    Fill in the connection form:
+    - **Connection Name**: "QuickBooks Production" (or your preferred name)
+    - **Client ID**: From Intuit Developer Portal
+    - **Client Secret**: From Intuit Developer Portal
+    - **Environment**: Select "Production" or "Sandbox"
+    - **Webhook Verifier Token**: From webhook configuration (optional)
+    - **Income Account ID**: Provide any custom income account id that you may have created to track your revenue, by default it is set to `79` (used for creating items)
+  </Step>
+  
+  <Step title="Configure Sync Settings">
+    Enable sync options:
+    - **Invoice Sync**: Enable to automatically sync invoices to QuickBooks
+    - **Payment Sync**: Enable to sync payments from QuickBooks
+  </Step>
+  
+  <Step title="Authorize with QuickBooks">
+    Click **Connect to QuickBooks** to start OAuth flow:
+    1. You'll be redirected to QuickBooks login
+    2. Sign in to your QuickBooks account
+    3. Select the company to connect
+    4. Authorize Flexprice to access your account
+    5. You'll be redirected back to Flexprice
+  </Step>
+  
+  <Step title="Verify Connection">
+    After authorization, verify the connection is active and working
+  </Step>
+</Steps>
+
+## Understanding Sync Configuration
+
+### Invoice Sync (Outbound Only)
+
+When enabled, invoices created in Flexprice are automatically synced to QuickBooks:
+
+- **Outbound**: `true` - Sync invoices from Flexprice to QuickBooks
+- **Inbound**: Always `false` - QuickBooks invoices are NOT imported to Flexprice
+
+### Payment Sync (Inbound Only)
+
+When enabled, payment notifications from QuickBooks update invoice status in Flexprice:
+
+- **Inbound**: `true` - Receive payment notifications from QuickBooks webhooks
+- **Outbound**: Always `false` - Payments are NOT sent from Flexprice to QuickBooks
+
+**Important**: Payments are recorded in QuickBooks by you or your accounting team. Flexprice only receives notifications when payments are marked as complete.
+
+## Security Best Practices
+
+### Credential Management
+
+1. **Environment Separation**: Use sandbox for development, production for live data
+2. **Token Refresh**: Access tokens expire after 1 hour - Flexprice automatically refreshes them
+3. **Access Control**: Limit OAuth app permissions in QuickBooks
+4. **Encryption**: All credentials are encrypted at rest in Flexprice
+
+### Webhook Security
+
+1. **HTTPS Only**: Always use HTTPS for webhook endpoints in production
+2. **Signature Verification**: Configure webhook verifier token for signature validation
+3. **Idempotency**: Flexprice handles duplicate webhook events automatically
+4. **Rate Limiting**: Webhooks are rate-limited to prevent abuse
+
+### OAuth Token Management
+
+**Access Token Expiration**:
+- Access tokens expire after **1 hour** of inactivity
+- Flexprice automatically refreshes tokens using refresh tokens
+- No manual intervention required
+
+**Refresh Token Expiration**:
+- Refresh tokens expire after **100 days** of inactivity
+- If both tokens expire, you'll need to re-authorize the connection
+
+## Troubleshooting
+
+### Common Issues
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| Connection test fails | Invalid credentials | Verify Client ID and Secret in Intuit Developer Portal |
+| OAuth authorization fails | Incorrect redirect URI | Check redirect URI matches in app settings |
+| Invoice sync fails | Missing Income Account | Ensure Income Account ID is configured |
+| Webhook not received | Incorrect webhook URL | Verify webhook URL format and subscription |
+| Token expired | 1 hour | Re-authorize the connection |
+
+### Debug Steps
+
+1. **Check Intuit Developer Portal**: Verify OAuth credentials and webhook configuration
+2. **Verify Realm ID**: Ensure Realm ID matches your QuickBooks company
+3. **Test Income Account**: Query QuickBooks to ensure Income Account exists and is active
+4. **Monitor Webhooks**: Check webhook delivery logs in Intuit Developer Portal
+5. **Review Logs**: Check Flexprice application logs for sync errors
+
+## Income Account Configuration
+
+QuickBooks requires all service items to have an Income Account reference. This is where revenue is tracked in your books.
+
+### Finding Your Income Account ID
+
+1. Go to QuickBooks → **Chart of Accounts**
+2. Look for accounts with type **Income**
+3. Click on an account to view details
+
+### Setting Default Income Account
+
+During connection setup, you may provide an Income Account ID. This account will be used as the default for all items created from Flexprice line items.
+
+## Next Steps
+
+After setting up your QuickBooks connection:
+
+1. **Test Invoice Sync**: Create a test invoice in Flexprice and verify it appears in QuickBooks
+2. **Verify Customer Creation**: Ensure customers are automatically created when needed
+3. **Check Item Creation**: Verify line items are creating service items in QuickBooks
+4. **Configure Webhooks**: Set up payment webhooks for automated reconciliation
+5. **Monitor Sync Status**: Check integration logs for any sync errors
+
+## Related Documentation
+
+- [Item Sync](/integrations/quickbooks/item-sync) - Learn how items are synced to QuickBooks
+- [Integration Workflow](/integrations/quickbooks/integration-workflow) - Understand the complete sync workflow
+
+## Additional Resources
+
+- [QuickBooks API Documentation](https://developer.intuit.com/app/developer/qbo/docs/api/accounting/all-entities/account)
+- [OAuth 2.0 Guide](https://developer.intuit.com/app/developer/qbo/docs/develop/authentication-and-authorization)
+- [Webhook Documentation](https://developer.intuit.com/app/developer/qbo/docs/develop/webhooks)
+
