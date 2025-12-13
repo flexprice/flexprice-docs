@@ -1,0 +1,692 @@
+---
+title: 'QuickBooks Integration Workflow'
+description: 'Complete end-to-end workflow for syncing invoices from Flexprice to QuickBooks Online'
+---
+
+## Overview
+
+This guide walks through the complete integration workflow between Flexprice and QuickBooks Online, from initial setup to invoice sync and payment reconciliation.
+
+**Integration Type**: One-way sync (Flexprice → QuickBooks)
+
+**Key Capabilities**:
+- ✅ Automatic invoice sync
+- ✅ On-demand customer creation
+- ✅ Automatic item (product/service) creation
+- ✅ Inbound Payment sync
+
+## Step-by-Step Workflow
+
+### Phase 1: Initial Setup
+
+<Steps>
+  <Step title="Create QuickBooks App">
+    1. Go to [Intuit Developer Portal](https://developer.intuit.com)
+    2. Create new app for QuickBooks Online
+    3. Configure OAuth 2.0 settings
+    4. Copy Client ID and Client Secret
+    
+    **Duration**: 5-7 minutes
+  </Step>
+  
+  <Step title="Configure Webhook">
+    1. In Intuit Developer Portal, go to Webhooks
+    2. Add webhook endpoint: `https://api.cloud.flexprice.io/v1/webhooks/quickbooks/{tenant_id}/{environment_id}`
+    3. Subscribe to Payment entity events
+    4. Copy webhook verifier token
+    
+    **Duration**: 2-3 minutes
+  </Step>
+  
+  <Step title="Create Connection in Flexprice">
+    1. Navigate to Integrations
+    2. Go to QuickBooks and click "Add a connection"
+    3. Enter credentials and configuration
+    4. Complete OAuth authorization flow
+    5. Verify connection is active
+    
+    **Duration**: 3-5 minutes
+  </Step>
+</Steps>
+
+**Total Setup Time**: ~10 minutes (one-time)
+
+### Phase 2: Plan and Price Setup
+
+<Steps>
+  <Step title="Create Plan in Flexprice">
+    Create a pricing plan with charges:
+    
+    **Example Plan: "Pro Plan"**
+    - Recurring charge: $99/month (Flat fee)
+    - Metered charge: $0.01 per API call (Usage-based)
+    
+    ```json
+    {
+      "name": "Pro Plan",
+      "interval": "month",
+      "prices": [
+        {
+          "id": "price_recurring_01",
+          "display_name": "Monthly Fee",
+          "amount": 99.00,
+          "type": "recurring"
+        },
+        {
+          "id": "price_metered_02",
+          "display_name": "API Calls",
+          "unit_amount": 0.01,
+          "meter": "api_calls",
+          "type": "usage"
+        }
+      ]
+    }
+    ```
+  </Step>
+  
+  <Step title="QuickBooks Connection Active">
+    Verify QuickBooks connection:
+    - Status: Active
+    - Invoice sync: Enabled
+    - Income Account: Configured
+    
+    **No action needed** - Items will be created automatically during first invoice sync
+  </Step>
+</Steps>
+
+### Phase 3: Customer Subscription
+
+<Steps>
+  <Step title="Customer Subscribes">
+    Customer creates a subscription to Pro Plan:
+    
+    ```json
+    {
+      "customer_id": "cust_abc123",
+      "plan_id": "plan_pro",
+      "start_date": "2025-01-01"
+    }
+    ```
+  </Step>
+  
+  <Step title="Subscription Period Runs">
+    During the subscription period:
+    - Customer uses 4,500 API calls
+    - Usage is tracked via events
+    - Billing period ends on 2025-01-31
+  </Step>
+</Steps>
+
+### Phase 4: Invoice Generation
+
+<Steps>
+  <Step title="Invoice Auto-Generated">
+    At end of billing period, Flexprice generates invoice:
+    
+    ```json
+    {
+      "id": "inv_xyz789",
+      "customer_id": "cust_abc123",
+      "line_items": [
+        {
+          "price_id": "price_recurring_01",
+          "description": "Pro Plan - Monthly Fee",
+          "amount": 99.00,
+          "quantity": 1
+        },
+        {
+          "price_id": "price_metered_02",
+          "description": "API Calls",
+          "amount": 45.00,
+          "quantity": 4500,
+          "unit_price": 0.01
+        }
+      ],
+      "total": 144.00,
+      "status": "open"
+    }
+    ```
+  </Step>
+  
+  <Step title="Sync Trigger Check">
+    Flexprice checks if invoice should sync:
+    1. ✅ QuickBooks connection exists
+    2. ✅ Connection is active
+    3. ✅ Invoice sync is enabled
+    4. ✅ Customer has valid data
+    
+    → **Proceed with sync**
+  </Step>
+</Steps>
+
+### Phase 5: Customer Sync
+
+<Steps>
+  <Step title="Check Customer Mapping">
+    Query entity_integration_mapping:
+    ```sql
+    SELECT * FROM entity_integration_mapping
+    WHERE entity_id = 'cust_abc123'
+      AND entity_type = 'customer'
+      AND provider_type = 'quickbooks'
+    ```
+    
+    **Result**: Not found → Customer needs to be created
+  </Step>
+  
+  <Step title="Create Customer in QuickBooks">
+    Create customer via QuickBooks API:
+    
+    **Request**:
+    ```json
+    POST /v3/company/{realmId}/customer
+    {
+      "DisplayName": "Acme Corporation",
+      "PrimaryEmailAddr": {
+        "Address": "billing@acme.com"
+      },
+      "BillAddr": {
+        "Line1": "123 Main St",
+        "City": "San Francisco",
+        "CountrySubDivisionCode": "CA",
+        "PostalCode": "94105",
+        "Country": "USA"
+      }
+    }
+    ```
+    
+    **Response**:
+    ```json
+    {
+      "Id": "67",
+      "DisplayName": "Acme Corporation",
+      "PrimaryEmailAddr": {
+        "Address": "billing@acme.com"
+      }
+    }
+    ```
+  </Step>
+  
+  <Step title="Store Customer Mapping">
+    Create mapping record:
+    ```json
+    {
+      "entity_id": "cust_abc123",
+      "entity_type": "customer",
+      "provider_type": "quickbooks",
+      "provider_entity_id": "67",
+      "metadata": {
+        "synced_at": "2025-01-31T10:00:00Z",
+        "quickbooks_customer_display_name": "Acme Corporation",
+        "quickbooks_customer_primary_email_addr_address": "billing@acme.com"
+      }
+    }
+    ```
+  </Step>
+</Steps>
+
+### Phase 6: Item Creation
+
+<Steps>
+  <Step title="Process Line Item 1 (Recurring)">
+    **Price**: `price_recurring_01` (Monthly Fee)
+    
+    1. Check mapping → Not found
+    2. Query QuickBooks for item → Not found
+    3. Create service item:
+    
+    ```json
+    POST /v3/company/{realmId}/item
+    {
+      "Name": "Pro Plan-Monthly Fee",
+      "Description": "price_recurring_01",
+      "Type": "Service",
+      "IncomeAccountRef": {
+        "value": "79",
+        "name": "Services"
+      }
+    }
+    ```
+    
+    4. QB Response: `{"Id": "125"}`
+    5. Store mapping: `price_recurring_01` → `125`
+  </Step>
+  
+  <Step title="Process Line Item 2 (Metered)">
+    **Price**: `price_metered_02` (API Calls)
+    
+    1. Check mapping → Not found
+    2. Query QuickBooks for item → Not found
+    3. Create service item:
+    
+    ```json
+    POST /v3/company/{realmId}/item
+    {
+      "Name": "Pro Plan-API Calls",
+      "Description": "price_metered_02",
+      "Type": "Service",
+      "IncomeAccountRef": {
+        "value": "79",
+        "name": "Services"
+      }
+    }
+    ```
+    
+    4. QB Response: `{"Id": "126"}`
+    5. Store mapping: `price_metered_02` → `126`
+  </Step>
+</Steps>
+
+### Phase 7: Invoice Sync
+
+<Steps>
+  <Step title="Create Invoice in QuickBooks">
+    Create invoice with all line items:
+    
+    ```json
+    POST /v3/company/{realmId}/invoice
+    {
+      "DocNumber": "INV-001",
+      "TxnDate": "2025-01-31",
+      "DueDate": "2025-02-14",
+      "CustomerRef": {
+        "value": "67"
+      },
+      "Line": [
+        {
+          "DetailType": "SalesItemLineDetail",
+          "Amount": 99.00,
+          "Description": "Pro Plan - Monthly Fee",
+          "SalesItemLineDetail": {
+            "ItemRef": {
+              "value": "125",
+              "name": "Pro Plan-Monthly Fee"
+            },
+            "UnitPrice": 99.00,
+            "Qty": 1
+          }
+        },
+        {
+          "DetailType": "SalesItemLineDetail",
+          "Amount": 45.00,
+          "Description": "API Calls",
+          "SalesItemLineDetail": {
+            "ItemRef": {
+              "value": "126",
+              "name": "Pro Plan-API Calls"
+            },
+            "UnitPrice": 0.01,
+            "Qty": 4500
+          }
+        }
+      ],
+      "TotalAmt": 144.00
+    }
+    ```
+    
+    **QB Response**:
+    ```json
+    {
+      "Id": "219",
+      "DocNumber": "INV-001",
+      "TotalAmt": 144.00,
+      "Balance": 144.00
+    }
+    ```
+  </Step>
+  
+  <Step title="Store Invoice Mapping">
+    Create mapping record:
+    ```json
+    {
+      "entity_id": "inv_xyz789",
+      "entity_type": "invoice",
+      "provider_type": "quickbooks",
+      "provider_entity_id": "219",
+      "metadata": {
+        "synced_at": "2025-01-31T10:05:00Z",
+        "quickbooks_invoice_doc_number": "INV-001"
+      }
+    }
+    ```
+  </Step>
+  
+  <Step title="Update Flexprice Invoice">
+    Update invoice metadata:
+    ```json
+    {
+      "id": "inv_xyz789",
+      "metadata": {
+        "quickbooks_invoice_id": "219",
+        "quickbooks_synced_at": "2025-01-31T10:05:00Z",
+        "quickbooks_status": "pending"
+      }
+    }
+    ```
+  </Step>
+</Steps>
+
+### Phase 8: Payment Recording (in QuickBooks)
+
+<Steps>
+  <Step title="Accountant Records Payment">
+    Your accounting team records payment in QuickBooks:
+    
+    1. Open QuickBooks Desktop/Online
+    2. Navigate to invoice #219
+    3. Click "Receive Payment"
+    4. Enter payment details:
+       - Amount: $144.00
+       - Date: 2025-02-05
+       - Method: Bank Transfer
+    5. Mark invoice as paid
+  </Step>
+  
+  <Step title="QuickBooks Creates Payment Entity">
+    QuickBooks creates a Payment record:
+    ```json
+    {
+      "Id": "222",
+      "TxnDate": "2025-02-05",
+      "TotalAmt": 144.00,
+      "CustomerRef": {"value": "67"},
+      "Line": [
+        {
+          "Amount": 144.00,
+          "LinkedTxn": [
+            {
+              "TxnId": "219",
+              "TxnType": "Invoice"
+            }
+          ]
+        }
+      ]
+    }
+    ```
+  </Step>
+</Steps>
+
+### Phase 9: Webhook Notification
+
+<Steps>
+  <Step title="QuickBooks Sends Webhook">
+    QuickBooks sends webhook to Flexprice:
+    
+    **Webhook Payload**:
+    ```json
+    POST /v1/webhooks/quickbooks/{tenant_id}/{environment_id}
+    {
+      "eventNotifications": [
+        {
+          "realmId": "1234567890",
+          "dataChangeEvent": {
+            "entities": [
+              {
+                "name": "Payment",
+                "id": "222",
+                "operation": "Create",
+                "lastUpdated": "2025-02-05T14:30:00.000Z"
+              }
+            ]
+          }
+        }
+      ]
+    }
+    ```
+    
+    **Headers**:
+    ```
+    intuit-signature: <HMAC-SHA256 signature>
+    ```
+  </Step>
+  
+  <Step title="Flexprice Verifies Webhook">
+    1. Verify webhook signature (if verifier token configured)
+    2. Check payment sync is enabled
+    3. Extract payment ID: "222"
+  </Step>
+</Steps>
+
+### Phase 10: Payment Reconciliation
+
+<Steps>
+  <Step title="Fetch Payment Details">
+    Call QuickBooks API to get full payment:
+    
+    ```bash
+    GET /v3/company/{realmId}/payment/222
+    ```
+    
+    **Response**:
+    ```json
+    {
+      "Id": "222",
+      "TotalAmt": 144.00,
+      "TxnDate": "2025-02-05",
+      "Line": [
+        {
+          "Amount": 144.00,
+          "LinkedTxn": [
+            {
+              "TxnId": "219",
+              "TxnType": "Invoice"
+            }
+          ]
+        }
+      ]
+    }
+    ```
+    
+    **Extract**: QuickBooks Invoice ID = "219"
+  </Step>
+  
+  <Step title="Find Flexprice Invoice">
+    Query entity_integration_mapping:
+    ```sql
+    SELECT * FROM entity_integration_mapping
+    WHERE provider_entity_id = '219'
+      AND entity_type = 'invoice'
+      AND provider_type = 'quickbooks'
+    ```
+    
+    **Result**: Flexprice Invoice ID = `inv_xyz789`
+  </Step>
+  
+  <Step title="Update Invoice Status">
+    Update invoice in Flexprice:
+    
+    ```json
+    {
+      "id": "inv_xyz789",
+      "payment_status": "SUCCEEDED",
+      "paid_at": "2025-02-05T14:30:00Z",
+      "amount_paid": 144.00,
+      "amount_remaining": 0.00,
+      "metadata": {
+        "payment_method": "offline",
+        "payment_recorded_by": "quickbooks",
+        "quickbooks_payment_id": "222",
+        "quickbooks_invoice_id": "219",
+        "payment_synced_at": "2025-02-05T14:30:00Z"
+      }
+    }
+    ```
+  </Step>
+  
+  <Step title="Reconciliation Complete">
+    Invoice is now marked as paid in Flexprice:
+    - ✅ Payment status: SUCCEEDED
+    - ✅ Amount paid: $144.00
+    - ✅ Linked to QuickBooks payment
+    - ✅ Audit trail maintained
+  </Step>
+</Steps>
+
+## Next Invoice (Same Customer)
+
+When the next billing cycle arrives:
+
+<Steps>
+  <Step title="Invoice Generated">
+    Second invoice generated for same customer
+  </Step>
+  
+  <Step title="Customer Check">
+    ✅ Mapping exists → Use QB Customer ID "67" (no creation needed)
+  </Step>
+  
+  <Step title="Item Check">
+    ✅ Mappings exist → Use QB Item IDs "125" and "126" (no creation needed)
+  </Step>
+  
+  <Step title="Invoice Created">
+    Only invoice is created in QuickBooks (reusing customer and items)
+  </Step>
+</Steps>
+
+**Result**: Subsequent invoices sync much faster since customer and items already exist.
+
+## Key Integration Points
+
+### 1. Entity Integration Mapping
+
+**Purpose**: Track relationships between Flexprice and QuickBooks entities
+
+**Entities Tracked**:
+- Customers: `cust_abc123` ↔ QB Customer `67`
+- Prices/Items: `price_recurring_01` ↔ QB Item `125`
+- Invoices: `inv_xyz789` ↔ QB Invoice `219`
+
+**Why It Matters**:
+- Prevents duplicate entity creation
+- Enables bidirectional lookups
+- Maintains data integrity
+
+### 2. Sync Configuration
+
+**Invoice Sync**:
+```json
+{
+  "invoice": {
+    "inbound": false,
+    "outbound": true
+  }
+}
+```
+
+**Payment Sync**:
+```json
+{
+  "payment": {
+    "inbound": true,
+    "outbound": false
+  }
+}
+```
+
+### 3. Webhook Processing
+
+**Flow**:
+1. QuickBooks sends webhook → Flexprice
+2. Verify signature (optional)
+3. Fetch full payment details
+4. Find linked invoice
+5. Update invoice status
+6. Return 200 OK immediately
+
+**Security**:
+- HMAC-SHA256 signature verification
+- HTTPS only
+- Idempotency handling
+- Rate limiting
+
+## Error Handling
+
+### Common Scenarios
+
+| Scenario | Handling | Result |
+|----------|----------|--------|
+| Customer already exists | Use existing QB customer | No error |
+| Item already exists | Use existing QB item | No error |
+| Invoice already synced | Skip sync, return mapping | No error |
+| Missing Income Account | Return error, block sync | User must configure |
+| QB API rate limit | Retry with exponential backoff | Eventual success |
+| OAuth token expired | Auto-refresh token, retry | Transparent to user |
+| Webhook signature fail | Log warning, skip processing | Security measure |
+
+### Graceful Degradation
+
+**Philosophy**: Integration failures should NOT break core Flexprice functionality
+
+**Example**:
+- Invoice creation in Flexprice: ✅ Success
+- QB sync fails due to API error: ⚠️ Logged, not blocking
+- Invoice is still accessible in Flexprice
+- Manual retry available
+
+## Performance Considerations
+
+### First Invoice Sync
+- **Time**: ~5-10 seconds
+- **Operations**: Customer creation + 2 item creations + invoice creation
+
+### Subsequent Invoice Syncs
+- **Time**: ~2-3 seconds
+- **Operations**: Invoice creation only (reuses existing customer and items)
+
+### Optimization Strategies
+- ✅ Entity mapping cache
+- ✅ Parallel API calls where possible
+- ✅ Connection pooling
+- ✅ Automatic token refresh
+
+## Troubleshooting Guide
+
+### Invoice Not Syncing
+
+<AccordionGroup>
+  <Accordion title="Check Connection Status">
+    1. Verify QB connection is active
+    2. Check OAuth token is valid
+    3. Test API connectivity
+  </Accordion>
+  
+  <Accordion title="Check Sync Configuration">
+    1. Verify invoice sync is enabled
+    2. Check sync_config.invoice.outbound = true
+    3. Ensure no sync filters blocking
+  </Accordion>
+  
+  <Accordion title="Check Income Account">
+    1. Verify Income Account ID is configured
+    2. Ensure account exists in QB and is active
+    3. Query QB to confirm account type
+  </Accordion>
+</AccordionGroup>
+
+### Payment Not Updating
+
+<AccordionGroup>
+  <Accordion title="Check Webhook Configuration">
+    1. Verify webhook endpoint is correct
+    2. Check webhook events are subscribed
+    3. Review webhook delivery logs in Intuit portal
+  </Accordion>
+  
+  <Accordion title="Check Payment Sync Setting">
+    1. Verify payment sync is enabled
+    2. Check sync_config.payment.inbound = true
+    3. Ensure webhook verifier token is configured (optional)
+  </Accordion>
+  
+  <Accordion title="Check Invoice Mapping">
+    1. Verify invoice was synced to QB
+    2. Check entity_integration_mapping exists
+    3. Confirm QB invoice ID matches
+  </Accordion>
+</AccordionGroup>
+
+## Related Documentation
+
+- [Connection Setup](/integrations/quickbooks/connection-setup) - Initial QuickBooks connection setup
+- [Item Sync](/integrations/quickbooks/item-sync) - Detailed item creation and mapping
