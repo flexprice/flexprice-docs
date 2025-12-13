@@ -1,0 +1,644 @@
+---
+title: 'Invoice Sync & Save Card'
+---
+
+This guide walks through the complete integration workflow between Flexprice and Stripe, from initial setup to automated invoice sync and payment processing.
+
+**Integration Type**: Bidirectional sync (Flexprice ↔ Stripe)
+
+**Key Capabilities**:
+- ✅ Automatic invoice sync to Stripe
+- ✅ Secure payment method storage
+- ✅ Automated payment processing
+- ✅ Real-time webhook reconciliation
+- ✅ Customer and subscription sync
+
+## Step-by-Step Workflow
+
+### Phase 1: Initial Setup
+
+<Steps>
+  <Step title="Create Stripe Connection">
+    Set up your Stripe connection with invoice sync enabled. This allows Flexprice to automatically sync invoices to Stripe and process payments.
+    
+    **📚 Complete Guide:** [Stripe Connection Setup](/integrations/stripe/connection-setup)
+  </Step>
+</Steps>
+
+---
+
+### Phase 2: Product Catalog Setup
+
+<Steps>
+  <Step title="Create Feature">
+    Define a metered feature for usage-based billing:
+    
+    **Endpoint:** `POST /api/v1/features`
+    
+```json
+{
+  "name": "API Calls",
+  "key": "api_calls",
+  "feature_type": "metered",
+  "meter_id": "meter_api_requests",
+  "description": "Number of API requests made"
+}
+```
+
+**Response:**
+```json
+{
+  "id": "feat_1234567890abcdef",
+  "name": "API Calls",
+  "key": "api_calls",
+  "feature_type": "metered",
+      "status": "active"
+    }
+    ```
+  </Step>
+  
+  <Step title="Create Plan">
+    Create a subscription plan with pricing:
+    
+    **Endpoint:** `POST /api/v1/plans`
+    
+```json
+{
+  "name": "Professional Plan",
+  "key": "professional_plan",
+  "billing_period": "monthly",
+  "currency": "USD",
+  "plan_type": "recurring",
+  "prices": [
+    {
+      "feature_id": "feat_1234567890abcdef",
+      "pricing_model": "tiered",
+      "unit_price": "0.01",
+      "tiers": [
+        {
+          "up_to": 1000,
+          "unit_price": "0.01",
+          "flat_fee": "10.00"
+        },
+        {
+          "up_to": 10000,
+          "unit_price": "0.008"
+        },
+        {
+          "up_to": null,
+          "unit_price": "0.005"
+        }
+      ]
+    }
+  ]
+}
+```
+  </Step>
+</Steps>
+
+**📚 Documentation:** 
+- [Create a Feature](/docs/product-catalogue/features/create)
+- [Create a Plan](/docs/product-catalogue/plans/create)
+
+**🔗 API Reference:**
+- [Create Feature API](/api-reference/features/create-a-new-feature)
+- [Create Plan API](/api-reference/plans/create-a-new-plan)
+
+---
+
+### Phase 3: Customer Onboarding
+
+<Steps>
+  <Step title="Create Customer">
+    Create a customer in Flexprice (automatically synced to Stripe):
+    
+    **Endpoint:** `POST /api/v1/customers`
+    
+    ```json
+    {
+      "name": "Acme Corporation",
+      "email": "billing@acme.com",
+      "customer_id": "acme_corp_001",
+      "metadata": {
+        "company_size": "enterprise",
+        "industry": "technology"
+      }
+    }
+    ```
+    
+    **Response:**
+    ```json
+    {
+      "id": "cus_1234567890abcdef",
+      "name": "Acme Corporation",
+      "email": "billing@acme.com",
+      "status": "active"
+    }
+    ```
+    
+    **Note:** Customer is automatically created in Stripe when connection is configured.
+  </Step>
+  
+  <Step title="Save Payment Method">
+    Generate a secure link for customer to save their card:
+    
+    **Endpoint:** `POST /api/v1/payments/customers/{customer_id}/setup/intent`
+    
+    **Request:**
+    ```json
+    {
+      "success_url": "https://yourapp.com/payment/success",
+      "cancel_url": "https://yourapp.com/payment/cancel",
+      "provider": "stripe",
+      "set_default": true
+    }
+    ```
+    
+    **Response:**
+    ```json
+    {
+      "setup_intent_id": "seti_1234567890abcdef",
+      "checkout_session_id": "cs_test_1234567890abcdef",
+      "checkout_url": "https://checkout.stripe.com/c/pay/cs_test_...",
+      "status": "requires_payment_method",
+      "usage": "off_session",
+      "customer_id": "cus_1234567890abcdef",
+      "created_at": 1765623942,
+      "expires_at": 1765710343
+    }
+    ```
+    
+    **Integration Steps:**
+    1. Send `checkout_url` to customer via email or display in your application
+    2. Customer enters card details on Stripe's hosted page
+    3. Card is saved and set as default payment method
+    4. Flexprice receives webhook confirmation from Stripe
+  </Step>
+</Steps>
+
+**📚 Documentation:** [Create a Customer](/docs/customers/create)
+
+**🔗 API Reference:** [Create Customer API](/api-reference/customers/create-a-customer)
+
+**Alternative: Save Card During Payment**
+
+You can also save cards during invoice payment by using the payment creation endpoint with `save_card_and_make_default` flag:
+
+**Endpoint:** `POST /api/v1/payments`
+
+```json
+{
+  "destination_type": "invoice",
+  "destination_id": "inv_1234567890abcdef",
+  "payment_method_type": "payment_link",
+  "payment_gateway": "stripe",
+  "amount": "100.00",
+  "currency": "USD",
+  "save_card_and_make_default": true,
+  "success_url": "https://yourapp.com/payment/success",
+  "cancel_url": "https://yourapp.com/payment/cancel",
+  "process_payment": true
+}
+```
+
+**📚 Documentation:** [Save Payment Method](/integrations/stripe/payment-links)
+
+**🔗 API Reference:** [Create Payment API](/api-reference/payments/create-a-new-payment)
+
+---
+
+### Phase 4: Subscription Creation
+
+<Steps>
+  <Step title="Create Subscription">
+    Create a subscription that will generate invoices automatically:
+
+    **Endpoint:** `POST /api/v1/subscriptions`
+
+```json
+{
+  "customer_id": "cus_1234567890abcdef",
+  "plan_id": "plan_1234567890abcdef",
+  "start_date": "2024-01-20T00:00:00Z",
+  "billing_anchor": "subscription_start",
+  "collection_method": "charge_automatically",
+  "metadata": {
+    "contract_id": "CNT-2024-001"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "id": "sub_1234567890abcdef",
+  "customer_id": "cus_1234567890abcdef",
+  "plan_id": "plan_1234567890abcdef",
+  "status": "active",
+  "current_period_start": "2024-01-20T00:00:00Z",
+  "current_period_end": "2024-02-20T00:00:00Z",
+      "collection_method": "charge_automatically"
+    }
+    ```
+  </Step>
+</Steps>
+
+**📚 Documentation:** [Create a Subscription](/docs/subscriptions/customers-create-subscription)
+
+**🔗 API Reference:** [Create Subscription API](/api-reference/subscriptions/create-a-subscription)
+
+---
+
+### Phase 5: Usage Tracking
+
+<Steps>
+  <Step title="Track Usage Events">
+    Send usage events throughout the billing period:
+
+**Single Event:**
+    **Endpoint:** `POST /api/v1/events`
+    
+```json
+{
+  "event_id": "evt_1234567890abcdef",
+  "event_name": "api.request",
+  "customer_id": "acme_corp_001",
+  "timestamp": "2024-01-21T14:30:00Z",
+  "properties": {
+    "endpoint": "/api/v1/users",
+        "method": "GET"
+  },
+  "idempotency_key": "unique_key_12345"
+}
+```
+
+**Bulk Events:**
+    **Endpoint:** `POST /api/v1/events/bulk`
+
+```json
+{
+  "events": [
+    {
+      "event_id": "evt_001",
+      "event_name": "api.request",
+      "customer_id": "acme_corp_001",
+          "timestamp": "2024-01-21T14:30:00Z"
+    }
+  ]
+}
+```
+  </Step>
+
+  <Step title="Query Usage">
+    Query aggregated usage data anytime:
+
+    **Endpoint:** `POST /api/v1/events/usage/meter`
+
+```json
+{
+  "meter_id": "meter_api_requests",
+  "customer_id": "acme_corp_001",
+  "start_time": "2024-01-20T00:00:00Z",
+      "end_time": "2024-02-20T00:00:00Z"
+}
+```
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "customer_id": "acme_corp_001",
+      "value": 15420,
+      "start_time": "2024-01-20T00:00:00Z",
+      "end_time": "2024-02-20T00:00:00Z"
+    }
+      ]
+    }
+    ```
+  </Step>
+</Steps>
+
+**📚 Documentation:** 
+- [Sending Events](/docs/event-ingestion/sending-events)
+- [Event Ingestion Overview](/docs/event-ingestion/overview)
+
+**🔗 API Reference:**
+- [Bulk Ingest Events API](/api-reference/events/bulk-ingest-events)
+
+---
+
+### Phase 6: Invoice Generation & Sync
+
+<Steps>
+  <Step title="Invoice Auto-Generated">
+    At end of billing period, Flexprice automatically:
+    1. Creates draft invoice with usage charges
+    2. Calculates pricing based on usage
+    3. Finalizes invoice
+    4. Syncs to Stripe (if connection configured)
+    
+    **Example Invoice:**
+    ```json
+    {
+      "id": "inv_01KCBAVXJC34H8JJGEJBD6F5MV",
+      "customer_id": "cust_01KCB8BKDZ5D1VN0J1M7J404ZH",
+      "subscription_id": "subs_01KCBAVKS24PJKT2GCDQ0GK8R6",
+      "invoice_number": "INV-202512-00039",
+      "invoice_status": "FINALIZED",
+      "payment_status": "SUCCEEDED",
+      "currency": "usd",
+      "amount_due": "118.5",
+      "total": "118.5",
+      "amount_paid": "118.5",
+      "line_items": [
+        {
+          "display_name": "WindowEdge Plan",
+          "price_type": "FIXED",
+          "amount": "10",
+          "quantity": "1"
+        },
+        {
+          "display_name": "Call Duration",
+          "price_type": "USAGE",
+          "amount": "108.5",
+          "quantity": "1085"
+        }
+      ],
+      "invoice_pdf_url": "https://pay.stripe.com/invoice/acct_1Rg0lDBVFqEMJNuG/test_YWNjdF8x.../pdf?s=ap",
+      "metadata": {
+        "stripe_hosted_invoice_url": "https://invoice.stripe.com/i/acct_1Rg0lDBVFqEMJNuG/test_YWNjdF8x...?s=ap"
+      },
+      "period_start": "2025-12-13T07:47:24.721Z",
+      "period_end": "2025-12-13T07:47:38.139Z",
+      "paid_at": "2025-12-13T07:48:15.771Z"
+    }
+    ```
+  </Step>
+  
+  <Step title="Sync Trigger Check">
+    Flexprice checks if invoice should sync:
+    1. ✅ Stripe connection exists
+    2. ✅ Connection is active
+    3. ✅ Invoice sync is enabled
+    4. ✅ Customer synced to Stripe
+    
+    → **Proceed with sync**
+  </Step>
+  
+  <Step title="Invoice Synced to Stripe">
+    Invoice is automatically synced to Stripe:
+    
+    **Response:**
+```json
+{
+      "stripe_invoice_id": "in_1234567890abcdef",
+      "status": "open",
+      "payment_intent_id": "pi_1234567890abcdef",
+      "hosted_invoice_url": "https://invoice.stripe.com/i/acct_.../test_...",
+      "invoice_pdf": "https://pay.stripe.com/invoice/.../pdf"
+    }
+    ```
+  </Step>
+</Steps>
+
+**📚 Documentation:** 
+- [Invoice Overview](/docs/invoices/overview)
+- [Stripe Invoice Sync](/integrations/stripe/invoice-sync)
+
+---
+
+### Phase 7: Payment Processing
+
+<Steps>
+  <Step title="Automatic Payment Attempt">
+    When `collection_method: "charge_automatically"`:
+    
+    1. Stripe automatically attempts to charge customer's default payment method
+    2. Payment intent is created and confirmed
+    3. Charge is processed immediately
+    
+    **If successful:**
+    - Stripe sends `invoice.payment_paid` webhook
+    - Flexprice updates invoice status to "paid"
+    - Customer receives payment confirmation email
+  </Step>
+  
+  <Step title="Webhook Processing">
+    Flexprice receives webhook at:
+    ```
+    /api/v1/webhooks/stripe/{tenant_id}/{environment_id}
+    ```
+    
+    **Webhook Flow:**
+    1. Stripe sends webhook → Flexprice
+    2. Verify webhook signature
+    3. Extract invoice/payment ID from metadata
+    4. Update invoice status in Flexprice
+    5. Return 200 OK immediately
+  </Step>
+  
+  <Step title="Payment Status Updated">
+    Check invoice payment status:
+    
+    **Endpoint:** `GET /api/v1/invoices/{invoice_id}`
+
+```json
+{
+  "id": "inv_1234567890abcdef",
+  "payment_status": "paid",
+  "paid_at": "2024-02-20T00:05:00Z",
+  "payment_details": {
+    "payment_method": "card",
+    "last4": "4242",
+    "brand": "visa"
+  }
+}
+```
+  </Step>
+</Steps>
+
+**📚 Documentation:** 
+- [Invoice Overview](/docs/invoices/overview)
+- [Stripe Invoice Sync](/integrations/stripe/invoice-sync)
+
+**🔗 API Reference:** [Get Invoice API](/api-reference/invoices/get-an-invoice-by-id)
+
+---
+
+## Payment Collection Methods
+
+Flexprice supports multiple payment collection methods for invoices. For detailed information on all payment options including offline payments, credit/wallet usage, and automated charging:
+
+**📚 Complete Guide:** [Record Payment & Collection Methods](/docs/subscriptions/record-payment)
+
+### Quick Overview
+
+**Charge Automatically (`charge_automatically`)**
+- Best for: Subscriptions with saved payment methods
+- Stripe automatically charges customer's default payment method
+- Immediate payment confirmation via webhooks
+
+**Send Invoice (`send_invoice`)**
+- Best for: Manual payment workflows, B2B customers
+- Customer receives email with Stripe-hosted payment link
+- Flexible payment options
+
+---
+
+## Key Integration Points
+
+### 1. Entity Synchronization
+
+Flexprice maintains bidirectional mapping between entities:
+
+| Flexprice Entity | Stripe Entity | Sync Direction |
+|-----------------|---------------|----------------|
+| Customer | Customer | Bidirectional |
+| Plan | Product | Outbound |
+| Subscription | Subscription | Bidirectional |
+| Invoice | Invoice | Outbound |
+| Payment | Payment Intent | Inbound (via webhooks) |
+
+### 2. Invoice Sync Configuration
+
+**Invoice Sync:**
+```json
+{
+  "invoice": {
+    "inbound": false,
+    "outbound": true
+  }
+}
+```
+
+**Features:**
+- Status synchronization: Payment status updates via webhooks
+- PDF generation: Access invoices as PDF from Stripe
+- Hosted pages: Use Stripe's branded invoice pages
+
+### 3. Payment Method Management
+
+**Setup Intent Flow:**
+1. Create Setup Intent via Flexprice API
+2. Customer enters card on Stripe hosted page
+3. Card saved and set as default
+4. Webhook confirms setup completion
+
+**Payment Method Reuse:**
+- Saved cards used for recurring charges
+- Off-session payments supported
+- Multiple payment methods per customer
+- Automatic default payment method selection
+
+---
+
+## Error Handling
+
+### Common Scenarios
+
+| Scenario | Handling | Result |
+|----------|----------|--------|
+| Customer already exists | Use existing Stripe customer | No error |
+| Invoice already synced | Skip sync, return mapping | No error |
+| Payment method missing | Return error, require setup | User must save card |
+| Card declined | Stripe retries automatically | Eventual success or failure |
+| Webhook signature fail | Log warning, skip processing | Security measure |
+
+---
+
+## Testing
+
+### Test Mode
+
+Use Stripe test keys (`sk_test_...`) for development:
+
+1. **Test Cards**: Use Stripe's test card numbers
+   - Success: `4242 4242 4242 4242`
+   - Decline: `4000 0000 0000 0002`
+
+2. **Test Webhooks**: Use Stripe CLI for local testing
+   ```bash
+   stripe listen --forward-to localhost:8080/api/v1/webhooks/stripe/{tenant_id}/{environment_id}
+   ```
+
+3. **Test Events**: Trigger test webhooks from Stripe Dashboard
+
+### Production Checklist
+
+Before going live:
+
+- [ ] Stripe connection created with production keys (`sk_live_...`)
+- [ ] Webhook endpoint configured with production URL
+- [ ] Webhook secret updated in connection
+- [ ] Test customer creation and sync
+- [ ] Test card save flow (Setup Intent)
+- [ ] Test subscription creation
+- [ ] Test usage event ingestion
+- [ ] Verify invoice generation and sync
+- [ ] Test automatic payment flow
+- [ ] Monitor webhook delivery
+- [ ] Set up error alerting
+- [ ] Document customer support procedures
+
+---
+
+## Security Best Practices
+
+### API Key Management
+
+1. **Never expose API keys** in client-side code
+2. **Use environment variables** for key storage
+3. **Rotate keys regularly** (quarterly recommended)
+4. **Use separate keys** for test and production environments
+5. **Implement key scoping** - use least privilege principle
+
+### Webhook Security
+
+1. **Verify webhook signatures** - Flexprice does this automatically
+2. **Use HTTPS only** for webhook endpoints
+3. **Implement replay protection** via idempotency
+4. **Rate limit webhook endpoints**
+5. **Log all webhook events** for audit trails
+
+### Customer Data
+
+1. **Never store raw card numbers** - use tokenized references only
+2. **PCI compliance** - Stripe handles card data securely
+3. **Encrypt sensitive data** at rest and in transit
+4. **Implement access controls** for customer information
+5. **Regular security audits**
+
+---
+
+### Recommended Dashboards
+
+1. **Billing Overview**: Total revenue, invoice count, payment success rate
+2. **Customer Health**: Active subscriptions, churn rate, payment failures
+3. **Integration Health**: Sync success rate, webhook delivery, API errors
+4. **Usage Analytics**: Event volume by customer, feature adoption, usage trends
+
+---
+
+## Support & Resources
+
+### API Documentation
+
+- [Flexprice API Reference](https://docs.flexprice.io/api-reference)
+- [Stripe API Documentation](https://stripe.com/docs/api)
+
+### Code Examples
+
+- [Flexprice SDK Examples](https://github.com/flexprice/examples)
+- [Stripe Integration Samples](https://github.com/stripe-samples)
+
+### Getting Help
+
+- **Flexprice Support**: support@flexprice.io
+- **Documentation**: https://docs.flexprice.io
+- **Community**: https://community.flexprice.io
+- **Stripe Support**: https://support.stripe.com
+
+---
+
+Your Flexprice-Stripe integration is now complete and ready to handle automated usage-based billing with seamless payment processing! 🎉
