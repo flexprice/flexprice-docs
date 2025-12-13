@@ -419,14 +419,9 @@ You can also save cards during invoice payment by using the payment creation end
     3. Charge is processed immediately
     
     **If successful:**
-    - Stripe sends `invoice.payment_succeeded` webhook
+    - Stripe sends `invoice.payment_paid` webhook
     - Flexprice updates invoice status to "paid"
     - Customer receives payment confirmation email
-    
-    **If failed:**
-    - Stripe sends `invoice.payment_failed` webhook
-    - Flexprice marks payment as failed
-    - Stripe retries based on retry settings
   </Step>
   
   <Step title="Webhook Processing">
@@ -434,12 +429,6 @@ You can also save cards during invoice payment by using the payment creation end
     ```
     /api/v1/webhooks/stripe/{tenant_id}/{environment_id}
     ```
-    
-    **Supported Events:**
-    - `invoice.payment_succeeded` - Updates invoice to paid
-    - `invoice.payment_failed` - Marks payment as failed
-    - `checkout.session.completed` - Confirms payment link completion
-    - `customer.subscription.updated` - Syncs subscription changes
     
     **Webhook Flow:**
     1. Stripe sends webhook → Flexprice
