@@ -11,7 +11,23 @@ A QuickBooks connection in Flexprice stores encrypted credentials that allow the
 - Creating items (products/services) for invoice line items
 - Inbound Payment sync
 
-**Important**: The QuickBooks integration is **one-way only** (Flexprice → QuickBooks). Invoices created in Flexprice are automatically synced to QuickBooks when enabled.
+## Understanding Sync Configuration
+
+### Invoice Sync (Outbound Only)
+
+When enabled, invoices created in Flexprice are automatically synced to QuickBooks:
+
+- **Outbound**: `true` - Sync invoices from Flexprice to QuickBooks
+- **Inbound**: Always `false` - QuickBooks invoices are NOT imported to Flexprice
+
+### Payment Sync (Inbound Only)
+
+When enabled, payment notifications from QuickBooks update invoice status in Flexprice:
+
+- **Inbound**: `true` - Receive payment notifications from QuickBooks webhooks
+- **Outbound**: Always `false` - Payments are NOT sent from Flexprice to QuickBooks
+
+**Important**: Payments are recorded in QuickBooks by you or your accounting team. Flexprice only receives notifications when payments are marked as complete.
 
 ## Prerequisites
 
@@ -29,7 +45,7 @@ Before setting up your QuickBooks connection, ensure you have:
 2. Click **Create an app**
 3. Select **QuickBooks Online and Payments**
 4. Fill in app details:
-   - **App Name**: "My App" (or your preferred name) following the naming quickbooks' naming conventions. Go to [View naming guidelines](https://developer.intuit.com/app/developer/qbo/docs/go-live/list-on-the-app-store/naming-and-logo-guidelines)
+   - **App Name**: "Flexprice Connection" (or your preferred name) following the naming quickbooks' naming conventions. Go to [View naming guidelines](https://developer.intuit.com/app/developer/qbo/docs/go-live/list-on-the-app-store/naming-and-logo-guidelines)
 5. Define the authorization scope of your app
    - You will be provided with two options (you can select either or both as per your requirements):
       - [com.intuit.quickbooks.accounting](https://developer.intuit.com/app/developer/qbo/docs/api/accounting/most-commonly-used/account)
@@ -76,14 +92,11 @@ You can create a QuickBooks connection through OAuth flow in the Flexprice dashb
 <Steps>
   <Step title="Navigate to Integrations">
     Go to **Settings** → **Integrations** → **QuickBooks**
+    <Frame>
+    ![QuickBooks Connection Setup](/public/images/docs/integrations/quickbooks/QB-Connection-Setup.png)
+    </Frame>
   </Step>
-</Steps>
-
-<Frame>
-  ![QuickBooks Connection Setup](/public/images/docs/integrations/quickbooks/QB-Connection-Setup.png)
-</Frame>
-
-<Steps>
+  
   <Step title="Enter Connection Details">
     Fill in the connection form:
     - **Connection Name**: "QuickBooks Production" (or your preferred name)
@@ -113,24 +126,6 @@ You can create a QuickBooks connection through OAuth flow in the Flexprice dashb
     After authorization, verify the connection is active and working
   </Step>
 </Steps>
-
-## Understanding Sync Configuration
-
-### Invoice Sync (Outbound Only)
-
-When enabled, invoices created in Flexprice are automatically synced to QuickBooks:
-
-- **Outbound**: `true` - Sync invoices from Flexprice to QuickBooks
-- **Inbound**: Always `false` - QuickBooks invoices are NOT imported to Flexprice
-
-### Payment Sync (Inbound Only)
-
-When enabled, payment notifications from QuickBooks update invoice status in Flexprice:
-
-- **Inbound**: `true` - Receive payment notifications from QuickBooks webhooks
-- **Outbound**: Always `false` - Payments are NOT sent from Flexprice to QuickBooks
-
-**Important**: Payments are recorded in QuickBooks by you or your accounting team. Flexprice only receives notifications when payments are marked as complete.
 
 ## Security Best Practices
 
