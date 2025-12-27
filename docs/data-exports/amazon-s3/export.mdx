@@ -71,6 +71,30 @@ wt_01K9X5HJKM9PQR2ST3UV4WXY6Z,cust_ext_123abc,Acme Corporation,wallet_01K9X5HJKM
   to see the complete CSV structure.
 </Note>
 
+### Credit Usage
+
+Customer-level aggregated credit balances across all wallets. This export provides a snapshot of each customer's current and real-time credit balances, aggregated from all their wallets.
+
+**Example Export (First Row):**
+
+```csv
+name,customer_external_id,customer_id,current_balance,real_time_balance,number_of_wallets
+Acme Corporation,cust_ext_123abc,cust_01K4CGWJ4493R9V2Y5PZW7CNRZ,146.00,146.00,1
+```
+
+**Data Included:**
+
+- **name**: Customer name
+- **customer_external_id**: Customer external ID
+- **customer_id**: Internal customer ID
+- **current_balance**: Aggregated current credit balance across all wallets (decimal string)
+- **real_time_balance**: Aggregated real-time credit balance including pending charges (decimal string)
+- **number_of_wallets**: Total number of wallets for the customer
+
+<Note>
+  **Balance Aggregation**: Balances are aggregated at the customer level across all wallets. Customers with no wallets are included with zero balances.
+</Note>
+
 ## Setting Up S3 Export
 
 <Frame>
@@ -178,6 +202,7 @@ Choose what data to export:
 | **invoice**       | Finalized invoices         | All invoice data, without line items, taxes, payments |
 | **events**        | Feature usage events       | Event data, usage metrics, customer activity          |
 | **credit_topups** | Credit wallet transactions | Completed credit top-ups with wallet balance details  |
+| **credit_usage**  | Customer credit balances   | Aggregated current and real-time credit balances across all wallets per customer |
 
 **3. Schedule Interval** (Required)
 
@@ -423,6 +448,7 @@ Each completed run provides a direct S3 file URL:
 ```
 invoice-251016100000-251016110000.csv
 events-251016000000-251017000000.csv.gz
+credit_usage-251223110000-251223120000.csv
 ```
 
 **Time Format in Filename:**
@@ -460,7 +486,7 @@ Use key prefixes to organize exports by environment, data type, and date:
 
 - `production/invoices/2025/`
 - `staging/events/`
-  </Check>
+</Check>
 
 <Check>
 **Enable Compression for Large Datasets**
@@ -474,7 +500,7 @@ Use GZIP compression for exports with thousands of records to reduce storage cos
 
 - **Hourly**: Real-time analytics, high-frequency reporting
 - **Daily**: Standard backups, daily batch processing
-  </Check>
+</Check>
 
 <Check>
 **Test with Manual Export**
@@ -497,7 +523,7 @@ Regularly review the Runs tab to ensure exports are completing successfully and 
 - Grant minimal required permissions
 - Rotate credentials regularly
 - Enable CloudTrail for audit logging
-  </Check>
+</Check>
 
 <Check>
 **Plan for S3 Lifecycle Policies**
@@ -506,7 +532,7 @@ Configure S3 lifecycle policies to automatically archive or delete old exports:
 
 - Transition to S3 Glacier after 90 days
 - Delete files older than 1 year
-  </Check>
+</Check>
 
 ## Troubleshooting
 
@@ -581,7 +607,7 @@ Authorization: Bearer {token}
 
 {
   "connection_id": "conn_01HK8DBMBN87CY36DEFY62PEXBT",
-  "entity_type": "invoice",  // Options: "invoice", "events", "credit_topups"
+  "entity_type": "invoice",  // Options: "invoice", "events", "credit_topups", "credit_usage"
   "interval": "daily",
   "enabled": true,
   "job_config": {
@@ -638,7 +664,7 @@ Authorization: Bearer {token}
 
 S3 Export provides a comprehensive solution for automated data exports to Amazon S3. Key takeaways:
 
-- **Three Data Types**: Export invoices, events, and credit top-ups data
+- **Four Data Types**: Export invoices, events, credit top-ups, and credit usage data
 - **Flexible Scheduling**: Hourly or daily automated exports
 - **Secure Storage**: Multiple encryption options for data at rest
 - **Manual Export Capability**: Trigger manual exports anytime
