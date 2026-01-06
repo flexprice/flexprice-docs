@@ -138,6 +138,46 @@ const session = await response.json();
 window.location.href = session.url; // Redirects customer to portal
 ```
 
+## Accessing the Portal from the UI Dashboard
+
+You can also access the customer portal directly from the Flexprice dashboard without making API calls. There are two ways to open a customer's portal from the UI:
+
+### From the Customers Page
+
+1. Navigate to the **Customers** page in your dashboard
+2. Find the customer in the table
+3. Click the **three-dot menu (⋮)** at the end of the customer's row
+4. Select **"Open Customer Portal"** from the dropdown menu
+
+This will automatically generate a portal session and open the customer's portal in a new tab or window.
+
+<Frame>![Customers Page with Portal Option](/open_customer-portal.png)</Frame>
+
+### From the Customer Details Page
+
+1. Navigate to the **Customers** page
+2. Click on a customer to open their details page
+3. Go to the **"Information"** tab (or any tab in the customer details view)
+4. In the Customer Details section, you'll find options to:
+   - **Copy the portal link** - Click the share icon to copy the portal URL to your clipboard
+   - **Open the portal directly** - The portal link can be shared with the customer or opened directly
+
+<Frame>![Customer Details Page](/copy_customer-portal.png.png)</Frame>
+
+**Benefits of UI access:**
+
+- **Quick access** - No need to write code or make API calls
+- **One-click opening** - Instantly generate and open portal sessions
+- **Easy sharing** - Copy portal links to share with customers via email or other channels
+- **Automatic session management** - The UI handles token generation and expiration automatically
+
+<Tip>
+**Sharing Portal Links**
+
+When you copy the portal link from the customer details page, you can share it directly with your customer via email, chat, or any other communication channel. The link includes an embedded session token that expires after 1 hour for security.
+
+</Tip>
+
 ## Using the Portal Token
 
 Once you have the session token, you can redirect your customer to the portal URL provided in the response. The portal handles authentication automatically using the token embedded in the URL.
