@@ -3,26 +3,63 @@ title: "Customer Portal"
 description: "Generate secure sessions for customers to access their billing information"
 ---
 
-The Customer Portal allows you to create secure sessions for your customers to access their billing information through a self-service portal. This enables customers to view their subscriptions, invoices, usage data, and wallets without requiring access to your main dashboard.
+The Customer Portal is a self-service interface that gives your customers secure access to their billing information, account details, and usage analytics. Instead of contacting support for every billing question, customers can independently view their subscriptions, invoices, wallet balances, and usage data.
+
+## What is the Customer Portal?
+
+The Customer Portal empowers your customers to manage their account information independently. Through a secure, branded interface, customers can:
+
+- **View account overview** - See wallet balances, active subscriptions, and usage at a glance
+- **Track credits and transactions** - Monitor prepaid wallet balances and transaction history
+- **Access invoices** - View, search, and download invoices with payment status
+- **Analyze usage** - Understand feature-level usage patterns and associated costs
+
+This self-service approach reduces support burden while giving customers transparency and control over their billing information.
+
+<Info>
+**Secure Access**
+
+The portal uses secure session tokens that expire after 1 hour, ensuring customer data remains protected while providing convenient access.
+
+</Info>
+
+## Portal Overview
+
+The Customer Portal is organized into four main sections, each accessible via tabs at the top of the interface:
+
+1. **Overview** - Get a quick snapshot of your account: wallet balance, active subscriptions, and usage trends
+2. **Credits** - View detailed prepaid wallet information and complete transaction history
+3. **Invoices** - Browse, search, and download all invoices with payment status
+4. **Usage** - Analyze feature-level usage patterns and associated costs over time
+
+Each section provides read-only access to your billing and account information, giving you full visibility into your account status without needing to contact support.
 
 ## Generating a Portal Session
 
-Create a secure session for a customer to access their portal.
+To give a customer access to their portal, you need to generate a secure session token. This token authenticates the customer and provides temporary access to their portal.
+
+**When to generate a session:**
+
+- When a customer requests access to their billing information
+- After customer onboarding to provide self-service access
+- When redirecting customers from your application to the portal
+- When a previous session token has expired
 
 **Endpoint**: `GET /v1/customers/portal/{external_id}`
 
 **Authentication**: Requires your Flexprice API key
 
 **Headers**:
+
 ```
 x-api-key: <your_api_key>
 ```
 
 **Path Parameters**:
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `external_id` | string | Yes | Customer's external ID |
+| Parameter     | Type   | Required | Description            |
+| ------------- | ------ | -------- | ---------------------- |
+| `external_id` | string | Yes      | Customer's external ID |
 
 ### Example Request
 
@@ -35,18 +72,18 @@ curl --request GET \
 
 ```javascript JavaScript
 const response = await fetch(
-  'https://api.cloud.flexprice.io/v1/customers/portal/cust_123',
+  "https://api.cloud.flexprice.io/v1/customers/portal/cust_123",
   {
-    method: 'GET',
+    method: "GET",
     headers: {
-      'x-api-key': process.env.FLEXPRICE_API_KEY
-    }
+      "x-api-key": process.env.FLEXPRICE_API_KEY,
+    },
   }
 );
 
 const session = await response.json();
-console.log('Token:', session.token);
-console.log('Expires at:', session.expires_at);
+console.log("Token:", session.token);
+console.log("Expires at:", session.expires_at);
 ```
 
 ```python Python
@@ -63,6 +100,7 @@ session = response.json()
 print(f"Token: {session['token']}")
 print(f"Expires at: {session['expires_at']}")
 ```
+
 </CodeGroup>
 
 ### Response
@@ -77,57 +115,368 @@ print(f"Expires at: {session['expires_at']}")
 
 **Response Fields**:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `token` | string | JWT token for authenticating customer portal requests |
-| `url` | string | Pre-built URL with the token (optional, for convenience) |
-| `expires_at` | string | ISO 8601 timestamp when the token expires |
+| Field        | Type   | Description                                              |
+| ------------ | ------ | -------------------------------------------------------- |
+| `token`      | string | JWT token for authenticating customer portal requests    |
+| `url`        | string | Pre-built URL with the token (optional, for convenience) |
+| `expires_at` | string | ISO 8601 timestamp when the token expires                |
 
 <Info>
 **Session Tokens Expire**
 
 Portal session tokens typically expire after 1 hour. You'll need to create a new session when the token expires.
+
 </Info>
+
+**Redirecting customers to the portal:**
+
+Once you receive the session response, redirect your customer to the `url` field in the response. This pre-built URL includes the token and will automatically authenticate the customer when they access it.
+
+```javascript
+// Example: Redirecting customer to portal
+const session = await response.json();
+window.location.href = session.url; // Redirects customer to portal
+```
 
 ## Using the Portal Token
 
-Once you have the session token, your customer can use it to access their billing information through the customer portal APIs. The token should be included in the `Authorization` header:
+Once you have the session token, you can redirect your customer to the portal URL provided in the response. The portal handles authentication automatically using the token embedded in the URL.
+
+### Redirecting Customers
+
+The simplest approach is to use the `url` field from the session response, which includes the token as a query parameter:
+
+```javascript
+// Example: Redirecting customer to portal
+const response = await fetch(
+  `https://api.cloud.flexprice.io/v1/customers/portal/${customerExternalId}`,
+  {
+    method: "GET",
+    headers: {
+      "x-api-key": process.env.FLEXPRICE_API_KEY,
+    },
+  }
+);
+
+const session = await response.json();
+// Redirect customer to portal
+window.location.href = session.url;
+```
+
+### Embedding the Portal
+
+You can also embed the portal in an iframe within your application:
+
+```html
+<iframe
+  src="https://portal.yourapp.com?token=<session_token>"
+  width="100%"
+  height="800px"
+  frameborder="0"
+>
+</iframe>
+```
+
+### Handling Token Expiration
+
+Since portal tokens expire after 1 hour, you should:
+
+1. **Generate tokens on-demand** - Create a new session when the customer requests portal access
+2. **Handle expiration gracefully** - If a customer's session expires, generate a new token and redirect them again
+3. **Monitor token lifetime** - Use the `expires_at` field to track when tokens will expire
+
+```javascript
+// Example: Checking token expiration
+const session = await response.json();
+const expiresAt = new Date(session.expires_at);
+const now = new Date();
+
+if (expiresAt > now) {
+  // Token is still valid, redirect to portal
+  window.location.href = session.url;
+} else {
+  // Token expired, generate a new one
+  // ... generate new session
+}
+```
+
+### Direct API Access
+
+If you're building a custom portal interface, you can use the session token directly in API requests. Include the token in the `X-Session-Token` header:
 
 ```
-Authorization: Bearer <session_token>
+X-Session-Token: <session_token>
 ```
 
 The customer portal provides read-only access to:
+
 - Customer profile information
 - Active and past subscriptions
 - Invoices and payment history
 - Wallet balances and transactions
 - Usage analytics and cost data
 
+## Overview Tab
 
-## Error Responses
+The Overview tab provides a comprehensive snapshot of your account at a glance. This is the default view when customers first access the portal.
 
-| Status | Description |
-|--------|-------------|
-| `400 Bad Request` | Missing or invalid `external_id` |
-| `401 Unauthorized` | Invalid or missing API key |
-| `404 Not Found` | Customer not found |
-| `500 Internal Server Error` | Server error |
+<Frame>![Customer Portal Overview](/customer-portal-overview.png)</Frame>
 
-**Error Response Format**:
+### Prepaid Wallet
 
-```json
-{
-  "error": "Error description",
-  "details": "Additional error details"
-}
-```
+The Prepaid Wallet section displays your current credit balance in two formats:
+
+- **Credits** - The raw credit amount (e.g., "434.2 credits")
+- **Dollar Value** - The monetary equivalent of your credits (e.g., "$43.42 value")
+
+This dual display helps you understand both your credit balance and its real-world value. Credits are typically used for metered billing, where usage is deducted from your prepaid balance.
+
+### Subscriptions
+
+The Subscriptions section shows your active subscription plan:
+
+- **Plan Name** - The name of your current subscription plan (e.g., "Plan Base")
+- **Status** - Current subscription status, typically "Active" for active subscriptions
+- **Subscription Period** - The current billing period with start and end dates (e.g., "Jan 6, 2026 - Feb 6, 2026")
+- **Next Billing** - The date when your next billing cycle begins
+
+This information helps you track your subscription status and know when your next billing will occur.
+
+### Usage Graph
+
+The Usage section includes an interactive graph showing your usage trends over time:
+
+- **Time Range Selector** - Choose between 1 day (1d), 7 days (7d), or 30 days (30d) views
+- **Usage Visualization** - A line graph showing usage patterns over the selected time period
+- **Y-Axis** - Represents usage quantity (e.g., 0 to 6,000 units)
+- **X-Axis** - Represents time (dates)
+
+The graph helps you identify usage patterns, spikes, and trends. Use the time range selector to zoom in on recent activity or get a broader view of your usage over the past month.
+
+## Credits Tab
+
+The Credits tab provides detailed information about your prepaid wallet, including balance details and complete transaction history.
+
+<Frame>![Customer Portal Credits](/customer-portal-credits.png)</Frame>
+
+### Prepaid Wallet Details
+
+At the top of the Credits tab, you'll see your Prepaid Wallet summary:
+
+- **Balance** - Your current credit balance displayed prominently
+- **Status** - Wallet status indicator (typically "Active" for active wallets)
+- **Dollar Value** - The monetary equivalent of your credits
+
+This gives you a quick reference for your available balance before diving into transaction details.
+
+### Transaction History
+
+The Transaction History table provides a complete record of all credit-related transactions:
+
+| Column           | Description                                                         |
+| ---------------- | ------------------------------------------------------------------- |
+| **Transactions** | Type of transaction (e.g., "Invoice Payment", "Free Credits Added") |
+| **Payment Date** | When the transaction occurred                                       |
+| **Expiry Date**  | When credits expire (if applicable)                                 |
+| **Priority**     | Transaction priority level                                          |
+| **Amount**       | Transaction amount in both dollars and credits                      |
+
+**Transaction Types:**
+
+- **Invoice Payment** - Credits deducted when paying invoices (shown as negative amounts, e.g., "-20 $ / -200 credits")
+- **Free Credits Added** - Credits added to your account (shown as positive amounts, e.g., "+100 $ / +1000 credits")
+
+The dual currency display (dollars and credits) helps you understand both the monetary impact and credit balance changes. Negative amounts indicate deductions, while positive amounts indicate additions to your wallet.
+
+## Invoices Tab
+
+The Invoices tab allows you to view, search, and download all your invoices with their payment status.
+
+<Frame>![Customer Portal Invoices](/customer-portal-invoices.png)</Frame>
+
+### Invoice Table
+
+The invoice table displays all your invoices with the following information:
+
+| Column        | Description                                                     |
+| ------------- | --------------------------------------------------------------- |
+| **DATE**      | The date the invoice was issued                                 |
+| **INVOICE #** | Unique invoice identification number (e.g., "INV-202601-00003") |
+| **STATUS**    | Payment status of the invoice                                   |
+| **AMOUNT**    | Total invoice amount                                            |
+| **DOWNLOAD**  | Icon to download the invoice PDF                                |
+
+### Invoice Status
+
+Invoices display their payment status with color-coded indicators:
+
+- **Paid** (Green) - Invoice has been successfully paid
+- **Pending** (Orange) - Invoice is awaiting payment
+
+This visual status helps you quickly identify which invoices need attention and which are complete.
+
+### Search Functionality
+
+Use the search bar at the top to quickly find specific invoices. You can search by:
+
+- Invoice number
+- Date range
+- Amount
+- Status
+
+Simply type your search term in the "Search invoices..." field to filter the invoice list.
+
+### Downloading Invoices
+
+Click the download icon in the **DOWNLOAD** column to save a PDF copy of any invoice. This is useful for:
+
+- Record keeping
+- Accounting purposes
+- Dispute resolution
+- Tax documentation
+
+## Usage Tab
+
+The Usage tab provides detailed analytics about your feature-level usage and associated costs.
+
+<Frame>![Customer Portal Usage](/customer-portal-usage.png)</Frame>
+
+### Usage Graph
+
+The interactive usage graph visualizes your usage patterns over time:
+
+- **Time Range Selector** - Choose between 1 day (1d), 7 days (7d), or 30 days (30d) views
+- **Feature-Level Tracking** - Each feature is represented by a different color on the graph
+- **Interactive Tooltips** - Hover over data points to see detailed information:
+  - Exact date and time
+  - Feature name
+  - Usage quantity at that point
+
+The graph helps you:
+
+- Identify usage spikes and patterns
+- Compare usage across different time periods
+- Understand when peak usage occurs
+- Track usage trends over time
+
+### Usage Breakdown Table
+
+Below the graph, the Usage Breakdown table provides feature-level usage statistics:
+
+| Column          | Description                                                       |
+| --------------- | ----------------------------------------------------------------- |
+| **Feature**     | The name of the feature being tracked (e.g., "Feature B")         |
+| **Total Usage** | Total usage quantity with unit (e.g., "5,911 calls")              |
+| **Events**      | Number of usage events recorded                                   |
+| **Total Cost**  | Total cost associated with this feature's usage (e.g., "$141.86") |
+
+This breakdown helps you:
+
+- Understand which features consume the most resources
+- Calculate cost per feature
+- Identify optimization opportunities
+- Track usage efficiency
+
+**Interpreting the Data:**
+
+- **Total Usage** shows the cumulative usage quantity for the selected time period
+- **Events** indicates how many individual usage events contributed to the total
+- **Total Cost** represents the billing amount for this feature's usage, helping you understand the financial impact
+
+## Understanding Your Data
+
+This section helps you interpret the information displayed throughout the portal.
+
+### Wallet Balances
+
+Your prepaid wallet balance represents credits available for billing. When you use services, credits are deducted from this balance. The dollar value shows the monetary equivalent, helping you understand the real-world value of your credits.
+
+**Key points:**
+
+- Credits are deducted when invoices are paid or services are used
+- Free credits and top-ups increase your balance
+- Monitor your balance to ensure sufficient credits for continued service
+
+### Subscription Status
+
+Your subscription status indicates the current state of your plan:
+
+- **Active** - Your subscription is active and billing will continue as scheduled
+- The subscription period shows your current billing cycle
+- Next billing date indicates when your next charge will occur
+
+### Usage Graphs
+
+Usage graphs help you visualize consumption patterns:
+
+- **Spikes** indicate periods of high usage
+- **Trends** show whether usage is increasing, decreasing, or stable
+- **Time range selection** lets you zoom in on recent activity or view longer-term patterns
+- **Feature colors** help distinguish between different features on the same graph
+
+### Cost Tracking
+
+Understanding costs helps you manage your budget:
+
+- **Total Cost** in the Usage Breakdown shows billing for each feature
+- **Invoice amounts** show what you've been charged
+- **Transaction history** shows credit deductions and additions
+- Compare usage to costs to understand your cost per unit of usage
+
+## Portal Features
+
+The Customer Portal provides self-service access to your billing information, but it has specific capabilities and limitations.
+
+### What You Can Do
+
+- **View account information** - See your customer profile, subscriptions, and account details
+- **Monitor wallet balances** - Track prepaid credits and transaction history
+- **Access invoices** - View, search, and download all invoices
+- **Analyze usage** - Review feature-level usage patterns and costs
+- **Track subscriptions** - Monitor active subscriptions and billing cycles
+
+### Limitations
+
+The portal provides **read-only access**. You cannot:
+
+- Modify subscription plans
+- Update payment methods
+- Change billing information
+- Cancel subscriptions
+- Make payments
+
+These actions require contacting your account administrator or support team.
+
+### When to Contact Support
+
+Contact support when you need to:
+
+- Change your subscription plan
+- Update payment methods or billing information
+- Cancel or pause your subscription
+- Resolve billing disputes
+- Request refunds or credits
+- Get help interpreting your usage data
+- Report technical issues with the portal
 
 ## Related Resources
 
 <CardGroup cols={2}>
   <Card title="Customers" icon="users" href="/docs/customers/overview">
     Learn about customer management →
+  </Card>
+  <Card title="Subscriptions" icon="refresh" href="/docs/subscriptions/view">
+    Understand subscription management →
+  </Card>
+  <Card title="Invoices" icon="file-text" href="/docs/invoices/overview">
+    Learn about invoice management →
+  </Card>
+  <Card
+    title="Wallet"
+    icon="wallet"
+    href="/docs/wallet/prepaid-and-promotional"
+  >
+    Understand prepaid wallets →
   </Card>
   <Card title="API Reference" icon="code" href="/api-reference">
     View full API documentation →
