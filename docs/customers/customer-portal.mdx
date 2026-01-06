@@ -1,0 +1,135 @@
+---
+title: "Customer Portal"
+description: "Generate secure sessions for customers to access their billing information"
+---
+
+The Customer Portal allows you to create secure sessions for your customers to access their billing information through a self-service portal. This enables customers to view their subscriptions, invoices, usage data, and wallets without requiring access to your main dashboard.
+
+## Generating a Portal Session
+
+Create a secure session for a customer to access their portal.
+
+**Endpoint**: `GET /v1/customers/portal/{external_id}`
+
+**Authentication**: Requires your Flexprice API key
+
+**Headers**:
+```
+x-api-key: <your_api_key>
+```
+
+**Path Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `external_id` | string | Yes | Customer's external ID |
+
+### Example Request
+
+<CodeGroup>
+```bash cURL
+curl --request GET \
+  --url https://api.cloud.flexprice.io/v1/customers/portal/cust_123 \
+  --header 'x-api-key: <your_api_key>'
+```
+
+```javascript JavaScript
+const response = await fetch(
+  'https://api.cloud.flexprice.io/v1/customers/portal/cust_123',
+  {
+    method: 'GET',
+    headers: {
+      'x-api-key': process.env.FLEXPRICE_API_KEY
+    }
+  }
+);
+
+const session = await response.json();
+console.log('Token:', session.token);
+console.log('Expires at:', session.expires_at);
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    'https://api.cloud.flexprice.io/v1/customers/portal/cust_123',
+    headers={
+        'x-api-key': os.environ['FLEXPRICE_API_KEY']
+    }
+)
+
+session = response.json()
+print(f"Token: {session['token']}")
+print(f"Expires at: {session['expires_at']}")
+```
+</CodeGroup>
+
+### Response
+
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "url": "https://portal.yourapp.com?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expires_at": "2025-01-06T17:27:17Z"
+}
+```
+
+**Response Fields**:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `token` | string | JWT token for authenticating customer portal requests |
+| `url` | string | Pre-built URL with the token (optional, for convenience) |
+| `expires_at` | string | ISO 8601 timestamp when the token expires |
+
+<Info>
+**Session Tokens Expire**
+
+Portal session tokens typically expire after 1 hour. You'll need to create a new session when the token expires.
+</Info>
+
+## Using the Portal Token
+
+Once you have the session token, your customer can use it to access their billing information through the customer portal APIs. The token should be included in the `Authorization` header:
+
+```
+Authorization: Bearer <session_token>
+```
+
+The customer portal provides read-only access to:
+- Customer profile information
+- Active and past subscriptions
+- Invoices and payment history
+- Wallet balances and transactions
+- Usage analytics and cost data
+
+
+## Error Responses
+
+| Status | Description |
+|--------|-------------|
+| `400 Bad Request` | Missing or invalid `external_id` |
+| `401 Unauthorized` | Invalid or missing API key |
+| `404 Not Found` | Customer not found |
+| `500 Internal Server Error` | Server error |
+
+**Error Response Format**:
+
+```json
+{
+  "error": "Error description",
+  "details": "Additional error details"
+}
+```
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Customers" icon="users" href="/docs/customers/overview">
+    Learn about customer management →
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference">
+    View full API documentation →
+  </Card>
+</CardGroup>
