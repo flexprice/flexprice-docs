@@ -1,0 +1,210 @@
+---
+title: "Wallet Transactions"
+description: "Track and monitor all wallet activity including credits added, debits, and transaction status"
+---
+
+## Overview
+
+Every action that affects a wallet balance is recorded as a transaction. The **Transactions** section provides a complete audit trail of all wallet activity, making it easy to track credits, debits, and monitor account balances.
+
+<Frame>
+  ![Wallet Transactions](/public/images/docs/Wallet/transactions/transactions.png)
+</Frame>
+
+## Transaction Types
+
+Wallet transactions fall into three main categories based on how they affect the wallet balance:
+
+### Free Credits Added
+
+<Frame>
+  ![Free Credits Transaction](/public/images/docs/Wallet/transactions/free-credits-added.png)
+</Frame>
+
+Promotional or complimentary credits added directly to the wallet:
+
+**Characteristics:**
+- Credits are immediately available for use
+- Balance updates instantly
+- No payment or invoice required
+- Reflected with a positive amount (e.g., +100 $)
+
+**Common Use Cases:**
+- Welcome bonuses for new customers
+- Promotional campaigns
+- Service compensation
+- Customer loyalty rewards
+- Trial credits
+
+**Example**: You add $100 in free credits as a welcome bonus for a new customer. The credits are immediately available, and the customer can start using them right away.
+
+---
+
+### Purchased Credits (Invoiced)
+
+<Frame>
+  ![Free Credits Transaction](/public/images/docs/Wallet/transactions/purchased-credits-invoiced.png)
+</Frame>
+
+Credits purchased by the customer that are linked to an invoice:
+
+**Characteristics:**
+- Transaction remains in **pending state** until invoice is paid
+- Balance is **not updated** while pending
+- Credits become available only after invoice payment
+- Reflected with a positive amount (e.g., +20 $)
+
+**Payment Flow:**
+
+<Steps>
+  <Step title="Purchase Initiated">
+    Customer purchases credits and transaction is created in pending state
+  </Step>
+  
+  <Step title="Invoice Generated">
+    An invoice is automatically created for the purchased amount
+  </Step>
+  
+  <Step title="Payment Pending">
+    Transaction remains pending while waiting for invoice payment
+  </Step>
+  
+  <Step title="Payment Received">
+    When the invoice is paid, transaction status updates to completed
+  </Step>
+  
+  <Step title="Credits Available">
+    Wallet balance is updated and credits become available for use
+  </Step>
+</Steps>
+
+**Common Use Cases:**
+- Enterprise customers with NET payment terms
+- Credit packages sold with invoicing
+- Prepaid purchases requiring payment confirmation
+- Customers who prefer invoiced billing
+
+**Example**: A customer purchases 500 credits worth $500. The transaction shows as "Purchased Credits (Invoiced)" and remains pending. Once the customer pays the invoice, the transaction completes and the credits are added to their wallet balance.
+
+<Note>
+  **Pending State**: While a purchased credit transaction is pending, the wallet balance remains unchanged. This ensures credits are only added after payment confirmation.
+</Note>
+
+---
+
+### Debited
+
+<Frame>
+  ![Free Credits Transaction](/public/images/docs/Wallet/transactions/debited.png)
+</Frame>
+
+Credits deducted from the wallet for usage, payments, or manual adjustments:
+
+**Characteristics:**
+- Credits are immediately removed from wallet
+- Balance updates instantly
+- Reflected with a negative amount (e.g., -30 $)
+- Cannot be reversed once completed
+
+**Common Use Cases:**
+- Feature usage charges (API calls, storage, etc.)
+- Subscription fees paid from wallet
+- Invoice payments using wallet credits
+- Manual balance adjustments by admins
+- Service consumption
+
+**Example**: A customer uses 30 credits during the billing period for API calls. The wallet is debited by 30 credits, reducing their available balance.
+
+## Transaction Details
+
+Each transaction record in the Transactions section includes:
+
+| Field | Description |
+|-------|-------------|
+| **Transactions** | Type and description of the transaction |
+| **Payment Date** | Date when the transaction was created or completed |
+| **Expiry Date** | When credits expire (if applicable, otherwise shown as `--`) |
+| **Priority** | Processing priority for credit consumption (shown as `--` if not set) |
+| **Amount** | Transaction amount in currency and credits |
+
+### Understanding Transaction Amounts
+
+Transaction amounts are displayed in two formats:
+
+- **Currency Amount**: Dollar value (e.g., +100, -30)
+- **Credit Amount**: Credit units (e.g., +100 credits, -30 credits)
+
+**Positive amounts** (+) indicate credits **added** to the wallet  
+**Negative amounts** (-) indicate credits **removed** from the wallet
+
+## Accessing Transaction History
+
+View complete transaction history for any customer wallet:
+
+<Steps>
+  <Step title="Navigate to Customer Wallet">
+    Go to **Billing** → **Customers** → Select customer → **Wallet** tab
+  </Step>
+  
+  <Step title="Scroll to Transactions Section">
+    Scroll down to the **Transactions** section below the wallet details
+  </Step>
+  
+  <Step title="Review Transaction History">
+    View all transactions with type, date, amount, and status information
+  </Step>
+</Steps>
+
+## Transaction States
+
+Understanding transaction states helps you monitor payment flows and credit availability:
+
+### Completed Transactions
+
+- Credits are available for use
+- Balance has been updated
+- Transaction is finalized and cannot be changed
+- Applies to: Free credits, paid invoiced credits, and debits
+
+### Pending Transactions
+
+- Credits are not yet available
+- Balance has not been updated
+- Waiting for invoice payment
+- Applies to: Purchased credits (invoiced) only
+
+<Tip>
+  **Monitoring Pending Transactions**: Keep an eye on pending transactions to ensure invoices are paid promptly. Pending credits won't be available until payment is received.
+</Tip>
+
+## Use Cases
+
+### For Finance Teams
+
+💡 **Audit Trail**: Complete transaction history for accounting and compliance
+
+💡 **Reconciliation**: Match wallet transactions with invoices and payments
+
+💡 **Revenue Tracking**: Monitor purchased credit transactions and payment flow
+
+### For Customer Support
+
+💡 **Quick Reference**: Review transaction history when resolving customer inquiries
+
+💡 **Balance Investigation**: Understand why a customer's balance changed
+
+💡 **Payment Status**: Check if purchased credits are pending or completed
+
+### For Analytics
+
+💡 **Usage Patterns**: Analyze customer spending and credit consumption trends
+
+💡 **Credit Utilization**: Track how customers use free vs. purchased credits
+
+💡 **Payment Behavior**: Monitor invoice payment timelines for purchased credits
+
+## Related Documentation
+
+- [Top-Up Wallet](/docs/wallet/top-up) - Learn about manual wallet top-ups
+- [Auto Top-Up](/docs/wallet/auto-top-up) - Configure automatic wallet recharging
+- [Low Balance Alert](/docs/wallet/low-balance-alert) - Set up balance alerts
