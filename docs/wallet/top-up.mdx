@@ -41,6 +41,148 @@ For businesses handling high-volume transactions, automatic top-up eliminates th
 
 * Click **Save Wallet**.
 
+## Wallet Top-Up Types
+
+There are 2 main types of wallet top-up for subscriptions:
+
+### 1. Free Top-Up
+Free credits are promotional or complimentary credits added directly to the wallet without requiring payment or invoice generation.
+
+### 2. Purchased Top-Up
+Purchased credits require payment and come in two variants:
+- **Purchase top-up without invoice**: Credits are directly added to customer subscription and allow immediate access to credits
+- **Purchase top-up with invoice**: User receives an invoice for wallet top-up payment
+
+---
+
+## Purchased Top-Up with Invoice (Complete Workflow)
+
+<Frame>
+    ![Screenshot 2025-03-12 at 6.19.40 PM.png](/public/images/docs/Wallet/Top-up%20wallet/top-up-purchase-with-invoice.png)
+</Frame>
+
+### Step 1: Navigate to Customer Subscription
+1. Go to **Billing** → **Subscriptions**
+2. Select the **subscription customer** you want to top up
+3. Open the customer's **Wallet** section
+
+---
+
+### Step 2: Start Wallet Top-Up
+1. In the wallet section, click **Top-up Wallet**
+2. The **Add Credits** dialog opens
+
+---
+
+### Step 3: Fill Add Credits Form (Purchased Credits)
+In the **Add Credits** modal, fill the fields as follows:
+
+#### Credit Type
+- Select **Purchased**
+- Purchased credits require payment and invoice tracking
+
+#### Credits
+- Enter the number of credits to add
+- Example: 100 credits
+- The system displays the equivalent monetary value
+
+#### Expiry Date (Optional)
+- Defines when the credits will expire
+- Example: January 31st, 2026
+
+#### Priority (Optional)
+- Determines the credit consumption order if multiple credit balances exist
+
+#### Reference ID
+- Acts as an **idempotency key** to prevent duplicate transactions
+- Example: credit-topup-jan-2026
+
+#### Description (Optional)
+- Example: Top-up credits with invoice payment
+
+#### Generate Invoice
+- Enable the **Generate Invoice** toggle
+
+ Click **Add Credits**.  
+ Credits are added to the wallet  
+ Invoice is automatically created
+
+---
+
+### Step 4: Check Invoice Creation
+1. Navigate to **Billing** → **Invoices**
+2. Locate the newly created invoice for the credit top-up
+3. Confirm:
+- Credit amount
+- Customer details
+- Invoice status is **Unpaid**
+
+---
+
+### Step 5: Record Payment for the Invoice
+1. Open the invoice
+2. Click the **three-dot menu (⋮)** next to the invoice
+3. Select **Record Payment**
+
+---
+
+### Step 6: Create Payment Link (Stripe)
+In the **Record Payment** dialog:
+
+#### Amount
+- Check the invoice amount
+
+#### Payment Method Type
+- Select **Payment Link**
+
+#### Payment Gateway
+- Select **Stripe** (configured gateway)
+    
+    For comprehensive information on Stripe integrations, see [Stripe](/integrations/integrations.mdx).
+
+#### Description
+- Example: Stripe payment for wallet credit top-up
+
+Click **Record Payment**.
+
+---
+
+### Step 7: Use the Stripe Payment Link
+After successful creation:
+
+<Frame>
+    ![Screenshot 2025-03-12 at 6.19.40 PM.png](/public/images/docs/Wallet/Top-up%20wallet/top-up-payment-link.png)
+</Frame>
+- A **Payment Link** dialog appears
+- Choose one option:
+- **Go to Payment Link**
+- **Copy Payment Link**
+
+#### Go to Payment Link
+
+- Redirects the user to the **Stripe Checkout page**
+
+---
+
+### Step 8: Complete Payment on Stripe
+On the Stripe payment page:
+1. Enter required payment details:
+- Card number
+- Expiry date
+- CVV
+2. Submit payment
+
+ Payment is securely processed by Stripe
+
+---
+
+### Step 9: Payment Success and Final Status
+After successful payment:
+- Invoice status updates to **Paid**
+- Wallet retains the added credits
+
+---
+
 ## Related Documentation
 
 - [Wallet Transactions](/docs/wallet/transactions) - Track and monitor all wallet transactions
