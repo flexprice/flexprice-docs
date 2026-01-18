@@ -2,41 +2,35 @@
 title: "Top-up wallet"
 ---
 
-Managing a wallet effectively requires adding credits regularly. Flexprice provides two ways to do this: **manual top-up** and **automatic top-up**.
-
-Manual top-ups give you and your customers control over when and how much to add, while automatic top-ups ensure uninterrupted billing by preventing a zero balance.
+Wallet top-ups allow you to add credits to customer wallets, ensuring continuous service availability. Flexprice supports two top-up methods: **manual top-up** for on-demand credit additions and **automatic top-up** for maintaining minimum balance thresholds.
 
 ---
 
 ## Manual Top-Up
 
-Manual top-ups allow you to add funds as needed, either as free credits (for promotions or compensations) or purchased credits (via payment methods).
+Manual top-ups provide flexibility to add credits on demand. You can issue free credits for promotions and compensations, or process purchased credits through standard payment methods.
 
-### How to Top Up a Wallet Manually
+### Adding Credits Manually
 
 <Steps>
   <Step title="Access the Wallet">
-    Navigate to the customer's wallet and click the **three-dot menu (⋮)** in the top right corner
+    Navigate to the customer's wallet and click **Top-up Wallet** in the top right corner
     
     <Frame>
-      ![Screenshot 2025-03-12 at 6.19.40 PM.png](/public/images/docs/Wallet/Top-up%20wallet/Screenshot_2025-03-12_at_6.19.40_PM.png)
+      ![Screenshot 2025-03-12 at 6.19.40 PM.png](/public/images/docs/Wallet/Top-up%20wallet/top-wallet.png)
     </Frame>
   </Step>
   
-  <Step title="Select Top-Up Wallet">
-    Click on **Top-up Wallet** from the dropdown menu
-  </Step>
-  
-  <Step title="Enter Credit Amount">
-    A pop-up will appear. Select **Free Credits** and enter the number of credits you want to add to the customer's wallet
+  <Step title="Configure Credit Amount">
+    In the top-up dialog, select your credit type and enter the amount to add to the wallet
     
     <Frame>
-      ![Screenshot 2025-03-12 at 6.20.01 PM.png](/public/images/docs/Wallet/Top-up%20wallet/Screenshot_2025-03-12_at_6.20.01_PM.png)
+      ![Screenshot 2025-03-12 at 6.20.01 PM.png](/public/images/docs/Wallet/Top-up%20wallet/add-credits.png)
     </Frame>
   </Step>
   
-  <Step title="Confirm Top-Up">
-    Click **Add** and the wallet will be topped up successfully
+  <Step title="Confirm">
+    Click **Add Credits** to complete the top-up
   </Step>
 </Steps>
 
@@ -44,261 +38,121 @@ Manual top-ups allow you to add funds as needed, either as free credits (for pro
 
 ## Automatic Top-Up
 
-For businesses handling high-volume transactions, automatic top-up eliminates the need for manual monitoring. It ensures a wallet never runs out of balance by setting predefined conditions for recharging.
+Automatic top-up ensures uninterrupted service by automatically recharging wallets when they fall below a specified threshold. This eliminates manual monitoring and prevents service disruptions due to insufficient balance.
 
-### How to Enable Auto Top-Up
+### Configuring Auto Top-Up
 
 <Steps>
   <Step title="Enable Auto Top-Up">
-    While creating a wallet, toggle **Recharge Wallet Automatically** to enable auto top-up
+    During wallet creation, toggle **Recharge Wallet Automatically**
   </Step>
   
-  <Step title="Set Trigger Condition">
-    Set the trigger condition as **Balance falls below a certain amount** (e.g., $100)
+  <Step title="Set Trigger Threshold">
+    Define when auto top-up should activate (e.g., when balance falls below $100)
   </Step>
   
-  <Step title="Define Minimum Balance">
-    Enter the **minimum balance threshold**
+  <Step title="Configure Minimum Balance">
+    Enter the minimum balance threshold that triggers automatic recharge
   </Step>
   
-  <Step title="Set Top-Up Amount">
-    Enter the **top-up amount** (e.g., $100, $500, etc.)
+  <Step title="Define Top-Up Amount">
+    Specify the amount to add when auto top-up is triggered (e.g., $100, $500)
   </Step>
   
-  <Step title="Save Configuration">
-    Click **Save Wallet**
+  <Step title="Save">
+    Click **Save Wallet** to activate auto top-up
   </Step>
 </Steps>
 
 ---
 
-## Credit Types Supported for top-ups 
+## Credit Types Supported
 
-<Steps>
-<Step title="Free Top-Up">
-Free credits are promotional or complimentary credits added directly to the wallet without requiring payment or invoice generation.
-**Use Cases:**
-- Welcome bonuses
-- Promotional campaigns
-- Service compensation
-- Customer loyalty rewards
-</Step>
+Flexprice supports multiple credit types to accommodate different billing scenarios:
 
-<Step title="Purchased Top-Up">
-Purchased credits require payment and come in two variants:
-- Purchased Credits Without Invoice
-- Purchased Credits With Invoice
-</Step>
-</Steps>
+### Free Credits Top-Up
 
----
+Promotional or complimentary credits added without requiring payment.
 
-## Purchased Top-Up with Invoice
+**Common use cases:**
+- Welcome bonuses for new customers
+- Promotional campaigns and special offers
+- Service credits for issue resolution
+- Customer loyalty and retention programs
 
+### Purchased Credits Top-Up
 
-This section covers the complete workflow for topping up a wallet with purchased credits that require invoice payment.
+Purchased credit top-up refers to credits that a customer buys. We support two types:
 
-### Step 1: Navigate to Customer you want to Top-up for
-
-<Steps>
-  <Step title="Access Customer">
-    Go to **Billing** → **Customer**
-  </Step>
-  
-  <Step title="Select Customer">
-    Select the **subscription customer** you want to top up
-  </Step>
-  
-  <Step title="Open Wallet Section">
-    Open the customer's **Wallet** section
-  </Step>
-</Steps>
+- **Standard Purchased Credits** — Immediate credit addition upon payment
+- **Purchased Credits (With Invoice)** — Invoice-based workflow with payment tracking
 
 ---
 
-### Step 2: Start Wallet Top-Up
+> **Disclaimer**
+>
+> The following section documents **only the Purchased Credits with Invoice** flow.
 
-In the wallet section, click **Top-up Wallet**. The **Add Credits** dialog opens.
+## Purchased Credit Top-Up (with Invoice)
 
-<Frame>
-  ![Purchase Top-Up with Invoice](/public/images/docs/Wallet/Top-up%20wallet/top-up-button.png)
-</Frame>
+The invoice-based top-up workflow provides comprehensive payment tracking and record-keeping for credit purchases.
 
----
+### How It Works
 
-### Step 3: Fill Add Credits Form
+When you select **Purchased Credits** and enable **Generate Invoice**:
 
-<Frame>
-  ![Purchase Top-Up with Invoice](/public/images/docs/Wallet/Top-up%20wallet/top-up-purchase-with-invoice.png)
-</Frame>
+1. **Invoice Creation** — An invoice is generated with payment status `Pending`
+2. **Transaction Logging** — A pending wallet transaction is created with reason `PURCHASED_CREDIT_INVOICED`
+3. **Credit Hold** — Credits remain unavailable until invoice payment is confirmed
 
-In the **Add Credits** modal, fill in the following fields:
+For complete transaction lifecycle details, see [Purchased Credits (Invoiced)](http://localhost:3001/docs/wallet/transactions#purchased-credits-invoiced) in the Wallet Transactions documentation.
 
-<Steps>
-<Step title="Credit Type">
-Select **Purchased**
-Purchased credits require payment and invoice tracking
-</Step>
+### Recording Payments
 
-<Step title="Credits">
-Enter the number of credits to add (e.g., 100 credits)
-The system displays the equivalent monetary value
-</Step>
+After generating an invoice, you must record payment before credits are added to the wallet.
 
-<Step title="Expiry Date (Optional)">
-Defines when the credits will expire
-Example: January 31, 2026
-</Step>
+#### Payment Methods
 
-<Step title="Priority (Optional)">
-Determines the credit consumption order if multiple credit balances exist
-</Step>
+**Offline Payment**
+Record payments received outside the platform, such as bank transfers, checks, or cash payments. Manually mark the invoice as paid after confirming receipt.
 
-<Step title="Reference ID">
-Acts as an **idempotency key** to prevent duplicate transactions
-Example: `credit-topup-jan-2026`
-</Step>
+**Payment Link**
+Generate secure payment links for online transactions. Supports multiple payment gateways including Stripe. Invoice status updates automatically upon successful payment.
 
-<Step title="Description (Optional)">
-Example: Top-up credits with invoice payment
-</Step>
+<Warning>
+  **Payment Gateway Required** — Payment recording requires a configured payment gateway. For Example, Refer to [Stripe Connection Setup](https://docs.flexprice.io/integrations/stripe/connection-setup) for configuration instructions.
+</Warning>
 
-<Step title="Generate Invoice">
-Enable the **Generate Invoice** toggle
-</Step>
-</Steps>
+### Credit Activation
 
----
+Once payment is recorded and the invoice is marked as paid:
+- Credits are immediately added to the customer's wallet
+- Transaction status updates to `completed` in wallet history
+- Credits become available for immediate use
 
-### Step 4: Check Invoice Creation
+### When to Use Invoice-Based Top-Ups
 
-<Frame>
-  ![Purchase Top-Up with Invoice](/public/images/docs/Wallet/Top-up%20wallet/invoice-pending.png)
-</Frame>
+**Financial Record Keeping**
+- Maintain detailed audit trails for all credit purchases
+- Separate wallet top-up revenue from service charges
+- Generate comprehensive transaction histories for accounting
 
-<Steps>
-  <Step title="Navigate to Invoices">
-    Go to **Billing** → **Invoices**
-  </Step>
-  
-  <Step title="Locate New Invoice">
-    Find the newly created invoice for the credit top-up
-  </Step>
-  
-  <Step title="Verify Invoice Details">
-    Confirm:
-    - Credit amount
-    - Customer details
-    - Invoice status is **Unpaid**
-  </Step>
-</Steps>
+**Enterprise Workflows**
+- Support purchase order and approval processes
+- Enable invoice-based payment for corporate customers
+- Provide formal documentation for business expense tracking
 
----
+**Compliance and Reporting**
+- Meet regulatory requirements with detailed financial records
+- Generate reports for credit purchase analysis
+- Track customer acquisition and spending patterns
 
-### Step 5: Record Payment for the Invoice
-
-<Frame>
-  ![Purchase Top-Up with Invoice](/public/images/docs/Wallet/Top-up%20wallet/record-payment.png)
-</Frame>
-
-<Steps>
-  <Step title="Open Invoice">
-    Click on the invoice to open it
-  </Step>
-  
-  <Step title="Access Payment Options">
-    Click the **three-dot menu (⋮)** next to the invoice
-  </Step>
-  
-  <Step title="Select Record Payment">
-    Choose **Record Payment** from the dropdown
-  </Step>
-</Steps>
-
----
-
-### Step 6: Create Payment Link (Stripe)
-
-In the **Record Payment** dialog, fill in the following details:
-
-<Frame>
-  ![Purchase Top-Up with Invoice](/public/images/docs/Wallet/Top-up%20wallet/update-payment-status.png)
-</Frame>
-
-<Frame>
-  ![Purchase Top-Up with Invoice](/public/images/docs/Wallet/Top-up%20wallet/invoice-Succes.png)
-</Frame>
-
-<Steps>
-<Step title="Amount">
-  Verify the invoice amount
-</Step>
-
-<Step title="Payment Method Type">
-  Select **Payment Link**
-</Step>
-
-<Step title="Payment Gateway">
-  Select **Stripe** (configured gateway)
-  - For comprehensive information on Stripe integrations, see [Stripe](/integrations/integrations.mdx)
-</Step>
-
-<Step title="Description">
-  Example: Stripe payment for wallet credit top-up
-</Step>
-
-Click **Record Payment**.
-</Steps>
-
----
-
-### Step 7: Use the Stripe Payment Link
-
-After successful creation:
-
-<Frame>
-  ![Payment Link](/public/images/docs/Wallet/Top-up%20wallet/top-up-payment-link.png)
-</Frame>
-
-A **Payment Link** dialog appears with two options:
-- **Go to Payment Link** - Redirects the user to the Stripe Checkout page
-- **Copy Payment Link** - Copy the link to share with the customer
-
---- 
-
-### Step 8: Payment Success and Final Status
-
-After successful payment:
-
-**Before:**
-<Frame>
-  ![Purchase Top-Up with Invoice](/public/images/docs/Wallet/Top-up%20wallet/transaction-before.png)
-</Frame>
-
-**After:**
-<Frame>
-  ![Purchase Top-Up with Invoice](/public/images/docs/Wallet/Top-up%20wallet/transaction-after.png)
-</Frame>
-
-- Invoice status updates to **Paid**
-- Wallet retains the added credits
-- Credits are now available for use
-
----
-
-## Summary
-
-| Top-Up Type | Payment Required | Invoice Generated | Credits Available |
-|-------------|------------------|-------------------|-------------------|
-| **Free Credits** | No | No | Immediately |
-| **Purchased (No Invoice)** | Yes | No | Immediately |
-| **Purchased (With Invoice)** | Yes | Yes | After payment |
 ---
 
 ## Related Documentation
 
-- [Wallet Transactions](/docs/wallet/transactions) - Track and monitor all wallet transactions
-- [Auto Top-Up Wallet](/docs/wallet/auto-top-up) - Learn about automatic wallet top-ups
-- [Low Balance Alert](/docs/wallet/low-balance-alert) - Configure balance alerts
+- [Wallet Transactions](/docs/wallet/transactions) — Monitor and manage all wallet transactions
+- [Auto Top-Up Wallet](/docs/wallet/auto-top-up) — Configure automatic wallet recharging
+- [Low Balance Alert](/docs/wallet/low-balance-alert) — Set up balance threshold notifications
 
 ---
