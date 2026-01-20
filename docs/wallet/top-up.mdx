@@ -84,14 +84,9 @@ Promotional or complimentary credits added without requiring payment.
 
 Purchased credit top-up refers to credits that a customer buys. We support two types:
 
-- **Standard Purchased Credits** — Immediate credit addition upon payment
+- **Purchased Credits** — Immediate credit addition
 - **Purchased Credits (With Invoice)** — Invoice-based top-up with payment tracking
-
 ---
-
-<Info>
-  The following section documents **Purchased Credits with Invoice** flow.
-</Info>
 
 ## Purchased Credit Top-Up (with Invoice)
 
@@ -99,29 +94,68 @@ The invoice-based top-up workflow provides comprehensive payment tracking and re
 
 ### How It Works
 
-When you select **Purchased Credits** and enable **Generate Invoice**:
+When you select **Purchased Credits** and enable **Generate Invoice**, Flexprice initiates the following flow:
 
-1. **Invoice Creation** — An invoice is generated with payment status `Pending`
-2. **Transaction Logging** — A pending wallet transaction is created with reason `PURCHASED_CREDIT_INVOICED`
-3. **Credit Hold** — Credits remain unavailable until invoice payment is confirmed
+<Steps>
+  <Step title="Top-Up Initiated">
+    You select **Purchased Credits** and enable **Generate Invoice** in the top-up dialog, then click **Add Credits**
+  </Step>
+  
+  <Step title="Invoice Created">
+    An invoice is automatically generated and finalized with payment status `Pending`. The invoice contains the credit purchase details and is visible in your invoice list
+  </Step>
+  
+  <Step title="Transaction Logged">
+    A wallet transaction is created with status `pending` and transaction reason `PURCHASED_CREDIT_INVOICED`. The transaction is linked to the generated invoice
+      <Frame>
+      ![Screenshot 2025-03-12 at 6.20.01 PM.png](/public/images/docs/Wallet/Top-up%20wallet/transaction-before.png)
+      </Frame>  
+  </Step>
 
-For complete transaction lifecycle details, Checkout [Purchased Credits (Invoiced)](https://docs.flexprice.io/docs/wallet/transactions#purchased-credits-invoiced) in the Wallet Transactions documentation.
+      
 
-### Recording Payments
+  <Step title="Credits Held">
+    Credits remain unavailable and are not added to the wallet balance. The wallet balance remains unchanged until payment is confirmed
+  </Step>
+  
+  <Step title="Payment Recorded">
+    Payment is recorded through your chosen method (payment link, offline payment, etc.). The invoice payment status updates accordingly
+     <Frame>
+      ![Screenshot 2025-03-12 at 6.20.01 PM.png](/public/images/docs/Wallet/Top-up%20wallet/record-payment.png)
+      </Frame>  
+  </Step>
 
-After generating an invoice, you must record payment before credits are added to the wallet.
+  
+  <Step title="Credits Activated">
+    Once payment is confirmed and the invoice is marked as paid:
+    - Transaction status changes from `pending` to `completed`
+    - Credits are immediately added to the customer's wallet
+    - Wallet balance is updated and credits become available for use
+     <Frame>
+      ![Screenshot 2025-03-12 at 6.20.01 PM.png](/public/images/docs/Wallet/Top-up%20wallet/transaction-after.png)
+      </Frame>   
+  </Step>
 
-#### Payment Methods
+     
+  </Steps>
 
-**Offline Payment**
-Record payments received outside the platform, such as bank transfers, checks, or cash payments. Manually mark the invoice as paid after confirming receipt.
+  For complete transaction lifecycle details, check out [Purchased Credits (Invoiced)](/docs/wallet/transactions#purchased-credits-invoiced) in the Wallet Transactions documentation.
 
-**Payment Link**
-Generate secure payment links for online transactions. Supports multiple payment gateways including Stripe. Invoice status updates automatically upon successful payment. For detailed information, see [Payment Links Documentation](https://docs.flexprice.io/integrations/stripe/payment-links).
+  ### Recording Payments
 
-<Warning>
-  **Payment Gateway Required** — Payment recording requires a configured payment gateway. For Example, Refer to [Stripe Connection Setup](https://docs.flexprice.io/integrations/stripe/connection-setup) for configuration instructions.
-</Warning>
+  After generating an invoice, you must record payment before credits are added to the wallet.
+
+  #### Payment Methods
+
+  **Offline Payment**
+  Record payments received outside the platform, such as bank transfers, checks, or cash payments. Manually mark the invoice as paid after confirming receipt.
+
+  **Payment Link**
+  Generate secure payment links for online transactions. Supports multiple payment gateways including Stripe. Invoice status updates automatically upon successful payment. For detailed payment link behavior, check out [Strip Payment Links checkout Flow](/integrations/stripe/payment-links).
+
+  <Warning>
+    **Payment Gateway Required** — Payment recording requires a configured payment gateway. For Example, Refer to [Stripe Connection Setup](/integrations/stripe/connection-setup) for configuration instructions.
+  </Warning>
 
 ### Credit Activation
 
