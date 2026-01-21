@@ -5796,6 +5796,63 @@
                 "x-codegen-request-body-name": "request"
             }
         },
+        "/events/{id}": {
+            "get": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Get event by ID",
+                "description": "Retrieve event details and processing status with debug information",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Event ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.GetEventByIDResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            }
+        },
         "/features": {
             "get": {
                 "tags": [
@@ -11815,6 +11872,71 @@
                 "x-codegen-request-body-name": "request"
             }
         },
+        "/subscriptions/{id}/v2": {
+            "get": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Get subscription V2",
+                "description": "Get a subscription by ID with optional expand parameters",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Subscription ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "expand",
+                        "in": "query",
+                        "description": "Comma-separated list of fields to expand (e.g., 'subscription_line_items,prices,plan')",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.SubscriptionResponseV2"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            }
+        },
         "/tasks": {
             "get": {
                 "tags": [
@@ -15506,6 +15628,13 @@
                     "addon_id": {
                         "type": "string"
                     },
+                    "line_item_commitments": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/dto.LineItemCommitmentConfig"
+                        },
+                        "description": "LineItemCommitments allows setting commitment configuration per addon line item (keyed by price_id)"
+                    },
                     "metadata": {
                         "type": "object",
                         "additionalProperties": true
@@ -15526,6 +15655,13 @@
                 "properties": {
                     "addon_id": {
                         "type": "string"
+                    },
+                    "line_item_commitments": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/dto.LineItemCommitmentConfig"
+                        },
+                        "description": "LineItemCommitments allows setting commitment configuration per addon line item (keyed by price_id)"
                     },
                     "metadata": {
                         "type": "object",
@@ -18175,6 +18311,20 @@
                     }
                 }
             },
+            "dto.CustomerLookupResult": {
+                "type": "object",
+                "properties": {
+                    "customer": {
+                        "$ref": "#/components/schemas/github_com_flexprice_flexprice_internal_domain_customer.Customer"
+                    },
+                    "error": {
+                        "$ref": "#/components/schemas/errors.ErrorResponse"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.DebugTrackerStatus"
+                    }
+                }
+            },
             "dto.CustomerMultiCurrencyInvoiceSummary": {
                 "type": "object",
                 "properties": {
@@ -18294,6 +18444,26 @@
                     },
                     "period": {
                         "$ref": "#/components/schemas/dto.BillingPeriodInfo"
+                    }
+                }
+            },
+            "dto.DebugTracker": {
+                "type": "object",
+                "properties": {
+                    "customer_lookup": {
+                        "$ref": "#/components/schemas/dto.CustomerLookupResult"
+                    },
+                    "failure_point": {
+                        "$ref": "#/components/schemas/types.FailurePoint"
+                    },
+                    "meter_matching": {
+                        "$ref": "#/components/schemas/dto.MeterMatchingResult"
+                    },
+                    "price_lookup": {
+                        "$ref": "#/components/schemas/dto.PriceLookupResult"
+                    },
+                    "subscription_line_item_lookup": {
+                        "$ref": "#/components/schemas/dto.SubscriptionLineItemLookupResult"
                     }
                 }
             },
@@ -18625,6 +18795,35 @@
                     }
                 }
             },
+            "dto.FeatureUsageInfo": {
+                "type": "object",
+                "properties": {
+                    "customer_id": {
+                        "type": "string"
+                    },
+                    "feature_id": {
+                        "type": "string"
+                    },
+                    "meter_id": {
+                        "type": "string"
+                    },
+                    "price_id": {
+                        "type": "string"
+                    },
+                    "processed_at": {
+                        "type": "string"
+                    },
+                    "qty_total": {
+                        "type": "string"
+                    },
+                    "sub_line_item_id": {
+                        "type": "string"
+                    },
+                    "subscription_id": {
+                        "type": "string"
+                    }
+                }
+            },
             "dto.FeatureUsageSummary": {
                 "type": "object",
                 "properties": {
@@ -18746,6 +18945,26 @@
                     "total_revenue": {
                         "type": "string",
                         "description": "Derived metrics"
+                    }
+                }
+            },
+            "dto.GetEventByIDResponse": {
+                "type": "object",
+                "properties": {
+                    "debug_tracker": {
+                        "$ref": "#/components/schemas/dto.DebugTracker"
+                    },
+                    "event": {
+                        "$ref": "#/components/schemas/dto.Event"
+                    },
+                    "processed_events": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.FeatureUsageInfo"
+                        }
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.EventProcessingStatusType"
                     }
                 }
             },
@@ -20123,6 +20342,83 @@
                     }
                 }
             },
+            "dto.MatchedMeter": {
+                "type": "object",
+                "properties": {
+                    "event_name": {
+                        "type": "string"
+                    },
+                    "meter": {
+                        "$ref": "#/components/schemas/meter.Meter"
+                    },
+                    "meter_id": {
+                        "type": "string"
+                    }
+                }
+            },
+            "dto.MatchedPrice": {
+                "type": "object",
+                "properties": {
+                    "meter_id": {
+                        "type": "string"
+                    },
+                    "price": {
+                        "$ref": "#/components/schemas/price.Price"
+                    },
+                    "price_id": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    }
+                }
+            },
+            "dto.MatchedSubscriptionLineItem": {
+                "type": "object",
+                "properties": {
+                    "end_date": {
+                        "type": "string"
+                    },
+                    "is_active_for_event": {
+                        "type": "boolean"
+                    },
+                    "price_id": {
+                        "type": "string"
+                    },
+                    "start_date": {
+                        "type": "string"
+                    },
+                    "sub_line_item_id": {
+                        "type": "string"
+                    },
+                    "subscription_id": {
+                        "type": "string"
+                    },
+                    "subscription_line_item": {
+                        "$ref": "#/components/schemas/subscription.SubscriptionLineItem"
+                    },
+                    "timestamp_within_range": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "dto.MeterMatchingResult": {
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "$ref": "#/components/schemas/errors.ErrorResponse"
+                    },
+                    "matched_meters": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.MatchedMeter"
+                        }
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.DebugTrackerStatus"
+                    }
+                }
+            },
             "dto.MeterResponse": {
                 "type": "object",
                 "properties": {
@@ -20501,6 +20797,23 @@
                     },
                     "url": {
                         "type": "string"
+                    }
+                }
+            },
+            "dto.PriceLookupResult": {
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "$ref": "#/components/schemas/errors.ErrorResponse"
+                    },
+                    "matched_prices": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.MatchedPrice"
+                        }
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.DebugTrackerStatus"
                     }
                 }
             },
@@ -21005,6 +21318,10 @@
                     "invoice": {
                         "$ref": "#/components/schemas/dto.InvoiceResponse"
                     },
+                    "is_scheduled": {
+                        "type": "boolean",
+                        "description": "is_scheduled indicates if the change was scheduled or executed immediately"
+                    },
                     "metadata": {
                         "type": "object",
                         "additionalProperties": {
@@ -21020,6 +21337,14 @@
                     },
                     "proration_applied": {
                         "$ref": "#/components/schemas/dto.ProrationDetails"
+                    },
+                    "schedule_id": {
+                        "type": "string",
+                        "description": "schedule_id is the ID of the created schedule (only if is_scheduled=true)"
+                    },
+                    "scheduled_at": {
+                        "type": "string",
+                        "description": "scheduled_at is when the change will execute (only if is_scheduled=true)"
                     }
                 },
                 "description": "Response after successfully executing a subscription plan change"
@@ -21093,6 +21418,9 @@
                         "type": "integer",
                         "description": "billing_period_count is the billing period count for the new subscription"
                     },
+                    "change_at": {
+                        "$ref": "#/components/schemas/types.ScheduleType"
+                    },
                     "metadata": {
                         "type": "object",
                         "additionalProperties": {
@@ -21124,6 +21452,23 @@
                     },
                     "subscription_id": {
                         "type": "string"
+                    }
+                }
+            },
+            "dto.SubscriptionLineItemLookupResult": {
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "$ref": "#/components/schemas/errors.ErrorResponse"
+                    },
+                    "matched_line_items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.MatchedSubscriptionLineItem"
+                        }
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.DebugTrackerStatus"
                     }
                 }
             },
@@ -21551,6 +21896,197 @@
                     "phases": {
                         "type": "array",
                         "description": "Phases are the subscription phases for this subscription",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.SubscriptionPhaseResponse"
+                        }
+                    },
+                    "plan": {
+                        "$ref": "#/components/schemas/dto.PlanResponse"
+                    },
+                    "plan_id": {
+                        "type": "string",
+                        "description": "PlanID is the identifier for the plan in our system"
+                    },
+                    "proration_behavior": {
+                        "$ref": "#/components/schemas/types.ProrationBehavior"
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "description": "StartDate is the start date of the subscription"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.Status"
+                    },
+                    "subscription_status": {
+                        "$ref": "#/components/schemas/types.SubscriptionStatus"
+                    },
+                    "tenant_id": {
+                        "type": "string"
+                    },
+                    "trial_end": {
+                        "type": "string",
+                        "description": "TrialEnd is the end date of the trial period"
+                    },
+                    "trial_start": {
+                        "type": "string",
+                        "description": "TrialStart is the start date of the trial period"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "updated_by": {
+                        "type": "string"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "description": "Version is used for optimistic locking"
+                    }
+                }
+            },
+            "dto.SubscriptionResponseV2": {
+                "type": "object",
+                "properties": {
+                    "active_pause_id": {
+                        "type": "string",
+                        "description": "ActivePauseID references the current active pause configuration\nThis will be null if no pause is active or scheduled"
+                    },
+                    "billing_anchor": {
+                        "type": "string",
+                        "description": "BillingAnchor is the reference point that aligns future billing cycle dates.\nIt sets the day of week for week intervals, the day of month for month and year intervals,\nand the month of year for year intervals. The timestamp is in UTC format."
+                    },
+                    "billing_cadence": {
+                        "$ref": "#/components/schemas/types.BillingCadence"
+                    },
+                    "billing_cycle": {
+                        "$ref": "#/components/schemas/types.BillingCycle"
+                    },
+                    "billing_period": {
+                        "$ref": "#/components/schemas/types.BillingPeriod"
+                    },
+                    "billing_period_count": {
+                        "type": "integer",
+                        "description": "BillingPeriodCount is the total number units of the billing period."
+                    },
+                    "cancel_at": {
+                        "type": "string",
+                        "description": "CancelAt is the date the subscription will be canceled"
+                    },
+                    "cancel_at_period_end": {
+                        "type": "boolean",
+                        "description": "CancelAtPeriodEnd is whether the subscription was canceled at the end of the current period"
+                    },
+                    "cancelled_at": {
+                        "type": "string",
+                        "description": "CanceledAt is the date the subscription was canceled"
+                    },
+                    "collection_method": {
+                        "type": "string",
+                        "description": "CollectionMethod determines how invoices are collected"
+                    },
+                    "commitment_amount": {
+                        "type": "string",
+                        "description": "CommitmentAmount is the minimum amount a customer commits to paying for a billing period"
+                    },
+                    "coupon_associations": {
+                        "type": "array",
+                        "description": "CouponAssociations are included when \"coupon_associations\" is in expand parameter",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.CouponAssociationResponse"
+                        }
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "created_by": {
+                        "type": "string"
+                    },
+                    "credit_grants": {
+                        "type": "array",
+                        "description": "CreditGrants are included when \"credit_grants\" is in expand parameter",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.CreditGrantResponse"
+                        }
+                    },
+                    "currency": {
+                        "type": "string",
+                        "description": "Currency is the currency of the subscription in lowercase 3 digit ISO codes"
+                    },
+                    "current_period_end": {
+                        "type": "string",
+                        "description": "CurrentPeriodEnd is the end of the current period that the subscription has been invoiced for.\nAt the end of this period, a new invoice will be created."
+                    },
+                    "current_period_start": {
+                        "type": "string",
+                        "description": "CurrentPeriodStart is the end of the current period that the subscription has been invoiced for.\nAt the end of this period, a new invoice will be created."
+                    },
+                    "customer": {
+                        "$ref": "#/components/schemas/dto.CustomerResponse"
+                    },
+                    "customer_id": {
+                        "type": "string",
+                        "description": "CustomerID is the identifier for the customer in our system"
+                    },
+                    "customer_timezone": {
+                        "type": "string"
+                    },
+                    "enable_true_up": {
+                        "type": "boolean"
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "description": "EndDate is the end date of the subscription"
+                    },
+                    "environment_id": {
+                        "type": "string",
+                        "description": "EnvironmentID is the environment identifier for the subscription"
+                    },
+                    "gateway_payment_method_id": {
+                        "type": "string",
+                        "description": "GatewayPaymentMethodID is the gateway payment method ID for this subscription"
+                    },
+                    "id": {
+                        "type": "string",
+                        "description": "ID is the unique identifier for the subscription"
+                    },
+                    "invoicing_customer_id": {
+                        "type": "string",
+                        "description": "InvoicingCustomerID is the customer ID to use for invoicing\nThis can differ from the subscription customer (e.g., parent company invoicing for child company)"
+                    },
+                    "line_items": {
+                        "type": "array",
+                        "description": "LineItems is expanded only if \"subscription_line_items\" is in expand parameter\nEach line item can optionally include expanded price data",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.SubscriptionLineItemResponse"
+                        }
+                    },
+                    "lookup_key": {
+                        "type": "string",
+                        "description": "LookupKey is the key used to lookup the subscription in our system"
+                    },
+                    "metadata": {
+                        "$ref": "#/components/schemas/types.Metadata"
+                    },
+                    "overage_factor": {
+                        "type": "string",
+                        "description": "OverageFactor is a multiplier applied to usage beyond the commitment amount"
+                    },
+                    "pause_status": {
+                        "$ref": "#/components/schemas/types.PauseStatus"
+                    },
+                    "pauses": {
+                        "type": "array",
+                        "description": "Pauses are included when subscription has pause status",
+                        "items": {
+                            "$ref": "#/components/schemas/subscription.SubscriptionPause"
+                        }
+                    },
+                    "payment_behavior": {
+                        "type": "string",
+                        "description": "PaymentBehavior determines how subscription payments are handled"
+                    },
+                    "phases": {
+                        "type": "array",
+                        "description": "Phases are included when \"phases\" is in expand parameter",
                         "items": {
                             "$ref": "#/components/schemas/dto.SubscriptionPhaseResponse"
                         }
@@ -24852,6 +25388,21 @@
                     "DataTypeArray"
                 ]
             },
+            "types.DebugTrackerStatus": {
+                "type": "string",
+                "enum": [
+                    "unprocessed",
+                    "not_found",
+                    "found",
+                    "error"
+                ],
+                "x-enum-varnames": [
+                    "DebugTrackerStatusUnprocessed",
+                    "DebugTrackerStatusNotFound",
+                    "DebugTrackerStatusFound",
+                    "DebugTrackerStatusError"
+                ]
+            },
             "types.EntitlementEntityType": {
                 "type": "string",
                 "enum": [
@@ -24985,6 +25536,45 @@
                     "EntityTypePrices",
                     "EntityTypeCustomers",
                     "EntityTypeFeatures"
+                ]
+            },
+            "types.EventProcessingStatusType": {
+                "type": "string",
+                "enum": [
+                    "processed",
+                    "processing",
+                    "failed"
+                ],
+                "x-enum-varnames": [
+                    "EventProcessingStatusTypeProcessed",
+                    "EventProcessingStatusTypeProcessing",
+                    "EventProcessingStatusTypeFailed"
+                ]
+            },
+            "types.FailurePoint": {
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "$ref": "#/components/schemas/errors.ErrorResponse"
+                    },
+                    "failure_point_type": {
+                        "$ref": "#/components/schemas/types.FailurePointType"
+                    }
+                }
+            },
+            "types.FailurePointType": {
+                "type": "string",
+                "enum": [
+                    "customer_lookup",
+                    "meter_lookup",
+                    "price_lookup",
+                    "subscription_line_item_lookup"
+                ],
+                "x-enum-varnames": [
+                    "FailurePointTypeCustomerLookup",
+                    "FailurePointTypeMeterLookup",
+                    "FailurePointTypePriceLookup",
+                    "FailurePointTypeSubscriptionLineItemLookup"
                 ]
             },
             "types.FeatureFilter": {
@@ -25855,6 +26445,17 @@
                     }
                 }
             },
+            "types.ScheduleType": {
+                "type": "string",
+                "enum": [
+                    "immediate",
+                    "end_of_period"
+                ],
+                "x-enum-varnames": [
+                    "ScheduleTypeImmediate",
+                    "ScheduleTypePeriodEnd"
+                ]
+            },
             "types.ScheduledTaskEntityType": {
                 "type": "string",
                 "enum": [
@@ -26553,6 +27154,7 @@
             "types.WindowSize": {
                 "type": "string",
                 "enum": [
+                    "MONTH",
                     "MINUTE",
                     "15MIN",
                     "30MIN",
@@ -26565,6 +27167,7 @@
                     "MONTH"
                 ],
                 "x-enum-varnames": [
+                    "DefaultWindowSize",
                     "WindowSizeMinute",
                     "WindowSize15Min",
                     "WindowSize30Min",
