@@ -488,7 +488,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/gin.H"
+                                    "$ref": "#/components/schemas/dto.SuccessResponse"
                                 }
                             }
                         }
@@ -806,7 +806,8 @@
                                 "hubspot",
                                 "razorpay",
                                 "chargebee",
-                                "quickbooks"
+                                "quickbooks",
+                                "nomod"
                             ],
                             "x-enum-varnames": [
                                 "SecretProviderFlexPrice",
@@ -815,7 +816,8 @@
                                 "SecretProviderHubSpot",
                                 "SecretProviderRazorpay",
                                 "SecretProviderChargebee",
-                                "SecretProviderQuickBooks"
+                                "SecretProviderQuickBooks",
+                                "SecretProviderNomod"
                             ]
                         },
                         "x-enum-varnames": [
@@ -825,7 +827,8 @@
                             "SecretProviderHubSpot",
                             "SecretProviderRazorpay",
                             "SecretProviderChargebee",
-                            "SecretProviderQuickBooks"
+                            "SecretProviderQuickBooks",
+                            "SecretProviderNomod"
                         ]
                     },
                     {
@@ -1273,6 +1276,64 @@
             }
         },
         "/costs/analytics": {
+            "post": {
+                "tags": [
+                    "Costs"
+                ],
+                "summary": "Get combined revenue and cost analytics",
+                "description": "Retrieve combined analytics with ROI, margin, and detailed breakdowns. If start_time and end_time are not provided, defaults to last 7 days.",
+                "requestBody": {
+                    "description": "Combined analytics request (start_time/end_time optional - defaults to last 7 days)",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/dto.GetCostAnalyticsRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.GetDetailedCostAnalyticsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "x-codegen-request-body-name": "request"
+            }
+        },
+        "/costs/analytics-v2": {
             "post": {
                 "tags": [
                     "Costs"
@@ -2507,7 +2568,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/gin.H"
+                                    "$ref": "#/components/schemas/dto.SuccessResponse"
                                 }
                             }
                         }
@@ -3338,18 +3399,18 @@
                 "x-codegen-request-body-name": "customer"
             }
         },
-        "/customers/lookup/{lookup_key}": {
+        "/customers/external/{external_id}": {
             "get": {
                 "tags": [
                     "Customers"
                 ],
-                "summary": "Get a customer by lookup key",
-                "description": "Get a customer by lookup key (external_id)",
+                "summary": "Get a customer by external id",
+                "description": "Get a customer by external id",
                 "parameters": [
                     {
-                        "name": "lookup_key",
+                        "name": "external_id",
                         "in": "path",
-                        "description": "Customer Lookup Key (external_id)",
+                        "description": "Customer External ID",
                         "required": true,
                         "schema": {
                             "type": "string"
@@ -3569,6 +3630,13 @@
                 "summary": "Get Customer Wallets",
                 "description": "Get all wallets for a customer by lookup key or id",
                 "parameters": [
+                    {
+                        "name": "expand",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
                     {
                         "name": "id",
                         "in": "query",
@@ -4606,7 +4674,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/gin.H"
+                                    "$ref": "#/components/schemas/dto.SuccessResponse"
                                 }
                             }
                         }
@@ -5728,6 +5796,63 @@
                 "x-codegen-request-body-name": "request"
             }
         },
+        "/events/{id}": {
+            "get": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "Get event by ID",
+                "description": "Retrieve event details and processing status with debug information",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Event ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.GetEventByIDResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            }
+        },
         "/features": {
             "get": {
                 "tags": [
@@ -6178,7 +6303,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/gin.H"
+                                    "$ref": "#/components/schemas/dto.SuccessResponse"
                                 }
                             }
                         }
@@ -7104,7 +7229,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/gin.H"
+                                    "$ref": "#/components/schemas/dto.SuccessResponse"
                                 }
                             }
                         }
@@ -7171,7 +7296,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/gin.H"
+                                    "$ref": "#/components/schemas/dto.SuccessResponse"
                                 }
                             }
                         }
@@ -7307,7 +7432,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/gin.H"
+                                    "$ref": "#/components/schemas/dto.SuccessResponse"
                                 }
                             }
                         }
@@ -7525,7 +7650,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/gin.H"
+                                    "$ref": "#/components/schemas/dto.SuccessResponse"
                                 }
                             }
                         }
@@ -7604,6 +7729,14 @@
                     {
                         "name": "gateway_payment_id",
                         "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "gateway_tracking_id",
+                        "in": "query",
+                        "description": "For filtering by gateway tracking ID",
                         "schema": {
                             "type": "string"
                         }
@@ -7947,7 +8080,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/gin.H"
+                                    "$ref": "#/components/schemas/dto.SuccessResponse"
                                 }
                             }
                         }
@@ -8455,7 +8588,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/gin.H"
+                                    "$ref": "#/components/schemas/dto.SuccessResponse"
                                 }
                             }
                         }
@@ -8683,6 +8816,73 @@
                     },
                     "422": {
                         "description": "Unprocessable Entity",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            }
+        },
+        "/portal/{external_id}": {
+            "get": {
+                "tags": [
+                    "CustomerPortal"
+                ],
+                "summary": "Create a customer portal session",
+                "description": "Generate a dashboard URL/token for a customer to access their billing information",
+                "parameters": [
+                    {
+                        "name": "external_id",
+                        "in": "path",
+                        "description": "Customer External ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.PortalSessionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -9055,6 +9255,63 @@
                 "x-codegen-request-body-name": "prices"
             }
         },
+        "/prices/lookup/{lookup_key}": {
+            "get": {
+                "tags": [
+                    "Prices"
+                ],
+                "summary": "Get price by lookup key",
+                "description": "Get price by lookup key",
+                "parameters": [
+                    {
+                        "name": "lookup_key",
+                        "in": "path",
+                        "description": "Lookup key",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.PriceResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            }
+        },
         "/prices/units": {
             "get": {
                 "tags": [
@@ -9155,7 +9412,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/dto.PriceUnitResponse"
+                                    "$ref": "#/components/schemas/dto.CreatePriceUnitResponse"
                                 }
                             }
                         }
@@ -9218,6 +9475,16 @@
                             }
                         }
                     },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "content": {
@@ -9248,7 +9515,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/priceunit.PriceUnitFilter"
+                                "$ref": "#/components/schemas/types.Filter"
                             }
                         }
                     },
@@ -9333,8 +9600,8 @@
                             }
                         }
                     },
-                    "500": {
-                        "description": "Internal Server Error",
+                    "404": {
+                        "description": "Not Found",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -9355,7 +9622,7 @@
                     "Price Units"
                 ],
                 "summary": "Update a price unit",
-                "description": "Update an existing price unit with the provided details. Only name, symbol, precision, and conversion_rate can be updated. Status changes are not allowed.",
+                "description": "Update an existing price unit with the provided details. Only name and metadata can be updated.",
                 "parameters": [
                     {
                         "name": "id",
@@ -9421,8 +9688,8 @@
                 "tags": [
                     "Price Units"
                 ],
-                "summary": "Archive a price unit",
-                "description": "Archive an existing price unit. The unit will be marked as archived and cannot be used in new prices.",
+                "summary": "Delete a price unit",
+                "description": "Delete an existing price unit.",
                 "parameters": [
                     {
                         "name": "id",
@@ -9440,7 +9707,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/gin.H"
+                                    "$ref": "#/components/schemas/dto.SuccessResponse"
                                 }
                             }
                         }
@@ -9613,13 +9880,24 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "description": "Delete Price Request",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/dto.DeletePriceRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
                 "responses": {
                     "200": {
                         "description": "OK",
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/gin.H"
+                                    "$ref": "#/components/schemas/dto.SuccessResponse"
                                 }
                             }
                         }
@@ -9649,7 +9927,8 @@
                     {
                         "ApiKeyAuth": []
                     }
-                ]
+                ],
+                "x-codegen-request-body-name": "request"
             }
         },
         "/rbac/roles": {
@@ -9922,6 +10201,132 @@
                 ]
             }
         },
+        "/secrets/integrations/by-provider/{provider}": {
+            "get": {
+                "tags": [
+                    "Integrations"
+                ],
+                "summary": "Get integration details",
+                "description": "Get details of a specific integration",
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "path",
+                        "description": "Integration provider",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.SecretResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            }
+        },
+        "/secrets/integrations/create/{provider}": {
+            "post": {
+                "tags": [
+                    "Integrations"
+                ],
+                "summary": "Create or update an integration",
+                "description": "Create or update integration credentials",
+                "parameters": [
+                    {
+                        "name": "provider",
+                        "in": "path",
+                        "description": "Integration provider",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Integration creation request",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/dto.CreateIntegrationRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.SecretResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "x-codegen-request-body-name": "request"
+            }
+        },
         "/secrets/integrations/linked": {
             "get": {
                 "tags": [
@@ -10007,130 +10412,6 @@
                         "ApiKeyAuth": []
                     }
                 ]
-            }
-        },
-        "/secrets/integrations/{provider}": {
-            "get": {
-                "tags": [
-                    "Integrations"
-                ],
-                "summary": "Get integration details",
-                "description": "Get details of a specific integration",
-                "parameters": [
-                    {
-                        "name": "provider",
-                        "in": "path",
-                        "description": "Integration provider",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/dto.SecretResponse"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/errors.ErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/errors.ErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ]
-            },
-            "post": {
-                "tags": [
-                    "Integrations"
-                ],
-                "summary": "Create or update an integration",
-                "description": "Create or update integration credentials",
-                "parameters": [
-                    {
-                        "name": "provider",
-                        "in": "path",
-                        "description": "Integration provider",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "description": "Integration creation request",
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/dto.CreateIntegrationRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/dto.SecretResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/errors.ErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/errors.ErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "x-codegen-request-body-name": "request"
             }
         },
         "/subscriptions": {
@@ -10322,10 +10603,7 @@
                                     "paused",
                                     "cancelled",
                                     "incomplete",
-                                    "incomplete_expired",
-                                    "past_due",
                                     "trialing",
-                                    "unpaid",
                                     "draft"
                                 ]
                             }
@@ -10447,7 +10725,7 @@
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/dto.AddAddonToSubscriptionRequest"
+                                "$ref": "#/components/schemas/dto.AddAddonRequest"
                             }
                         }
                     },
@@ -10515,7 +10793,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/gin.H"
+                                    "$ref": "#/components/schemas/dto.SuccessResponse"
                                 }
                             }
                         }
@@ -10925,6 +11203,76 @@
                     }
                 ],
                 "x-codegen-request-body-name": "request"
+            }
+        },
+        "/subscriptions/{id}/addons/associations": {
+            "get": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Get active addon associations",
+                "description": "Get active addon associations for a subscription",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Subscription ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/dto.AddonAssociationResponse"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
             }
         },
         "/subscriptions/{id}/cancel": {
@@ -11524,6 +11872,71 @@
                 "x-codegen-request-body-name": "request"
             }
         },
+        "/subscriptions/{id}/v2": {
+            "get": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Get subscription V2",
+                "description": "Get a subscription by ID with optional expand parameters",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Subscription ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "expand",
+                        "in": "query",
+                        "description": "Comma-separated list of fields to expand (e.g., 'subscription_line_items,prices,plan')",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.SubscriptionResponseV2"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            }
+        },
         "/tasks": {
             "get": {
                 "tags": [
@@ -11554,18 +11967,21 @@
                             "enum": [
                                 "EVENTS",
                                 "PRICES",
-                                "CUSTOMERS"
+                                "CUSTOMERS",
+                                "FEATURES"
                             ],
                             "x-enum-varnames": [
                                 "EntityTypeEvents",
                                 "EntityTypePrices",
-                                "EntityTypeCustomers"
+                                "EntityTypeCustomers",
+                                "EntityTypeFeatures"
                             ]
                         },
                         "x-enum-varnames": [
                             "EntityTypeEvents",
                             "EntityTypePrices",
-                            "EntityTypeCustomers"
+                            "EntityTypeCustomers",
+                            "EntityTypeFeatures"
                         ]
                     },
                     {
@@ -12005,6 +12421,64 @@
                 "x-codegen-request-body-name": "scheduled_task"
             }
         },
+        "/tasks/scheduled/schedule-update-billing-period": {
+            "post": {
+                "tags": [
+                    "ScheduledTasks"
+                ],
+                "summary": "Schedule update billing period",
+                "description": "Schedule an update billing period workflow",
+                "requestBody": {
+                    "description": "Schedule Update Billing Period Request",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "x-codegen-request-body-name": "request"
+            }
+        },
         "/tasks/scheduled/{id}": {
             "get": {
                 "tags": [
@@ -12354,6 +12828,76 @@
                 ]
             }
         },
+        "/tasks/{id}/download": {
+            "get": {
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Download task export file",
+                "description": "Generate a presigned URL for downloading an exported file (supports both Flexprice-managed and customer-owned S3)",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Task ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            }
+        },
         "/tasks/{id}/status": {
             "put": {
                 "tags": [
@@ -12389,7 +12933,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/gin.H"
+                                    "$ref": "#/components/schemas/dto.SuccessResponse"
                                 }
                             }
                         }
@@ -12440,17 +12984,32 @@
                 ],
                 "summary": "List tax associations",
                 "description": "List tax associations",
-                "requestBody": {
-                    "description": "Tax Association Filter",
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/types.TaxAssociationFilter"
-                            }
+                "parameters": [
+                    {
+                        "name": "entity_type",
+                        "in": "query",
+                        "description": "Entity Type",
+                        "schema": {
+                            "type": "string"
                         }
                     },
-                    "required": true
-                },
+                    {
+                        "name": "entity_id",
+                        "in": "query",
+                        "description": "Entity ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "tax_rate_id",
+                        "in": "query",
+                        "description": "Tax Rate ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -12487,8 +13046,7 @@
                     {
                         "ApiKeyAuth": []
                     }
-                ],
-                "x-codegen-request-body-name": "tax_association"
+                ]
             },
             "post": {
                 "tags": [
@@ -13471,8 +14029,8 @@
                 "tags": [
                     "Users"
                 ],
-                "summary": "List service accounts with filters",
-                "description": "Search and filter service accounts by type, roles, etc.",
+                "summary": "List users with filters",
+                "description": "Search and filter users by type (user/service_account), roles, etc.",
                 "requestBody": {
                     "description": "Filter parameters",
                     "content": {
@@ -13525,6 +14083,143 @@
             }
         },
         "/wallets": {
+            "get": {
+                "tags": [
+                    "Wallets"
+                ],
+                "summary": "List wallets",
+                "description": "List wallets with optional filtering",
+                "parameters": [
+                    {
+                        "name": "alert_enabled",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "expand",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "maximum": 1000,
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "schema": {
+                            "minimum": 0,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "order",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "active",
+                                "frozen",
+                                "closed"
+                            ],
+                            "x-enum-varnames": [
+                                "WalletStatusActive",
+                                "WalletStatusFrozen",
+                                "WalletStatusClosed"
+                            ]
+                        },
+                        "x-enum-varnames": [
+                            "WalletStatusActive",
+                            "WalletStatusFrozen",
+                            "WalletStatusClosed"
+                        ]
+                    },
+                    {
+                        "name": "wallet_ids",
+                        "in": "query",
+                        "style": "form",
+                        "explode": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    {
+                        "name": "expand",
+                        "in": "query",
+                        "description": "Expand fields (e.g., credits_available_breakdown)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/types.ListResponse-dto_WalletResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            },
             "post": {
                 "tags": [
                     "Wallets"
@@ -13580,6 +14275,132 @@
                     }
                 ],
                 "x-codegen-request-body-name": "request"
+            }
+        },
+        "/wallets/search": {
+            "post": {
+                "tags": [
+                    "Wallets"
+                ],
+                "summary": "List wallets by filter",
+                "description": "List wallets by filter",
+                "requestBody": {
+                    "description": "Filter",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/types.WalletFilter"
+                            }
+                        }
+                    },
+                    "required": false
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/types.ListResponse-dto_WalletResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "x-codegen-request-body-name": "filter"
+            }
+        },
+        "/wallets/transactions/search": {
+            "post": {
+                "tags": [
+                    "Wallets"
+                ],
+                "summary": "List wallet transactions by filter",
+                "description": "List wallet transactions by filter",
+                "parameters": [
+                    {
+                        "name": "expand",
+                        "in": "query",
+                        "description": "Expand fields (e.g., customer,created_by_user,wallet)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Filter",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/types.WalletTransactionFilter"
+                            }
+                        }
+                    },
+                    "required": false
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.ListWalletTransactionsResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "x-codegen-request-body-name": "filter"
             }
         },
         "/wallets/{id}": {
@@ -13742,6 +14563,14 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "expand",
+                        "in": "query",
+                        "description": "Expand fields (e.g., credits_available_breakdown)",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
@@ -13791,85 +14620,6 @@
                         "ApiKeyAuth": []
                     }
                 ]
-            }
-        },
-        "/wallets/{id}/debit": {
-            "post": {
-                "tags": [
-                    "Wallets"
-                ],
-                "summary": "Debit a wallet",
-                "description": "Debit a wallet by debiting credits from a wallet",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "description": "Wallet ID",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "description": "Debit wallet request",
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/dto.ManualBalanceDebitRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/dto.WalletResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/errors.ErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/errors.ErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/errors.ErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "x-codegen-request-body-name": "request"
             }
         },
         "/wallets/{id}/terminate": {
@@ -14036,6 +14786,13 @@
                         }
                     },
                     {
+                        "name": "created_by",
+                        "in": "query",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
                         "name": "credits_available_gt",
                         "in": "query",
                         "schema": {
@@ -14121,13 +14878,6 @@
                     },
                     {
                         "name": "reference_type",
-                        "in": "query",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "sort",
                         "in": "query",
                         "schema": {
                             "type": "string"
@@ -14415,6 +15165,67 @@
                 "responses": {
                     "200": {
                         "description": "Webhook received (always returns 200)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": true
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/webhooks/nomod/{tenant_id}/{environment_id}": {
+            "post": {
+                "tags": [
+                    "Webhooks"
+                ],
+                "summary": "Handle Nomod webhook events",
+                "description": "Process incoming Nomod webhook events for payment and invoice payments",
+                "parameters": [
+                    {
+                        "name": "tenant_id",
+                        "in": "path",
+                        "description": "Tenant ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "environment_id",
+                        "in": "path",
+                        "description": "Environment ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "X-API-KEY",
+                        "in": "header",
+                        "description": "Nomod webhook secret (if configured)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Webhook processed successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": true
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - invalid or missing X-API-KEY",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -14752,7 +15563,7 @@
                 "type": "object",
                 "properties": {
                     "amount": {
-                        "type": "number"
+                        "type": "string"
                     },
                     "created_at": {
                         "type": "string"
@@ -14807,6 +15618,35 @@
                     }
                 }
             },
+            "dto.AddAddonRequest": {
+                "required": [
+                    "addon_id",
+                    "subscription_id"
+                ],
+                "type": "object",
+                "properties": {
+                    "addon_id": {
+                        "type": "string"
+                    },
+                    "line_item_commitments": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/dto.LineItemCommitmentConfig"
+                        },
+                        "description": "LineItemCommitments allows setting commitment configuration per addon line item (keyed by price_id)"
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "additionalProperties": true
+                    },
+                    "start_date": {
+                        "type": "string"
+                    },
+                    "subscription_id": {
+                        "type": "string"
+                    }
+                }
+            },
             "dto.AddAddonToSubscriptionRequest": {
                 "required": [
                     "addon_id"
@@ -14816,8 +15656,12 @@
                     "addon_id": {
                         "type": "string"
                     },
-                    "end_date": {
-                        "type": "string"
+                    "line_item_commitments": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/dto.LineItemCommitmentConfig"
+                        },
+                        "description": "LineItemCommitments allows setting commitment configuration per addon line item (keyed by price_id)"
                     },
                     "metadata": {
                         "type": "object",
@@ -14831,6 +15675,9 @@
             "dto.AddonAssociationResponse": {
                 "type": "object",
                 "properties": {
+                    "addon": {
+                        "$ref": "#/components/schemas/dto.AddonResponse"
+                    },
                     "addon_id": {
                         "type": "string"
                     },
@@ -14873,6 +15720,9 @@
                     },
                     "status": {
                         "$ref": "#/components/schemas/types.Status"
+                    },
+                    "subscription": {
+                        "$ref": "#/components/schemas/dto.SubscriptionResponse"
                     },
                     "tenant_id": {
                         "type": "string"
@@ -15855,6 +16705,10 @@
                     "cadence": {
                         "$ref": "#/components/schemas/types.CreditGrantCadence"
                     },
+                    "conversion_rate": {
+                        "type": "string",
+                        "description": "amount in the currency =  number of credits * conversion_rate\nex if conversion_rate is 1, then 1 USD = 1 credit\nex if conversion_rate is 2, then 1 USD = 0.5 credits\nex if conversion_rate is 0.5, then 1 USD = 2 credits"
+                    },
                     "credits": {
                         "type": "string"
                     },
@@ -15890,6 +16744,10 @@
                     },
                     "subscription_id": {
                         "type": "string"
+                    },
+                    "topup_conversion_rate": {
+                        "type": "string",
+                        "description": "topup_conversion_rate is the conversion rate for the topup to the currency\nex if topup_conversion_rate is 1, then 1 USD = 1 credit\nex if topup_conversion_rate is 2, then 1 USD = 0.5 credits\nex if topup_conversion_rate is 0.5, then 1 USD = 2 credits"
                     }
                 }
             },
@@ -16029,6 +16887,10 @@
                         "type": "string",
                         "description": "parent_customer_id is the internal FlexPrice ID of the parent customer"
                     },
+                    "skip_onboarding_workflow": {
+                        "type": "boolean",
+                        "description": "skip_onboarding_workflow when true, prevents the customer onboarding workflow from being triggered\nThis is used internally when a customer is created via a workflow to prevent infinite loops\nDefault: false"
+                    },
                     "tax_rate_overrides": {
                         "type": "array",
                         "description": "tax_rate_overrides contains tax rate configurations to be linked to this customer",
@@ -16046,6 +16908,9 @@
                 ],
                 "type": "object",
                 "properties": {
+                    "end_date": {
+                        "type": "string"
+                    },
                     "entity_id": {
                         "type": "string"
                     },
@@ -16068,6 +16933,9 @@
                         "type": "string"
                     },
                     "plan_id": {
+                        "type": "string"
+                    },
+                    "start_date": {
                         "type": "string"
                     },
                     "static_value": {
@@ -16216,6 +17084,9 @@
                     "amount": {
                         "type": "string",
                         "description": "amount is the monetary amount for this line item"
+                    },
+                    "commitment_info": {
+                        "$ref": "#/components/schemas/types.CommitmentInfo"
                     },
                     "display_name": {
                         "type": "string",
@@ -16502,175 +17373,17 @@
                     }
                 }
             },
-            "dto.CreatePlanEntitlementRequest": {
-                "required": [
-                    "feature_id",
-                    "feature_type"
-                ],
-                "type": "object",
-                "properties": {
-                    "entity_id": {
-                        "type": "string"
-                    },
-                    "entity_type": {
-                        "$ref": "#/components/schemas/types.EntitlementEntityType"
-                    },
-                    "feature_id": {
-                        "type": "string"
-                    },
-                    "feature_type": {
-                        "$ref": "#/components/schemas/types.FeatureType"
-                    },
-                    "is_enabled": {
-                        "type": "boolean"
-                    },
-                    "is_soft_limit": {
-                        "type": "boolean"
-                    },
-                    "parent_entitlement_id": {
-                        "type": "string"
-                    },
-                    "plan_id": {
-                        "type": "string"
-                    },
-                    "static_value": {
-                        "type": "string"
-                    },
-                    "usage_limit": {
-                        "type": "integer"
-                    },
-                    "usage_reset_period": {
-                        "$ref": "#/components/schemas/types.EntitlementUsageResetPeriod"
-                    }
-                }
-            },
-            "dto.CreatePlanPriceRequest": {
-                "required": [
-                    "billing_cadence",
-                    "billing_model",
-                    "billing_period",
-                    "currency",
-                    "invoice_cadence",
-                    "price_unit_type",
-                    "type"
-                ],
-                "type": "object",
-                "properties": {
-                    "amount": {
-                        "type": "string"
-                    },
-                    "billing_cadence": {
-                        "$ref": "#/components/schemas/types.BillingCadence"
-                    },
-                    "billing_model": {
-                        "$ref": "#/components/schemas/types.BillingModel"
-                    },
-                    "billing_period": {
-                        "$ref": "#/components/schemas/types.BillingPeriod"
-                    },
-                    "billing_period_count": {
-                        "type": "integer"
-                    },
-                    "currency": {
-                        "type": "string"
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "end_date": {
-                        "type": "string"
-                    },
-                    "entity_id": {
-                        "type": "string",
-                        "description": "TODO: this will be required in the future as we will not allow prices to be created without an entity id"
-                    },
-                    "entity_type": {
-                        "$ref": "#/components/schemas/types.PriceEntityType"
-                    },
-                    "filter_values": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "group_id": {
-                        "type": "string",
-                        "description": "GroupID is the id of the group to add the price to"
-                    },
-                    "invoice_cadence": {
-                        "$ref": "#/components/schemas/types.InvoiceCadence"
-                    },
-                    "lookup_key": {
-                        "type": "string"
-                    },
-                    "metadata": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "meter_id": {
-                        "type": "string"
-                    },
-                    "plan_id": {
-                        "type": "string",
-                        "description": "TODO: This is deprecated and will be removed in the future"
-                    },
-                    "price_unit_config": {
-                        "$ref": "#/components/schemas/dto.PriceUnitConfig"
-                    },
-                    "price_unit_type": {
-                        "$ref": "#/components/schemas/types.PriceUnitType"
-                    },
-                    "start_date": {
-                        "type": "string"
-                    },
-                    "tier_mode": {
-                        "$ref": "#/components/schemas/types.BillingTier"
-                    },
-                    "tiers": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/dto.CreatePriceTier"
-                        }
-                    },
-                    "transform_quantity": {
-                        "$ref": "#/components/schemas/price.TransformQuantity"
-                    },
-                    "trial_period": {
-                        "type": "integer"
-                    },
-                    "type": {
-                        "$ref": "#/components/schemas/types.PriceType"
-                    }
-                }
-            },
             "dto.CreatePlanRequest": {
                 "required": [
                     "name"
                 ],
                 "type": "object",
                 "properties": {
-                    "credit_grants": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/dto.CreateCreditGrantRequest"
-                        }
-                    },
                     "description": {
                         "type": "string"
                     },
                     "display_order": {
                         "type": "integer"
-                    },
-                    "entitlements": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/dto.CreatePlanEntitlementRequest"
-                        }
                     },
                     "lookup_key": {
                         "type": "string"
@@ -16680,12 +17393,6 @@
                     },
                     "name": {
                         "type": "string"
-                    },
-                    "prices": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/dto.CreatePlanPriceRequest"
-                        }
                     }
                 }
             },
@@ -16695,6 +17402,8 @@
                     "billing_model",
                     "billing_period",
                     "currency",
+                    "entity_id",
+                    "entity_type",
                     "invoice_cadence",
                     "price_unit_type",
                     "type"
@@ -16722,12 +17431,14 @@
                     "description": {
                         "type": "string"
                     },
+                    "display_name": {
+                        "type": "string"
+                    },
                     "end_date": {
                         "type": "string"
                     },
                     "entity_id": {
-                        "type": "string",
-                        "description": "TODO: this will be required in the future as we will not allow prices to be created without an entity id"
+                        "type": "string"
                     },
                     "entity_type": {
                         "$ref": "#/components/schemas/types.PriceEntityType"
@@ -16760,9 +17471,9 @@
                     "meter_id": {
                         "type": "string"
                     },
-                    "plan_id": {
-                        "type": "string",
-                        "description": "TODO: This is deprecated and will be removed in the future"
+                    "min_quantity": {
+                        "type": "integer",
+                        "description": "MinQuantity is the minimum quantity of the price"
                     },
                     "price_unit_config": {
                         "$ref": "#/components/schemas/dto.PriceUnitConfig"
@@ -16824,6 +17535,31 @@
                 "type": "object",
                 "properties": {
                     "base_currency": {
+                        "type": "string",
+                        "description": "base_currency  is the currency that the price unit is based on"
+                    },
+                    "code": {
+                        "type": "string"
+                    },
+                    "conversion_rate": {
+                        "type": "string",
+                        "description": "ConversionRate defines the exchange rate from this price unit to the base currency.\nThis rate is used to convert amounts in the custom price unit to the base currency for storage and billing.\n\nConversion formula:\n  price_unit_amount * conversion_rate = base_currency_amount\n\nExample:\n  If conversion_rate = \"0.01\" and base_currency = \"usd\":\n  100 price_unit tokens * 0.01 = 1.00 USD\n\nNote: Rounding precision is determined by the base currency (e.g., USD uses 2 decimal places, JPY uses 0)."
+                    },
+                    "metadata": {
+                        "$ref": "#/components/schemas/types.Metadata"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "symbol": {
+                        "type": "string"
+                    }
+                }
+            },
+            "dto.CreatePriceUnitResponse": {
+                "type": "object",
+                "properties": {
+                    "base_currency": {
                         "type": "string"
                     },
                     "code": {
@@ -16832,16 +17568,37 @@
                     "conversion_rate": {
                         "type": "string"
                     },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "created_by": {
+                        "type": "string"
+                    },
+                    "environment_id": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "metadata": {
+                        "$ref": "#/components/schemas/types.Metadata"
+                    },
                     "name": {
                         "type": "string"
                     },
-                    "precision": {
-                        "maximum": 8,
-                        "minimum": 0,
-                        "type": "integer"
+                    "status": {
+                        "$ref": "#/components/schemas/types.Status"
                     },
                     "symbol": {
-                        "maxLength": 10,
+                        "type": "string"
+                    },
+                    "tenant_id": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "updated_by": {
                         "type": "string"
                     }
                 }
@@ -16947,6 +17704,13 @@
                     },
                     "invoice_billing": {
                         "$ref": "#/components/schemas/types.InvoiceBilling"
+                    },
+                    "line_item_commitments": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/dto.LineItemCommitmentConfig"
+                        },
+                        "description": "LineItemCommitments allows setting commitment configuration per line item (keyed by price_id)"
                     },
                     "line_item_coupons": {
                         "type": "object",
@@ -17174,14 +17938,8 @@
                         "type": "boolean",
                         "description": "alert_enabled is the flag to enable alerts for the wallet\ndefaults to true, can be explicitly set to false to disable alerts"
                     },
-                    "auto_topup_amount": {
-                        "type": "string"
-                    },
-                    "auto_topup_min_balance": {
-                        "type": "string"
-                    },
-                    "auto_topup_trigger": {
-                        "$ref": "#/components/schemas/types.AutoTopupTrigger"
+                    "auto_topup": {
+                        "$ref": "#/components/schemas/types.AutoTopup"
                     },
                     "config": {
                         "$ref": "#/components/schemas/types.WalletConfig"
@@ -17222,6 +17980,14 @@
                     },
                     "name": {
                         "type": "string"
+                    },
+                    "price_unit": {
+                        "type": "string",
+                        "description": "price_unit is the code of the price unit to use for wallet creation\nIf provided, the price unit will be used to set the currency and conversion rate of the wallet:\n- currency: set to price unit's base_currency\n- conversion_rate: set to price unit's conversion_rate"
+                    },
+                    "topup_conversion_rate": {
+                        "type": "string",
+                        "description": "topup_conversion_rate is the conversion rate for the topup to the currency\nex if topup_conversion_rate is 1, then 1 USD = 1 credit\nex if topup_conversion_rate is 2, then 1 USD = 0.5 credits\nex if topup_conversion_rate is 0.5, then 1 USD = 2 credits"
                     },
                     "wallet_type": {
                         "$ref": "#/components/schemas/types.WalletType"
@@ -17305,14 +18071,24 @@
                     "cadence": {
                         "$ref": "#/components/schemas/types.CreditGrantCadence"
                     },
+                    "conversion_rate": {
+                        "type": "string",
+                        "description": "amount in the currency =  number of credits * conversion_rate\nex if conversion_rate is 1, then 1 USD = 1 credit\nex if conversion_rate is 2, then 1 USD = 0.5 credits\nex if conversion_rate is 0.5, then 1 USD = 2 credits"
+                    },
                     "created_at": {
                         "type": "string"
                     },
                     "created_by": {
                         "type": "string"
                     },
+                    "credit_grant_anchor": {
+                        "type": "string"
+                    },
                     "credits": {
-                        "type": "number"
+                        "type": "string"
+                    },
+                    "end_date": {
+                        "type": "string"
                     },
                     "environment_id": {
                         "type": "string"
@@ -17350,6 +18126,9 @@
                     "scope": {
                         "$ref": "#/components/schemas/types.CreditGrantScope"
                     },
+                    "start_date": {
+                        "type": "string"
+                    },
                     "status": {
                         "$ref": "#/components/schemas/types.Status"
                     },
@@ -17358,6 +18137,10 @@
                     },
                     "tenant_id": {
                         "type": "string"
+                    },
+                    "topup_conversion_rate": {
+                        "type": "string",
+                        "description": "topup_conversion_rate is the conversion rate for the topup to the currency\nex if topup_conversion_rate is 1, then 1 USD = 1 credit\nex if topup_conversion_rate is 2, then 1 USD = 0.5 credits\nex if topup_conversion_rate is 0.5, then 1 USD = 2 credits"
                     },
                     "updated_at": {
                         "type": "string"
@@ -17454,7 +18237,7 @@
                         "type": "string"
                     },
                     "total_amount": {
-                        "type": "number",
+                        "type": "string",
                         "description": "total_amount is the total including creditable invoice-level discounts or minimums, and tax"
                     },
                     "updated_at": {
@@ -17525,6 +18308,20 @@
                     "unpaid_usage_charges": {
                         "type": "string",
                         "description": "unpaid_usage_charges is the total amount of unpaid usage-based charges in this currency"
+                    }
+                }
+            },
+            "dto.CustomerLookupResult": {
+                "type": "object",
+                "properties": {
+                    "customer": {
+                        "$ref": "#/components/schemas/github_com_flexprice_flexprice_internal_domain_customer.Customer"
+                    },
+                    "error": {
+                        "$ref": "#/components/schemas/errors.ErrorResponse"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.DebugTrackerStatus"
                     }
                 }
             },
@@ -17650,6 +18447,26 @@
                     }
                 }
             },
+            "dto.DebugTracker": {
+                "type": "object",
+                "properties": {
+                    "customer_lookup": {
+                        "$ref": "#/components/schemas/dto.CustomerLookupResult"
+                    },
+                    "failure_point": {
+                        "$ref": "#/components/schemas/types.FailurePoint"
+                    },
+                    "meter_matching": {
+                        "$ref": "#/components/schemas/dto.MeterMatchingResult"
+                    },
+                    "price_lookup": {
+                        "$ref": "#/components/schemas/dto.PriceLookupResult"
+                    },
+                    "subscription_line_item_lookup": {
+                        "$ref": "#/components/schemas/dto.SubscriptionLineItemLookupResult"
+                    }
+                }
+            },
             "dto.DeleteCostsheetResponse": {
                 "type": "object",
                 "properties": {
@@ -17657,6 +18474,14 @@
                         "type": "string"
                     },
                     "message": {
+                        "type": "string"
+                    }
+                }
+            },
+            "dto.DeletePriceRequest": {
+                "type": "object",
+                "properties": {
+                    "end_date": {
                         "type": "string"
                     }
                 }
@@ -17683,6 +18508,9 @@
                     },
                     "display_order": {
                         "type": "integer"
+                    },
+                    "end_date": {
+                        "type": "string"
                     },
                     "entity_id": {
                         "type": "string"
@@ -17720,6 +18548,9 @@
                     "plan_id": {
                         "type": "string",
                         "description": "TODO: Remove this once we have a proper entitlement entity type"
+                    },
+                    "start_date": {
+                        "type": "string"
                     },
                     "static_value": {
                         "type": "string"
@@ -17964,6 +18795,35 @@
                     }
                 }
             },
+            "dto.FeatureUsageInfo": {
+                "type": "object",
+                "properties": {
+                    "customer_id": {
+                        "type": "string"
+                    },
+                    "feature_id": {
+                        "type": "string"
+                    },
+                    "meter_id": {
+                        "type": "string"
+                    },
+                    "price_id": {
+                        "type": "string"
+                    },
+                    "processed_at": {
+                        "type": "string"
+                    },
+                    "qty_total": {
+                        "type": "string"
+                    },
+                    "sub_line_item_id": {
+                        "type": "string"
+                    },
+                    "subscription_id": {
+                        "type": "string"
+                    }
+                }
+            },
             "dto.FeatureUsageSummary": {
                 "type": "object",
                 "properties": {
@@ -18085,6 +18945,26 @@
                     "total_revenue": {
                         "type": "string",
                         "description": "Derived metrics"
+                    }
+                }
+            },
+            "dto.GetEventByIDResponse": {
+                "type": "object",
+                "properties": {
+                    "debug_tracker": {
+                        "$ref": "#/components/schemas/dto.DebugTracker"
+                    },
+                    "event": {
+                        "$ref": "#/components/schemas/dto.Event"
+                    },
+                    "processed_events": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.FeatureUsageInfo"
+                        }
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.EventProcessingStatusType"
                     }
                 }
             },
@@ -18680,6 +19560,9 @@
                         "type": "string",
                         "description": "amount is the monetary amount for this line item"
                     },
+                    "commitment_info": {
+                        "$ref": "#/components/schemas/types.CommitmentInfo"
+                    },
                     "created_at": {
                         "type": "string",
                         "description": "created_at is the timestamp when this line item was created"
@@ -19004,6 +19887,34 @@
                     "voided_at": {
                         "type": "string",
                         "description": "voided_at is the timestamp when this invoice was voided"
+                    }
+                }
+            },
+            "dto.LineItemCommitmentConfig": {
+                "type": "object",
+                "properties": {
+                    "commitment_amount": {
+                        "type": "number",
+                        "description": "CommitmentAmount is the minimum amount committed for this line item"
+                    },
+                    "commitment_quantity": {
+                        "type": "number",
+                        "description": "CommitmentQuantity is the minimum quantity committed for this line item"
+                    },
+                    "commitment_type": {
+                        "$ref": "#/components/schemas/types.CommitmentType"
+                    },
+                    "enable_true_up": {
+                        "type": "boolean",
+                        "description": "EnableTrueUp determines if true-up fee should be applied when usage is below commitment"
+                    },
+                    "is_window_commitment": {
+                        "type": "boolean",
+                        "description": "IsWindowCommitment determines if commitment is applied per window (e.g., per day) rather than per billing period"
+                    },
+                    "overage_factor": {
+                        "type": "number",
+                        "description": "OverageFactor is a multiplier applied to usage beyond the commitment"
                     }
                 }
             },
@@ -19431,30 +20342,80 @@
                     }
                 }
             },
-            "dto.ManualBalanceDebitRequest": {
-                "required": [
-                    "idempotency_key",
-                    "transaction_reason"
-                ],
+            "dto.MatchedMeter": {
                 "type": "object",
                 "properties": {
-                    "credits": {
-                        "type": "string",
-                        "description": "credits is the number of credits to debit from the wallet"
+                    "event_name": {
+                        "type": "string"
                     },
-                    "description": {
-                        "type": "string",
-                        "description": "description to add any specific details about the transaction"
+                    "meter": {
+                        "$ref": "#/components/schemas/meter.Meter"
                     },
-                    "idempotency_key": {
-                        "type": "string",
-                        "description": "idempotency_key is a unique key for the transaction"
+                    "meter_id": {
+                        "type": "string"
+                    }
+                }
+            },
+            "dto.MatchedPrice": {
+                "type": "object",
+                "properties": {
+                    "meter_id": {
+                        "type": "string"
                     },
-                    "metadata": {
-                        "$ref": "#/components/schemas/types.Metadata"
+                    "price": {
+                        "$ref": "#/components/schemas/price.Price"
                     },
-                    "transaction_reason": {
-                        "$ref": "#/components/schemas/types.TransactionReason"
+                    "price_id": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    }
+                }
+            },
+            "dto.MatchedSubscriptionLineItem": {
+                "type": "object",
+                "properties": {
+                    "end_date": {
+                        "type": "string"
+                    },
+                    "is_active_for_event": {
+                        "type": "boolean"
+                    },
+                    "price_id": {
+                        "type": "string"
+                    },
+                    "start_date": {
+                        "type": "string"
+                    },
+                    "sub_line_item_id": {
+                        "type": "string"
+                    },
+                    "subscription_id": {
+                        "type": "string"
+                    },
+                    "subscription_line_item": {
+                        "$ref": "#/components/schemas/subscription.SubscriptionLineItem"
+                    },
+                    "timestamp_within_range": {
+                        "type": "boolean"
+                    }
+                }
+            },
+            "dto.MeterMatchingResult": {
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "$ref": "#/components/schemas/errors.ErrorResponse"
+                    },
+                    "matched_meters": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.MatchedMeter"
+                        }
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.DebugTrackerStatus"
                     }
                 }
             },
@@ -19543,6 +20504,17 @@
                     "price_id": {
                         "type": "string",
                         "description": "PriceID references the plan price to override"
+                    },
+                    "price_unit_amount": {
+                        "type": "string",
+                        "description": "PriceUnitAmount is the amount of the price unit (for CUSTOM type, FLAT_FEE/PACKAGE billing models)"
+                    },
+                    "price_unit_tiers": {
+                        "type": "array",
+                        "description": "PriceUnitTiers are the tiers for the price unit (for CUSTOM type, TIERED billing model)",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.CreatePriceTier"
+                        }
                     },
                     "quantity": {
                         "type": "string",
@@ -19814,6 +20786,37 @@
                     }
                 }
             },
+            "dto.PortalSessionResponse": {
+                "type": "object",
+                "properties": {
+                    "expires_at": {
+                        "type": "string"
+                    },
+                    "token": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string"
+                    }
+                }
+            },
+            "dto.PriceLookupResult": {
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "$ref": "#/components/schemas/errors.ErrorResponse"
+                    },
+                    "matched_prices": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.MatchedPrice"
+                        }
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.DebugTrackerStatus"
+                    }
+                }
+            },
             "dto.PriceResponse": {
                 "type": "object",
                 "properties": {
@@ -19839,7 +20842,7 @@
                     },
                     "conversion_rate": {
                         "type": "string",
-                        "description": "ConversionRate is the rate of the price unit to the base currency\nFor BTC: 1 BTC = 100000000 USD"
+                        "description": "ConversionRate is the conversion rate of the price unit to the fiat currency"
                     },
                     "created_at": {
                         "type": "string"
@@ -19859,9 +20862,13 @@
                         "type": "string",
                         "description": "DisplayAmount is the formatted amount with currency symbol\nFor USD: $12.50"
                     },
+                    "display_name": {
+                        "type": "string",
+                        "description": "DisplayName is the name of the price"
+                    },
                     "display_price_unit_amount": {
                         "type": "string",
-                        "description": "DisplayPriceUnitAmount is the formatted amount with price unit symbol\nFor BTC: 0.00000001 BTC"
+                        "description": "DisplayPriceUnitAmount is the formatted amount of the price unit"
                     },
                     "end_date": {
                         "type": "string",
@@ -19906,6 +20913,11 @@
                         "type": "string",
                         "description": "MeterID is the id of the meter for usage based pricing"
                     },
+                    "min_quantity": {
+                        "type": "string",
+                        "description": "MinQuantity is the minimum quantity of the price",
+                        "nullable": true
+                    },
                     "parent_price_id": {
                         "type": "string",
                         "description": "ParentPriceID references the root price (always set for price lineage tracking)"
@@ -19913,25 +20925,21 @@
                     "plan": {
                         "$ref": "#/components/schemas/dto.PlanResponse"
                     },
-                    "plan_id": {
-                        "type": "string",
-                        "description": "TODO: Remove this once we have a proper price entity type"
-                    },
                     "price_unit": {
                         "type": "string",
-                        "description": "PriceUnit 3 digit ISO currency code in lowercase ex btc\nFor BTC: btc"
+                        "description": "PriceUnit is the code of the price unit (e.g., 'btc', 'eth')"
                     },
                     "price_unit_amount": {
                         "type": "string",
-                        "description": "PriceUnitAmount is the amount stored in price unit\nFor BTC: 0.00000001 means 0.00000001 BTC"
+                        "description": "PriceUnitAmount is the amount of the price unit"
                     },
                     "price_unit_id": {
                         "type": "string",
-                        "description": "PriceUnitID is the id of the price unit"
+                        "description": "PriceUnitID is the id of the price unit (for CUSTOM type)"
                     },
                     "price_unit_tiers": {
                         "type": "array",
-                        "description": "PriceUnitTiers are the tiers for the price unit",
+                        "description": "PriceUnitTiers are the tiers for the price unit when BillingModel is TIERED",
                         "items": {
                             "$ref": "#/components/schemas/price.PriceTier"
                         }
@@ -20023,11 +21031,11 @@
                     "id": {
                         "type": "string"
                     },
+                    "metadata": {
+                        "$ref": "#/components/schemas/types.Metadata"
+                    },
                     "name": {
                         "type": "string"
-                    },
-                    "precision": {
-                        "type": "integer"
                     },
                     "status": {
                         "$ref": "#/components/schemas/types.Status"
@@ -20131,9 +21139,6 @@
                 "type": "object",
                 "properties": {
                     "addon_association_id": {
-                        "type": "string"
-                    },
-                    "effective_from": {
                         "type": "string"
                     },
                     "reason": {
@@ -20313,6 +21318,10 @@
                     "invoice": {
                         "$ref": "#/components/schemas/dto.InvoiceResponse"
                     },
+                    "is_scheduled": {
+                        "type": "boolean",
+                        "description": "is_scheduled indicates if the change was scheduled or executed immediately"
+                    },
                     "metadata": {
                         "type": "object",
                         "additionalProperties": {
@@ -20328,6 +21337,14 @@
                     },
                     "proration_applied": {
                         "$ref": "#/components/schemas/dto.ProrationDetails"
+                    },
+                    "schedule_id": {
+                        "type": "string",
+                        "description": "schedule_id is the ID of the created schedule (only if is_scheduled=true)"
+                    },
+                    "scheduled_at": {
+                        "type": "string",
+                        "description": "scheduled_at is when the change will execute (only if is_scheduled=true)"
                     }
                 },
                 "description": "Response after successfully executing a subscription plan change"
@@ -20401,6 +21418,9 @@
                         "type": "integer",
                         "description": "billing_period_count is the billing period count for the new subscription"
                     },
+                    "change_at": {
+                        "$ref": "#/components/schemas/types.ScheduleType"
+                    },
                     "metadata": {
                         "type": "object",
                         "additionalProperties": {
@@ -20435,11 +21455,47 @@
                     }
                 }
             },
+            "dto.SubscriptionLineItemLookupResult": {
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "$ref": "#/components/schemas/errors.ErrorResponse"
+                    },
+                    "matched_line_items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.MatchedSubscriptionLineItem"
+                        }
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.DebugTrackerStatus"
+                    }
+                }
+            },
             "dto.SubscriptionLineItemResponse": {
                 "type": "object",
                 "properties": {
                     "billing_period": {
                         "$ref": "#/components/schemas/types.BillingPeriod"
+                    },
+                    "commitment_amount": {
+                        "type": "number",
+                        "description": "Commitment fields"
+                    },
+                    "commitment_overage_factor": {
+                        "type": "number"
+                    },
+                    "commitment_quantity": {
+                        "type": "number"
+                    },
+                    "commitment_true_up_enabled": {
+                        "type": "boolean"
+                    },
+                    "commitment_type": {
+                        "$ref": "#/components/schemas/types.CommitmentType"
+                    },
+                    "commitment_windowed": {
+                        "type": "boolean"
                     },
                     "created_at": {
                         "type": "string"
@@ -20887,6 +21943,197 @@
                     }
                 }
             },
+            "dto.SubscriptionResponseV2": {
+                "type": "object",
+                "properties": {
+                    "active_pause_id": {
+                        "type": "string",
+                        "description": "ActivePauseID references the current active pause configuration\nThis will be null if no pause is active or scheduled"
+                    },
+                    "billing_anchor": {
+                        "type": "string",
+                        "description": "BillingAnchor is the reference point that aligns future billing cycle dates.\nIt sets the day of week for week intervals, the day of month for month and year intervals,\nand the month of year for year intervals. The timestamp is in UTC format."
+                    },
+                    "billing_cadence": {
+                        "$ref": "#/components/schemas/types.BillingCadence"
+                    },
+                    "billing_cycle": {
+                        "$ref": "#/components/schemas/types.BillingCycle"
+                    },
+                    "billing_period": {
+                        "$ref": "#/components/schemas/types.BillingPeriod"
+                    },
+                    "billing_period_count": {
+                        "type": "integer",
+                        "description": "BillingPeriodCount is the total number units of the billing period."
+                    },
+                    "cancel_at": {
+                        "type": "string",
+                        "description": "CancelAt is the date the subscription will be canceled"
+                    },
+                    "cancel_at_period_end": {
+                        "type": "boolean",
+                        "description": "CancelAtPeriodEnd is whether the subscription was canceled at the end of the current period"
+                    },
+                    "cancelled_at": {
+                        "type": "string",
+                        "description": "CanceledAt is the date the subscription was canceled"
+                    },
+                    "collection_method": {
+                        "type": "string",
+                        "description": "CollectionMethod determines how invoices are collected"
+                    },
+                    "commitment_amount": {
+                        "type": "string",
+                        "description": "CommitmentAmount is the minimum amount a customer commits to paying for a billing period"
+                    },
+                    "coupon_associations": {
+                        "type": "array",
+                        "description": "CouponAssociations are included when \"coupon_associations\" is in expand parameter",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.CouponAssociationResponse"
+                        }
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "created_by": {
+                        "type": "string"
+                    },
+                    "credit_grants": {
+                        "type": "array",
+                        "description": "CreditGrants are included when \"credit_grants\" is in expand parameter",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.CreditGrantResponse"
+                        }
+                    },
+                    "currency": {
+                        "type": "string",
+                        "description": "Currency is the currency of the subscription in lowercase 3 digit ISO codes"
+                    },
+                    "current_period_end": {
+                        "type": "string",
+                        "description": "CurrentPeriodEnd is the end of the current period that the subscription has been invoiced for.\nAt the end of this period, a new invoice will be created."
+                    },
+                    "current_period_start": {
+                        "type": "string",
+                        "description": "CurrentPeriodStart is the end of the current period that the subscription has been invoiced for.\nAt the end of this period, a new invoice will be created."
+                    },
+                    "customer": {
+                        "$ref": "#/components/schemas/dto.CustomerResponse"
+                    },
+                    "customer_id": {
+                        "type": "string",
+                        "description": "CustomerID is the identifier for the customer in our system"
+                    },
+                    "customer_timezone": {
+                        "type": "string"
+                    },
+                    "enable_true_up": {
+                        "type": "boolean"
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "description": "EndDate is the end date of the subscription"
+                    },
+                    "environment_id": {
+                        "type": "string",
+                        "description": "EnvironmentID is the environment identifier for the subscription"
+                    },
+                    "gateway_payment_method_id": {
+                        "type": "string",
+                        "description": "GatewayPaymentMethodID is the gateway payment method ID for this subscription"
+                    },
+                    "id": {
+                        "type": "string",
+                        "description": "ID is the unique identifier for the subscription"
+                    },
+                    "invoicing_customer_id": {
+                        "type": "string",
+                        "description": "InvoicingCustomerID is the customer ID to use for invoicing\nThis can differ from the subscription customer (e.g., parent company invoicing for child company)"
+                    },
+                    "line_items": {
+                        "type": "array",
+                        "description": "LineItems is expanded only if \"subscription_line_items\" is in expand parameter\nEach line item can optionally include expanded price data",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.SubscriptionLineItemResponse"
+                        }
+                    },
+                    "lookup_key": {
+                        "type": "string",
+                        "description": "LookupKey is the key used to lookup the subscription in our system"
+                    },
+                    "metadata": {
+                        "$ref": "#/components/schemas/types.Metadata"
+                    },
+                    "overage_factor": {
+                        "type": "string",
+                        "description": "OverageFactor is a multiplier applied to usage beyond the commitment amount"
+                    },
+                    "pause_status": {
+                        "$ref": "#/components/schemas/types.PauseStatus"
+                    },
+                    "pauses": {
+                        "type": "array",
+                        "description": "Pauses are included when subscription has pause status",
+                        "items": {
+                            "$ref": "#/components/schemas/subscription.SubscriptionPause"
+                        }
+                    },
+                    "payment_behavior": {
+                        "type": "string",
+                        "description": "PaymentBehavior determines how subscription payments are handled"
+                    },
+                    "phases": {
+                        "type": "array",
+                        "description": "Phases are included when \"phases\" is in expand parameter",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.SubscriptionPhaseResponse"
+                        }
+                    },
+                    "plan": {
+                        "$ref": "#/components/schemas/dto.PlanResponse"
+                    },
+                    "plan_id": {
+                        "type": "string",
+                        "description": "PlanID is the identifier for the plan in our system"
+                    },
+                    "proration_behavior": {
+                        "$ref": "#/components/schemas/types.ProrationBehavior"
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "description": "StartDate is the start date of the subscription"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.Status"
+                    },
+                    "subscription_status": {
+                        "$ref": "#/components/schemas/types.SubscriptionStatus"
+                    },
+                    "tenant_id": {
+                        "type": "string"
+                    },
+                    "trial_end": {
+                        "type": "string",
+                        "description": "TrialEnd is the end date of the trial period"
+                    },
+                    "trial_start": {
+                        "type": "string",
+                        "description": "TrialStart is the start date of the trial period"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "updated_by": {
+                        "type": "string"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "description": "Version is used for optimistic locking"
+                    }
+                }
+            },
             "dto.SubscriptionSummary": {
                 "type": "object",
                 "properties": {
@@ -20957,6 +22204,14 @@
                     },
                     "quantity": {
                         "type": "number"
+                    }
+                }
+            },
+            "dto.SuccessResponse": {
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string"
                     }
                 }
             },
@@ -21705,235 +22960,15 @@
                     }
                 }
             },
-            "dto.UpdatePlanCreditGrantRequest": {
-                "required": [
-                    "cadence",
-                    "credits",
-                    "name",
-                    "scope"
-                ],
-                "type": "object",
-                "properties": {
-                    "cadence": {
-                        "$ref": "#/components/schemas/types.CreditGrantCadence"
-                    },
-                    "credits": {
-                        "type": "string"
-                    },
-                    "expiration_duration": {
-                        "type": "integer"
-                    },
-                    "expiration_duration_unit": {
-                        "$ref": "#/components/schemas/types.CreditGrantExpiryDurationUnit"
-                    },
-                    "expiration_type": {
-                        "$ref": "#/components/schemas/types.CreditGrantExpiryType"
-                    },
-                    "id": {
-                        "type": "string",
-                        "description": "The ID of the credit grant to update (present if the credit grant is being updated)"
-                    },
-                    "metadata": {
-                        "$ref": "#/components/schemas/types.Metadata"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "period": {
-                        "$ref": "#/components/schemas/types.CreditGrantPeriod"
-                    },
-                    "period_count": {
-                        "type": "integer"
-                    },
-                    "plan_id": {
-                        "type": "string"
-                    },
-                    "priority": {
-                        "type": "integer"
-                    },
-                    "scope": {
-                        "$ref": "#/components/schemas/types.CreditGrantScope"
-                    },
-                    "subscription_id": {
-                        "type": "string"
-                    }
-                }
-            },
-            "dto.UpdatePlanEntitlementRequest": {
-                "required": [
-                    "feature_id",
-                    "feature_type"
-                ],
-                "type": "object",
-                "properties": {
-                    "entity_id": {
-                        "type": "string"
-                    },
-                    "entity_type": {
-                        "$ref": "#/components/schemas/types.EntitlementEntityType"
-                    },
-                    "feature_id": {
-                        "type": "string"
-                    },
-                    "feature_type": {
-                        "$ref": "#/components/schemas/types.FeatureType"
-                    },
-                    "id": {
-                        "type": "string",
-                        "description": "The ID of the entitlement to update (present if the entitlement is being updated)"
-                    },
-                    "is_enabled": {
-                        "type": "boolean"
-                    },
-                    "is_soft_limit": {
-                        "type": "boolean"
-                    },
-                    "parent_entitlement_id": {
-                        "type": "string"
-                    },
-                    "plan_id": {
-                        "type": "string"
-                    },
-                    "static_value": {
-                        "type": "string"
-                    },
-                    "usage_limit": {
-                        "type": "integer"
-                    },
-                    "usage_reset_period": {
-                        "$ref": "#/components/schemas/types.EntitlementUsageResetPeriod"
-                    }
-                }
-            },
-            "dto.UpdatePlanPriceRequest": {
-                "required": [
-                    "billing_cadence",
-                    "billing_model",
-                    "billing_period",
-                    "currency",
-                    "invoice_cadence",
-                    "price_unit_type",
-                    "type"
-                ],
-                "type": "object",
-                "properties": {
-                    "amount": {
-                        "type": "string"
-                    },
-                    "billing_cadence": {
-                        "$ref": "#/components/schemas/types.BillingCadence"
-                    },
-                    "billing_model": {
-                        "$ref": "#/components/schemas/types.BillingModel"
-                    },
-                    "billing_period": {
-                        "$ref": "#/components/schemas/types.BillingPeriod"
-                    },
-                    "billing_period_count": {
-                        "type": "integer"
-                    },
-                    "currency": {
-                        "type": "string"
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "end_date": {
-                        "type": "string"
-                    },
-                    "entity_id": {
-                        "type": "string",
-                        "description": "TODO: this will be required in the future as we will not allow prices to be created without an entity id"
-                    },
-                    "entity_type": {
-                        "$ref": "#/components/schemas/types.PriceEntityType"
-                    },
-                    "filter_values": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "group_id": {
-                        "type": "string",
-                        "description": "GroupID is the id of the group to add the price to"
-                    },
-                    "id": {
-                        "type": "string",
-                        "description": "The ID of the price to update (present if the price is being updated)"
-                    },
-                    "invoice_cadence": {
-                        "$ref": "#/components/schemas/types.InvoiceCadence"
-                    },
-                    "lookup_key": {
-                        "type": "string"
-                    },
-                    "metadata": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    },
-                    "meter_id": {
-                        "type": "string"
-                    },
-                    "plan_id": {
-                        "type": "string",
-                        "description": "TODO: This is deprecated and will be removed in the future"
-                    },
-                    "price_unit_config": {
-                        "$ref": "#/components/schemas/dto.PriceUnitConfig"
-                    },
-                    "price_unit_type": {
-                        "$ref": "#/components/schemas/types.PriceUnitType"
-                    },
-                    "start_date": {
-                        "type": "string"
-                    },
-                    "tier_mode": {
-                        "$ref": "#/components/schemas/types.BillingTier"
-                    },
-                    "tiers": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/dto.CreatePriceTier"
-                        }
-                    },
-                    "transform_quantity": {
-                        "$ref": "#/components/schemas/price.TransformQuantity"
-                    },
-                    "trial_period": {
-                        "type": "integer"
-                    },
-                    "type": {
-                        "$ref": "#/components/schemas/types.PriceType"
-                    }
-                }
-            },
             "dto.UpdatePlanRequest": {
                 "type": "object",
                 "properties": {
-                    "credit_grants": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/dto.UpdatePlanCreditGrantRequest"
-                        }
-                    },
                     "description": {
                         "type": "string"
                     },
                     "display_order": {
                         "type": "integer"
                     },
-                    "entitlements": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/dto.UpdatePlanEntitlementRequest"
-                        }
-                    },
                     "lookup_key": {
                         "type": "string"
                     },
@@ -21942,12 +22977,6 @@
                     },
                     "name": {
                         "type": "string"
-                    },
-                    "prices": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/dto.UpdatePlanPriceRequest"
-                        }
                     }
                 }
             },
@@ -21962,6 +22991,9 @@
                         "$ref": "#/components/schemas/types.BillingModel"
                     },
                     "description": {
+                        "type": "string"
+                    },
+                    "display_name": {
                         "type": "string"
                     },
                     "effective_from": {
@@ -21979,6 +23011,17 @@
                         "type": "object",
                         "additionalProperties": {
                             "type": "string"
+                        }
+                    },
+                    "price_unit_amount": {
+                        "type": "string",
+                        "description": "PriceUnitAmount is the price unit amount (for CUSTOM price unit type, FLAT_FEE/PACKAGE billing models)"
+                    },
+                    "price_unit_tiers": {
+                        "type": "array",
+                        "description": "PriceUnitTiers are the price unit tiers (for CUSTOM price unit type, TIERED billing model)",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.CreatePriceTier"
                         }
                     },
                     "tier_mode": {
@@ -21999,19 +23042,10 @@
             "dto.UpdatePriceUnitRequest": {
                 "type": "object",
                 "properties": {
-                    "conversion_rate": {
-                        "type": "string"
+                    "metadata": {
+                        "$ref": "#/components/schemas/types.Metadata"
                     },
                     "name": {
-                        "type": "string"
-                    },
-                    "precision": {
-                        "maximum": 8,
-                        "minimum": 0,
-                        "type": "integer"
-                    },
-                    "symbol": {
-                        "maxLength": 10,
                         "type": "string"
                     }
                 }
@@ -22036,6 +23070,25 @@
                     },
                     "billing_model": {
                         "$ref": "#/components/schemas/types.BillingModel"
+                    },
+                    "commitment_amount": {
+                        "type": "number",
+                        "description": "Commitment fields"
+                    },
+                    "commitment_overage_factor": {
+                        "type": "number"
+                    },
+                    "commitment_quantity": {
+                        "type": "number"
+                    },
+                    "commitment_true_up_enabled": {
+                        "type": "boolean"
+                    },
+                    "commitment_type": {
+                        "$ref": "#/components/schemas/types.CommitmentType"
+                    },
+                    "commitment_windowed": {
+                        "type": "boolean"
                     },
                     "effective_from": {
                         "type": "string",
@@ -22124,14 +23177,8 @@
                     "alert_enabled": {
                         "type": "boolean"
                     },
-                    "auto_topup_amount": {
-                        "type": "string"
-                    },
-                    "auto_topup_min_balance": {
-                        "type": "string"
-                    },
-                    "auto_topup_trigger": {
-                        "$ref": "#/components/schemas/types.AutoTopupTrigger"
+                    "auto_topup": {
+                        "$ref": "#/components/schemas/types.AutoTopup"
                     },
                     "config": {
                         "$ref": "#/components/schemas/types.WalletConfig"
@@ -22158,6 +23205,9 @@
                     },
                     "aggregation_type": {
                         "$ref": "#/components/schemas/types.AggregationType"
+                    },
+                    "commitment_info": {
+                        "$ref": "#/components/schemas/types.CommitmentInfo"
                     },
                     "currency": {
                         "type": "string"
@@ -22214,6 +23264,13 @@
                     "source": {
                         "type": "string"
                     },
+                    "sources": {
+                        "type": "array",
+                        "description": "List of sources when not grouping by source",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
                     "sub_line_item_id": {
                         "type": "string",
                         "description": "Subscription line item ID"
@@ -22236,12 +23293,25 @@
                     },
                     "unit_plural": {
                         "type": "string"
+                    },
+                    "window_size": {
+                        "$ref": "#/components/schemas/types.WindowSize"
                     }
                 }
             },
             "dto.UsageAnalyticPoint": {
                 "type": "object",
                 "properties": {
+                    "computed_commitment_utilized_amount": {
+                        "type": "string",
+                        "description": "Commitment breakdown (only populated for windowed commitments)"
+                    },
+                    "computed_overage_amount": {
+                        "type": "string"
+                    },
+                    "computed_true_up_amount": {
+                        "type": "string"
+                    },
                     "cost": {
                         "type": "string"
                     },
@@ -22332,14 +23402,8 @@
                     "alert_state": {
                         "type": "string"
                     },
-                    "auto_topup_amount": {
-                        "type": "string"
-                    },
-                    "auto_topup_min_balance": {
-                        "type": "string"
-                    },
-                    "auto_topup_trigger": {
-                        "$ref": "#/components/schemas/types.AutoTopupTrigger"
+                    "auto_topup": {
+                        "$ref": "#/components/schemas/types.AutoTopup"
                     },
                     "balance": {
                         "type": "string"
@@ -22351,7 +23415,8 @@
                         "$ref": "#/components/schemas/types.WalletConfig"
                     },
                     "conversion_rate": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "amount in the currency =  number of credits * conversion_rate\nex if conversion_rate is 1, then 1 USD = 1 credit\nex if conversion_rate is 2, then 1 USD = 0.5 credits\nex if conversion_rate is 0.5, then 1 USD = 2 credits"
                     },
                     "created_at": {
                         "type": "string"
@@ -22361,6 +23426,9 @@
                     },
                     "credit_balance": {
                         "type": "string"
+                    },
+                    "credits_available_breakdown": {
+                        "$ref": "#/components/schemas/types.CreditBreakdown"
                     },
                     "currency": {
                         "type": "string"
@@ -22398,6 +23466,10 @@
                     "tenant_id": {
                         "type": "string"
                     },
+                    "topup_conversion_rate": {
+                        "type": "string",
+                        "description": "topup_conversion_rate is the conversion rate for the topup to the currency\nex if topup_conversion_rate is 1, then 1 USD = 1 credit\nex if topup_conversion_rate is 2, then 1 USD = 0.5 credits\nex if topup_conversion_rate is 0.5, then 1 USD = 2 credits"
+                    },
                     "unpaid_invoices_amount": {
                         "type": "string"
                     },
@@ -22427,14 +23499,8 @@
                     "alert_state": {
                         "type": "string"
                     },
-                    "auto_topup_amount": {
-                        "type": "string"
-                    },
-                    "auto_topup_min_balance": {
-                        "type": "string"
-                    },
-                    "auto_topup_trigger": {
-                        "$ref": "#/components/schemas/types.AutoTopupTrigger"
+                    "auto_topup": {
+                        "$ref": "#/components/schemas/types.AutoTopup"
                     },
                     "balance": {
                         "type": "string"
@@ -22443,13 +23509,20 @@
                         "$ref": "#/components/schemas/types.WalletConfig"
                     },
                     "conversion_rate": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "amount in the currency =  number of credits * conversion_rate\nex if conversion_rate is 1, then 1 USD = 1 credit\nex if conversion_rate is 2, then 1 USD = 0.5 credits\nex if conversion_rate is 0.5, then 1 USD = 2 credits"
                     },
                     "created_at": {
                         "type": "string"
                     },
+                    "created_by": {
+                        "type": "string"
+                    },
                     "credit_balance": {
                         "type": "string"
+                    },
+                    "credits_available_breakdown": {
+                        "$ref": "#/components/schemas/types.CreditBreakdown"
                     },
                     "currency": {
                         "type": "string"
@@ -22458,6 +23531,9 @@
                         "type": "string"
                     },
                     "description": {
+                        "type": "string"
+                    },
+                    "environment_id": {
                         "type": "string"
                     },
                     "id": {
@@ -22469,7 +23545,20 @@
                     "name": {
                         "type": "string"
                     },
+                    "status": {
+                        "$ref": "#/components/schemas/types.Status"
+                    },
+                    "tenant_id": {
+                        "type": "string"
+                    },
+                    "topup_conversion_rate": {
+                        "type": "string",
+                        "description": "topup_conversion_rate is the conversion rate for the topup to the currency\nex if topup_conversion_rate is 1, then 1 USD = 1 credit\nex if topup_conversion_rate is 2, then 1 USD = 0.5 credits\nex if topup_conversion_rate is 0.5, then 1 USD = 2 credits"
+                    },
                     "updated_at": {
+                        "type": "string"
+                    },
+                    "updated_by": {
                         "type": "string"
                     },
                     "wallet_status": {
@@ -22486,8 +23575,18 @@
                     "amount": {
                         "type": "string"
                     },
+                    "conversion_rate": {
+                        "type": "string",
+                        "description": "conversion_rate is the conversion rate for the transaction to the currency"
+                    },
                     "created_at": {
                         "type": "string"
+                    },
+                    "created_by": {
+                        "type": "string"
+                    },
+                    "created_by_user": {
+                        "$ref": "#/components/schemas/dto.UserResponse"
                     },
                     "credit_amount": {
                         "type": "string"
@@ -22501,13 +23600,28 @@
                     "credits_available": {
                         "type": "string"
                     },
+                    "currency": {
+                        "type": "string"
+                    },
+                    "customer": {
+                        "$ref": "#/components/schemas/dto.CustomerResponse"
+                    },
+                    "customer_id": {
+                        "type": "string"
+                    },
                     "description": {
+                        "type": "string"
+                    },
+                    "environment_id": {
                         "type": "string"
                     },
                     "expiry_date": {
                         "type": "string"
                     },
                     "id": {
+                        "type": "string"
+                    },
+                    "idempotency_key": {
                         "type": "string"
                     },
                     "metadata": {
@@ -22522,6 +23636,16 @@
                     "reference_type": {
                         "$ref": "#/components/schemas/types.WalletTxReferenceType"
                     },
+                    "status": {
+                        "$ref": "#/components/schemas/types.Status"
+                    },
+                    "tenant_id": {
+                        "type": "string"
+                    },
+                    "topup_conversion_rate": {
+                        "type": "string",
+                        "description": "topup_conversion_rate is the conversion rate for the topup to the currency"
+                    },
                     "transaction_reason": {
                         "$ref": "#/components/schemas/types.TransactionReason"
                     },
@@ -22529,10 +23653,16 @@
                         "$ref": "#/components/schemas/types.TransactionStatus"
                     },
                     "type": {
-                        "type": "string"
+                        "$ref": "#/components/schemas/types.TransactionType"
                     },
                     "updated_at": {
                         "type": "string"
+                    },
+                    "updated_by": {
+                        "type": "string"
+                    },
+                    "wallet": {
+                        "$ref": "#/components/schemas/dto.WalletResponse"
                     },
                     "wallet_id": {
                         "type": "string"
@@ -22542,12 +23672,6 @@
             "errors.ErrorDetail": {
                 "type": "object",
                 "properties": {
-                    "details": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "object"
-                        }
-                    },
                     "internal_error": {
                         "type": "string"
                     },
@@ -22565,12 +23689,6 @@
                     "success": {
                         "type": "boolean"
                     }
-                }
-            },
-            "gin.H": {
-                "type": "object",
-                "additionalProperties": {
-                    "type": "object"
                 }
             },
             "github_com_flexprice_flexprice_internal_domain_addon.Addon": {
@@ -23015,8 +24133,7 @@
                         "description": "Divide quantity by this number"
                     },
                     "round": {
-                        "type": "string",
-                        "description": "up or down"
+                        "$ref": "#/components/schemas/types.RoundType"
                     }
                 }
             },
@@ -23042,7 +24159,7 @@
                     },
                     "conversion_rate": {
                         "type": "string",
-                        "description": "ConversionRate is the rate of the price unit to the base currency\nFor BTC: 1 BTC = 100000000 USD"
+                        "description": "ConversionRate is the conversion rate of the price unit to the fiat currency"
                     },
                     "created_at": {
                         "type": "string"
@@ -23062,9 +24179,13 @@
                         "type": "string",
                         "description": "DisplayAmount is the formatted amount with currency symbol\nFor USD: $12.50"
                     },
+                    "display_name": {
+                        "type": "string",
+                        "description": "DisplayName is the name of the price"
+                    },
                     "display_price_unit_amount": {
                         "type": "string",
-                        "description": "DisplayPriceUnitAmount is the formatted amount with price unit symbol\nFor BTC: 0.00000001 BTC"
+                        "description": "DisplayPriceUnitAmount is the formatted amount of the price unit"
                     },
                     "end_date": {
                         "type": "string",
@@ -23103,25 +24224,30 @@
                         "type": "string",
                         "description": "MeterID is the id of the meter for usage based pricing"
                     },
+                    "min_quantity": {
+                        "type": "string",
+                        "description": "MinQuantity is the minimum quantity of the price",
+                        "nullable": true
+                    },
                     "parent_price_id": {
                         "type": "string",
                         "description": "ParentPriceID references the root price (always set for price lineage tracking)"
                     },
                     "price_unit": {
                         "type": "string",
-                        "description": "PriceUnit 3 digit ISO currency code in lowercase ex btc\nFor BTC: btc"
+                        "description": "PriceUnit is the code of the price unit (e.g., 'btc', 'eth')"
                     },
                     "price_unit_amount": {
                         "type": "string",
-                        "description": "PriceUnitAmount is the amount stored in price unit\nFor BTC: 0.00000001 means 0.00000001 BTC"
+                        "description": "PriceUnitAmount is the amount of the price unit"
                     },
                     "price_unit_id": {
                         "type": "string",
-                        "description": "PriceUnitID is the id of the price unit"
+                        "description": "PriceUnitID is the id of the price unit (for CUSTOM type)"
                     },
                     "price_unit_tiers": {
                         "type": "array",
-                        "description": "PriceUnitTiers are the tiers for the price unit",
+                        "description": "PriceUnitTiers are the tiers for the price unit when BillingModel is TIERED",
                         "items": {
                             "$ref": "#/components/schemas/price.PriceTier"
                         }
@@ -23191,44 +24317,7 @@
                         "description": "Divide quantity by this number"
                     },
                     "round": {
-                        "type": "string",
-                        "description": "up or down"
-                    }
-                }
-            },
-            "priceunit.PriceUnitFilter": {
-                "type": "object",
-                "properties": {
-                    "environment_id": {
-                        "type": "string",
-                        "description": "EnvironmentID filters by specific environment ID"
-                    },
-                    "filters": {
-                        "type": "array",
-                        "description": "Filters allows complex filtering based on multiple fields",
-                        "items": {
-                            "$ref": "#/components/schemas/types.FilterCondition"
-                        }
-                    },
-                    "queryFilter": {
-                        "$ref": "#/components/schemas/types.QueryFilter"
-                    },
-                    "sort": {
-                        "type": "array",
-                        "description": "Sort allows sorting by multiple fields",
-                        "items": {
-                            "$ref": "#/components/schemas/types.SortCondition"
-                        }
-                    },
-                    "status": {
-                        "$ref": "#/components/schemas/types.Status"
-                    },
-                    "tenant_id": {
-                        "type": "string",
-                        "description": "TenantID filters by specific tenant ID"
-                    },
-                    "timeRangeFilter": {
-                        "$ref": "#/components/schemas/types.TimeRangeFilter"
+                        "$ref": "#/components/schemas/types.RoundType"
                     }
                 }
             },
@@ -23237,6 +24326,25 @@
                 "properties": {
                     "billing_period": {
                         "$ref": "#/components/schemas/types.BillingPeriod"
+                    },
+                    "commitment_amount": {
+                        "type": "number",
+                        "description": "Commitment fields"
+                    },
+                    "commitment_overage_factor": {
+                        "type": "number"
+                    },
+                    "commitment_quantity": {
+                        "type": "number"
+                    },
+                    "commitment_true_up_enabled": {
+                        "type": "boolean"
+                    },
+                    "commitment_type": {
+                        "$ref": "#/components/schemas/types.CommitmentType"
+                    },
+                    "commitment_windowed": {
+                        "type": "boolean"
                     },
                     "created_at": {
                         "type": "string"
@@ -23766,16 +24874,22 @@
                     "ApplicationStatusCancelled"
                 ]
             },
-            "types.AutoTopupTrigger": {
-                "type": "string",
-                "enum": [
-                    "disabled",
-                    "balance_below_threshold"
-                ],
-                "x-enum-varnames": [
-                    "AutoTopupTriggerDisabled",
-                    "AutoTopupTriggerBalanceBelowThreshold"
-                ]
+            "types.AutoTopup": {
+                "type": "object",
+                "properties": {
+                    "amount": {
+                        "type": "number"
+                    },
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "invoicing": {
+                        "type": "boolean"
+                    },
+                    "threshold": {
+                        "type": "number"
+                    }
+                }
             },
             "types.BillingCadence": {
                 "type": "string",
@@ -23889,6 +25003,51 @@
                     "CollectionMethodSendInvoice"
                 ]
             },
+            "types.CommitmentInfo": {
+                "type": "object",
+                "properties": {
+                    "amount": {
+                        "type": "string"
+                    },
+                    "computed_commitment_utilized_amount": {
+                        "type": "string"
+                    },
+                    "computed_overage_amount": {
+                        "type": "string"
+                    },
+                    "computed_true_up_amount": {
+                        "type": "string",
+                        "description": "total_cost = computed_commitment_utilized_amount + computed_overage_amount + computed_true_up_amount"
+                    },
+                    "is_windowed": {
+                        "type": "boolean"
+                    },
+                    "overage_factor": {
+                        "type": "string"
+                    },
+                    "quantity": {
+                        "type": "string",
+                        "description": "Only used for quantity-based commitments"
+                    },
+                    "true_up_enabled": {
+                        "type": "boolean"
+                    },
+                    "type": {
+                        "$ref": "#/components/schemas/types.CommitmentType"
+                    }
+                }
+            },
+            "types.CommitmentType": {
+                "type": "string",
+                "enum": [
+                    "amount",
+                    "quantity"
+                ],
+                "x-enum-varnames": [
+                    "COMMITMENT_TYPE_AMOUNT",
+                    "COMMITMENT_TYPE_QUANTITY"
+                ]
+            },
             "types.ConnectionFilter": {
                 "type": "object",
                 "properties": {
@@ -23955,6 +25114,9 @@
                     "hubspot": {
                         "$ref": "#/components/schemas/types.HubSpotConnectionMetadata"
                     },
+                    "nomod": {
+                        "$ref": "#/components/schemas/types.NomodConnectionMetadata"
+                    },
                     "quickbooks": {
                         "$ref": "#/components/schemas/types.QuickBooksConnectionMetadata"
                     },
@@ -24003,6 +25165,17 @@
                     "CouponTypeFixed",
                     "CouponTypePercentage"
                 ]
+            },
+            "types.CreditBreakdown": {
+                "type": "object",
+                "properties": {
+                    "free": {
+                        "type": "string"
+                    },
+                    "purchased": {
+                        "type": "string"
+                    }
+                }
             },
             "types.CreditGrantApplicationReason": {
                 "type": "string",
@@ -24215,6 +25388,21 @@
                     "DataTypeArray"
                 ]
             },
+            "types.DebugTrackerStatus": {
+                "type": "string",
+                "enum": [
+                    "unprocessed",
+                    "not_found",
+                    "found",
+                    "error"
+                ],
+                "x-enum-varnames": [
+                    "DebugTrackerStatusUnprocessed",
+                    "DebugTrackerStatusNotFound",
+                    "DebugTrackerStatusFound",
+                    "DebugTrackerStatusError"
+                ]
+            },
             "types.EntitlementEntityType": {
                 "type": "string",
                 "enum": [
@@ -24340,12 +25528,53 @@
                 "enum": [
                     "EVENTS",
                     "PRICES",
-                    "CUSTOMERS"
+                    "CUSTOMERS",
+                    "FEATURES"
                 ],
                 "x-enum-varnames": [
                     "EntityTypeEvents",
                     "EntityTypePrices",
-                    "EntityTypeCustomers"
+                    "EntityTypeCustomers",
+                    "EntityTypeFeatures"
+                ]
+            },
+            "types.EventProcessingStatusType": {
+                "type": "string",
+                "enum": [
+                    "processed",
+                    "processing",
+                    "failed"
+                ],
+                "x-enum-varnames": [
+                    "EventProcessingStatusTypeProcessed",
+                    "EventProcessingStatusTypeProcessing",
+                    "EventProcessingStatusTypeFailed"
+                ]
+            },
+            "types.FailurePoint": {
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "$ref": "#/components/schemas/errors.ErrorResponse"
+                    },
+                    "failure_point_type": {
+                        "$ref": "#/components/schemas/types.FailurePointType"
+                    }
+                }
+            },
+            "types.FailurePointType": {
+                "type": "string",
+                "enum": [
+                    "customer_lookup",
+                    "meter_lookup",
+                    "price_lookup",
+                    "subscription_line_item_lookup"
+                ],
+                "x-enum-varnames": [
+                    "FailurePointTypeCustomerLookup",
+                    "FailurePointTypeMeterLookup",
+                    "FailurePointTypePriceLookup",
+                    "FailurePointTypeSubscriptionLineItemLookup"
                 ]
             },
             "types.FeatureFilter": {
@@ -24443,6 +25672,29 @@
                     "FileTypeJSON"
                 ]
             },
+            "types.Filter": {
+                "type": "object",
+                "properties": {
+                    "expand": {
+                        "type": "string"
+                    },
+                    "limit": {
+                        "type": "integer"
+                    },
+                    "offset": {
+                        "type": "integer"
+                    },
+                    "order": {
+                        "type": "string"
+                    },
+                    "sort": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.Status"
+                    }
+                }
+            },
             "types.FilterCondition": {
                 "type": "object",
                 "properties": {
@@ -24465,6 +25717,7 @@
                 "enum": [
                     "eq",
                     "contains",
+                    "not_contains",
                     "gt",
                     "lt",
                     "in",
@@ -24475,6 +25728,7 @@
                 "x-enum-varnames": [
                     "EQUAL",
                     "CONTAINS",
+                    "NOT_CONTAINS",
                     "GREATER_THAN",
                     "LESS_THAN",
                     "IN",
@@ -24694,10 +25948,37 @@
                     "InvoiceTypeCredit"
                 ]
             },
+            "types.ListResponse-dto_WalletResponse": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.WalletResponse"
+                        }
+                    },
+                    "pagination": {
+                        "$ref": "#/components/schemas/types.PaginationResponse"
+                    }
+                }
+            },
             "types.Metadata": {
                 "type": "object",
                 "additionalProperties": {
                     "type": "string"
+                }
+            },
+            "types.NomodConnectionMetadata": {
+                "type": "object",
+                "properties": {
+                    "api_key": {
+                        "type": "string",
+                        "description": "Nomod API Key (encrypted)"
+                    },
+                    "webhook_secret": {
+                        "type": "string",
+                        "description": "Basic Auth secret for webhooks (encrypted, optional)"
+                    }
                 }
             },
             "types.PaginationResponse": {
@@ -24772,11 +26053,13 @@
                 "type": "string",
                 "enum": [
                     "stripe",
-                    "razorpay"
+                    "razorpay",
+                    "nomod"
                 ],
                 "x-enum-varnames": [
                     "PaymentGatewayTypeStripe",
-                    "PaymentGatewayTypeRazorpay"
+                    "PaymentGatewayTypeRazorpay",
+                    "PaymentGatewayTypeNomod"
                 ]
             },
             "types.PaymentMethodType": {
@@ -25052,6 +26335,17 @@
                     "ResumeModeAuto"
                 ]
             },
+            "types.RoundType": {
+                "type": "string",
+                "enum": [
+                    "up",
+                    "down"
+                ],
+                "x-enum-varnames": [
+                    "ROUND_UP",
+                    "ROUND_DOWN"
+                ]
+            },
             "types.S3CompressionType": {
                 "type": "string",
                 "enum": [
@@ -25093,6 +26387,33 @@
                     "S3EncryptionTypeAwsKmsDsse"
                 ]
             },
+            "types.S3ExportConfig": {
+                "type": "object",
+                "properties": {
+                    "bucket": {
+                        "type": "string",
+                        "description": "S3 bucket name"
+                    },
+                    "compression": {
+                        "$ref": "#/components/schemas/types.S3CompressionType"
+                    },
+                    "encryption": {
+                        "$ref": "#/components/schemas/types.S3EncryptionType"
+                    },
+                    "is_flexprice_managed": {
+                        "type": "boolean",
+                        "description": "If true, use Flexprice-managed S3 credentials instead of user-provided"
+                    },
+                    "key_prefix": {
+                        "type": "string",
+                        "description": "Optional prefix for S3 keys (e.g., \"flexprice-exports/\")"
+                    },
+                    "region": {
+                        "type": "string",
+                        "description": "AWS region (e.g., \"us-west-2\")"
+                    }
+                }
+            },
             "types.S3JobConfig": {
                 "type": "object",
                 "properties": {
@@ -25124,22 +26445,36 @@
                     }
                 }
             },
+            "types.ScheduleType": {
+                "type": "string",
+                "enum": [
+                    "immediate",
+                    "end_of_period"
+                ],
+                "x-enum-varnames": [
+                    "ScheduleTypeImmediate",
+                    "ScheduleTypePeriodEnd"
+                ]
+            },
             "types.ScheduledTaskEntityType": {
                 "type": "string",
                 "enum": [
                     "events",
                     "invoice",
-                    "credit_topups"
+                    "credit_topups",
+                    "credit_usage"
                 ],
                 "x-enum-varnames": [
                     "ScheduledTaskEntityTypeEvents",
                     "ScheduledTaskEntityTypeInvoice",
-                    "ScheduledTaskEntityTypeCreditTopups"
+                    "ScheduledTaskEntityTypeCreditTopups",
+                    "ScheduledTaskEntityTypeCreditUsage"
                 ]
             },
             "types.ScheduledTaskInterval": {
                 "type": "string",
                 "enum": [
+                    "15MIN",
                     "custom",
                     "hourly",
                     "daily"
@@ -25148,11 +26483,13 @@
                     "ScheduledTaskIntervalCustom": "10 minutes for testing"
                 },
                 "x-enum-descriptions": [
+                    "",
                     "10 minutes for testing",
                     "",
                     ""
                 ],
                 "x-enum-varnames": [
+                    "ScheduledTaskIntervalEvery15Minutes",
                     "ScheduledTaskIntervalCustom",
                     "ScheduledTaskIntervalHourly",
                     "ScheduledTaskIntervalDaily"
@@ -25167,7 +26504,8 @@
                     "hubspot",
                     "razorpay",
                     "chargebee",
-                    "quickbooks"
+                    "quickbooks",
+                    "nomod"
                 ],
                 "x-enum-varnames": [
                     "SecretProviderFlexPrice",
@@ -25176,7 +26514,8 @@
                     "SecretProviderHubSpot",
                     "SecretProviderRazorpay",
                     "SecretProviderChargebee",
-                    "SecretProviderQuickBooks"
+                    "SecretProviderQuickBooks",
+                    "SecretProviderNomod"
                 ]
             },
             "types.SecretType": {
@@ -25374,10 +26713,7 @@
                     "paused",
                     "cancelled",
                     "incomplete",
-                    "incomplete_expired",
-                    "past_due",
                     "trialing",
-                    "unpaid",
                     "draft"
                 ],
                 "x-enum-varnames": [
@@ -25385,10 +26721,7 @@
                     "SubscriptionStatusPaused",
                     "SubscriptionStatusCancelled",
                     "SubscriptionStatusIncomplete",
-                    "SubscriptionStatusIncompleteExpired",
-                    "SubscriptionStatusPastDue",
                     "SubscriptionStatusTrialing",
-                    "SubscriptionStatusUnpaid",
                     "SubscriptionStatusDraft"
                 ]
             },
@@ -25409,6 +26742,9 @@
                     },
                     "quote": {
                         "$ref": "#/components/schemas/types.EntitySyncConfig"
+                    },
+                    "s3": {
+                        "$ref": "#/components/schemas/types.S3ExportConfig"
                     },
                     "subscription": {
                         "$ref": "#/components/schemas/types.EntitySyncConfig"
@@ -25440,66 +26776,6 @@
                     "TaskTypeImport",
                     "TaskTypeExport"
                 ]
-            },
-            "types.TaxAssociationFilter": {
-                "type": "object",
-                "properties": {
-                    "auto_apply": {
-                        "type": "boolean"
-                    },
-                    "currency": {
-                        "type": "string"
-                    },
-                    "end_time": {
-                        "type": "string"
-                    },
-                    "entity_id": {
-                        "type": "string"
-                    },
-                    "entity_type": {
-                        "$ref": "#/components/schemas/types.TaxRateEntityType"
-                    },
-                    "expand": {
-                        "type": "string"
-                    },
-                    "limit": {
-                        "maximum": 1000,
-                        "minimum": 1,
-                        "type": "integer"
-                    },
-                    "offset": {
-                        "minimum": 0,
-                        "type": "integer"
-                    },
-                    "order": {
-                        "type": "string",
-                        "enum": [
-                            "asc",
-                            "desc"
-                        ]
-                    },
-                    "sort": {
-                        "type": "string"
-                    },
-                    "start_time": {
-                        "type": "string"
-                    },
-                    "status": {
-                        "$ref": "#/components/schemas/types.Status"
-                    },
-                    "tax_association_ids": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    "tax_rate_ids": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    }
-                }
             },
             "types.TaxRateEntityType": {
                 "type": "string",
@@ -25720,6 +26996,45 @@
                     "WalletConfigPriceTypeFixed"
                 ]
             },
+            "types.WalletFilter": {
+                "type": "object",
+                "properties": {
+                    "alert_enabled": {
+                        "type": "boolean"
+                    },
+                    "expand": {
+                        "type": "string"
+                    },
+                    "limit": {
+                        "maximum": 1000,
+                        "minimum": 1,
+                        "type": "integer"
+                    },
+                    "offset": {
+                        "minimum": 0,
+                        "type": "integer"
+                    },
+                    "order": {
+                        "type": "string",
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ]
+                    },
+                    "sort": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.WalletStatus"
+                    },
+                    "wallet_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
             "types.WalletStatus": {
                 "type": "string",
                 "enum": [
@@ -25732,6 +27047,85 @@
                     "WalletStatusFrozen",
                     "WalletStatusClosed"
                 ]
+            },
+            "types.WalletTransactionFilter": {
+                "type": "object",
+                "properties": {
+                    "created_by": {
+                        "type": "string"
+                    },
+                    "credits_available_gt": {
+                        "type": "number"
+                    },
+                    "end_time": {
+                        "type": "string"
+                    },
+                    "expand": {
+                        "type": "string"
+                    },
+                    "expiry_date_after": {
+                        "type": "string"
+                    },
+                    "expiry_date_before": {
+                        "type": "string"
+                    },
+                    "filters": {
+                        "type": "array",
+                        "description": "filters allows complex filtering based on multiple fields",
+                        "items": {
+                            "$ref": "#/components/schemas/types.FilterCondition"
+                        }
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "limit": {
+                        "maximum": 1000,
+                        "minimum": 1,
+                        "type": "integer"
+                    },
+                    "offset": {
+                        "minimum": 0,
+                        "type": "integer"
+                    },
+                    "order": {
+                        "type": "string",
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ]
+                    },
+                    "priority": {
+                        "type": "integer"
+                    },
+                    "reference_id": {
+                        "type": "string"
+                    },
+                    "reference_type": {
+                        "type": "string"
+                    },
+                    "sort": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/types.SortCondition"
+                        }
+                    },
+                    "start_time": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.Status"
+                    },
+                    "transaction_reason": {
+                        "$ref": "#/components/schemas/types.TransactionReason"
+                    },
+                    "transaction_status": {
+                        "$ref": "#/components/schemas/types.TransactionStatus"
+                    },
+                    "type": {
+                        "$ref": "#/components/schemas/types.TransactionType"
+                    }
+                }
             },
             "types.WalletTxReferenceType": {
                 "type": "string",
@@ -25760,6 +27154,7 @@
             "types.WindowSize": {
                 "type": "string",
                 "enum": [
+                    "MONTH",
                     "MINUTE",
                     "15MIN",
                     "30MIN",
@@ -25772,6 +27167,7 @@
                     "MONTH"
                 ],
                 "x-enum-varnames": [
+                    "DefaultWindowSize",
                     "WindowSizeMinute",
                     "WindowSize15Min",
                     "WindowSize30Min",
