@@ -1,0 +1,625 @@
+
+Once your S3 connection is established, create a scheduled task to automate exports.
+
+<Frame>
+  ![Create Export
+  Task](/images/docs/data-exports/amazon-s3/create-export-task.png)
+</Frame>
+
+<Steps>
+  <Step title="Select Connection">
+    Select the S3 connection created in Step 1. Each scheduled task can use different connections if needed.
+  </Step>
+
+  <Step title="Choose Entity Type">
+    Choose what data to export from the following options:
+
+    - **invoice**: Finalized invoices - All invoice data, without line items, taxes, payments
+    - **events**: Feature usage events - Event data, usage metrics, customer activity
+    - **credit_topups**: Credit wallet transactions - Completed credit top-ups with wallet balance details
+    - **credit_usage**: Customer credit balances - Aggregated current and real-time credit balances across all wallets per customer
+  </Step>
+
+  <Step title="Set Schedule Interval">
+    Select how frequently exports should run:
+
+    - **hourly**: Every hour at :15 minutes past (`15 * * * *`) - Best for real-time data needs, high-frequency updates
+    - **daily**: Every day at 00:15 AM (`15 0 * * *`) - Best for standard backups, daily reporting
+
+    <Info>
+    **Why the 15-minute buffer?**
+
+    Scheduled exports include a 15-minute buffer after the interval boundary to ensure all data has been ingested and processed. For example, an hourly export scheduled at 10:15 AM will export data from 9:00 AM to 10:00 AM.
+
+    </Info>
+  </Step>
+
+  <Step title="Configure S3 Bucket Settings">
+    Configure the S3 bucket where files will be stored:
+
+    - **Bucket (Required)**: Enter the name of your S3 bucket where files will be stored (e.g., `flexprice-exports-prod`). The bucket must exist before creating the scheduled task.
+    - **Region (Required)**: Enter the AWS region where your bucket is located (e.g., `us-west-2`, `eu-central-1`, `ap-south-1`). Must match your bucket's region.
+  </Step>
+
+  <Step title="Set Key Prefix (Optional)">
+    Optionally specify a directory path prefix for organizing files in your bucket:
+    - Example: `flexprice-exports/invoices/`
+    - Example: `production/events/2024/`
+    - Files will be stored as: `{key_prefix}/{filename}.csv`
+
+    <Tip>
+      Use key prefixes to organize exports by environment, data type, or date. This
+      makes it easier to manage and query exported data.
+    </Tip>
+  </Step>
+
+  <Step title="Configure Endpoint URL (Optional)">
+    If connecting to S3-compatible storage providers other than AWS S3, specify a custom endpoint URL:
+    - **MinIO**: `https://minio.example.com`
+    - **DigitalOcean Spaces**: `https://nyc3.digitaloceanspaces.com`
+    - **Backblaze B2**: `https://s3.us-west-002.backblazeb2.com`
+    - **Default**: Leave empty to use AWS S3 (default)
+
+    <Note>
+      When using a custom endpoint, ensure your credentials and bucket configuration
+      are compatible with that provider's S3 API implementation.
+    </Note>
+  </Step>
+
+  <Step title="Choose Compression Option (Optional)">
+    Control file compression to reduce storage costs:
+
+    - **none**: No compression (default) - File extension: `.csv` - Original size
+    - **gzip**: GZIP compression - File extension: `.csv.gz` - ~70-80% size reduction
+
+    **When to use compression:**
+    - Large datasets with many records
+    - Storage cost optimization
+    - Bandwidth-limited environments
+
+    **When to skip compression:**
+    - Small datasets (< 1MB)
+    - Files need to be immediately readable
+    - Downstream systems don't support GZIP
+  </Step>
+
+  <Step title="Select Encryption Option (Optional)">
+    Secure your data at rest with server-side encryption:
+
+    - **AES256**: S3-managed AES-256 encryption (default) - AWS manages keys - Best for standard security needs
+    - **aws:kms**: AWS KMS encryption - You control keys via KMS - Best for compliance requirements
+    - **aws:kms:dsse**: KMS with dual-layer encryption - Enhanced KMS security - Best for maximum security needs
+
+    <Note>
+      All encryption options are server-side encryption (SSE). Data is encrypted at
+      rest in S3. AES256 is the default and recommended for most use cases.
+    </Note>
+  </Step>
+
+  <Step title="Enable the Scheduled Task">
+    Enable the scheduled task to start automatic exports. You can disable it later to pause exports without deleting the configuration.
+  </Step>
+</Steps>
+---
+## Verify Configuration
+
+After creating a scheduled task, follow these steps to verify your setup:
+
+<Steps>
+  <Step title="Verify Connection">
+    Ensure your S3 connection is validated and active in the dashboard.
+  </Step>
+
+  <Step title="Check Schedule">
+    Confirm the interval matches your requirements (hourly or daily).
+  </Step>
+
+  <Step title="Review S3 Settings">
+    Double-check bucket name, region, and key prefix for accuracy.
+  </Step>
+
+  <Step title="Test with Manual Export">
+    Trigger a manual export to verify the setup works correctly before relying on automatic execution.
+  </Step>
+</Steps>
+
+<Frame>
+  ![Export Tasks
+  List](/images/docs/data-exports/amazon-s3/export-tasks-list.png)
+</Frame>
+
+### Viewing Export Details
+
+After creating an export task, follow these steps to view its configuration and status:
+
+<Steps>
+  <Step title="Open Export Task">
+    Click on the export task from the tasks list to open the export details page.
+  </Step>
+
+  <Step title="Review Basic Information">
+    Check the basic information section which displays:
+    - Task status (enabled/disabled)
+    - Entity type (invoice, events, credit_topups, credit_usage)
+    - Schedule interval (hourly or daily)
+    - Associated S3 connection
+  </Step>
+
+  <Step title="Review S3 Configuration">
+    Verify the S3 configuration settings:
+    - Bucket name and region
+    - Key prefix (if configured)
+    - Compression option
+    - Encryption settings
+  </Step>
+
+  <Step title="Check Timestamps">
+    Review the timestamps section to see:
+    - Creation date of the task
+    - Last update time
+  </Step>
+</Steps>
+
+<Frame>
+  ![Export Details](/images/docs/data-exports/amazon-s3/export-details.png)
+</Frame>
+
+---
+
+## Manual Export
+
+Manual Export allows you to trigger an immediate export without waiting for the next scheduled execution. Use manual exports for:
+
+<Steps>
+  <Step title="Testing Configuration">
+    Test your export configuration to verify it works correctly before relying on automatic execution.
+  </Step>
+
+  <Step title="Backfilling Historical Data">
+    Export historical data for specific time ranges that may have been missed or need to be re-exported.
+  </Step>
+
+  <Step title="Urgent Data Requests">
+    Respond to urgent data requests that can't wait for the next scheduled export.
+  </Step>
+
+  <Step title="Custom Time Ranges">
+    Export data for specific time ranges that differ from your scheduled intervals.
+  </Step>
+</Steps>
+
+### How to Trigger a Manual Export
+
+Navigate to the export details page and click the "Manual Export" button to trigger a manual export.
+
+<Frame>
+  ![Manual Export
+  Modal](/images/docs/data-exports/amazon-s3/force-run-modal.png)
+</Frame>
+
+<Steps>
+  <Step title="Navigate to Export Details">
+    Go to your scheduled task and open the export details page.
+  </Step>
+
+  <Step title="Click Manual Export">
+    Click the "Manual Export" button to open the export options.
+  </Step>
+
+  <Step title="Choose Export Type">
+    Select one of the following options:
+
+    **Option 1: Automatic Time Range (Default)**
+    - Trigger a manual export without specifying time ranges
+    - The system automatically calculates the export window based on the task's interval
+    - **Example - Hourly Task**: Current time 10:30 AM → Export window: 10:00 AM to 11:00 AM (current hour)
+    - **Example - Daily Task**: Current date October 16, 2025 → Export window: October 16, 00:00 to October 17, 00:00 (current day)
+
+    **Option 2: Custom Time Range**
+    - Specify exact start and end times for the export
+    - Custom time ranges must be valid timestamps in RFC3339 format (ISO 8601)
+    - The end time must be after the start time
+  </Step>
+
+  <Step title="Confirm and Trigger">
+    Review your selection and confirm to trigger the manual export. The export will start execution within seconds.
+  </Step>
+</Steps>
+
+#### API Request Examples
+
+**Automatic Time Range:**
+
+```bash
+POST /api/v1/tasks/scheduled/{task_id}/run
+```
+
+**Response:**
+
+```json
+{
+  "workflow_id": "task_export_01HK8DBMBN87CY36DEFY62PEXBT",
+  "message": "Manual export triggered successfully",
+  "start_time": "2025-10-16T10:00:00Z",
+  "end_time": "2025-10-16T11:00:00Z",
+  "mode": "manual"
+}
+```
+
+**Custom Time Range:**
+
+```bash
+POST /api/v1/tasks/scheduled/{task_id}/run
+Content-Type: application/json
+
+{
+  "start_time": "2025-10-01T00:00:00Z",
+  "end_time": "2025-10-15T23:59:59Z"
+}
+```
+
+**Response:**
+
+```json
+{
+  "workflow_id": "task_export_01HK8DBMBN87CY36DEFY62PEXBT",
+  "message": "Manual export triggered successfully",
+  "start_time": "2025-10-01T00:00:00Z",
+  "end_time": "2025-10-15T23:59:59Z",
+  "mode": "custom"
+}
+```
+
+<Warning>
+  Custom time ranges must be valid timestamps in RFC3339 format (ISO 8601). The
+  end time must be after the start time.
+</Warning>
+
+### Manual Export Behavior
+
+<Steps>
+  <Step title="Independent Execution">
+    Manual exports operate independently and don't affect the regular scheduled export schedule.
+  </Step>
+
+  <Step title="Parallel Execution">
+    Manual exports can run alongside scheduled exports without conflicts.
+  </Step>
+
+  <Step title="Tracking">
+    Manual exports appear in the Runs tab with "manual" or "custom" mode labels for easy identification.
+  </Step>
+
+  <Step title="Configuration">
+    Manual exports use the same S3 settings (bucket, region, compression, encryption) as the scheduled task.
+  </Step>
+
+  <Step title="Processing Time">
+    Manual exports start execution within seconds of being triggered.
+  </Step>
+</Steps>
+
+---
+
+## Runs Tab - Execution History
+
+The Runs tab displays a comprehensive history of all export executions for a scheduled task, including both automatic scheduled runs and manual exports.
+
+<Frame>
+  ![Runs History](/images/docs/data-exports/amazon-s3/runs-history.png)
+</Frame>
+
+<Steps>
+  <Step title="Navigate to Runs Tab">
+    Open your scheduled task and click on the **Runs** tab to view the execution history.
+  </Step>
+
+  <Step title="Review Run Records">
+    Each run record displays:
+    - Execution status (completed, failed, in progress)
+    - Time range for the export
+    - File details and S3 URL
+    - Any errors that occurred (if the run failed)
+  </Step>
+
+  <Step title="Monitor Export Health">
+    Use the Runs tab to:
+    - Monitor export success rates
+    - Identify patterns in failures
+    - Track export execution times
+    - Verify data is being exported regularly
+  </Step>
+
+  <Step title="Access Exported Files">
+    From the Runs tab, you can download exported files directly or access them via S3 URLs.
+  </Step>
+</Steps>
+
+### Downloading Exported Files
+
+You can download exported files directly from the Runs tab for any connection type:
+
+<Steps>
+  <Step title="Navigate to Runs Tab">
+    Go to your scheduled task and click the **Runs** tab to view execution history
+  </Step>
+  
+  <Step title="Locate Completed Run">
+    Find the completed export run you want to download from the list
+  </Step>
+  
+  <Step title="Download File">
+    Click the **Download** button next to the run record to download the CSV file.
+  </Step>
+</Steps>
+
+**Benefits:**
+- ✅ Works with both Flexprice-managed and your own S3 connections
+- ✅ No S3 console access required
+- ✅ Download files directly 
+
+### Accessing Exported Files
+
+Follow these steps to understand and access exported files:
+
+<Steps>
+  <Step title="Understand File Naming">
+    Each completed run provides a direct S3 file URL following this naming convention:
+    
+    ```
+    {entity_type}-{start_time}-{end_time}.csv
+    ```
+    
+    **Examples:**
+    - `invoice-251016100000-251016110000.csv`
+    - `events-251016000000-251017000000.csv.gz`
+    - `credit_usage-251223110000-251223120000.csv`
+  </Step>
+
+  <Step title="Decode Time Format">
+    The time format in filenames uses `YYMMDDHHMMSS` format:
+    - **YY**: Year (last 2 digits)
+    - **MM**: Month
+    - **DD**: Day
+    - **HH**: Hour
+    - **MM**: Minute
+    - **SS**: Second
+    
+    Example: `251016100000` = October 16, 2025, 10:00:00
+  </Step>
+
+  <Step title="Access File URL">
+    Each completed run in the Runs tab displays the S3 file URL. You can use this URL to access the file directly from S3 or download it through the dashboard.
+  </Step>
+</Steps>
+---
+### Troubleshooting Failed Runs
+
+When a run fails, follow these steps to diagnose and resolve the issue:
+
+<Steps>
+  <Step title="Review Error Summary">
+    Check the error summary in the Runs tab to identify the specific failure reason.
+  </Step>
+
+  <Step title="Connection Failed Error">
+    If you see "Connection Failed" error:
+    - **Cause**: Invalid AWS credentials
+    - **Solution**: Verify and update S3 connection credentials in the connection settings
+  </Step>
+
+  <Step title="Bucket Not Found Error">
+    If you see "Bucket Not Found" error:
+    - **Cause**: S3 bucket doesn't exist or wrong region
+    - **Solution**: Check bucket name and region in task configuration, ensure they match exactly
+  </Step>
+
+  <Step title="Permission Denied Error">
+    If you see "Permission Denied" error:
+    - **Cause**: Insufficient IAM permissions
+    - **Solution**: Review and update IAM policy to include required S3 permissions
+  </Step>
+
+  <Step title="No Data Found Error">
+    If you see "No Data Found" error:
+    - **Cause**: No records in the specified time range
+    - **Solution**: Verify the time range or check data availability for that period
+  </Step>
+
+  <Step title="Timeout Error">
+    If you see "Timeout" error:
+    - **Cause**: Export took longer than 15 minutes
+    - **Solution**: Contact support or split the export into smaller time ranges
+  </Step>
+</Steps>
+
+---
+## Best Practices
+
+- **Test with manual export** before relying on automatic execution
+- **Follow IAM best practices**: Create dedicated IAM users, grant minimal permissions, rotate credentials regularly, and enable CloudTrail
+- **Enable GZIP compression** for exports with 1,000+ records to reduce storage costs by 70-80%
+- **Monitor execution history** regularly in the Runs tab to ensure exports complete successfully
+- **Organize with key prefixes** like `production/invoices/2025/` to structure exports by environment, data type, and date
+
+---
+## Troubleshooting
+
+### Scheduled Task Not Running
+
+**Possible causes:**
+
+- Task is disabled
+- S3 connection is invalid
+- Temporal workflow service is down
+
+**Solution:**
+
+<Steps>
+  <Step title="Check Task Status">
+    Verify the task is enabled in the dashboard
+  </Step>
+
+  <Step title="Verify Connection">
+    Check the S3 connection status
+  </Step>
+
+  <Step title="Test Manually">
+    Test with a manual export to isolate the issue
+  </Step>
+
+  <Step title="Review Logs">
+    Review Temporal workflow logs for errors
+  </Step>
+</Steps>
+
+### Files Not Appearing in S3
+
+**Possible causes:**
+
+- Incorrect bucket name or region
+- Missing IAM permissions
+- Key prefix typo
+
+**Solution:**
+
+<Steps>
+  <Step title="Verify Bucket Name">
+    Verify bucket name matches exactly (case-sensitive)
+  </Step>
+
+  <Step title="Check Region">
+    Confirm region matches the bucket's region
+  </Step>
+
+  <Step title="Review IAM Policy">
+    Review IAM policy and ensure `s3:PutObject` permission
+  </Step>
+
+  <Step title="Check Key Prefix">
+    Check key prefix for typos or trailing slashes
+  </Step>
+</Steps>
+
+### Export Timeout Errors
+
+**Possible causes:**
+
+- Very large time range (months of data)
+- Thousands of records in a single export
+- S3 upload speed issues
+
+**Solution:**
+
+<Steps>
+  <Step title="Reduce Time Range">
+    Reduce the time range for custom exports
+  </Step>
+
+  <Step title="Adjust Interval">
+    Use hourly intervals instead of daily for high-volume data
+  </Step>
+
+  <Step title="Enable Compression">
+    Enable GZIP compression to reduce upload time
+  </Step>
+
+  <Step title="Contact Support">
+    Contact support if issue persists
+  </Step>
+</Steps>
+
+### Invalid Credentials Error
+
+**Possible causes:**
+
+- AWS credentials expired or rotated
+- Incorrect Access Key ID or Secret Key
+- Session token expired (for temporary credentials)
+
+**Solution:**
+
+<Steps>
+  <Step title="Verify Credentials">
+    Verify credentials in AWS IAM console
+  </Step>
+
+  <Step title="Update Connection">
+    Update the S3 connection with new credentials
+  </Step>
+
+  <Step title="Refresh Token">
+    For temporary credentials, refresh the session token
+  </Step>
+
+  <Step title="Check IAM User">
+    Ensure the IAM user/role still exists
+  </Step>
+</Steps>
+---
+## API Reference
+
+### Create Scheduled Task
+
+```bash
+POST /api/v1/tasks/scheduled
+Content-Type: application/json
+Authorization: Bearer {token}
+
+{
+  "connection_id": "conn_01HK8DBMBN87CY36DEFY62PEXBT",
+  "entity_type": "invoice",  // Options: "invoice", "events", "credit_topups", "credit_usage"
+  "interval": "daily",
+  "enabled": true,
+  "job_config": {
+    "bucket": "flexprice-exports",
+    "region": "us-west-2",
+    "key_prefix": "invoices/",
+    "endpoint_url": "",  // Optional: Custom S3-compatible endpoint
+    "compression": "gzip",
+    "encryption": "AES256"
+  }
+}
+```
+
+### Update Scheduled Task
+
+```bash
+PATCH /api/v1/tasks/scheduled/{task_id}
+Content-Type: application/json
+Authorization: Bearer {token}
+
+{
+  "enabled": false
+}
+```
+
+### Trigger Manual Export
+
+```bash
+POST /api/v1/tasks/scheduled/{task_id}/run
+Content-Type: application/json
+Authorization: Bearer {token}
+
+{
+  "start_time": "2025-10-01T00:00:00Z",
+  "end_time": "2025-10-15T23:59:59Z"
+}
+```
+
+### List Scheduled Tasks
+
+```bash
+GET /api/v1/tasks/scheduled?entity_type=invoice&status=published
+Authorization: Bearer {token}
+```
+
+### Get Task Execution History
+
+```bash
+GET /api/v1/tasks?scheduled_task_id={task_id}&task_type=EXPORT
+Authorization: Bearer {token}
+```
+
+
+By implementing S3 Export, you can automate data backups, feed data warehouses, meet compliance requirements, and integrate Flexprice data with your broader data infrastructure.
