@@ -1,55 +1,48 @@
 # Welcome to the Flexprice API
 
-The Flexprice API enables you to programmatically manage pricing, subscriptions, and billing for your SaaS application. This documentation will help you integrate Flexprice into your application.
+The Flexprice API lets you programmatically manage pricing, subscriptions, and billing for your SaaS application.
 
 ## Base URL
 
-All API requests should be made to:
+All API requests must use one of the following base URLs:
 
-```plaintext
-https://api.cloud.flexprice.io/v1
-```
+- **US Region**: `https://us.api.flexprice.io/v1`
+- **India Region**: `https://api.cloud.flexprice.io/v1`
+
+Select your preferred region using the server selector in the API playground:
+
+<Frame>
+  ![Region Selector](/region-selector.png)
+</Frame>
 
 ## Authentication
 
-All API endpoints require authentication using an API Key. These are the keys you get when you create a new API key in the Flexprice Dashboard.
+All API endpoints require authentication using an API key. Include your API key in the `x-api-key` header with every request.
 
 ```bash
 x-api-key: <your_api_key>
 ```
 
-Drop us an email at support@flexprice.io if you need help getting an API key.
+Create API keys in the Flexprice Dashboard. If you need help, email us at support@flexprice.io.
 
 ## Response Format
 
-All API responses follow a consistent JSON format:
-
-```json
-{
-    "status": "success",
-    "data": { ... },
-    "message": "Optional status message"
-}
-```
+Successful API responses return JSON data directly. The response structure varies by endpoint—see individual endpoint documentation for details.
 
 ## Error Handling
 
-The API uses standard HTTP response codes:
+The API uses standard HTTP status codes:
+
 - `200` - Success
 - `201` - Created
 - `400` - Bad Request
 - `401` - Unauthorized
 - `404` - Not Found
+- `409` - Conflict
+- `429` - Too Many Requests
 - `500` - Internal Server Error
 
-Error responses include detailed information:
-```json
-{
-    "status": "error",
-    "message": "Error description",
-    "code": "ERROR_CODE"
-}
-```
+For detailed error response formats and error codes, see the [Error Responses](/api-reference/error-responses) documentation.
 
 ## Need Help?
 
