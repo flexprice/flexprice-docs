@@ -1,19 +1,14 @@
 {
     "openapi": "3.0.1",
     "info": {
-        "title": "Flexprice API",
-        "description": "Flexprice API Service",
+        "title": "FlexPrice API",
+        "description": "FlexPrice API Service",
         "contact": {},
         "version": "1.0"
     },
     "servers": [
         {
-            "url": "https://us.api.flexprice.io/v1",
-            "description": "US Region"
-        },
-        {
-            "url": "https://api.cloud.flexprice.io/v1",
-            "description": "India Region"
+            "url": "/v1"
         }
     ],
     "paths": {
@@ -812,7 +807,8 @@
                                 "razorpay",
                                 "chargebee",
                                 "quickbooks",
-                                "nomod"
+                                "nomod",
+                                "moyasar"
                             ],
                             "x-enum-varnames": [
                                 "SecretProviderFlexPrice",
@@ -822,7 +818,8 @@
                                 "SecretProviderRazorpay",
                                 "SecretProviderChargebee",
                                 "SecretProviderQuickBooks",
-                                "SecretProviderNomod"
+                                "SecretProviderNomod",
+                                "SecretProviderMoyasar"
                             ]
                         },
                         "x-enum-varnames": [
@@ -833,7 +830,8 @@
                             "SecretProviderRazorpay",
                             "SecretProviderChargebee",
                             "SecretProviderQuickBooks",
-                            "SecretProviderNomod"
+                            "SecretProviderNomod",
+                            "SecretProviderMoyasar"
                         ]
                     },
                     {
@@ -3347,6 +3345,80 @@
                     }
                 ]
             },
+            "put": {
+                "tags": [
+                    "Customers"
+                ],
+                "summary": "Update a customer",
+                "description": "Update a customer by ID (from path parameter) or by id/lookup_key_id (from query parameters)",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "description": "Customer ID (query parameter)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "lookup_key_id",
+                        "in": "query",
+                        "description": "Customer External ID (lookup_key)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Customer",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/dto.UpdateCustomerRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.CustomerResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "x-codegen-request-body-name": "customer"
+            },
             "post": {
                 "tags": [
                     "Customers"
@@ -3643,6 +3715,14 @@
                         }
                     },
                     {
+                        "name": "from_cache",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        }
+                    },
+                    {
                         "name": "id",
                         "in": "query",
                         "schema": {
@@ -3772,73 +3852,6 @@
                         "ApiKeyAuth": []
                     }
                 ]
-            },
-            "put": {
-                "tags": [
-                    "Customers"
-                ],
-                "summary": "Update a customer",
-                "description": "Update a customer",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "description": "Customer ID",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "description": "Customer",
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/dto.UpdateCustomerRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/dto.CustomerResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/errors.ErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/errors.ErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "x-codegen-request-body-name": "customer"
             },
             "delete": {
                 "tags": [
@@ -14087,6 +14100,169 @@
                 "x-codegen-request-body-name": "filter"
             }
         },
+        "/v1/subscription-schedules": {
+            "get": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "List all subscription schedules",
+                "description": "Retrieves subscription schedules with optional filtering",
+                "parameters": [
+                    {
+                        "name": "pending_only",
+                        "in": "query",
+                        "description": "Filter to pending schedules only",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "subscription_id",
+                        "in": "query",
+                        "description": "Filter by subscription ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "Limit results",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "description": "Offset for pagination",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.GetPendingSchedulesResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/subscription-schedules/{id}": {
+            "get": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Get subscription schedule",
+                "description": "Retrieves details of a specific subscription schedule",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Schedule ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.SubscriptionScheduleResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/subscriptions/schedules/{schedule_id}/cancel": {
+            "post": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Cancel subscription schedule",
+                "description": "Cancels a pending subscription schedule. Supports two modes: 1) By schedule ID in path, or 2) By subscription ID + schedule type in request body",
+                "parameters": [
+                    {
+                        "name": "schedule_id",
+                        "in": "path",
+                        "description": "Schedule ID (optional if using request body)",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Cancel request (optional if using path parameter)",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/dto.CancelScheduleRequest"
+                            }
+                        }
+                    },
+                    "required": false
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.CancelScheduleResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "x-codegen-request-body-name": "request"
+            }
+        },
+        "/v1/subscriptions/{subscription_id}/schedules": {
+            "get": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "List subscription schedules",
+                "description": "Retrieves all schedules for a specific subscription",
+                "parameters": [
+                    {
+                        "name": "subscription_id",
+                        "in": "path",
+                        "description": "Subscription ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.GetPendingSchedulesResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/wallets": {
             "get": {
                 "tags": [
@@ -15182,6 +15358,56 @@
                 }
             }
         },
+        "/webhooks/moyasar/{tenant_id}/{environment_id}": {
+            "post": {
+                "tags": [
+                    "Webhooks"
+                ],
+                "summary": "Handle Moyasar webhook events",
+                "description": "Process incoming Moyasar webhook events for payment status updates",
+                "parameters": [
+                    {
+                        "name": "tenant_id",
+                        "in": "path",
+                        "description": "Tenant ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "environment_id",
+                        "in": "path",
+                        "description": "Environment ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "X-Moyasar-Signature",
+                        "in": "header",
+                        "description": "Moyasar webhook signature",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Webhook received (always returns 200)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": true
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/webhooks/nomod/{tenant_id}/{environment_id}": {
             "post": {
                 "tags": [
@@ -16008,6 +16234,36 @@
                         }
                     }
                 }
+            },
+            "dto.CancelScheduleRequest": {
+                "type": "object",
+                "properties": {
+                    "schedule_id": {
+                        "type": "string",
+                        "description": "schedule_id is the ID of the schedule to cancel (optional if subscription_id and schedule_type are provided)"
+                    },
+                    "schedule_type": {
+                        "$ref": "#/components/schemas/types.SubscriptionScheduleChangeType"
+                    },
+                    "subscription_id": {
+                        "type": "string",
+                        "description": "subscription_id is the ID of the subscription (required if schedule_id is not provided)"
+                    }
+                },
+                "description": "Request to cancel a subscription schedule (supports two modes)"
+            },
+            "dto.CancelScheduleResponse": {
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "description": "message is a confirmation message"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.ScheduleStatus"
+                    }
+                },
+                "description": "Confirmation of schedule cancellation"
             },
             "dto.CancelSubscriptionRequest": {
                 "required": [
@@ -19097,6 +19353,23 @@
                     }
                 }
             },
+            "dto.GetPendingSchedulesResponse": {
+                "type": "object",
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "description": "count is the number of pending schedules"
+                    },
+                    "schedules": {
+                        "type": "array",
+                        "description": "schedules is the list of pending schedules",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.SubscriptionScheduleResponse"
+                        }
+                    }
+                },
+                "description": "List of pending schedules for a subscription"
+            },
             "dto.GetPreviewInvoiceRequest": {
                 "required": [
                     "subscription_id"
@@ -22139,6 +22412,73 @@
                     }
                 }
             },
+            "dto.SubscriptionScheduleResponse": {
+                "type": "object",
+                "properties": {
+                    "can_be_cancelled": {
+                        "type": "boolean",
+                        "description": "can_be_cancelled indicates if the schedule can be cancelled"
+                    },
+                    "cancelled_at": {
+                        "type": "string",
+                        "description": "cancelled_at is when the schedule was cancelled"
+                    },
+                    "configuration": {
+                        "type": "object",
+                        "description": "configuration contains type-specific configuration (e.g., target_plan_id for plan changes)"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "description": "created_at timestamp"
+                    },
+                    "days_until_execution": {
+                        "type": "integer",
+                        "description": "days_until_execution is the number of days until execution"
+                    },
+                    "error_message": {
+                        "type": "string",
+                        "description": "error_message contains the error if execution failed"
+                    },
+                    "executed_at": {
+                        "type": "string",
+                        "description": "executed_at is when the schedule was executed"
+                    },
+                    "execution_result": {
+                        "type": "object",
+                        "description": "execution_result contains type-specific execution result"
+                    },
+                    "id": {
+                        "type": "string",
+                        "description": "id of the schedule"
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "description": "metadata from the schedule"
+                    },
+                    "schedule_type": {
+                        "$ref": "#/components/schemas/types.SubscriptionScheduleChangeType"
+                    },
+                    "scheduled_at": {
+                        "type": "string",
+                        "description": "scheduled_at is when the schedule will execute"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.ScheduleStatus"
+                    },
+                    "subscription_id": {
+                        "type": "string",
+                        "description": "subscription_id is the ID of the subscription"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "description": "updated_at timestamp"
+                    }
+                },
+                "description": "Full details of a subscription schedule"
+            },
             "dto.SubscriptionSummary": {
                 "type": "object",
                 "properties": {
@@ -25119,6 +25459,9 @@
                     "hubspot": {
                         "$ref": "#/components/schemas/types.HubSpotConnectionMetadata"
                     },
+                    "moyasar": {
+                        "$ref": "#/components/schemas/types.MoyasarConnectionMetadata"
+                    },
                     "nomod": {
                         "$ref": "#/components/schemas/types.NomodConnectionMetadata"
                     },
@@ -25973,6 +26316,23 @@
                     "type": "string"
                 }
             },
+            "types.MoyasarConnectionMetadata": {
+                "type": "object",
+                "properties": {
+                    "publishable_key": {
+                        "type": "string",
+                        "description": "Moyasar Publishable Key (encrypted, for frontend use)"
+                    },
+                    "secret_key": {
+                        "type": "string",
+                        "description": "Moyasar Secret Key (encrypted)"
+                    },
+                    "webhook_secret": {
+                        "type": "string",
+                        "description": "Moyasar Webhook Secret (encrypted, optional)"
+                    }
+                }
+            },
             "types.NomodConnectionMetadata": {
                 "type": "object",
                 "properties": {
@@ -26059,12 +26419,14 @@
                 "enum": [
                     "stripe",
                     "razorpay",
-                    "nomod"
+                    "nomod",
+                    "moyasar"
                 ],
                 "x-enum-varnames": [
                     "PaymentGatewayTypeStripe",
                     "PaymentGatewayTypeRazorpay",
-                    "PaymentGatewayTypeNomod"
+                    "PaymentGatewayTypeNomod",
+                    "PaymentGatewayTypeMoyasar"
                 ]
             },
             "types.PaymentMethodType": {
@@ -26450,6 +26812,23 @@
                     }
                 }
             },
+            "types.ScheduleStatus": {
+                "type": "string",
+                "enum": [
+                    "pending",
+                    "executing",
+                    "executed",
+                    "cancelled",
+                    "failed"
+                ],
+                "x-enum-varnames": [
+                    "ScheduleStatusPending",
+                    "ScheduleStatusExecuting",
+                    "ScheduleStatusExecuted",
+                    "ScheduleStatusCancelled",
+                    "ScheduleStatusFailed"
+                ]
+            },
             "types.ScheduleType": {
                 "type": "string",
                 "enum": [
@@ -26510,7 +26889,8 @@
                     "razorpay",
                     "chargebee",
                     "quickbooks",
-                    "nomod"
+                    "nomod",
+                    "moyasar"
                 ],
                 "x-enum-varnames": [
                     "SecretProviderFlexPrice",
@@ -26520,7 +26900,8 @@
                     "SecretProviderRazorpay",
                     "SecretProviderChargebee",
                     "SecretProviderQuickBooks",
-                    "SecretProviderNomod"
+                    "SecretProviderNomod",
+                    "SecretProviderMoyasar"
                 ]
             },
             "types.SecretType": {
@@ -26709,6 +27090,17 @@
                 "x-enum-varnames": [
                     "SubscriptionLineItemEntityTypePlan",
                     "SubscriptionLineItemEntityTypeAddon"
+                ]
+            },
+            "types.SubscriptionScheduleChangeType": {
+                "type": "string",
+                "enum": [
+                    "plan_change",
+                    "cancellation"
+                ],
+                "x-enum-varnames": [
+                    "SubscriptionScheduleChangeTypePlanChange",
+                    "SubscriptionScheduleChangeTypeCancellation"
                 ]
             },
             "types.SubscriptionStatus": {
