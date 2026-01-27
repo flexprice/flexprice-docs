@@ -1,0 +1,41 @@
+---
+title: "Error responses"
+description: "Understand Flexprice API error response formats and error codes"
+---
+
+# Error responses
+
+All Flexprice API errors follow a consistent structure. Each error response includes:
+
+- `success`: Boolean flag indicating whether the request was successful (always `false` for errors)
+- `error`: Object containing error details with:
+  - `message`: Human-readable description of the error
+  - `internal_error`: Internal error details (may be empty for client errors)
+
+Error responses may also include additional fields specific to the error type.
+
+```json theme={null}
+{
+  "success": false,
+  "error": {
+    "message": "Could not find a resource of type Plan with identifier: DBhwNcMNfYgeBpn.",
+    "internal_error": ""
+  }
+}
+```
+
+## Common error types
+
+The table below lists common error types. When processing errors programmatically, use the HTTP status code along with the error message.
+
+| Title                       | Status code | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| --------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Authentication failure      | 401         | Your request did not provide a valid or well-formatted API key. Ensure you're including the `x-api-key` header with a valid API key.                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Request validation error    | 400         | A request that fails validation will return human-readable information about what went wrong. The error response includes a `message` field describing the validation issues.                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Duplicate resource creation | 400         | Returned when attempting to create a resource that already exists.                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Resource not found          | 404         | This is returned when a provided identifier does not map to a resource that is accessible by the current account.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Feature not available       | 404         | Returned when the endpoint or feature is behind a feature flag on the server-side and is unavailable for current use.                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| URL not found               | 404         | Returned when the requested URL was not found on the server.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Resource conflict           | 409         | Returned when the request conflicts with another concurrent request. This may occur when multiple requests attempt to modify the same resource simultaneously (e.g., the credits ledger). You can safely retry these requests. |
+| Too many requests           | 429         | Returned when the request rate exceeds the limit.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Internal Server error       | 500         | This is an internal server error. The Flexprice team has been notified!                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
