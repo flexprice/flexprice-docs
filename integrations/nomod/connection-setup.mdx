@@ -1,0 +1,171 @@
+---
+title: 'Nomod Connection Setup'
+description: 'Complete guide to setting up and configuring Nomod connections in Flexprice'
+---
+
+## Overview
+
+A Nomod connection in Flexprice lets you:
+
+- **Sync customers** from Flexprice to Nomod
+- **Sync invoices** from Flexprice to Nomod
+- **Create payment links** for invoices so customers can pay via Nomod
+- **Receive payment** (e.g. link paid, invoice paid) in Flexprice
+- **Process payments** through Nomod’s secure checkout
+
+## Prerequisites
+
+Before you start, have:
+
+1. **Nomod account** – [Nomod app](https://nomod.com) ([Play Store](https://nomod.app/g) / [App Store](https://nomod.app/a))
+3. **Flexprice account** – https://flexprice.io/
+
+## Keys you need
+
+| Key | Where to get it | What it’s for |
+|-----|-----------------|----------------|
+| **Nomod API key** | Nomod app → **Connect and Manage Integrations** | Payment links, invoices, and Nomod integration in Flexprice |
+| **Zapier API key** | Nomod app - **Settings** → **Business** → **Connect apps and manage keys** → **Zapier**  | Contact Flexprice team to set up the Zapier Zap and webhook configuration |
+
+## Create Nomod Connection
+
+### Using Flexprice Dashboard
+
+Go to **Flexprice dashboard** → **Integrations** → **Nomod** → **Add a connection**.
+
+<Frame>
+  <Frame>
+    ![Stripe Connection Setup](/images/docs/integrations/nomod/add-nomod-connection.png)
+  </Frame>
+</Frame>
+
+### Setup at a glance
+
+<Steps>
+  <Step title="Set up connection name">
+    Choose a name for this Nomod connection so you can identify it in Flexprice.
+  </Step>
+
+  <Step title="Get your Nomod API key">
+    Get your **Nomod API key** from the Nomod app (Connect and Manage Integrations).
+  </Step>
+
+  <Step title="Invoice sync (outbound)">
+    **Invoice sync = true** means Flexprice pushes invoices to Nomod.
+
+    **Invoice sync = false** means Flexprice does not push invoices to Nomod (invoices stay only in Flexprice).
+  </Step>
+
+  <Step title="Set up webhook secret">
+    Use any secure random name or string for webhook verification and provide it to the Flexprice team as well.
+  </Step>
+</Steps>
+
+<Warning>
+Nomod does not support webhooks. For webhook configuration, contact us.
+</Warning>
+
+### Why Zapier?
+
+<Steps>
+  <Step title="Nomod does not support webhooks">
+    Nomod does not support webhooks directly.
+  </Step>
+
+  <Step title="Zapier has a pre-made Nomod app for webhooks">
+    Zapier offers a pre-built Nomod app for webhook events.
+  </Step>
+
+  <Step title="Provide the Zapier API key and webhook secret">
+    Provide your **Zapier API key** and **webhook secret** to Flexprice so it can receive Nomod events (e.g. Link Paid, Invoice Paid).
+  </Step>
+
+  <Step title="Flexprice creates the Zapier connection">
+    Flexprice creates and manages the Zapier connection for you. Contact the Flexprice team to set up the Zapier Zap and webhook configuration.
+  </Step>
+</Steps>
+
+
+
+
+
+
+## Configure Connection Settings
+
+### Editing a Connection
+
+<Steps>
+  <Step title="Navigate to Integration Page">
+    Navigate to the Nomod integration page
+  </Step>
+
+  <Step title="Find Connection">
+    Find your connection in the "Connected Accounts" list
+  </Step>
+
+  <Step title="Edit Connection">
+    Click the edit icon (pencil)
+  </Step>
+
+  <Step title="Modify Settings">
+    Modify settings as needed
+  </Step>
+
+  <Step title="Save Changes">
+    Click **"Update Connection"**
+  </Step>
+</Steps>
+
+**Note**: API Key and Webhook Secret cannot be edited after creation for security reasons.
+
+### Deleting a Connection
+
+<Steps>
+  <Step title="Navigate to Integration Page">
+    Navigate to the Nomod integration page
+  </Step>
+
+  <Step title="Find Connection">
+    Find your connection in the "Connected Accounts" list
+  </Step>
+
+  <Step title="Delete Connection">
+    Click the delete icon (trash) for the connection you want to remove.
+  </Step>
+
+  <Step title="Confirm Deletion">
+    Confirm deletion in the dialog. The connection will be removed and Nomod payment processing for it will stop.
+  </Step>
+</Steps>
+
+**Warning:** Deleting a connection will disable all Nomod payment processing for that connection.
+
+
+## Security Best Practices
+
+### Credential Management
+
+1. **Environment Separation**: Use different keys for test/production
+2. **Key Rotation**: Regularly rotate your Nomod API keys
+3. **Access Control**: Limit API key permissions in Nomod
+4. **Encryption**: All credentials are encrypted at rest in Flexprice
+
+## Troubleshooting
+
+### Common Issues
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| Connection creation fails | Invalid Nomod API key | Verify key in Nomod app → Connect and Manage Integrations |
+| Events not reaching Flexprice | Invalid or missing Zapier API key | Verify Zapier API key in the connection; Flexprice uses it for webhook integration |
+| Invoice sync fails | Sync not enabled | Enable invoice outbound sync in the connection |
+
+## Next steps
+
+After your Nomod connection is set up:
+
+1. **Test payment links** – Create a test payment link and confirm the flow works.
+2. **Check events** – Ensure your Zapier API key is correct and events reach Flexprice (Flexprice handles the Zapier integration).
+3. **Enable invoice sync** – If you want invoices pushed to Nomod, turn on **Push to Nomod** in the connection.
+4. **Go live** – When ready, switch to production keys in Nomod and Flexprice.
+
