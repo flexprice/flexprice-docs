@@ -1,0 +1,167 @@
+---
+title: "Changelog"
+description: "Product updates from Flexprice HQ"
+---
+
+
+<Update label="January 21th 2026">
+  ## Bulk import and export in the dashboard
+
+  You can now import features and prices and run managed S3 exports from the UI. Billing and credit usage reports are available for download.
+
+  * **Import features and prices**: Added UI support for importing features and prices, matching backend bulk-import capabilities.
+  
+  <br />
+
+  <Frame>
+    <img src="/public/images/docs/Changelog/prices_bulk_import.png" alt="Bulk import interface" style={{ borderRadius: '0.5rem' }} />
+  </Frame>
+
+  <br />
+
+  * **S3 exports**: Managed exports and downloadable reports for billing and credit usage
+
+  <Card icon="book-open" horizontal={true} href="/docs/data-exports/amazon-s3/export" title="S3 Export - Documentation" />
+
+  <br />
+
+  ## Dashboard analytics improvements
+
+  Revenue trends and customer usage are clearer and more accurate in the dashboard.
+
+  * **Currency-segregated revenue**: Revenue trends and invoice payment status now reflect the correct metrics in the UI
+  * **Customer usage**: Improved visibility into usage at the customer level
+
+  <br />
+
+  <Frame>
+    <img src="/public/images/docs/Changelog/curr_segregated_revenue.png" alt="Currency-segregated revenue trends" style={{ borderRadius: '0.5rem' }} />
+  </Frame>
+
+  <br />
+
+  ## Region and routing stability
+
+  The frontend region selector now correctly handles US-region routing, including [us.flexprice.io](http://us.flexprice.io).
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Improved filtering, sorting, and usability across pricing, feature, and subscription lists
+      * Enhanced subscription views with clearer overrides and metadata
+      * Add-on configuration UI improved, supporting commitments and usage-based context
+      * Query builder supports multi-select "Select All"
+      * UI polish across revenue charts and subscription tables
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Fixed onboarding issues for organization name and tenant persistence
+      * Improved loading and error states in analytics views
+      * Fixed revenue tooltip inconsistencies from partial invoice data
+    </Accordion>
+
+    <Accordion title="API">
+      * Improved frontend integration with updated analytics and usage APIs
+      * Customer usage views backed by existing usage endpoints
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
+<Update label="January 14th 2026">
+  ## Wallet and credit balance correctness
+
+  Wallet balances are now more accurate and transparent. Credits available reflect what customers can actually use, and wallet operations are safe under concurrency.
+
+  * **Wallet balances**: Clear `credits available breakdown`, improving transparency and accuracy
+  * **Top-ups**: Purchased credit top-ups now correctly contribute to usable credit balances
+  * **Eligibility**: Credit eligibility now strictly applies only to completed transactions
+  * **Advisory locking**: Wallet operations are protected with advisory locking to reduce race conditions under concurrency
+
+  <Card icon="code" horizontal={true} href="/api-reference/wallets/get-wallet-balance" title="Get Wallet Balance - API Reference" />
+
+  <br />
+
+  ## Add-on pricing flexibility
+
+  Add-ons now support usage-based pricing and commit-and-overage billing.
+
+  * **Usage-based pricing**: Add usage-based prices to add-ons
+  * **Add-on line-item commitments**: Introduced to support commit-and-overage billing models
+
+  <br />
+
+  ## Caching and performance groundwork
+
+  Introduced a Redis cache layer with environment-specific key prefixes to support multi-environment deployments safely.
+
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Added validation to prevent exceeding the maximum number of active prices
+      * Extended feature filters to support `not-contains` queries
+      * Improved wallet balance performance using the updated balance API path
+      * Logging noise reduced by removing unnecessary debug and print statements
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Subscription start dates normalized to millisecond precision
+      * Reduced unnecessary observability overhead by removing redundant spans from data layers
+    </Accordion>
+
+    <Accordion title="API">
+      * Added a lightweight subscription fetch-by-ID API with optional expand parameters
+      * Removed support for fetching inactive prices via lookup keys
+      * Analytics APIs now expose recent subscriptions and invoice payment status
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
+<Update label="January 7th 2026">
+  ## Import, export, and workflow foundations
+
+  Backend support for bulk import and S3 exports is in place. Invoice processing and workflow reliability are improved.
+
+  * **Bulk import**: Added backend support for bulk importing `prices` and `features`
+  * **S3 exports**: Added managed  `S3 export support` for reports such as credit usage
+  * **Invoice and usage**: Improved invoice processing alignment with feature usage tracking
+  * **Workflows**: Strengthened workflow reliability with improved Temporal identity handling and timeout tuning
+
+  <Card icon="book-open" horizontal={true} href="/docs/data-exports/amazon-s3/export" title="S3 Export - Documentation" />
+
+  <br />
+
+  ## Subscription and credit grant controls
+
+  You can cancel future subscription grants and set end dates on credit grants.
+
+  * **Cancel future grants**: Added support for cancelling future subscription grants
+  * **Credit grant end-date**: Added end-date support for credit grants
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Reintroduced price lookup keys in a controlled and validated manner
+      * Improved tenant and environment isolation for exports
+      * General workflow stability and timeout tuning
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Fixed wallet balance discrepancies affecting “credits available”
+      * Improved reliability of scheduled background workflows
+    </Accordion>
+
+    <Accordion title="API">
+      * Import and export endpoints for prices and features made available
+    </Accordion>
+  </AccordionGroup>
+</Update>
