@@ -1,0 +1,130 @@
+---
+title: 'Moyasar Invoice Synchronization'
+description: 'Complete guide to invoice synchronization between Flexprice and Moyasar'
+---
+
+## Overview
+
+Moyasar integration in Flexprice syncs invoices to Moyasar and generates a payment link (Moyasar invoice URL) for each synced invoice.
+
+## Synchronization Flow
+
+The sync process is **one-way** (Flexprice → Moyasar) and works as follows:
+
+```mermaid
+graph LR
+    A[Flexprice<br/>Invoice] -->|Sync Request| B[Moyasar<br/>API]
+    B -->|Create Invoice| C[Moyasar<br/>Invoice]
+    C -->|Return URL| A
+    C -->|Payment Link| D[Customer<br/>Payment]
+    D -->|Webhook (payment_paid)| E[Flexprice<br/>Updates Status]
+```
+
+### How it Works
+
+<Steps>
+  <Step title="Trigger">
+    An invoice sync is triggered (automatically).
+  </Step>
+  <Step title="Creation">
+    Flexprice creates an invoice object in Moyasar using the `secret_key`.
+  </Step>
+  <Step title="Link Generation">
+    Moyasar returns a `url` (the payment page).
+  </Step>
+  <Step title="Metadata Update">
+    Flexprice saves the Moyasar invoice ID and payment URL in the invoice metadata.
+  </Step>
+</Steps>
+
+## Invoice Data Model
+
+### Flexprice Invoice Structure
+```json
+{
+  "id": "inv_123",
+  "amount": "100.00",
+  "currency": "SAR",
+  "metadata": {
+    "moyasar_invoice_id": "inv_moy_xyz",
+    "moyasar_invoice_url": "https://moyasar.com/i/inv_moy_xyz"
+  }
+}
+```
+
+### Moyasar Invoice Structure
+```json
+{
+  "id": "inv_moy_xyz",
+  "status": "initiated",
+  "amount": 10000,
+  "currency": "SAR",
+  "description": "Invoice for Premium Plan",
+  "url": "https://moyasar.com/i/inv_moy_xyz",
+  "metadata": {
+    "flexprice_invoice_id": "inv_123"
+  }
+}
+```
+
+## Sync Configuration
+
+The following fields are mapped during sync:
+
+| Field | Flexprice → Moyasar | Notes |
+|-------|---------------------|-------|
+| `amount` | ✅ | Converted to smallest unit (e.g., Halalah) |
+| `currency` | ✅ | Passed as-is (e.g., SAR) |
+| `description` | ✅ | Summary of line items |
+| `metadata` | ✅ | Includes `flexprice_invoice_id` for tracking |
+
+
+## Payment Flow & Webhooks
+
+### Payment Journey
+
+<Steps>
+  <Step title="User pays">
+    User clicks the `moyasar_invoice_url`.
+  </Step>
+  <Step title="Processing">
+    Payment is processed on Moyasar's hosted page.
+  </Step>
+  <Step title="Webhook">
+    Moyasar sends a `payment_paid` webhook.
+  </Step>
+  <Step title="Reconciliation">
+    Flexprice receives the webhook, finds the invoice via the metadata/mapping, and updates the invoice status to `PAID`.
+  </Step>
+</Steps>
+
+## Error Handling
+
+| Error | Cause |
+|-------|-------|
+| `Moyasar connection not configured` | No active Moyasar connection found for the tenant/env. |
+| `Currency not supported` | Invoice currency (e.g., INR) not supported by your Moyasar account. |
+| `Invalid amount` | Amount must be positive. |
+
+## Testing
+
+<Steps>
+  <Step title="Create invoice">
+    Create a Flexprice invoice.
+  </Step>
+  <Step title="Trigger sync (Automatically)">
+    Trigger the sync to Moyasar.
+  </Step>
+  <Step title="Check metadata">
+    Check invoice metadata for `moyasar_invoice_url`.
+  </Step>
+  <Step title="Test payment">
+    Open the URL and pay using a **Test Card**.
+  </Step>
+</Steps>
+
+### Test Cards (Moyasar Sandbox)
+| Number | Expiry | CVC | Result |
+|--------|--------|-----|--------|
+| `4111 1111 1111 1111` | Future | 123 | Success |
+| `4000 0000 0000 0002` | Future | 123 | Failure |
