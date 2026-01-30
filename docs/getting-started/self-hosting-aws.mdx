@@ -1,0 +1,2806 @@
+---
+title: "Self-hosting on AWS"
+description: "Complete guide to deploy Flexprice on AWS with ECS, Aurora PostgreSQL, MSK, EKS, and Redis"
+---
+
+This guide provides a comprehensive, step-by-step walkthrough for self-hosting Flexprice on **AWS** in a production-ready setup. It covers VPC networking, ECS compute (EC2 with ARM64), Aurora PostgreSQL, Amazon MSK (Kafka), EKS with ClickHouse, ElastiCache Redis, DynamoDB, IAM, secrets management, and observability. Follow this guide to deploy Flexprice with minimal Flexprice engineering intervention.
+
+---
+
+## Quick start summary
+
+**Deployment time:** 2-4 hours | **Monthly cost:** $2,000-2,500 (production) | **Scale:** 100M+ events/month
+
+<Steps>
+  <Step title="Infrastructure Setup (1-2 hours)">
+    VPC, subnets, security groups, NAT Gateway, IAM roles
+  </Step>
+  <Step title="Data Layer (30-45 min)">
+    Aurora PostgreSQL, Amazon MSK, ElastiCache Redis, DynamoDB
+  </Step>
+  <Step title="Compute Layer (30-45 min)">
+    EKS with ClickHouse, ECS cluster with API/Worker/Temporal services
+  </Step>
+  <Step title="Configuration (15-30 min)">
+    Secrets Manager, environment variables, ALB, DNS/SSL
+  </Step>
+</Steps>
+
+**What you'll have:**
+
+- Multi-AZ, production-ready billing infrastructure
+- Auto-scaling ECS services on ARM64 (Graviton) for cost efficiency
+- Aurora PostgreSQL with read replicas for high availability
+- ClickHouse for high-performance analytics (100M+ events/month)
+- Full observability with CloudWatch, Grafana Cloud, and Sentry
+
+---
+
+## Prerequisites
+
+Before you begin, ensure you have the following:
+
+<Check>
+  An [AWS account](https://aws.amazon.com/) with administrator or equivalent
+  permissions to create VPCs, ECS, RDS, MSK, EKS, S3, IAM roles, and CloudWatch
+  resources
+</Check>
+<Check>
+  [AWS CLI v2](https://aws.amazon.com/cli/) installed and configured with
+  credentials (`aws configure`)
+</Check>
+<Check>
+  [Docker](https://www.docker.com/) installed (for building and pushing images
+  to ECR)
+</Check>
+<Check>
+  [kubectl](https://kubernetes.io/docs/tasks/tools/) installed (for
+  EKS/ClickHouse management)
+</Check>
+<Check>
+  [eksctl](https://eksctl.io/) installed (optional but recommended for EKS
+  cluster creation)
+</Check>
+<Check>[Helm](https://helm.sh/) installed (for ClickHouse deployment)</Check>
+
+### Region selection
+
+Choose an AWS region that:
+
+- Has all required services (ECS, RDS, MSK, EKS)
+- Is geographically close to your users for lower latency
+- Meets your compliance requirements (e.g., GDPR for EU data)
+
+This guide uses `us-east-1` as the example region. Replace with your preferred region.
+
+### Cost estimation
+
+We provide two configurations: a **development** setup for testing and a **production** setup for high-throughput workloads (100M+ events/month).
+
+<Tabs>
+  <Tab title="Production ($2,000-2,500/month)">
+    | Component | Configuration | Monthly Cost |
+    |-----------|--------------|--------------|
+    | EC2 for ECS | 3x m6g.xlarge (ARM64/Graviton) | ~$280 |
+    | Aurora PostgreSQL | 2x db.r8g.xlarge (Writer + Reader) | ~$650 |
+    | Amazon MSK | 2 brokers, 1 TB storage each | ~$350 |
+    | EKS + ClickHouse | Control plane + m5.2xlarge nodes | ~$400 |
+    | ElastiCache Redis | cache.r6g.large, cluster mode | ~$150 |
+    | DynamoDB | On-demand, ~100M events | ~$50 |
+    | ALB + NAT Gateway | 2x NAT for HA | ~$100 |
+    | S3, CloudWatch, Secrets | Storage + logs | ~$30 |
+    | **AWS Subtotal** | | **~$2,010** |
+    | Third-party services | Temporal Cloud, Supabase, Svix, Grafana | ~$345 |
+    | **Total** | | **~$2,355/month** |
+  </Tab>
+  <Tab title="Development ($550-700/month)">
+    | Component | Configuration | Monthly Cost |
+    |-----------|--------------|--------------|
+    | ECS Fargate | 3 tasks (0.5 vCPU, 1 GB each) | ~$80 |
+    | RDS PostgreSQL | db.t3.small, Single-AZ | ~$30 |
+    | Amazon MSK | 2x kafka.t3.small, 100 GB each | ~$90 |
+    | EKS + ClickHouse | 2x m5.large nodes | ~$200 |
+    | ElastiCache Redis | cache.t3.micro | ~$15 |
+    | NAT Gateway | 1 gateway | ~$35 |
+    | ALB + S3 + CloudWatch | Standard | ~$50 |
+    | **Total** | | **~$500-600/month** |
+  </Tab>
+</Tabs>
+
+<Info>
+  Costs vary by region and usage. Use the [AWS Pricing
+  Calculator](https://calculator.aws/) for accurate estimates. ARM64/Graviton
+  instances provide ~20% cost savings over x86.
+</Info>
+
+### Sizing for 100M events/month
+
+| Component           | Development               | Production (100M events/month)  |
+| ------------------- | ------------------------- | ------------------------------- |
+| ECS API             | 1 task, 0.5 vCPU, 1 GB    | 2 tasks, 0.75 vCPU, 1.5 GB each |
+| ECS Consumer        | 1 task, 0.5 vCPU, 1 GB    | 5+ tasks, 1 vCPU, 1.75 GB each  |
+| ECS Temporal Worker | 1 task, 1 vCPU, 2 GB      | 3 tasks, 2 vCPU, 4 GB each      |
+| Database            | RDS db.t3.small           | Aurora 2x db.r8g.xlarge         |
+| Kafka               | 2x kafka.t3.small, 100 GB | 2 brokers, 1 TB storage each    |
+| ClickHouse          | 2x m5.large (8 GB)        | 128 GB memory cluster           |
+| Redis               | cache.t3.micro            | cache.r6g.large cluster mode    |
+
+**Data flow calculation:**
+
+- 100M events/month = ~38.5 events/second average
+- Peak traffic: 150-200 events/second (4-5x burst)
+- ClickHouse storage: ~50 GB/month growth
+- DynamoDB: ~20 GB/month growth
+
+---
+
+## Architecture overview
+
+Flexprice on AWS runs with the following production architecture:
+
+![AWS architecture for Flexprice](/infra.png)
+
+**Data flow:**
+
+- **Clients** → **Cloudflare** (DNS, WAF, rate limiting) → **ALB** → **ECS** (API, Consumer, Temporal Worker)
+- **API** writes to **Aurora PostgreSQL**, publishes events to **MSK (Kafka)** and **DynamoDB**
+- **Consumer** reads from Kafka and writes to **ClickHouse** (on EKS) for analytics
+- **Temporal Worker** connects to **Temporal Cloud** for workflow orchestration
+- **ElastiCache Redis** provides caching in cluster mode
+- **S3** stores invoice PDFs; **CloudWatch** and **Grafana Cloud** collect logs and metrics
+
+
+
+<Info>
+  This guide uses **Temporal Cloud** (recommended for production). You can also
+  self-host Temporal, but it requires additional infrastructure. Cloudflare is
+  optional but recommended for DNS and WAF.
+</Info>
+
+### Component summary
+
+| Component          | AWS Service        | Purpose                                      |
+| ------------------ | ------------------ | -------------------------------------------- |
+| Compute            | ECS on EC2 (ARM64) | API, Consumer, Temporal Worker services      |
+| Primary Database   | Aurora PostgreSQL  | Transactional data, subscriptions, customers |
+| Analytics Database | ClickHouse on EKS  | Event analytics, usage aggregation           |
+| Message Queue      | Amazon MSK         | Event streaming between services             |
+| Cache              | ElastiCache Redis  | Session cache, rate limiting                 |
+| Event Store        | DynamoDB           | Durable event storage                        |
+| Object Storage     | S3                 | Invoice PDFs, exports                        |
+| Workflow Engine    | Temporal Cloud     | Billing workflows, scheduled jobs            |
+| Authentication     | Supabase           | User authentication (optional)               |
+| Webhooks           | Svix               | Webhook delivery (optional)                  |
+
+---
+
+## Step 1: VPC and networking
+
+Create a VPC with public and private subnets across two Availability Zones for high availability.
+
+### VPC configuration
+
+| Setting                   | Value                                | Purpose                        |
+| ------------------------- | ------------------------------------ | ------------------------------ |
+| VPC CIDR                  | `10.0.0.0/16`                        | 65,536 IP addresses            |
+| Availability Zones        | 2 (e.g., `us-east-1a`, `us-east-1b`) | High availability              |
+| Public subnets            | 2 (`10.0.1.0/24`, `10.0.2.0/24`)     | ALB, NAT Gateway               |
+| Private subnets (compute) | 2 (`10.0.10.0/24`, `10.0.20.0/24`)   | ECS tasks                      |
+| Private subnets (data)    | 2 (`10.0.100.0/24`, `10.0.200.0/24`) | RDS, MSK, EKS                  |
+| NAT Gateway               | 1 (or 2 for HA)                      | Private subnet internet access |
+| Internet Gateway          | 1                                    | Public subnet internet access  |
+
+### Create VPC with AWS CLI
+
+```bash
+# Set variables
+export AWS_REGION="us-east-1"
+export ENV="prod"
+export VPC_CIDR="10.0.0.0/16"
+
+# Create VPC
+VPC_ID=$(aws ec2 create-vpc \
+  --cidr-block $VPC_CIDR \
+  --tag-specifications "ResourceType=vpc,Tags=[{Key=Name,Value=flexprice-${ENV}-vpc}]" \
+  --query 'Vpc.VpcId' \
+  --output text)
+
+echo "VPC ID: $VPC_ID"
+
+# Enable DNS hostnames
+aws ec2 modify-vpc-attribute \
+  --vpc-id $VPC_ID \
+  --enable-dns-hostnames '{"Value":true}'
+
+# Create Internet Gateway
+IGW_ID=$(aws ec2 create-internet-gateway \
+  --tag-specifications "ResourceType=internet-gateway,Tags=[{Key=Name,Value=flexprice-${ENV}-igw}]" \
+  --query 'InternetGateway.InternetGatewayId' \
+  --output text)
+
+aws ec2 attach-internet-gateway \
+  --vpc-id $VPC_ID \
+  --internet-gateway-id $IGW_ID
+```
+
+### Create subnets
+
+```bash
+# Get Availability Zones
+AZ_A="${AWS_REGION}a"
+AZ_B="${AWS_REGION}b"
+
+# Public subnets
+PUBLIC_SUBNET_A=$(aws ec2 create-subnet \
+  --vpc-id $VPC_ID \
+  --cidr-block "10.0.1.0/24" \
+  --availability-zone $AZ_A \
+  --tag-specifications "ResourceType=subnet,Tags=[{Key=Name,Value=flexprice-${ENV}-public-a}]" \
+  --query 'Subnet.SubnetId' \
+  --output text)
+
+PUBLIC_SUBNET_B=$(aws ec2 create-subnet \
+  --vpc-id $VPC_ID \
+  --cidr-block "10.0.2.0/24" \
+  --availability-zone $AZ_B \
+  --tag-specifications "ResourceType=subnet,Tags=[{Key=Name,Value=flexprice-${ENV}-public-b}]" \
+  --query 'Subnet.SubnetId' \
+  --output text)
+
+# Private subnets (compute)
+PRIVATE_COMPUTE_A=$(aws ec2 create-subnet \
+  --vpc-id $VPC_ID \
+  --cidr-block "10.0.10.0/24" \
+  --availability-zone $AZ_A \
+  --tag-specifications "ResourceType=subnet,Tags=[{Key=Name,Value=flexprice-${ENV}-private-compute-a}]" \
+  --query 'Subnet.SubnetId' \
+  --output text)
+
+PRIVATE_COMPUTE_B=$(aws ec2 create-subnet \
+  --vpc-id $VPC_ID \
+  --cidr-block "10.0.20.0/24" \
+  --availability-zone $AZ_B \
+  --tag-specifications "ResourceType=subnet,Tags=[{Key=Name,Value=flexprice-${ENV}-private-compute-b}]" \
+  --query 'Subnet.SubnetId' \
+  --output text)
+
+# Private subnets (data)
+PRIVATE_DATA_A=$(aws ec2 create-subnet \
+  --vpc-id $VPC_ID \
+  --cidr-block "10.0.100.0/24" \
+  --availability-zone $AZ_A \
+  --tag-specifications "ResourceType=subnet,Tags=[{Key=Name,Value=flexprice-${ENV}-private-data-a}]" \
+  --query 'Subnet.SubnetId' \
+  --output text)
+
+PRIVATE_DATA_B=$(aws ec2 create-subnet \
+  --vpc-id $VPC_ID \
+  --cidr-block "10.0.200.0/24" \
+  --availability-zone $AZ_B \
+  --tag-specifications "ResourceType=subnet,Tags=[{Key=Name,Value=flexprice-${ENV}-private-data-b}]" \
+  --query 'Subnet.SubnetId' \
+  --output text)
+
+echo "Public subnets: $PUBLIC_SUBNET_A, $PUBLIC_SUBNET_B"
+echo "Private compute subnets: $PRIVATE_COMPUTE_A, $PRIVATE_COMPUTE_B"
+echo "Private data subnets: $PRIVATE_DATA_A, $PRIVATE_DATA_B"
+```
+
+### Create NAT Gateway
+
+```bash
+# Allocate Elastic IP for NAT Gateway
+EIP_ALLOC=$(aws ec2 allocate-address \
+  --domain vpc \
+  --tag-specifications "ResourceType=elastic-ip,Tags=[{Key=Name,Value=flexprice-${ENV}-nat-eip}]" \
+  --query 'AllocationId' \
+  --output text)
+
+# Create NAT Gateway in public subnet A
+NAT_GW=$(aws ec2 create-nat-gateway \
+  --subnet-id $PUBLIC_SUBNET_A \
+  --allocation-id $EIP_ALLOC \
+  --tag-specifications "ResourceType=natgateway,Tags=[{Key=Name,Value=flexprice-${ENV}-nat}]" \
+  --query 'NatGateway.NatGatewayId' \
+  --output text)
+
+echo "NAT Gateway: $NAT_GW"
+
+# Wait for NAT Gateway to be available
+aws ec2 wait nat-gateway-available --nat-gateway-ids $NAT_GW
+```
+
+### Create route tables
+
+```bash
+# Public route table
+PUBLIC_RT=$(aws ec2 create-route-table \
+  --vpc-id $VPC_ID \
+  --tag-specifications "ResourceType=route-table,Tags=[{Key=Name,Value=flexprice-${ENV}-public-rt}]" \
+  --query 'RouteTable.RouteTableId' \
+  --output text)
+
+aws ec2 create-route \
+  --route-table-id $PUBLIC_RT \
+  --destination-cidr-block "0.0.0.0/0" \
+  --gateway-id $IGW_ID
+
+aws ec2 associate-route-table --subnet-id $PUBLIC_SUBNET_A --route-table-id $PUBLIC_RT
+aws ec2 associate-route-table --subnet-id $PUBLIC_SUBNET_B --route-table-id $PUBLIC_RT
+
+# Private route table
+PRIVATE_RT=$(aws ec2 create-route-table \
+  --vpc-id $VPC_ID \
+  --tag-specifications "ResourceType=route-table,Tags=[{Key=Name,Value=flexprice-${ENV}-private-rt}]" \
+  --query 'RouteTable.RouteTableId' \
+  --output text)
+
+aws ec2 create-route \
+  --route-table-id $PRIVATE_RT \
+  --destination-cidr-block "0.0.0.0/0" \
+  --nat-gateway-id $NAT_GW
+
+aws ec2 associate-route-table --subnet-id $PRIVATE_COMPUTE_A --route-table-id $PRIVATE_RT
+aws ec2 associate-route-table --subnet-id $PRIVATE_COMPUTE_B --route-table-id $PRIVATE_RT
+aws ec2 associate-route-table --subnet-id $PRIVATE_DATA_A --route-table-id $PRIVATE_RT
+aws ec2 associate-route-table --subnet-id $PRIVATE_DATA_B --route-table-id $PRIVATE_RT
+```
+
+### Create security groups
+
+```bash
+# ALB Security Group
+ALB_SG=$(aws ec2 create-security-group \
+  --group-name "flexprice-${ENV}-alb-sg" \
+  --description "ALB security group for Flexprice" \
+  --vpc-id $VPC_ID \
+  --tag-specifications "ResourceType=security-group,Tags=[{Key=Name,Value=flexprice-${ENV}-alb-sg}]" \
+  --query 'GroupId' \
+  --output text)
+
+aws ec2 authorize-security-group-ingress \
+  --group-id $ALB_SG \
+  --protocol tcp \
+  --port 443 \
+  --cidr "0.0.0.0/0"
+
+aws ec2 authorize-security-group-ingress \
+  --group-id $ALB_SG \
+  --protocol tcp \
+  --port 80 \
+  --cidr "0.0.0.0/0"
+
+# ECS Security Group
+ECS_SG=$(aws ec2 create-security-group \
+  --group-name "flexprice-${ENV}-ecs-sg" \
+  --description "ECS tasks security group for Flexprice" \
+  --vpc-id $VPC_ID \
+  --tag-specifications "ResourceType=security-group,Tags=[{Key=Name,Value=flexprice-${ENV}-ecs-sg}]" \
+  --query 'GroupId' \
+  --output text)
+
+# Allow ALB to ECS on port 8080
+aws ec2 authorize-security-group-ingress \
+  --group-id $ECS_SG \
+  --protocol tcp \
+  --port 8080 \
+  --source-group $ALB_SG
+
+# Allow ECS tasks to communicate with each other
+aws ec2 authorize-security-group-ingress \
+  --group-id $ECS_SG \
+  --protocol tcp \
+  --port 0-65535 \
+  --source-group $ECS_SG
+
+# RDS Security Group
+RDS_SG=$(aws ec2 create-security-group \
+  --group-name "flexprice-${ENV}-rds-sg" \
+  --description "RDS security group for Flexprice" \
+  --vpc-id $VPC_ID \
+  --tag-specifications "ResourceType=security-group,Tags=[{Key=Name,Value=flexprice-${ENV}-rds-sg}]" \
+  --query 'GroupId' \
+  --output text)
+
+aws ec2 authorize-security-group-ingress \
+  --group-id $RDS_SG \
+  --protocol tcp \
+  --port 5432 \
+  --source-group $ECS_SG
+
+# MSK Security Group
+MSK_SG=$(aws ec2 create-security-group \
+  --group-name "flexprice-${ENV}-msk-sg" \
+  --description "MSK security group for Flexprice" \
+  --vpc-id $VPC_ID \
+  --tag-specifications "ResourceType=security-group,Tags=[{Key=Name,Value=flexprice-${ENV}-msk-sg}]" \
+  --query 'GroupId' \
+  --output text)
+
+# Kafka ports: 9092 (plaintext), 9094 (TLS), 9096 (SASL)
+aws ec2 authorize-security-group-ingress \
+  --group-id $MSK_SG \
+  --protocol tcp \
+  --port 9092 \
+  --source-group $ECS_SG
+
+aws ec2 authorize-security-group-ingress \
+  --group-id $MSK_SG \
+  --protocol tcp \
+  --port 9094 \
+  --source-group $ECS_SG
+
+aws ec2 authorize-security-group-ingress \
+  --group-id $MSK_SG \
+  --protocol tcp \
+  --port 9096 \
+  --source-group $ECS_SG
+
+# EKS Security Group
+EKS_SG=$(aws ec2 create-security-group \
+  --group-name "flexprice-${ENV}-eks-sg" \
+  --description "EKS nodes security group for Flexprice" \
+  --vpc-id $VPC_ID \
+  --tag-specifications "ResourceType=security-group,Tags=[{Key=Name,Value=flexprice-${ENV}-eks-sg}]" \
+  --query 'GroupId' \
+  --output text)
+
+# ClickHouse ports: 9000 (native), 8123 (HTTP)
+aws ec2 authorize-security-group-ingress \
+  --group-id $EKS_SG \
+  --protocol tcp \
+  --port 9000 \
+  --source-group $ECS_SG
+
+aws ec2 authorize-security-group-ingress \
+  --group-id $EKS_SG \
+  --protocol tcp \
+  --port 8123 \
+  --source-group $ECS_SG
+
+# Allow EKS nodes to communicate with each other
+aws ec2 authorize-security-group-ingress \
+  --group-id $EKS_SG \
+  --protocol -1 \
+  --source-group $EKS_SG
+
+echo "Security Groups created:"
+echo "ALB SG: $ALB_SG"
+echo "ECS SG: $ECS_SG"
+echo "RDS SG: $RDS_SG"
+echo "MSK SG: $MSK_SG"
+echo "EKS SG: $EKS_SG"
+```
+
+### Security group rules summary
+
+| Security Group     | Inbound | Source      | Port(s)          | Purpose                  |
+| ------------------ | ------- | ----------- | ---------------- | ------------------------ |
+| `flexprice-alb-sg` | HTTPS   | `0.0.0.0/0` | 443              | Public API access        |
+| `flexprice-alb-sg` | HTTP    | `0.0.0.0/0` | 80               | Redirect to HTTPS        |
+| `flexprice-ecs-sg` | TCP     | `alb-sg`    | 8080             | ALB to API               |
+| `flexprice-ecs-sg` | TCP     | `ecs-sg`    | All              | Inter-task communication |
+| `flexprice-rds-sg` | TCP     | `ecs-sg`    | 5432             | PostgreSQL access        |
+| `flexprice-msk-sg` | TCP     | `ecs-sg`    | 9092, 9094, 9096 | Kafka access             |
+| `flexprice-eks-sg` | TCP     | `ecs-sg`    | 9000, 8123       | ClickHouse access        |
+
+<Tip>
+  For production, consider restricting the ALB security group to only Cloudflare
+  IP ranges if you're using Cloudflare for DNS and WAF.
+</Tip>
+
+---
+
+## Step 2: IAM roles and policies
+
+Create IAM roles for ECS task execution and task runtime permissions.
+
+### ECS Task Execution Role
+
+This role allows ECS to pull container images and write logs.
+
+```bash
+# Create trust policy
+cat > /tmp/ecs-trust-policy.json << 'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+
+# Create execution role
+aws iam create-role \
+  --role-name flexprice-${ENV}-ecs-execution-role \
+  --assume-role-policy-document file:///tmp/ecs-trust-policy.json
+
+# Attach managed policy
+aws iam attach-role-policy \
+  --role-name flexprice-${ENV}-ecs-execution-role \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+# Create inline policy for Secrets Manager access
+cat > /tmp/secrets-policy.json << 'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:GetSecretValue"
+      ],
+      "Resource": "arn:aws:secretsmanager:*:*:secret:flexprice/*"
+    }
+  ]
+}
+EOF
+
+aws iam put-role-policy \
+  --role-name flexprice-${ENV}-ecs-execution-role \
+  --policy-name SecretsManagerAccess \
+  --policy-document file:///tmp/secrets-policy.json
+```
+
+### ECS Task Role
+
+This role grants permissions for the Flexprice application at runtime.
+
+```bash
+# Create task role
+aws iam create-role \
+  --role-name flexprice-${ENV}-ecs-task-role \
+  --assume-role-policy-document file:///tmp/ecs-trust-policy.json
+
+# Create task policy
+cat > /tmp/task-policy.json << 'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "S3InvoiceBucket",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::flexprice-invoices-*",
+        "arn:aws:s3:::flexprice-invoices-*/*"
+      ]
+    },
+    {
+      "Sid": "CloudWatchLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "arn:aws:logs:*:*:log-group:/ecs/flexprice-*"
+    },
+    {
+      "Sid": "SecretsManagerRead",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:GetSecretValue"
+      ],
+      "Resource": "arn:aws:secretsmanager:*:*:secret:flexprice/*"
+    }
+  ]
+}
+EOF
+
+aws iam put-role-policy \
+  --role-name flexprice-${ENV}-ecs-task-role \
+  --policy-name FlexpriceTaskPolicy \
+  --policy-document file:///tmp/task-policy.json
+```
+
+### Get role ARNs
+
+```bash
+EXECUTION_ROLE_ARN=$(aws iam get-role \
+  --role-name flexprice-${ENV}-ecs-execution-role \
+  --query 'Role.Arn' \
+  --output text)
+
+TASK_ROLE_ARN=$(aws iam get-role \
+  --role-name flexprice-${ENV}-ecs-task-role \
+  --query 'Role.Arn' \
+  --output text)
+
+echo "Execution Role ARN: $EXECUTION_ROLE_ARN"
+echo "Task Role ARN: $TASK_ROLE_ARN"
+```
+
+---
+
+## Step 3: Secrets Manager
+
+Store sensitive configuration in AWS Secrets Manager.
+
+### Create secrets
+
+```bash
+# PostgreSQL credentials
+aws secretsmanager create-secret \
+  --name flexprice/${ENV}/postgres \
+  --description "Flexprice PostgreSQL credentials" \
+  --secret-string '{
+    "username": "flexprice",
+    "password": "YOUR_SECURE_PASSWORD_HERE",
+    "host": "flexprice-'${ENV}'.xxx.'${AWS_REGION}'.rds.amazonaws.com",
+    "port": "5432",
+    "database": "flexprice"
+  }'
+
+# ClickHouse credentials
+aws secretsmanager create-secret \
+  --name flexprice/${ENV}/clickhouse \
+  --description "Flexprice ClickHouse credentials" \
+  --secret-string '{
+    "username": "flexprice",
+    "password": "YOUR_SECURE_PASSWORD_HERE"
+  }'
+
+# Kafka SASL credentials (if using SASL)
+aws secretsmanager create-secret \
+  --name flexprice/${ENV}/kafka \
+  --description "Flexprice Kafka SASL credentials" \
+  --secret-string '{
+    "username": "flexprice",
+    "password": "YOUR_SECURE_PASSWORD_HERE"
+  }'
+
+# Auth secret
+aws secretsmanager create-secret \
+  --name flexprice/${ENV}/auth \
+  --description "Flexprice authentication secret" \
+  --secret-string '{
+    "secret": "YOUR_64_CHAR_HEX_SECRET_HERE"
+  }'
+
+# Temporal API key (if using Temporal Cloud)
+aws secretsmanager create-secret \
+  --name flexprice/${ENV}/temporal \
+  --description "Flexprice Temporal Cloud credentials" \
+  --secret-string '{
+    "api_key": "YOUR_TEMPORAL_API_KEY",
+    "api_key_name": "YOUR_TEMPORAL_API_KEY_NAME",
+    "namespace": "YOUR_NAMESPACE"
+  }'
+```
+
+<Warning>
+  Replace `YOUR_SECURE_PASSWORD_HERE` and other placeholder values with strong,
+  unique credentials. Use a password generator for production secrets.
+</Warning>
+
+---
+
+## Step 4: Aurora PostgreSQL
+
+Create an Aurora PostgreSQL cluster for Flexprice's primary database. Aurora provides higher availability and performance compared to standard RDS.
+
+<Tabs>
+  <Tab title="Production (Aurora)">
+    ### Create DB subnet group
+
+    ```bash
+    aws rds create-db-subnet-group \
+      --db-subnet-group-name flexprice-${ENV}-db-subnet \
+      --db-subnet-group-description "Flexprice DB subnet group" \
+      --subnet-ids $PRIVATE_DATA_A $PRIVATE_DATA_B
+    ```
+
+    ### Create Aurora cluster
+
+    ```bash
+    # Create Aurora PostgreSQL cluster with Secrets Manager managed credentials
+    aws rds create-db-cluster \
+      --db-cluster-identifier flexprice-${ENV} \
+      --engine aurora-postgresql \
+      --engine-version 17.4 \
+      --master-username postgres \
+      --manage-master-user-password \
+      --storage-type aurora-iopt1 \
+      --vpc-security-group-ids $RDS_SG \
+      --db-subnet-group-name flexprice-${ENV}-db-subnet \
+      --database-name flexprice \
+      --backup-retention-period 7 \
+      --preferred-backup-window "03:00-04:00" \
+      --preferred-maintenance-window "sun:04:00-sun:05:00" \
+      --deletion-protection \
+      --storage-encrypted \
+      --tags Key=Name,Value=flexprice-${ENV} Key=Environment,Value=${ENV}
+
+    echo "Aurora cluster creation initiated..."
+
+    # Wait for cluster to be available
+    aws rds wait db-cluster-available \
+      --db-cluster-identifier flexprice-${ENV}
+    ```
+
+    ### Add Writer instance
+
+    ```bash
+    # Create writer instance (db.r8g.xlarge for production)
+    aws rds create-db-instance \
+      --db-instance-identifier flexprice-${ENV}-writer \
+      --db-instance-class db.r8g.xlarge \
+      --engine aurora-postgresql \
+      --db-cluster-identifier flexprice-${ENV} \
+      --availability-zone ${AZ_A} \
+      --no-publicly-accessible \
+      --tags Key=Name,Value=flexprice-${ENV}-writer Key=Environment,Value=${ENV}
+
+    echo "Writer instance creation initiated..."
+    aws rds wait db-instance-available \
+      --db-instance-identifier flexprice-${ENV}-writer
+    ```
+
+    ### Add Reader instance
+
+    ```bash
+    # Create reader instance for read replicas
+    aws rds create-db-instance \
+      --db-instance-identifier flexprice-${ENV}-reader \
+      --db-instance-class db.r8g.xlarge \
+      --engine aurora-postgresql \
+      --db-cluster-identifier flexprice-${ENV} \
+      --availability-zone ${AZ_B} \
+      --no-publicly-accessible \
+      --tags Key=Name,Value=flexprice-${ENV}-reader Key=Environment,Value=${ENV}
+
+    echo "Reader instance creation initiated..."
+    aws rds wait db-instance-available \
+      --db-instance-identifier flexprice-${ENV}-reader
+    ```
+
+    ### Get Aurora endpoints
+
+    ```bash
+    # Get cluster endpoints
+    AURORA_WRITER_ENDPOINT=$(aws rds describe-db-clusters \
+      --db-cluster-identifier flexprice-${ENV} \
+      --query 'DBClusters[0].Endpoint' \
+      --output text)
+
+    AURORA_READER_ENDPOINT=$(aws rds describe-db-clusters \
+      --db-cluster-identifier flexprice-${ENV} \
+      --query 'DBClusters[0].ReaderEndpoint' \
+      --output text)
+
+    echo "Aurora Writer Endpoint: $AURORA_WRITER_ENDPOINT"
+    echo "Aurora Reader Endpoint: $AURORA_READER_ENDPOINT"
+    ```
+
+  </Tab>
+  <Tab title="Development (RDS)">
+    For development environments, use standard RDS PostgreSQL:
+
+    ```bash
+    aws rds create-db-instance \
+      --db-instance-identifier flexprice-${ENV} \
+      --db-instance-class db.t3.small \
+      --engine postgres \
+      --engine-version 15.4 \
+      --master-username flexprice \
+      --master-user-password "$DB_PASSWORD" \
+      --allocated-storage 100 \
+      --storage-type gp3 \
+      --storage-encrypted \
+      --vpc-security-group-ids $RDS_SG \
+      --db-subnet-group-name flexprice-${ENV}-db-subnet \
+      --db-name flexprice \
+      --no-publicly-accessible \
+      --deletion-protection \
+      --tags Key=Name,Value=flexprice-${ENV}
+    ```
+
+  </Tab>
+</Tabs>
+
+### Aurora configuration summary
+
+| Setting          | Development     | Production                          |
+| ---------------- | --------------- | ----------------------------------- |
+| Engine           | PostgreSQL 15.4 | Aurora PostgreSQL 17.4              |
+| Instance class   | `db.t3.small`   | `db.r8g.xlarge` (4 vCPU, 32 GB)     |
+| Instances        | 1 (Single-AZ)   | 2 (Writer + Reader, Multi-AZ)       |
+| Storage          | 100 GB gp3      | Aurora I/O-Optimized (auto-scaling) |
+| Multi-AZ         | No              | Yes (2 zones)                       |
+| Encryption       | Enabled         | Enabled                             |
+| Backup retention | 7 days          | 7 days                              |
+| Monthly cost     | ~$30            | ~$650                               |
+
+### Update Secrets Manager with Aurora endpoints
+
+```bash
+# Get the managed master password ARN
+MASTER_SECRET_ARN=$(aws rds describe-db-clusters \
+  --db-cluster-identifier flexprice-${ENV} \
+  --query 'DBClusters[0].MasterUserSecret.SecretArn' \
+  --output text)
+
+# Update the postgres secret with Aurora endpoints
+aws secretsmanager update-secret \
+  --secret-id flexprice/${ENV}/postgres \
+  --secret-string '{
+    "username": "postgres",
+    "password_secret_arn": "'$MASTER_SECRET_ARN'",
+    "host": "'$AURORA_WRITER_ENDPOINT'",
+    "reader_host": "'$AURORA_READER_ENDPOINT'",
+    "port": "5432",
+    "database": "flexprice"
+  }'
+```
+
+<Tip>
+  Aurora with Secrets Manager managed credentials automatically rotates the
+  master password. Use the `MasterUserSecret` ARN to retrieve the current
+  password.
+</Tip>
+
+### Run database migrations
+
+You can run migrations using a one-off ECS task or from a bastion host. Here's how to run migrations via ECS:
+
+```bash
+# Create a one-off task definition for migrations
+cat > /tmp/migration-task.json << EOF
+{
+  "family": "flexprice-migration-${ENV}",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "${EXECUTION_ROLE_ARN}",
+  "taskRoleArn": "${TASK_ROLE_ARN}",
+  "containerDefinitions": [
+    {
+      "name": "migration",
+      "image": "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/flexprice-${ENV}/api:latest",
+      "command": ["./flexprice", "migrate", "up"],
+      "essential": true,
+      "environment": [
+        {"name": "FLEXPRICE_POSTGRES_HOST", "value": "${RDS_ENDPOINT}"},
+        {"name": "FLEXPRICE_POSTGRES_PORT", "value": "5432"},
+        {"name": "FLEXPRICE_POSTGRES_USER", "value": "flexprice"},
+        {"name": "FLEXPRICE_POSTGRES_DBNAME", "value": "flexprice"},
+        {"name": "FLEXPRICE_POSTGRES_SSLMODE", "value": "require"}
+      ],
+      "secrets": [
+        {
+          "name": "FLEXPRICE_POSTGRES_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/postgres:password::"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/flexprice-migration-${ENV}",
+          "awslogs-region": "${AWS_REGION}",
+          "awslogs-stream-prefix": "migration"
+        }
+      }
+    }
+  ]
+}
+EOF
+
+# Register task definition
+aws ecs register-task-definition --cli-input-json file:///tmp/migration-task.json
+
+# Run the migration task
+aws ecs run-task \
+  --cluster flexprice-${ENV} \
+  --task-definition flexprice-migration-${ENV} \
+  --launch-type FARGATE \
+  --network-configuration "awsvpcConfiguration={subnets=[$PRIVATE_COMPUTE_A],securityGroups=[$ECS_SG],assignPublicIp=DISABLED}"
+```
+
+---
+
+## Step 5: Amazon MSK (Kafka)
+
+Create an Amazon MSK cluster for event streaming.
+
+### Create MSK configuration
+
+```bash
+# Create MSK configuration
+cat > /tmp/msk-config.properties << 'EOF'
+auto.create.topics.enable=false
+default.replication.factor=2
+min.insync.replicas=1
+num.partitions=6
+log.retention.hours=168
+log.retention.bytes=107374182400
+EOF
+
+MSK_CONFIG_ARN=$(aws kafka create-configuration \
+  --name flexprice-${ENV}-config \
+  --description "Flexprice MSK configuration" \
+  --kafka-versions "3.5.1" \
+  --server-properties fileb:///tmp/msk-config.properties \
+  --query 'Arn' \
+  --output text)
+
+echo "MSK Config ARN: $MSK_CONFIG_ARN"
+```
+
+### Create MSK cluster
+
+```bash
+# Create MSK cluster
+cat > /tmp/msk-cluster.json << EOF
+{
+  "ClusterName": "flexprice-${ENV}",
+  "KafkaVersion": "3.8.1",
+  "NumberOfBrokerNodes": 2,
+  "BrokerNodeGroupInfo": {
+    "InstanceType": "kafka.m5.large",
+    "ClientSubnets": ["${PRIVATE_DATA_A}", "${PRIVATE_DATA_B}"],
+    "SecurityGroups": ["${MSK_SG}"],
+    "StorageInfo": {
+      "EbsStorageInfo": {
+        "VolumeSize": 1024
+      }
+    }
+  },
+  "EncryptionInfo": {
+    "EncryptionInTransit": {
+      "ClientBroker": "TLS",
+      "InCluster": true
+    },
+    "EncryptionAtRest": {
+      "DataVolumeKMSKeyId": "alias/aws/kafka"
+    }
+  },
+  "ClientAuthentication": {
+    "Sasl": {
+      "Scram": {
+        "Enabled": true
+      },
+      "Iam": {
+        "Enabled": true
+      }
+    }
+  },
+  "ConfigurationInfo": {
+    "Arn": "${MSK_CONFIG_ARN}",
+    "Revision": 1
+  },
+  "EnhancedMonitoring": "PER_PARTITION_PER_BROKER",
+  "OpenMonitoring": {
+    "Prometheus": {
+      "JmxExporter": {
+        "EnabledInBroker": true
+      },
+      "NodeExporter": {
+        "EnabledInBroker": true
+      }
+    }
+  },
+  "LoggingInfo": {
+    "BrokerLogs": {
+      "CloudWatchLogs": {
+        "Enabled": true,
+        "LogGroup": "/aws/msk/flexprice-${ENV}"
+      },
+      "S3": {
+        "Enabled": true,
+        "Bucket": "msk-logs-${ACCOUNT_ID}-${AWS_REGION}",
+        "Prefix": "msk-logs"
+      }
+    }
+  },
+  "Tags": {
+    "Name": "flexprice-${ENV}",
+    "Environment": "${ENV}"
+  }
+}
+EOF
+
+# Create CloudWatch log group for MSK
+aws logs create-log-group --log-group-name /aws/msk/flexprice-${ENV}
+
+# Create the cluster
+MSK_CLUSTER_ARN=$(aws kafka create-cluster \
+  --cli-input-json file:///tmp/msk-cluster.json \
+  --query 'ClusterArn' \
+  --output text)
+
+echo "MSK Cluster ARN: $MSK_CLUSTER_ARN"
+echo "Waiting for MSK cluster to become active (this can take 15-20 minutes)..."
+
+# Wait for cluster to be active
+aws kafka wait cluster-active --cluster-arn $MSK_CLUSTER_ARN
+```
+
+### Create SASL/SCRAM secret for MSK
+
+```bash
+# Get Kafka password from Secrets Manager
+KAFKA_PASSWORD=$(aws secretsmanager get-secret-value \
+  --secret-id flexprice/${ENV}/kafka \
+  --query 'SecretString' \
+  --output text | jq -r '.password')
+
+# Create a secret in Secrets Manager with the prefix AmazonMSK_
+aws secretsmanager create-secret \
+  --name AmazonMSK_flexprice_${ENV} \
+  --description "MSK SASL/SCRAM credentials" \
+  --secret-string '{
+    "username": "flexprice",
+    "password": "'$KAFKA_PASSWORD'"
+  }'
+
+# Associate the secret with the MSK cluster
+aws kafka batch-associate-scram-secret \
+  --cluster-arn $MSK_CLUSTER_ARN \
+  --secret-arn-list "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:AmazonMSK_flexprice_${ENV}"
+```
+
+### Get MSK bootstrap brokers
+
+```bash
+# Get bootstrap brokers (SASL/SCRAM)
+MSK_BOOTSTRAP=$(aws kafka get-bootstrap-brokers \
+  --cluster-arn $MSK_CLUSTER_ARN \
+  --query 'BootstrapBrokerStringSaslScram' \
+  --output text)
+
+echo "MSK Bootstrap Brokers: $MSK_BOOTSTRAP"
+```
+
+### Create Kafka topics
+
+Use a bastion host or an EC2 instance with Kafka CLI tools to create topics:
+
+```bash
+# From a machine with kafka-topics.sh and access to MSK
+kafka-topics.sh --create \
+  --bootstrap-server $MSK_BOOTSTRAP \
+  --command-config /path/to/client.properties \
+  --topic events \
+  --partitions 6 \
+  --replication-factor 2
+
+# Create dead letter queue topic
+kafka-topics.sh --create \
+  --bootstrap-server $MSK_BOOTSTRAP \
+  --command-config /path/to/client.properties \
+  --topic events-dlq \
+  --partitions 6 \
+  --replication-factor 2
+```
+
+Example `client.properties` for SASL/SCRAM:
+
+```properties
+security.protocol=SASL_SSL
+sasl.mechanism=SCRAM-SHA-512
+sasl.jaas.config=org.apache.kafka.common.security.scram.ScramLoginModule required username="flexprice" password="YOUR_KAFKA_PASSWORD";
+```
+
+### MSK configuration summary
+
+| Setting            | Development      | Production                            |
+| ------------------ | ---------------- | ------------------------------------- |
+| Kafka version      | 3.5.1            | 3.8.1                                 |
+| Broker type        | `kafka.t3.small` | `kafka.m5.large` (4 vCPU, 8 GB)       |
+| Number of brokers  | 2                | 2 (1 per AZ)                          |
+| Storage per broker | 100 GB           | 1024 GB (1 TB)                        |
+| Authentication     | SASL/SCRAM       | SASL/SCRAM + IAM                      |
+| Encryption         | TLS in transit   | TLS in transit + at rest              |
+| Monitoring         | Basic            | Enhanced partition-level + Prometheus |
+| Monthly cost       | ~$90             | ~$350                                 |
+
+<Tip>
+  For development, use `kafka.t3.small` with 100 GB storage. For production, use
+  `kafka.m5.large` with 1 TB storage to handle 100M+ events/month.
+</Tip>
+
+---
+
+## Step 6: EKS with ClickHouse
+
+Create an EKS cluster and deploy ClickHouse for analytics storage.
+
+### Create EKS cluster with eksctl
+
+```bash
+# Create EKS cluster configuration
+cat > /tmp/eks-cluster.yaml << EOF
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: flexprice-${ENV}
+  region: ${AWS_REGION}
+  version: "1.28"
+
+vpc:
+  id: "${VPC_ID}"
+  subnets:
+    private:
+      ${AZ_A}:
+        id: "${PRIVATE_DATA_A}"
+      ${AZ_B}:
+        id: "${PRIVATE_DATA_B}"
+
+managedNodeGroups:
+  - name: clickhouse-nodes
+    instanceType: m5.large
+    desiredCapacity: 2
+    minSize: 2
+    maxSize: 4
+    privateNetworking: true
+    volumeSize: 100
+    volumeType: gp3
+    securityGroups:
+      attachIDs:
+        - ${EKS_SG}
+    labels:
+      role: clickhouse
+    tags:
+      Name: flexprice-${ENV}-clickhouse-node
+      Environment: ${ENV}
+
+addons:
+  - name: vpc-cni
+  - name: coredns
+  - name: kube-proxy
+  - name: aws-ebs-csi-driver
+
+cloudWatch:
+  clusterLogging:
+    enableTypes:
+      - api
+      - audit
+      - authenticator
+      - controllerManager
+      - scheduler
+EOF
+
+# Create the EKS cluster
+eksctl create cluster -f /tmp/eks-cluster.yaml
+
+# Update kubeconfig
+aws eks update-kubeconfig --name flexprice-${ENV} --region ${AWS_REGION}
+```
+
+### Create gp3 StorageClass
+
+```bash
+cat << 'EOF' | kubectl apply -f -
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  fsType: ext4
+  encrypted: "true"
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+EOF
+```
+
+### Create ClickHouse namespace and secrets
+
+```bash
+# Create namespace
+kubectl create namespace clickhouse
+
+# Get ClickHouse password from Secrets Manager
+CH_PASSWORD=$(aws secretsmanager get-secret-value \
+  --secret-id flexprice/${ENV}/clickhouse \
+  --query 'SecretString' \
+  --output text | jq -r '.password')
+
+# Create Kubernetes secret
+kubectl create secret generic clickhouse-credentials \
+  --namespace clickhouse \
+  --from-literal=username=flexprice \
+  --from-literal=password=$CH_PASSWORD
+```
+
+### Deploy ClickHouse with Helm
+
+```bash
+# Add ClickHouse Helm repository
+helm repo add clickhouse https://docs.altinity.com/clickhouse-operator/
+helm repo update
+
+# Install ClickHouse Operator
+helm install clickhouse-operator clickhouse/altinity-clickhouse-operator \
+  --namespace clickhouse
+```
+
+### Create ClickHouse cluster
+
+```bash
+cat << 'EOF' | kubectl apply -f -
+apiVersion: "clickhouse.altinity.com/v1"
+kind: "ClickHouseInstallation"
+metadata:
+  name: flexprice
+  namespace: clickhouse
+spec:
+  configuration:
+    users:
+      flexprice/password_sha256_hex:
+        valueFrom:
+          secretKeyRef:
+            name: clickhouse-credentials
+            key: password
+      flexprice/networks/ip: "::/0"
+      flexprice/profile: default
+      flexprice/quota: default
+    clusters:
+      - name: cluster
+        layout:
+          shardsCount: 1
+          replicasCount: 2
+        templates:
+          podTemplate: clickhouse-pod
+          volumeClaimTemplate: data-volume
+  templates:
+    podTemplates:
+      - name: clickhouse-pod
+        spec:
+          containers:
+            - name: clickhouse
+              image: clickhouse/clickhouse-server:24.1
+              resources:
+                requests:
+                  memory: "4Gi"
+                  cpu: "2"
+                limits:
+                  memory: "4Gi"
+                  cpu: "2"
+    volumeClaimTemplates:
+      - name: data-volume
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          storageClassName: gp3
+          resources:
+            requests:
+              storage: 100Gi
+EOF
+```
+
+### Create ClickHouse service for ECS access
+
+```bash
+cat << 'EOF' | kubectl apply -f -
+apiVersion: v1
+kind: Service
+metadata:
+  name: clickhouse-flexprice
+  namespace: clickhouse
+spec:
+  type: ClusterIP
+  ports:
+    - name: native
+      port: 9000
+      targetPort: 9000
+    - name: http
+      port: 8123
+      targetPort: 8123
+  selector:
+    clickhouse.altinity.com/chi: flexprice
+EOF
+```
+
+### Get ClickHouse endpoint
+
+For ECS tasks to access ClickHouse, you have several options:
+
+1. **Internal NLB** (recommended): Create an internal Network Load Balancer pointing to the ClickHouse service
+2. **VPC peering/Transit Gateway**: If ECS and EKS are in separate VPCs
+3. **AWS PrivateLink**: For cross-account access
+
+```bash
+# Create internal NLB for ClickHouse
+cat << 'EOF' | kubectl apply -f -
+apiVersion: v1
+kind: Service
+metadata:
+  name: clickhouse-nlb
+  namespace: clickhouse
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+    service.beta.kubernetes.io/aws-load-balancer-subnets: "${PRIVATE_DATA_A},${PRIVATE_DATA_B}"
+spec:
+  type: LoadBalancer
+  ports:
+    - name: native
+      port: 9000
+      targetPort: 9000
+  selector:
+    clickhouse.altinity.com/chi: flexprice
+EOF
+
+# Get the NLB DNS name
+CLICKHOUSE_ENDPOINT=$(kubectl get svc clickhouse-nlb -n clickhouse -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+echo "ClickHouse Endpoint: $CLICKHOUSE_ENDPOINT:9000"
+```
+
+### Initialize ClickHouse database
+
+Connect to ClickHouse and create the database:
+
+```bash
+# Port-forward to ClickHouse for initial setup
+kubectl port-forward svc/clickhouse-flexprice -n clickhouse 9000:9000 &
+
+# Connect with clickhouse-client
+clickhouse-client --host localhost --port 9000 --user flexprice --password "$CH_PASSWORD" --query "CREATE DATABASE IF NOT EXISTS flexprice"
+```
+
+---
+
+## Step 7: ElastiCache Redis
+
+Create an ElastiCache Redis cluster for caching and session management.
+
+### Create Redis subnet group
+
+```bash
+aws elasticache create-cache-subnet-group \
+  --cache-subnet-group-name flexprice-${ENV}-redis-subnet \
+  --cache-subnet-group-description "Flexprice Redis subnet group" \
+  --subnet-ids $PRIVATE_DATA_A $PRIVATE_DATA_B
+```
+
+### Create Redis security group
+
+```bash
+# Create Redis security group
+REDIS_SG=$(aws ec2 create-security-group \
+  --group-name "flexprice-${ENV}-redis-sg" \
+  --description "Redis security group for Flexprice" \
+  --vpc-id $VPC_ID \
+  --tag-specifications "ResourceType=security-group,Tags=[{Key=Name,Value=flexprice-${ENV}-redis-sg}]" \
+  --query 'GroupId' \
+  --output text)
+
+# Allow Redis access from ECS
+aws ec2 authorize-security-group-ingress \
+  --group-id $REDIS_SG \
+  --protocol tcp \
+  --port 6379 \
+  --source-group $ECS_SG
+```
+
+### Create Redis replication group (cluster mode)
+
+<Tabs>
+  <Tab title="Production (Cluster Mode)">
+    ```bash
+    aws elasticache create-replication-group \
+      --replication-group-id flexprice-${ENV} \
+      --replication-group-description "Flexprice Redis cluster" \
+      --engine redis \
+      --engine-version 7.0 \
+      --cache-node-type cache.r6g.large \
+      --num-node-groups 1 \
+      --replicas-per-node-group 1 \
+      --cache-subnet-group-name flexprice-${ENV}-redis-subnet \
+      --security-group-ids $REDIS_SG \
+      --transit-encryption-enabled \
+      --at-rest-encryption-enabled \
+      --automatic-failover-enabled \
+      --multi-az-enabled \
+      --tags Key=Name,Value=flexprice-${ENV} Key=Environment,Value=${ENV}
+
+    echo "Redis cluster creation initiated..."
+
+    # Wait for cluster to be available
+    aws elasticache wait replication-group-available \
+      --replication-group-id flexprice-${ENV}
+
+    # Get cluster endpoint
+    REDIS_ENDPOINT=$(aws elasticache describe-replication-groups \
+      --replication-group-id flexprice-${ENV} \
+      --query 'ReplicationGroups[0].ConfigurationEndpoint.Address' \
+      --output text)
+
+    echo "Redis Endpoint: $REDIS_ENDPOINT"
+    ```
+
+  </Tab>
+  <Tab title="Development (Single Node)">
+    ```bash
+    aws elasticache create-cache-cluster \
+      --cache-cluster-id flexprice-${ENV} \
+      --engine redis \
+      --engine-version 7.0 \
+      --cache-node-type cache.t3.micro \
+      --num-cache-nodes 1 \
+      --cache-subnet-group-name flexprice-${ENV}-redis-subnet \
+      --security-group-ids $REDIS_SG \
+      --tags Key=Name,Value=flexprice-${ENV}
+    ```
+  </Tab>
+</Tabs>
+
+### Redis configuration summary
+
+| Setting      | Development      | Production                        |
+| ------------ | ---------------- | --------------------------------- |
+| Node type    | `cache.t3.micro` | `cache.r6g.large` (2 vCPU, 13 GB) |
+| Cluster mode | Disabled         | Enabled                           |
+| Replicas     | 0                | 1 per shard                       |
+| Multi-AZ     | No               | Yes                               |
+| Encryption   | Optional         | TLS in transit + at rest          |
+| Monthly cost | ~$15             | ~$150                             |
+
+---
+
+## Step 8: DynamoDB
+
+Create a DynamoDB table for durable event storage alongside ClickHouse.
+
+### Create events table
+
+```bash
+aws dynamodb create-table \
+  --table-name events \
+  --attribute-definitions \
+    AttributeName=pk,AttributeType=S \
+    AttributeName=sk,AttributeType=S \
+  --key-schema \
+    AttributeName=pk,KeyType=HASH \
+    AttributeName=sk,KeyType=RANGE \
+  --billing-mode PAY_PER_REQUEST \
+  --tags Key=Name,Value=flexprice-events Key=Environment,Value=${ENV}
+
+echo "DynamoDB table creation initiated..."
+
+# Wait for table to be active
+aws dynamodb wait table-exists --table-name events
+```
+
+### Enable Point-in-Time Recovery
+
+```bash
+aws dynamodb update-continuous-backups \
+  --table-name events \
+  --point-in-time-recovery-specification PointInTimeRecoveryEnabled=true
+```
+
+### DynamoDB configuration summary
+
+| Setting       | Value         | Notes                        |
+| ------------- | ------------- | ---------------------------- |
+| Billing mode  | On-demand     | Pay per request, auto-scales |
+| Partition key | `pk` (String) | Tenant/customer ID           |
+| Sort key      | `sk` (String) | Event timestamp              |
+| PITR          | Enabled       | Point-in-time recovery       |
+| Encryption    | AWS managed   | Default encryption           |
+| Monthly cost  | ~$50          | For ~100M events/month       |
+
+<Info>
+  DynamoDB is used alongside ClickHouse for durable event storage. Events are
+  written to both DynamoDB (for durability) and ClickHouse (for analytics).
+</Info>
+
+---
+
+## Step 9: S3 and CloudWatch
+
+### Create S3 bucket for invoices
+
+```bash
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+BUCKET_NAME="flexprice-invoices-${ACCOUNT_ID}-${ENV}"
+
+# Create bucket
+aws s3api create-bucket \
+  --bucket $BUCKET_NAME \
+  --region $AWS_REGION \
+  --create-bucket-configuration LocationConstraint=$AWS_REGION
+
+# Enable versioning
+aws s3api put-bucket-versioning \
+  --bucket $BUCKET_NAME \
+  --versioning-configuration Status=Enabled
+
+# Enable encryption
+aws s3api put-bucket-encryption \
+  --bucket $BUCKET_NAME \
+  --server-side-encryption-configuration '{
+    "Rules": [
+      {
+        "ApplyServerSideEncryptionByDefault": {
+          "SSEAlgorithm": "AES256"
+        }
+      }
+    ]
+  }'
+
+# Block public access
+aws s3api put-public-access-block \
+  --bucket $BUCKET_NAME \
+  --public-access-block-configuration '{
+    "BlockPublicAcls": true,
+    "IgnorePublicAcls": true,
+    "BlockPublicPolicy": true,
+    "RestrictPublicBuckets": true
+  }'
+
+# Create lifecycle rule (optional)
+aws s3api put-bucket-lifecycle-configuration \
+  --bucket $BUCKET_NAME \
+  --lifecycle-configuration '{
+    "Rules": [
+      {
+        "ID": "TransitionToIA",
+        "Status": "Enabled",
+        "Filter": {},
+        "Transitions": [
+          {
+            "Days": 90,
+            "StorageClass": "STANDARD_IA"
+          }
+        ]
+      }
+    ]
+  }'
+
+echo "S3 Bucket: $BUCKET_NAME"
+```
+
+### Create CloudWatch log groups
+
+```bash
+# Create log groups for ECS services
+aws logs create-log-group --log-group-name /ecs/flexprice-api-${ENV}
+aws logs create-log-group --log-group-name /ecs/flexprice-worker-${ENV}
+aws logs create-log-group --log-group-name /ecs/flexprice-temporal-worker-${ENV}
+aws logs create-log-group --log-group-name /ecs/flexprice-migration-${ENV}
+
+# Set retention (30 days)
+for lg in api worker temporal-worker migration; do
+  aws logs put-retention-policy \
+    --log-group-name /ecs/flexprice-${lg}-${ENV} \
+    --retention-in-days 30
+done
+```
+
+### Create CloudWatch alarms
+
+```bash
+# ECS CPU alarm
+aws cloudwatch put-metric-alarm \
+  --alarm-name flexprice-${ENV}-api-cpu-high \
+  --alarm-description "API service CPU utilization high" \
+  --metric-name CPUUtilization \
+  --namespace AWS/ECS \
+  --statistic Average \
+  --period 300 \
+  --threshold 80 \
+  --comparison-operator GreaterThanThreshold \
+  --dimensions Name=ClusterName,Value=flexprice-${ENV} Name=ServiceName,Value=flexprice-api-${ENV} \
+  --evaluation-periods 2 \
+  --alarm-actions arn:aws:sns:${AWS_REGION}:${ACCOUNT_ID}:flexprice-alerts
+
+# RDS CPU alarm
+aws cloudwatch put-metric-alarm \
+  --alarm-name flexprice-${ENV}-rds-cpu-high \
+  --alarm-description "RDS CPU utilization high" \
+  --metric-name CPUUtilization \
+  --namespace AWS/RDS \
+  --statistic Average \
+  --period 300 \
+  --threshold 80 \
+  --comparison-operator GreaterThanThreshold \
+  --dimensions Name=DBInstanceIdentifier,Value=flexprice-${ENV} \
+  --evaluation-periods 2 \
+  --alarm-actions arn:aws:sns:${AWS_REGION}:${ACCOUNT_ID}:flexprice-alerts
+
+# RDS connections alarm
+aws cloudwatch put-metric-alarm \
+  --alarm-name flexprice-${ENV}-rds-connections-high \
+  --alarm-description "RDS database connections high" \
+  --metric-name DatabaseConnections \
+  --namespace AWS/RDS \
+  --statistic Average \
+  --period 300 \
+  --threshold 80 \
+  --comparison-operator GreaterThanThreshold \
+  --dimensions Name=DBInstanceIdentifier,Value=flexprice-${ENV} \
+  --evaluation-periods 2 \
+  --alarm-actions arn:aws:sns:${AWS_REGION}:${ACCOUNT_ID}:flexprice-alerts
+```
+
+---
+
+## Step 10: ECR and container images
+
+### Create ECR repositories
+
+```bash
+# Create ECR repositories
+for repo in api worker temporal-worker; do
+  aws ecr create-repository \
+    --repository-name flexprice-${ENV}/${repo} \
+    --image-scanning-configuration scanOnPush=true \
+    --encryption-configuration encryptionType=AES256
+done
+```
+
+### Build and push images
+
+```bash
+# Get ECR login
+aws ecr get-login-password --region $AWS_REGION | \
+  docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+
+# Clone Flexprice repository
+git clone https://github.com/flexprice/flexprice.git
+cd flexprice
+
+# Build and push images
+for service in api worker temporal-worker; do
+  docker build -t flexprice-${service} .
+  docker tag flexprice-${service}:latest \
+    ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/flexprice-${ENV}/${service}:latest
+  docker push ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/flexprice-${ENV}/${service}:latest
+done
+```
+
+---
+
+## Step 11: ECS cluster and services
+
+### Create ECS cluster
+
+<Tabs>
+  <Tab title="Production (EC2/ARM64)">
+    For production, use EC2 with ARM64 (Graviton) instances for better cost-performance:
+
+    ```bash
+    # Create ECS cluster with EC2 capacity provider
+    aws ecs create-cluster \
+      --cluster-name flexprice-${ENV} \
+      --settings name=containerInsights,value=enabled \
+      --tags key=Name,value=flexprice-${ENV} key=Environment,value=${ENV}
+
+    # Create launch template for Graviton instances
+    aws ec2 create-launch-template \
+      --launch-template-name flexprice-${ENV}-ecs-lt \
+      --launch-template-data '{
+        "ImageId": "resolve:ssm:/aws/service/ecs/optimized-ami/amazon-linux-2023/arm64/recommended/image_id",
+        "InstanceType": "m6g.xlarge",
+        "IamInstanceProfile": {"Name": "ecsInstanceRole"},
+        "SecurityGroupIds": ["'$ECS_SG'"],
+        "UserData": "'$(echo '#!/bin/bash
+    echo ECS_CLUSTER=flexprice-'${ENV}' >> /etc/ecs/ecs.config' | base64)'"
+      }'
+
+    # Create Auto Scaling Group
+    aws autoscaling create-auto-scaling-group \
+      --auto-scaling-group-name flexprice-${ENV}-ecs-asg \
+      --launch-template LaunchTemplateName=flexprice-${ENV}-ecs-lt,Version='$Latest' \
+      --min-size 2 \
+      --max-size 6 \
+      --desired-capacity 3 \
+      --vpc-zone-identifier "${PRIVATE_COMPUTE_A},${PRIVATE_COMPUTE_B}" \
+      --tags Key=Name,Value=flexprice-${ENV}-ecs-node Key=Environment,Value=${ENV}
+
+    # Create capacity provider
+    aws ecs create-capacity-provider \
+      --name flexprice-${ENV}-cp \
+      --auto-scaling-group-provider "autoScalingGroupArn=arn:aws:autoscaling:${AWS_REGION}:${ACCOUNT_ID}:autoScalingGroup:*:autoScalingGroupName/flexprice-${ENV}-ecs-asg,managedScaling={status=ENABLED,targetCapacity=80},managedTerminationProtection=ENABLED"
+
+    # Associate capacity provider with cluster
+    aws ecs put-cluster-capacity-providers \
+      --cluster flexprice-${ENV} \
+      --capacity-providers flexprice-${ENV}-cp \
+      --default-capacity-provider-strategy capacityProvider=flexprice-${ENV}-cp,weight=1
+    ```
+  </Tab>
+  <Tab title="Development (Fargate)">
+    For development, use Fargate for simplicity:
+
+    ```bash
+    aws ecs create-cluster \
+      --cluster-name flexprice-${ENV} \
+      --capacity-providers FARGATE FARGATE_SPOT \
+      --default-capacity-provider-strategy capacityProvider=FARGATE,weight=1 \
+      --settings name=containerInsights,value=enabled \
+      --tags key=Name,value=flexprice-${ENV} key=Environment,value=${ENV}
+    ```
+  </Tab>
+</Tabs>
+
+### Create API task definition
+
+<Tabs>
+  <Tab title="Production (EC2/ARM64)">
+    ```bash
+    cat > /tmp/api-task-definition.json << EOF
+    {
+      "family": "flexprice-api-${ENV}",
+      "networkMode": "bridge",
+      "requiresCompatibilities": ["EC2"],
+      "cpu": "768",
+      "memory": "1536",
+      "executionRoleArn": "${EXECUTION_ROLE_ARN}",
+      "taskRoleArn": "${TASK_ROLE_ARN}",
+      "runtimePlatform": {
+        "cpuArchitecture": "ARM64",
+        "operatingSystemFamily": "LINUX"
+      },
+      "containerDefinitions": [
+        {
+          "name": "api",
+          "image": "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/flexprice-${ENV}/api:latest",
+          "cpu": 768,
+          "memoryReservation": 1536,
+          "essential": true,
+          "portMappings": [
+            {
+              "containerPort": 8080,
+              "hostPort": 0,
+              "protocol": "tcp"
+            }
+          ],
+          "environment": [
+            {"name": "FLEXPRICE_DEPLOYMENT_MODE", "value": "api"},
+            {"name": "FLEXPRICE_SERVER_ADDRESS", "value": ":8080"},
+            {"name": "FLEXPRICE_POSTGRES_PORT", "value": "5432"},
+            {"name": "FLEXPRICE_POSTGRES_DBNAME", "value": "flexprice"},
+            {"name": "FLEXPRICE_POSTGRES_SSLMODE", "value": "require"},
+            {"name": "FLEXPRICE_CLICKHOUSE_DATABASE", "value": "flexprice"},
+            {"name": "FLEXPRICE_CLICKHOUSE_TLS", "value": "false"},
+            {"name": "FLEXPRICE_KAFKA_USE_SASL", "value": "true"},
+            {"name": "FLEXPRICE_KAFKA_SASL_MECHANISM", "value": "SCRAM-SHA-512"},
+            {"name": "FLEXPRICE_KAFKA_TOPIC", "value": "events"},
+            {"name": "FLEXPRICE_KAFKA_CONSUMER_GROUP", "value": "flexprice-consumer-${ENV}"},
+            {"name": "FLEXPRICE_TEMPORAL_NAMESPACE", "value": "default"},
+            {"name": "FLEXPRICE_TEMPORAL_TASK_QUEUE", "value": "billing-task-queue"},
+            {"name": "FLEXPRICE_TEMPORAL_TLS", "value": "true"},
+            {"name": "FLEXPRICE_DYNAMODB_IN_USE", "value": "true"},
+            {"name": "FLEXPRICE_DYNAMODB_REGION", "value": "${AWS_REGION}"},
+            {"name": "FLEXPRICE_DYNAMODB_EVENT_TABLE_NAME", "value": "events"},
+            {"name": "FLEXPRICE_REDIS_CLUSTER_MODE", "value": "true"},
+            {"name": "FLEXPRICE_REDIS_USE_TLS", "value": "true"},
+            {"name": "FLEXPRICE_EVENT_PUBLISH_DESTINATION", "value": "all"},
+            {"name": "FLEXPRICE_LOGGING_LEVEL", "value": "info"},
+            {"name": "FLEXPRICE_LOGGING_FORMAT", "value": "json"}
+          ],
+    EOF
+    ```
+  </Tab>
+  <Tab title="Development (Fargate)">
+    ```bash
+    cat > /tmp/api-task-definition.json << EOF
+    {
+      "family": "flexprice-api-${ENV}",
+      "networkMode": "awsvpc",
+      "requiresCompatibilities": ["FARGATE"],
+      "cpu": "1024",
+      "memory": "2048",
+      "executionRoleArn": "${EXECUTION_ROLE_ARN}",
+      "taskRoleArn": "${TASK_ROLE_ARN}",
+      "containerDefinitions": [
+        {
+          "name": "api",
+          "image": "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/flexprice-${ENV}/api:latest",
+          "essential": true,
+          "portMappings": [
+            {
+              "containerPort": 8080,
+              "protocol": "tcp"
+            }
+          ],
+          "environment": [
+            {"name": "FLEXPRICE_DEPLOYMENT_MODE", "value": "api"},
+            {"name": "FLEXPRICE_SERVER_ADDRESS", "value": ":8080"},
+            {"name": "FLEXPRICE_POSTGRES_PORT", "value": "5432"},
+            {"name": "FLEXPRICE_POSTGRES_DBNAME", "value": "flexprice"},
+            {"name": "FLEXPRICE_POSTGRES_SSLMODE", "value": "require"},
+            {"name": "FLEXPRICE_CLICKHOUSE_DATABASE", "value": "flexprice"},
+            {"name": "FLEXPRICE_CLICKHOUSE_TLS", "value": "false"},
+            {"name": "FLEXPRICE_KAFKA_USE_SASL", "value": "true"},
+            {"name": "FLEXPRICE_KAFKA_SASL_MECHANISM", "value": "SCRAM-SHA-512"},
+            {"name": "FLEXPRICE_KAFKA_TOPIC", "value": "events"},
+            {"name": "FLEXPRICE_KAFKA_CONSUMER_GROUP", "value": "flexprice-consumer-${ENV}"},
+            {"name": "FLEXPRICE_TEMPORAL_NAMESPACE", "value": "default"},
+            {"name": "FLEXPRICE_TEMPORAL_TASK_QUEUE", "value": "billing-task-queue"},
+            {"name": "FLEXPRICE_TEMPORAL_TLS", "value": "true"},
+            {"name": "FLEXPRICE_LOGGING_LEVEL", "value": "info"}
+          ],
+    EOF
+    ```
+  </Tab>
+</Tabs>
+
+Continue with secrets (same for both):
+
+```bash
+cat >> /tmp/api-task-definition.json << EOF
+      "secrets": [
+        {
+          "name": "FLEXPRICE_AUTH_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/auth:secret::"
+        },
+        {
+          "name": "FLEXPRICE_POSTGRES_HOST",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/postgres:host::"
+        },
+        {
+          "name": "FLEXPRICE_POSTGRES_USER",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/postgres:username::"
+        },
+        {
+          "name": "FLEXPRICE_POSTGRES_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/postgres:password::"
+        },
+        {
+          "name": "FLEXPRICE_CLICKHOUSE_USERNAME",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/clickhouse:username::"
+        },
+        {
+          "name": "FLEXPRICE_CLICKHOUSE_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/clickhouse:password::"
+        },
+        {
+          "name": "FLEXPRICE_KAFKA_SASL_USER",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/kafka:username::"
+        },
+        {
+          "name": "FLEXPRICE_KAFKA_SASL_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/kafka:password::"
+        },
+        {
+          "name": "FLEXPRICE_TEMPORAL_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/temporal:api_key::"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "FLEXPRICE_AUTH_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/auth:secret::"
+        },
+        {
+          "name": "FLEXPRICE_POSTGRES_HOST",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/postgres:host::"
+        },
+        {
+          "name": "FLEXPRICE_POSTGRES_USER",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/postgres:username::"
+        },
+        {
+          "name": "FLEXPRICE_POSTGRES_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/postgres:password::"
+        },
+        {
+          "name": "FLEXPRICE_CLICKHOUSE_USERNAME",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/clickhouse:username::"
+        },
+        {
+          "name": "FLEXPRICE_CLICKHOUSE_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/clickhouse:password::"
+        },
+        {
+          "name": "FLEXPRICE_KAFKA_SASL_USER",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/kafka:username::"
+        },
+        {
+          "name": "FLEXPRICE_KAFKA_SASL_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/kafka:password::"
+        },
+        {
+          "name": "FLEXPRICE_TEMPORAL_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/temporal:api_key::"
+        }
+      ],
+      "healthCheck": {
+        "command": ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/flexprice-api-${ENV}",
+          "awslogs-region": "${AWS_REGION}",
+          "awslogs-stream-prefix": "api"
+        }
+      }
+    }
+  ]
+}
+EOF
+
+# Register task definition
+aws ecs register-task-definition --cli-input-json file:///tmp/api-task-definition.json
+```
+
+### Create Worker task definition
+
+```bash
+cat > /tmp/worker-task-definition.json << EOF
+{
+  "family": "flexprice-worker-${ENV}",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "${EXECUTION_ROLE_ARN}",
+  "taskRoleArn": "${TASK_ROLE_ARN}",
+  "containerDefinitions": [
+    {
+      "name": "worker",
+      "image": "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/flexprice-${ENV}/worker:latest",
+      "essential": true,
+      "environment": [
+        {"name": "FLEXPRICE_DEPLOYMENT_MODE", "value": "consumer"},
+        {"name": "FLEXPRICE_POSTGRES_PORT", "value": "5432"},
+        {"name": "FLEXPRICE_POSTGRES_DBNAME", "value": "flexprice"},
+        {"name": "FLEXPRICE_POSTGRES_SSLMODE", "value": "require"},
+        {"name": "FLEXPRICE_CLICKHOUSE_DATABASE", "value": "flexprice"},
+        {"name": "FLEXPRICE_CLICKHOUSE_TLS", "value": "false"},
+        {"name": "FLEXPRICE_KAFKA_USE_SASL", "value": "true"},
+        {"name": "FLEXPRICE_KAFKA_SASL_MECHANISM", "value": "SCRAM-SHA-512"},
+        {"name": "FLEXPRICE_KAFKA_TOPIC", "value": "events"},
+        {"name": "FLEXPRICE_KAFKA_CONSUMER_GROUP", "value": "flexprice-consumer-${ENV}"},
+        {"name": "FLEXPRICE_LOGGING_LEVEL", "value": "info"}
+      ],
+      "secrets": [
+        {
+          "name": "FLEXPRICE_AUTH_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/auth:secret::"
+        },
+        {
+          "name": "FLEXPRICE_POSTGRES_HOST",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/postgres:host::"
+        },
+        {
+          "name": "FLEXPRICE_POSTGRES_USER",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/postgres:username::"
+        },
+        {
+          "name": "FLEXPRICE_POSTGRES_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/postgres:password::"
+        },
+        {
+          "name": "FLEXPRICE_CLICKHOUSE_USERNAME",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/clickhouse:username::"
+        },
+        {
+          "name": "FLEXPRICE_CLICKHOUSE_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/clickhouse:password::"
+        },
+        {
+          "name": "FLEXPRICE_KAFKA_SASL_USER",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/kafka:username::"
+        },
+        {
+          "name": "FLEXPRICE_KAFKA_SASL_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/kafka:password::"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/flexprice-worker-${ENV}",
+          "awslogs-region": "${AWS_REGION}",
+          "awslogs-stream-prefix": "worker"
+        }
+      }
+    }
+  ]
+}
+EOF
+
+aws ecs register-task-definition --cli-input-json file:///tmp/worker-task-definition.json
+```
+
+### Create Temporal Worker task definition
+
+```bash
+cat > /tmp/temporal-worker-task-definition.json << EOF
+{
+  "family": "flexprice-temporal-worker-${ENV}",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "${EXECUTION_ROLE_ARN}",
+  "taskRoleArn": "${TASK_ROLE_ARN}",
+  "containerDefinitions": [
+    {
+      "name": "temporal-worker",
+      "image": "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/flexprice-${ENV}/temporal-worker:latest",
+      "essential": true,
+      "environment": [
+        {"name": "FLEXPRICE_DEPLOYMENT_MODE", "value": "temporal_worker"},
+        {"name": "FLEXPRICE_POSTGRES_PORT", "value": "5432"},
+        {"name": "FLEXPRICE_POSTGRES_DBNAME", "value": "flexprice"},
+        {"name": "FLEXPRICE_POSTGRES_SSLMODE", "value": "require"},
+        {"name": "FLEXPRICE_CLICKHOUSE_DATABASE", "value": "flexprice"},
+        {"name": "FLEXPRICE_CLICKHOUSE_TLS", "value": "false"},
+        {"name": "FLEXPRICE_KAFKA_USE_SASL", "value": "true"},
+        {"name": "FLEXPRICE_KAFKA_SASL_MECHANISM", "value": "SCRAM-SHA-512"},
+        {"name": "FLEXPRICE_KAFKA_TOPIC", "value": "events"},
+        {"name": "FLEXPRICE_TEMPORAL_NAMESPACE", "value": "default"},
+        {"name": "FLEXPRICE_TEMPORAL_TASK_QUEUE", "value": "billing-task-queue"},
+        {"name": "FLEXPRICE_TEMPORAL_TLS", "value": "true"},
+        {"name": "FLEXPRICE_LOGGING_LEVEL", "value": "info"}
+      ],
+      "secrets": [
+        {
+          "name": "FLEXPRICE_AUTH_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/auth:secret::"
+        },
+        {
+          "name": "FLEXPRICE_POSTGRES_HOST",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/postgres:host::"
+        },
+        {
+          "name": "FLEXPRICE_POSTGRES_USER",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/postgres:username::"
+        },
+        {
+          "name": "FLEXPRICE_POSTGRES_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/postgres:password::"
+        },
+        {
+          "name": "FLEXPRICE_CLICKHOUSE_USERNAME",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/clickhouse:username::"
+        },
+        {
+          "name": "FLEXPRICE_CLICKHOUSE_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/clickhouse:password::"
+        },
+        {
+          "name": "FLEXPRICE_KAFKA_SASL_USER",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/kafka:username::"
+        },
+        {
+          "name": "FLEXPRICE_KAFKA_SASL_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/kafka:password::"
+        },
+        {
+          "name": "FLEXPRICE_TEMPORAL_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:flexprice/${ENV}/temporal:api_key::"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/flexprice-temporal-worker-${ENV}",
+          "awslogs-region": "${AWS_REGION}",
+          "awslogs-stream-prefix": "temporal-worker"
+        }
+      }
+    }
+  ]
+}
+EOF
+
+aws ecs register-task-definition --cli-input-json file:///tmp/temporal-worker-task-definition.json
+```
+
+### Create Application Load Balancer
+
+```bash
+# Create ALB
+ALB_ARN=$(aws elbv2 create-load-balancer \
+  --name flexprice-alb-${ENV} \
+  --subnets $PUBLIC_SUBNET_A $PUBLIC_SUBNET_B \
+  --security-groups $ALB_SG \
+  --scheme internet-facing \
+  --type application \
+  --ip-address-type ipv4 \
+  --query 'LoadBalancers[0].LoadBalancerArn' \
+  --output text)
+
+# Get ALB DNS name
+ALB_DNS=$(aws elbv2 describe-load-balancers \
+  --load-balancer-arns $ALB_ARN \
+  --query 'LoadBalancers[0].DNSName' \
+  --output text)
+
+echo "ALB DNS: $ALB_DNS"
+
+# Create target group
+TG_ARN=$(aws elbv2 create-target-group \
+  --name flexprice-api-${ENV} \
+  --protocol HTTP \
+  --port 8080 \
+  --vpc-id $VPC_ID \
+  --target-type ip \
+  --health-check-protocol HTTP \
+  --health-check-path /health \
+  --health-check-interval-seconds 30 \
+  --health-check-timeout-seconds 5 \
+  --healthy-threshold-count 2 \
+  --unhealthy-threshold-count 3 \
+  --query 'TargetGroups[0].TargetGroupArn' \
+  --output text)
+
+# Create HTTPS listener (requires ACM certificate)
+# Replace CERTIFICATE_ARN with your ACM certificate ARN
+CERTIFICATE_ARN="arn:aws:acm:${AWS_REGION}:${ACCOUNT_ID}:certificate/YOUR_CERTIFICATE_ID"
+
+aws elbv2 create-listener \
+  --load-balancer-arn $ALB_ARN \
+  --protocol HTTPS \
+  --port 443 \
+  --certificates CertificateArn=$CERTIFICATE_ARN \
+  --default-actions Type=forward,TargetGroupArn=$TG_ARN
+
+# Create HTTP listener (redirect to HTTPS)
+aws elbv2 create-listener \
+  --load-balancer-arn $ALB_ARN \
+  --protocol HTTP \
+  --port 80 \
+  --default-actions Type=redirect,RedirectConfig='{Protocol=HTTPS,Port=443,StatusCode=HTTP_301}'
+```
+
+### Create ECS services
+
+```bash
+# Create API service
+aws ecs create-service \
+  --cluster flexprice-${ENV} \
+  --service-name flexprice-api-${ENV} \
+  --task-definition flexprice-api-${ENV} \
+  --desired-count 2 \
+  --launch-type FARGATE \
+  --platform-version LATEST \
+  --network-configuration "awsvpcConfiguration={subnets=[$PRIVATE_COMPUTE_A,$PRIVATE_COMPUTE_B],securityGroups=[$ECS_SG],assignPublicIp=DISABLED}" \
+  --load-balancers "targetGroupArn=$TG_ARN,containerName=api,containerPort=8080" \
+  --health-check-grace-period-seconds 60 \
+  --scheduling-strategy REPLICA \
+  --deployment-configuration "minimumHealthyPercent=50,maximumPercent=200"
+
+# Create Worker service
+aws ecs create-service \
+  --cluster flexprice-${ENV} \
+  --service-name flexprice-worker-${ENV} \
+  --task-definition flexprice-worker-${ENV} \
+  --desired-count 2 \
+  --launch-type FARGATE \
+  --platform-version LATEST \
+  --network-configuration "awsvpcConfiguration={subnets=[$PRIVATE_COMPUTE_A,$PRIVATE_COMPUTE_B],securityGroups=[$ECS_SG],assignPublicIp=DISABLED}" \
+  --scheduling-strategy REPLICA \
+  --deployment-configuration "minimumHealthyPercent=50,maximumPercent=200"
+
+# Create Temporal Worker service
+aws ecs create-service \
+  --cluster flexprice-${ENV} \
+  --service-name flexprice-temporal-worker-${ENV} \
+  --task-definition flexprice-temporal-worker-${ENV} \
+  --desired-count 1 \
+  --launch-type FARGATE \
+  --platform-version LATEST \
+  --network-configuration "awsvpcConfiguration={subnets=[$PRIVATE_COMPUTE_A,$PRIVATE_COMPUTE_B],securityGroups=[$ECS_SG],assignPublicIp=DISABLED}" \
+  --scheduling-strategy REPLICA \
+  --deployment-configuration "minimumHealthyPercent=0,maximumPercent=200"
+```
+
+### Configure Auto Scaling
+
+```bash
+# Register scalable target for API service
+aws application-autoscaling register-scalable-target \
+  --service-namespace ecs \
+  --resource-id service/flexprice-${ENV}/flexprice-api-${ENV} \
+  --scalable-dimension ecs:service:DesiredCount \
+  --min-capacity 2 \
+  --max-capacity 10
+
+# Create scaling policy (target tracking on CPU)
+aws application-autoscaling put-scaling-policy \
+  --service-namespace ecs \
+  --resource-id service/flexprice-${ENV}/flexprice-api-${ENV} \
+  --scalable-dimension ecs:service:DesiredCount \
+  --policy-name flexprice-api-cpu-scaling \
+  --policy-type TargetTrackingScaling \
+  --target-tracking-scaling-policy-configuration '{
+    "TargetValue": 70.0,
+    "PredefinedMetricSpecification": {
+      "PredefinedMetricType": "ECSServiceAverageCPUUtilization"
+    },
+    "ScaleOutCooldown": 60,
+    "ScaleInCooldown": 120
+  }'
+
+# Register scalable target for Worker service
+aws application-autoscaling register-scalable-target \
+  --service-namespace ecs \
+  --resource-id service/flexprice-${ENV}/flexprice-worker-${ENV} \
+  --scalable-dimension ecs:service:DesiredCount \
+  --min-capacity 2 \
+  --max-capacity 10
+
+# Create scaling policy for Worker (target tracking on CPU)
+aws application-autoscaling put-scaling-policy \
+  --service-namespace ecs \
+  --resource-id service/flexprice-${ENV}/flexprice-worker-${ENV} \
+  --scalable-dimension ecs:service:DesiredCount \
+  --policy-name flexprice-worker-cpu-scaling \
+  --policy-type TargetTrackingScaling \
+  --target-tracking-scaling-policy-configuration '{
+    "TargetValue": 70.0,
+    "PredefinedMetricSpecification": {
+      "PredefinedMetricType": "ECSServiceAverageCPUUtilization"
+    },
+    "ScaleOutCooldown": 60,
+    "ScaleInCooldown": 120
+  }'
+```
+
+---
+
+## Step 12: Environment variables reference
+
+Below is a complete reference of environment variables for each service. Variables marked with (secret) should be stored in AWS Secrets Manager.
+
+### API service
+
+| Variable                         | Value                     | Source      |
+| -------------------------------- | ------------------------- | ----------- |
+| `FLEXPRICE_DEPLOYMENT_MODE`      | `api`                     | Environment |
+| `FLEXPRICE_SERVER_ADDRESS`       | `:8080`                   | Environment |
+| `FLEXPRICE_AUTH_SECRET`          | 64-char hex               | Secret      |
+| `FLEXPRICE_POSTGRES_HOST`        | RDS endpoint              | Secret      |
+| `FLEXPRICE_POSTGRES_PORT`        | `5432`                    | Environment |
+| `FLEXPRICE_POSTGRES_USER`        | `flexprice`               | Secret      |
+| `FLEXPRICE_POSTGRES_PASSWORD`    | DB password               | Secret      |
+| `FLEXPRICE_POSTGRES_DBNAME`      | `flexprice`               | Environment |
+| `FLEXPRICE_POSTGRES_SSLMODE`     | `require`                 | Environment |
+| `FLEXPRICE_CLICKHOUSE_ADDRESS`   | ClickHouse NLB endpoint   | Environment |
+| `FLEXPRICE_CLICKHOUSE_USERNAME`  | `flexprice`               | Secret      |
+| `FLEXPRICE_CLICKHOUSE_PASSWORD`  | ClickHouse password       | Secret      |
+| `FLEXPRICE_CLICKHOUSE_DATABASE`  | `flexprice`               | Environment |
+| `FLEXPRICE_CLICKHOUSE_TLS`       | `false`                   | Environment |
+| `FLEXPRICE_KAFKA_BROKERS`        | MSK bootstrap brokers     | Environment |
+| `FLEXPRICE_KAFKA_USE_SASL`       | `true`                    | Environment |
+| `FLEXPRICE_KAFKA_SASL_MECHANISM` | `SCRAM-SHA-512`           | Environment |
+| `FLEXPRICE_KAFKA_SASL_USER`      | `flexprice`               | Secret      |
+| `FLEXPRICE_KAFKA_SASL_PASSWORD`  | Kafka password            | Secret      |
+| `FLEXPRICE_KAFKA_TOPIC`          | `events`                  | Environment |
+| `FLEXPRICE_KAFKA_CONSUMER_GROUP` | `flexprice-consumer-prod` | Environment |
+| `FLEXPRICE_TEMPORAL_ADDRESS`     | Temporal Cloud endpoint   | Environment |
+| `FLEXPRICE_TEMPORAL_TLS`         | `true`                    | Environment |
+| `FLEXPRICE_TEMPORAL_NAMESPACE`   | Your namespace            | Environment |
+| `FLEXPRICE_TEMPORAL_TASK_QUEUE`  | `billing-task-queue`      | Environment |
+| `FLEXPRICE_TEMPORAL_API_KEY`     | Temporal API key          | Secret      |
+| `FLEXPRICE_LOGGING_LEVEL`        | `info`                    | Environment |
+
+### Worker service
+
+Same as API, but with:
+
+- `FLEXPRICE_DEPLOYMENT_MODE` = `consumer`
+- No `FLEXPRICE_SERVER_ADDRESS` needed
+
+### Temporal Worker service
+
+Same as API, but with:
+
+- `FLEXPRICE_DEPLOYMENT_MODE` = `temporal_worker`
+- No `FLEXPRICE_SERVER_ADDRESS` needed
+
+### Additional environment variables (Production)
+
+These variables are used in production deployments:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `FLEXPRICE_DYNAMODB_IN_USE` | Enable DynamoDB for events | `true` |
+| `FLEXPRICE_DYNAMODB_REGION` | AWS region for DynamoDB | `us-west-2` |
+| `FLEXPRICE_DYNAMODB_EVENT_TABLE_NAME` | DynamoDB table name | `events` |
+| `FLEXPRICE_REDIS_HOST` | ElastiCache Redis endpoint | `clustercfg.xxx.cache.amazonaws.com` |
+| `FLEXPRICE_REDIS_PORT` | Redis port | `6379` |
+| `FLEXPRICE_REDIS_CLUSTER_MODE` | Enable cluster mode | `true` |
+| `FLEXPRICE_REDIS_USE_TLS` | Enable TLS | `true` |
+| `FLEXPRICE_REDIS_KEY_PREFIX` | Key prefix | `flexprice:prod` |
+| `FLEXPRICE_EVENT_PUBLISH_DESTINATION` | Where to publish events | `all` (Kafka + DynamoDB) |
+| `FLEXPRICE_LOGGING_FORMAT` | Log format | `json` |
+| `FLEXPRICE_POSTGRES_READER_HOST` | Aurora reader endpoint | `xxx.cluster-ro-xxx.rds.amazonaws.com` |
+
+---
+
+## Step 13: Temporal Cloud configuration
+
+Temporal Cloud is the recommended workflow orchestration service for production deployments.
+
+### Sign up for Temporal Cloud
+
+1. Go to [temporal.io/cloud](https://temporal.io/cloud)
+2. Create an account and organization
+3. Create a namespace (e.g., `flexprice-prod-usa`)
+
+### Create service account and API key
+
+1. In Temporal Cloud console, go to **Settings** > **API Keys**
+2. Create a new API key with appropriate permissions
+3. Note the API key and key name
+
+### Store Temporal credentials
+
+```bash
+aws secretsmanager create-secret \
+  --name flexprice/${ENV}/temporal \
+  --description "Flexprice Temporal Cloud credentials" \
+  --secret-string '{
+    "address": "us-west-2.aws.api.temporal.io:7233",
+    "namespace": "your-namespace.your-account-id",
+    "api_key": "YOUR_TEMPORAL_API_KEY",
+    "api_key_name": "your-service-account-name"
+  }'
+```
+
+### Temporal environment variables
+
+| Variable | Value | Description |
+|----------|-------|-------------|
+| `FLEXPRICE_TEMPORAL_ADDRESS` | `us-west-2.aws.api.temporal.io:7233` | Temporal Cloud endpoint |
+| `FLEXPRICE_TEMPORAL_NAMESPACE` | `your-namespace.account-id` | Your namespace |
+| `FLEXPRICE_TEMPORAL_TLS` | `true` | TLS is required |
+| `FLEXPRICE_TEMPORAL_TASK_QUEUE` | `billing-task-queue` | Task queue name |
+| `FLEXPRICE_TEMPORAL_API_KEY` | (from Secrets Manager) | API key |
+| `FLEXPRICE_TEMPORAL_API_KEY_NAME` | Service account name | Key identifier |
+
+<Info>
+  Temporal Cloud provides managed infrastructure, automatic upgrades, and 99.99% SLA. For self-hosted Temporal, refer to the [Temporal documentation](https://docs.temporal.io/self-hosted-guide).
+</Info>
+
+---
+
+## Step 14: Third-party integrations (Optional)
+
+Configure optional third-party services for enhanced functionality.
+
+### Supabase (Authentication)
+
+If using Supabase for authentication:
+
+```bash
+aws secretsmanager create-secret \
+  --name flexprice/${ENV}/supabase \
+  --secret-string '{
+    "base_url": "https://your-project.supabase.co",
+    "service_key": "YOUR_SUPABASE_SERVICE_KEY"
+  }'
+```
+
+| Variable | Value |
+|----------|-------|
+| `FLEXPRICE_AUTH_PROVIDER` | `supabase` |
+| `FLEXPRICE_AUTH_SUPABASE_BASE_URL` | Supabase project URL |
+| `FLEXPRICE_AUTH_SUPABASE_SERVICE_KEY` | Service role key |
+
+### Svix (Webhooks)
+
+For webhook delivery via Svix:
+
+```bash
+aws secretsmanager create-secret \
+  --name flexprice/${ENV}/svix \
+  --secret-string '{
+    "auth_token": "YOUR_SVIX_AUTH_TOKEN",
+    "base_url": "https://api.us.svix.com"
+  }'
+```
+
+| Variable | Value |
+|----------|-------|
+| `FLEXPRICE_WEBHOOK_SVIX_CONFIG_ENABLED` | `true` |
+| `FLEXPRICE_WEBHOOK_SVIX_CONFIG_AUTH_TOKEN` | Svix auth token |
+| `FLEXPRICE_WEBHOOK_SVIX_CONFIG_BASE_URL` | `https://api.us.svix.com` |
+
+### Sentry (Error Tracking)
+
+For error tracking with Sentry:
+
+| Variable | Value |
+|----------|-------|
+| `FLEXPRICE_SENTRY_ENABLED` | `true` |
+| `FLEXPRICE_SENTRY_DSN` | Your Sentry DSN |
+| `FLEXPRICE_SENTRY_ENVIRONMENT` | `production` |
+| `FLEXPRICE_SENTRY_SAMPLE_RATE` | `1` (100% sampling) |
+
+### Grafana Cloud (Observability)
+
+For profiling with Pyroscope on Grafana Cloud:
+
+| Variable | Value |
+|----------|-------|
+| `FLEXPRICE_PYROSCOPE_ENABLED` | `true` |
+| `FLEXPRICE_PYROSCOPE_SERVER_ADDRESS` | `https://profiles-prod-xxx.grafana.net` |
+| `FLEXPRICE_PYROSCOPE_APPLICATION_NAME` | `flexprice-prod-api` |
+| `FLEXPRICE_PYROSCOPE_BASIC_AUTH_USER` | Grafana user ID |
+| `FLEXPRICE_PYROSCOPE_BASIC_AUTH_PASSWORD` | Grafana API key |
+
+### FluentD (Log Aggregation)
+
+For centralized logging with FluentD:
+
+| Variable | Value |
+|----------|-------|
+| `FLEXPRICE_LOGGING_FLUENTD_ENABLED` | `true` |
+| `FLEXPRICE_LOGGING_FLUENTD_HOST` | FluentD service IP |
+| `FLEXPRICE_LOGGING_FLUENTD_PORT` | `30242` |
+| `FLEXPRICE_LOGGING_FORMAT` | `json` |
+
+### Resend (Email)
+
+For transactional emails via Resend:
+
+| Variable | Value |
+|----------|-------|
+| `FLEXPRICE_EMAIL_ENABLED` | `true` |
+| `FLEXPRICE_EMAIL_RESEND_API_KEY` | Your Resend API key |
+| `FLEXPRICE_EMAIL_FROM_ADDRESS` | Sender email |
+| `FLEXPRICE_EMAIL_REPLY_TO` | Reply-to email |
+
+### Third-party cost summary
+
+| Service | Purpose | Monthly Cost |
+|---------|---------|--------------|
+| Temporal Cloud | Workflow orchestration | ~$200 |
+| Supabase | Authentication | ~$25 |
+| Svix | Webhooks | ~$50 |
+| Grafana Cloud | Observability | ~$50 |
+| Resend | Email | ~$20 |
+| Sentry | Error tracking | $0-29 |
+| **Total** | | **~$345-375** |
+
+---
+
+## Deployment checklist
+
+Use this checklist to verify your deployment:
+
+<Steps>
+  <Step title="VPC and Networking">
+    - [ ] VPC created with correct CIDR
+    - [ ] 2 public subnets created
+    - [ ] 4 private subnets created (2 compute, 2 data)
+    - [ ] Internet Gateway attached
+    - [ ] NAT Gateway(s) created and running
+    - [ ] Route tables configured correctly
+    - [ ] Security groups created with correct rules
+  </Step>
+
+  <Step title="IAM">
+    - [ ] ECS Task Execution Role created
+    - [ ] ECS Task Role created
+    - [ ] Policies attached correctly (S3, Secrets Manager, CloudWatch, DynamoDB)
+  </Step>
+
+  <Step title="Secrets Manager">
+    - [ ] PostgreSQL/Aurora credentials stored
+    - [ ] ClickHouse credentials stored
+    - [ ] Kafka SASL credentials stored
+    - [ ] Auth secret stored
+    - [ ] Temporal Cloud credentials stored
+    - [ ] Third-party credentials stored (Supabase, Svix, etc.)
+  </Step>
+
+  <Step title="Aurora PostgreSQL">
+    - [ ] DB subnet group created
+    - [ ] Aurora cluster created and available
+    - [ ] Writer and Reader instances running
+    - [ ] Security group allows ECS access
+    - [ ] Secrets Manager updated with endpoints
+    - [ ] Database migrations completed
+  </Step>
+
+  <Step title="Amazon MSK">
+    - [ ] MSK cluster created and active
+    - [ ] SASL/SCRAM secret associated
+    - [ ] Topics created (events, events_lazy, events-dlq)
+    - [ ] Security group allows ECS access
+    - [ ] Prometheus exporters enabled
+  </Step>
+
+  <Step title="EKS and ClickHouse">
+    - [ ] EKS cluster created
+    - [ ] Node group running
+    - [ ] gp3 StorageClass created
+    - [ ] ClickHouse operator installed
+    - [ ] ClickHouse cluster deployed
+    - [ ] NLB created for ClickHouse access
+    - [ ] Database initialized
+  </Step>
+
+  <Step title="ElastiCache Redis">
+    - [ ] Redis subnet group created
+    - [ ] Redis replication group created
+    - [ ] Cluster mode enabled (production)
+    - [ ] TLS encryption enabled
+    - [ ] Security group allows ECS access
+  </Step>
+
+  <Step title="DynamoDB">
+    - [ ] Events table created
+    - [ ] Point-in-time recovery enabled
+    - [ ] IAM policy allows ECS access
+  </Step>
+
+  <Step title="S3 and CloudWatch">
+    - [ ] S3 bucket created with encryption
+    - [ ] CloudWatch log groups created
+    - [ ] CloudWatch alarms configured
+  </Step>
+
+  <Step title="ECR and Images">
+    - [ ] ECR repositories created - [ ] Container images built and pushed
+  </Step>
+
+  <Step title="ECS">
+    - [ ] ECS cluster created - [ ] Task definitions registered - [ ] ALB
+    created with HTTPS listener - [ ] Target group configured - [ ] Services
+    created and healthy - [ ] Auto Scaling configured
+  </Step>
+
+  <Step title="Verification">
+    - [ ] API health check passing - [ ] Worker consuming from Kafka - [ ]
+    Temporal workflows executing - [ ] Logs appearing in CloudWatch
+  </Step>
+</Steps>
+
+---
+
+## Troubleshooting
+
+### API unreachable
+
+1. **Check ALB health checks**:
+
+   ```bash
+   aws elbv2 describe-target-health --target-group-arn $TG_ARN
+   ```
+
+2. **Check ECS task status**:
+
+   ```bash
+   aws ecs describe-services \
+     --cluster flexprice-${ENV} \
+     --services flexprice-api-${ENV}
+   ```
+
+3. **Check ECS task logs**:
+
+   ```bash
+   aws logs tail /ecs/flexprice-api-${ENV} --follow
+   ```
+
+4. **Verify security groups**:
+   - ALB SG allows inbound 443 from internet
+   - ECS SG allows inbound 8080 from ALB SG
+   - ECS SG allows outbound to RDS, MSK, ClickHouse
+
+### Worker not consuming
+
+1. **Check Kafka connectivity**:
+
+   ```bash
+   # From a bastion or EC2 instance with Kafka tools
+   kafka-consumer-groups.sh \
+     --bootstrap-server $MSK_BOOTSTRAP \
+     --command-config client.properties \
+     --group flexprice-consumer-${ENV} \
+     --describe
+   ```
+
+2. **Check consumer lag in MSK CloudWatch metrics**
+
+3. **Verify SASL credentials**:
+
+   - Ensure `AmazonMSK_` prefixed secret is associated with cluster
+   - Verify username/password match in Secrets Manager
+
+4. **Check security group**:
+   - MSK SG allows inbound 9094/9096 from ECS SG
+
+### Temporal workflows failing
+
+1. **Check Temporal Worker logs**:
+
+   ```bash
+   aws logs tail /ecs/flexprice-temporal-worker-${ENV} --follow
+   ```
+
+2. **Verify Temporal Cloud connection**:
+
+   - Correct `FLEXPRICE_TEMPORAL_ADDRESS`
+   - Valid API key and namespace
+   - TLS enabled
+
+3. **Check Temporal Cloud UI** for workflow history and errors
+
+### ClickHouse connection errors
+
+1. **Verify ClickHouse pods are running**:
+
+   ```bash
+   kubectl get pods -n clickhouse
+   ```
+
+2. **Check ClickHouse logs**:
+
+   ```bash
+   kubectl logs -n clickhouse -l clickhouse.altinity.com/chi=flexprice
+   ```
+
+3. **Verify NLB is healthy**:
+
+   ```bash
+   kubectl get svc clickhouse-nlb -n clickhouse
+   ```
+
+4. **Test connectivity from ECS**:
+   - Ensure EKS SG allows inbound 9000 from ECS SG
+   - Verify NLB DNS resolves correctly
+
+### RDS connection issues
+
+1. **Verify RDS is available**:
+
+   ```bash
+   aws rds describe-db-instances \
+     --db-instance-identifier flexprice-${ENV} \
+     --query 'DBInstances[0].DBInstanceStatus'
+   ```
+
+2. **Check security group**:
+
+   - RDS SG allows inbound 5432 from ECS SG
+
+3. **Verify credentials**:
+
+   - Check Secrets Manager values match RDS configuration
+
+4. **Test from bastion**:
+   ```bash
+   psql -h $RDS_ENDPOINT -U flexprice -d flexprice
+   ```
+
+---
+
+## Scaling guidelines
+
+### When to scale ECS tasks
+
+| Metric             | Threshold       | Action                            |
+| ------------------ | --------------- | --------------------------------- |
+| CPU utilization    | > 70% sustained | Scale out                         |
+| Memory utilization | > 80% sustained | Scale out or increase task memory |
+| API latency (p99)  | > 500ms         | Scale out API tasks               |
+| Kafka consumer lag | Growing         | Scale out Worker tasks            |
+
+### When to scale RDS
+
+| Metric               | Threshold       | Action                               |
+| -------------------- | --------------- | ------------------------------------ |
+| CPU utilization      | > 80% sustained | Upgrade instance class               |
+| Database connections | > 80% of max    | Upgrade instance or add read replica |
+| Read IOPS            | Hitting limits  | Upgrade to gp3 with higher IOPS      |
+| Storage              | > 80% used      | Increase allocated storage           |
+
+### When to scale MSK
+
+| Metric       | Threshold         | Action                       |
+| ------------ | ----------------- | ---------------------------- |
+| Broker CPU   | > 60% sustained   | Add brokers                  |
+| Consumer lag | Growing over time | Add partitions and consumers |
+| Storage      | > 80% used        | Increase broker storage      |
+
+### When to scale ClickHouse
+
+| Metric          | Threshold  | Action                        |
+| --------------- | ---------- | ----------------------------- |
+| Query latency   | Degrading  | Add replicas or upgrade nodes |
+| Disk usage      | > 80%      | Expand PVCs or add shards     |
+| Memory pressure | OOM events | Increase node memory          |
+
+---
+
+## Cost optimization
+
+### Reserved instances
+
+- **RDS**: Purchase Reserved Instances for 1-3 year commitment (up to 72% savings)
+- **MSK**: Not available; consider Kafka on EC2 with Reserved Instances for significant savings
+
+### Fargate Spot
+
+Use Fargate Spot for non-critical workloads:
+
+```bash
+# Update service to use Fargate Spot
+aws ecs update-service \
+  --cluster flexprice-${ENV} \
+  --service flexprice-worker-${ENV} \
+  --capacity-provider-strategy capacityProvider=FARGATE_SPOT,weight=2 capacityProvider=FARGATE,weight=1
+```
+
+### S3 lifecycle policies
+
+Already configured to transition to IA after 90 days. Consider:
+
+- Glacier for archives > 1 year
+- Intelligent-Tiering for unpredictable access patterns
+
+### CloudWatch log retention
+
+Set appropriate retention periods:
+
+- Production: 30-90 days
+- Development: 7-14 days
+- Archive to S3 for long-term storage
+
+---
+
+## Additional resources
+
+<CardGroup cols={2}>
+  <Card
+    title="Configuration Reference"
+    icon="gear"
+    href="/docs/getting-started/configuration"
+  >
+    Complete list of Flexprice environment variables
+  </Card>
+  <Card
+    title="Architecture Overview"
+    icon="diagram-project"
+    href="/docs/getting-started/architecture"
+  >
+    Understand Flexprice's internal architecture
+  </Card>
+  <Card
+    title="Monitoring"
+    icon="chart-line"
+    href="/docs/event-ingestion/monitoring"
+  >
+    Set up monitoring and observability
+  </Card>
+  <Card
+    title="Troubleshooting"
+    icon="wrench"
+    href="/docs/event-ingestion/troubleshooting"
+  >
+    Common issues and solutions
+  </Card>
+</CardGroup>
+
+## Need help?
+
+If you encounter issues during deployment:
+
+- Check our [GitHub Issues](https://github.com/flexprice/flexprice/issues) for similar problems
+- Join our [Slack community](https://join.slack.com/t/flexpricecommunity/shared_invite/zt-39uat51l0-n8JmSikHZP~bHJNXladeaQ) for real-time support
+- Contact us at support@flexprice.io
