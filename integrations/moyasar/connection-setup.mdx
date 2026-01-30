@@ -1,0 +1,148 @@
+---
+title: 'Moyasar Connection Setup'
+description: 'Complete guide to setting up and configuring Moyasar connections in Flexprice'
+---
+
+## Overview
+
+A Moyasar connection in Flexprice stores encrypted credentials so Flexprice can sync invoices to Moyasar and generate payment links for them.
+
+### Steps required
+
+<Steps>
+  <Step title="Gather credentials">
+    Get Secret Key (required), and Webhook Secret (required) from the Moyasar Dashboard.
+  </Step>
+  <Step title="Configure webhook">
+    Add webhook URL in Moyasar, select `payment_paid`, and copy the Webhook Secret.
+  </Step>
+  <Step title="Create connection">
+    In the Flexprice dashboard (Integrations → Moyasar → Add a connection), enter your Secret Key and Webhook Secret.
+  </Step>
+</Steps>
+
+
+## Gather Moyasar Credentials
+
+### Required Credentials
+
+| Credential | Location in Moyasar Dashboard | Required | Purpose |
+|------------|-------------------------------|----------|---------|
+| **Secret Key** | Settings → API Keys | ✅ | API authentication (Required for all operations) |
+| **Publishable Key** | Settings → API Keys | ⚠️ Optional | Frontend integration (if using client-side elements) |
+| **Webhook Secret** | Settings → Webhooks → [Your Endpoint] | ⚠️ Optional | Webhook signature verification |
+
+### Finding Your Credentials
+
+<Steps>
+  <Step title="Get API Keys">
+    Go to Moyasar Dashboard → Settings → API Keys. Copy your **Secret Key** (starts with `sk_`). Optionally copy your **Publishable Key** (starts with `pk_`).
+  </Step>
+  <Step title="Get Webhook Secret">
+    Go to Moyasar Dashboard → Settings → Webhooks. Create or select your webhook endpoint and copy the webhook secret (used to verify that events are from Moyasar).
+  </Step>
+</Steps>
+
+
+### Required Webhook Events
+
+Configure the following events so Flexprice can update invoice status when payments occur:
+
+| Event Type | Purpose |
+|------------|---------|
+| `payment_paid` | Track successful payment completions |
+
+### Webhook configuration endpoint URL
+
+In the Moyasar Dashboard, use this Flexprice webhook URL when creating your webhook.
+
+
+
+
+```
+https://api.cloud.flexprice.io/v1/webhooks/moyasar/tenant_YOUR_TENANT_ID/env_YOUR_ENV_ID
+```
+
+*(If you use a different Flexprice region, use the base URL for your region instead of `https://api.cloud.flexprice.io`.)*
+
+<Frame>
+  <Frame>
+    ![Moyasar Connection Setup](/images/docs/integrations/moyasar/webhook-url-moyasar.png)
+  </Frame>
+</Frame>
+
+### Setting Up the Webhook
+
+<Steps>
+  <Step title="Open Webhooks">
+    Go to Moyasar Dashboard → Settings → Webhooks and click **+ Add New Webhook**.
+  </Step>
+  <Step title="Enter URL and events">
+    Enter the Flexprice webhook endpoint URL (see **Webhook configuration endpoint URL** above) and select `payment_paid`.
+  </Step>
+  <Step title="Create and copy secret">
+    Click **Create Webhook**, then copy the **Webhook Secret** and save it for your Flexprice connection.
+  </Step>
+</Steps>
+
+## Create Moyasar Connection
+
+### Using Flexprice Dashboard
+
+<Steps>
+  <Step title="Navigate to Integrations">
+    Go to **Flexprice dashboard** → **Integrations** → **Moyasar** → **Add a connection**.
+  </Step>
+  <Step title="Enter credentials">
+    Enter your Secret Key (required) and Webhook Secret (required).
+  </Step>
+  <Step title="Save connection">
+    Click to create the connection. Flexprice will store your credentials securely.
+  </Step>
+</Steps>
+
+<Frame>
+  <Frame>
+    ![Moyasar Connection Setup](/images/docs/integrations/moyasar/add-connection-moyasar.png)
+  </Frame>
+</Frame>
+
+
+## Connection Configuration
+
+### Default Currency (required in Moyasar)
+
+The default currency for Moyasar is **SAR** (Saudi Riyal).
+- **Supported Currencies**: SAR, USD, EUR, KWD, etc.
+- **Currency Precision**: Moyasar requires amounts in the **smallest currency unit** (e.g., Halalah for SAR). Flexprice handles this conversion automatically.
+
+### Currency Precision Table
+| Currency | Precision | Unit | Example |
+|----------|-----------|------|---------|
+| SAR | 2 | Halalah | 10.00 SAR = 1000 |
+| USD | 2 | Cents | 10.00 USD = 1000 |
+| KWD | 3 | Fils | 10.000 KWD = 10000 |
+| JPY | 0 | Yen | 1000 JPY = 1000 |
+
+## Security Best Practices
+
+<Steps>
+  <Step title="HTTPS Only">
+    Webhooks must use HTTPS.
+  </Step>
+  <Step title="Signature Verification">
+    Always configure the `webhook_secret` to enable HMAC-SHA256 signature verification.
+  </Step>
+  <Step title="Key Rotation">
+    Rotate API keys periodically from the Moyasar dashboard.
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| Connection test fails | Invalid `Secret Key` | Verify the key in Moyasar Dashboard. |
+| Webhook not updating invoice | Event type mismatch | Ensure specific `payment_paid` event is selected. |
+| Webhook signature error | Wrong `Webhook Secret` | Update the secret in Flexprice connection. |
+| Invoice not syncing | Missing credentials | Ensure connection is active and valid. |
