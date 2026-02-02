@@ -812,7 +812,8 @@
                                 "razorpay",
                                 "chargebee",
                                 "quickbooks",
-                                "nomod"
+                                "nomod",
+                                "moyasar"
                             ],
                             "x-enum-varnames": [
                                 "SecretProviderFlexPrice",
@@ -822,7 +823,8 @@
                                 "SecretProviderRazorpay",
                                 "SecretProviderChargebee",
                                 "SecretProviderQuickBooks",
-                                "SecretProviderNomod"
+                                "SecretProviderNomod",
+                                "SecretProviderMoyasar"
                             ]
                         },
                         "x-enum-varnames": [
@@ -833,7 +835,8 @@
                             "SecretProviderRazorpay",
                             "SecretProviderChargebee",
                             "SecretProviderQuickBooks",
-                            "SecretProviderNomod"
+                            "SecretProviderNomod",
+                            "SecretProviderMoyasar"
                         ]
                     },
                     {
@@ -3714,6 +3717,14 @@
                         "in": "query",
                         "schema": {
                             "type": "string"
+                        }
+                    },
+                    {
+                        "name": "from_cache",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
                         }
                     },
                     {
@@ -15352,6 +15363,56 @@
                 }
             }
         },
+        "/webhooks/moyasar/{tenant_id}/{environment_id}": {
+            "post": {
+                "tags": [
+                    "Webhooks"
+                ],
+                "summary": "Handle Moyasar webhook events",
+                "description": "Process incoming Moyasar webhook events for payment status updates",
+                "parameters": [
+                    {
+                        "name": "tenant_id",
+                        "in": "path",
+                        "description": "Tenant ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "environment_id",
+                        "in": "path",
+                        "description": "Environment ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "X-Moyasar-Signature",
+                        "in": "header",
+                        "description": "Moyasar webhook signature",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Webhook received (always returns 200)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": true
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/webhooks/nomod/{tenant_id}/{environment_id}": {
             "post": {
                 "tags": [
@@ -16215,6 +16276,9 @@
                 ],
                 "type": "object",
                 "properties": {
+                    "cancel_immediately_inovice_policy": {
+                        "$ref": "#/components/schemas/types.CancelImmediatelyInvoicePolicy"
+                    },
                     "cancellation_type": {
                         "$ref": "#/components/schemas/types.CancellationType"
                     },
@@ -25245,6 +25309,17 @@
                     "BILLING_TIER_SLAB"
                 ]
             },
+            "types.CancelImmediatelyInvoicePolicy": {
+                "type": "string",
+                "enum": [
+                    "generate_invoice",
+                    "skip"
+                ],
+                "x-enum-varnames": [
+                    "CancelImmediatelyInvoicePolicyGenerateInvoice",
+                    "CancelImmediatelyInvoicePolicySkip"
+                ]
+            },
             "types.CancellationType": {
                 "type": "string",
                 "enum": [
@@ -25402,6 +25477,9 @@
                     },
                     "hubspot": {
                         "$ref": "#/components/schemas/types.HubSpotConnectionMetadata"
+                    },
+                    "moyasar": {
+                        "$ref": "#/components/schemas/types.MoyasarConnectionMetadata"
                     },
                     "nomod": {
                         "$ref": "#/components/schemas/types.NomodConnectionMetadata"
@@ -26257,6 +26335,23 @@
                     "type": "string"
                 }
             },
+            "types.MoyasarConnectionMetadata": {
+                "type": "object",
+                "properties": {
+                    "publishable_key": {
+                        "type": "string",
+                        "description": "Moyasar Publishable Key (encrypted, for frontend use)"
+                    },
+                    "secret_key": {
+                        "type": "string",
+                        "description": "Moyasar Secret Key (encrypted)"
+                    },
+                    "webhook_secret": {
+                        "type": "string",
+                        "description": "Moyasar Webhook Secret (encrypted, optional)"
+                    }
+                }
+            },
             "types.NomodConnectionMetadata": {
                 "type": "object",
                 "properties": {
@@ -26343,12 +26438,14 @@
                 "enum": [
                     "stripe",
                     "razorpay",
-                    "nomod"
+                    "nomod",
+                    "moyasar"
                 ],
                 "x-enum-varnames": [
                     "PaymentGatewayTypeStripe",
                     "PaymentGatewayTypeRazorpay",
-                    "PaymentGatewayTypeNomod"
+                    "PaymentGatewayTypeNomod",
+                    "PaymentGatewayTypeMoyasar"
                 ]
             },
             "types.PaymentMethodType": {
@@ -26811,7 +26908,8 @@
                     "razorpay",
                     "chargebee",
                     "quickbooks",
-                    "nomod"
+                    "nomod",
+                    "moyasar"
                 ],
                 "x-enum-varnames": [
                     "SecretProviderFlexPrice",
@@ -26821,7 +26919,8 @@
                     "SecretProviderRazorpay",
                     "SecretProviderChargebee",
                     "SecretProviderQuickBooks",
-                    "SecretProviderNomod"
+                    "SecretProviderNomod",
+                    "SecretProviderMoyasar"
                 ]
             },
             "types.SecretType": {
