@@ -3,6 +3,68 @@ title: "Changelog"
 description: "What we’ve been shipping at Flexprice lately"
 ---
 
+<Update label="February 2nd 2026">
+  ## Sentry and observability improvements
+
+  We've reduced noise and improved traceability for background workflows.
+
+  * **Repository-level span reduction**: Disabled repository-level Sentry span creation to reduce quota usage
+  * **Temporal integration**: Integrated Sentry into Temporal workflows via a dedicated worker interceptor, improving traceability for background tasks
+
+  <br />
+
+  ## Wallet & credit accuracy
+
+  Enhanced wallet logic to correctly compute and expose credits available breakdown when retrieving real-time balance.
+
+  * **Transaction status verifiction**: Wallet eligibility logic now verifies transaction status is completed before applying credits
+  * **Workflow optimizations**: Overall wallet workflow optimizations for performance and correctness
+
+  <br />
+
+  ## Subscription API enhancements
+
+  Added a new API to fetch a subscription by ID with a minimal response and optional expand parameters.
+
+  <Card icon="code" horizontal={true} href="/api-reference/subscriptions/get-subscription-v2" title="Get Subscription - API Reference" />
+
+  <br />
+
+  ## Pricing & revenue analytics
+
+  Pricing validation and analytics capabilities have been extended.
+
+  * **Maximum active prices**: Added validation for the maximum number of active prices to prevent configuration errors
+  * **Currency-segregated revenue trends**: Revenue analytics extended to support currency-segregated revenue trends, recent subscriptions, and invoice payment status reporting
+
+  <br />
+
+  ## Add-ons & usage pricing
+
+  Add-on line item commitment support added to better model commitment/overage patterns.
+
+  * **Usage-based prices within add-ons**: Support for usage-based prices within add-ons was introduced, enabling richer usage billing models
+  * **Add-on line item commitment**: Support for add-on line item commitment was added
+  
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Logging cleanup: enhanced content and removed unnecessary entity logs
+      * Internal workflow changes to improve consistency and reduce noise in observability
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Subscription start date precision normalized to milliseconds for consistency
+    </Accordion>
+
+    <Accordion title="API">
+      * The new subscription retrieval API with minimal response and expand parameters provides a leaner query option for clients
+    </Accordion>
+  </AccordionGroup>
+</Update>
 
 <Update label="January 28th 2026">
   ## Bulk import and export in the dashboard
