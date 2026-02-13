@@ -1,0 +1,155 @@
+---
+title: "Flexprice MCP Local Setup"
+description: "Run Flexprice MCP locally and connect it to Cursor and Claude"
+---
+
+The Flexprice MCP server exposes Flexprice REST API operations as MCP tools, so AI clients like Cursor and Claude can call your API directly.
+
+## What this gives you
+
+- One MCP tool per OpenAPI operation (for example, `get_customers`, `post_subscriptions`)
+- Stdio-based local MCP server process
+- API requests automatically sent with your `x-api-key`
+
+## Prerequisites
+
+<Check>Go 1.23+ installed</Check>
+<Check>Flexprice API server reachable locally or remotely</Check>
+<Check>Flexprice API key for the target tenant/environment</Check>
+<Check>OpenAPI spec available at `docs/swagger/swagger-3-0.json`</Check>
+
+## 1) Build the MCP server binary
+
+From the Flexprice app repository root:
+
+```bash
+go build -o flexprice-mcp ./cmd/mcp-server/
+```
+
+Recommended on macOS/Linux: copy to a path without spaces to avoid spawn issues in MCP clients.
+
+```bash
+mkdir -p "$HOME/bin"
+cp flexprice-mcp "$HOME/bin/flexprice-mcp"
+chmod +x "$HOME/bin/flexprice-mcp"
+```
+
+## 2) Required environment variables
+
+| Variable                 | Required    | Notes                                                                                                                          |
+| ------------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `FLEXPRICE_BASE_URL`     | Yes\*       | API base URL, for example `http://localhost:8080` or `https://api-dev.cloud.flexprice.io`. \*`BASE_URL` fallback is supported. |
+| `FLEXPRICE_API_KEY`      | Yes\*       | API key sent as `x-api-key`. \*`API_KEY` fallback is supported.                                                                |
+| `FLEXPRICE_OPENAPI_SPEC` | Recommended | Absolute path to OpenAPI 3.0 JSON. If omitted, defaults to `docs/swagger/swagger-3-0.json` relative to working directory.      |
+
+Use the host/base origin (for example `http://localhost:8080`) for `FLEXPRICE_BASE_URL`; the server applies Flexprice API base path routing for operations.
+
+## 3) Local sanity check (standalone run)
+
+```bash
+cd /path/to/flexprice
+export FLEXPRICE_BASE_URL="http://localhost:8080"
+export FLEXPRICE_API_KEY="your-api-key"
+export FLEXPRICE_OPENAPI_SPEC="$(pwd)/docs/swagger/swagger-3-0.json"
+"$HOME/bin/flexprice-mcp"
+```
+
+The server expects a normal MCP handshake (`initialize` before `tools/list`).
+
+## 4) Cursor setup
+
+Open **Cursor Settings → MCP** and add:
+
+```json
+{
+  "mcpServers": {
+    "flexprice": {
+      "command": "/Users/<your-user>/bin/flexprice-mcp",
+      "env": {
+        "FLEXPRICE_BASE_URL": "https://api-dev.cloud.flexprice.io",
+        "FLEXPRICE_API_KEY": "sk_your_api_key"
+      }
+    }
+  }
+}
+```
+
+Restart Cursor (or run **Developer: Reload Window**).
+
+## 5) Claude Code setup
+
+Add the local stdio server via CLI:
+
+```bash
+claude mcp add --transport stdio --scope user --env FLEXPRICE_BASE_URL=https://api-dev.cloud.flexprice.io --env FLEXPRICE_API_KEY=sk_your_api_key --env FLEXPRICE_OPENAPI_SPEC=/absolute/path/to/flexprice/docs/swagger/swagger-3-0.json flexprice -- /Users/<your-user>/bin/flexprice-mcp
+```
+
+Useful commands:
+
+```bash
+claude mcp list
+claude mcp get flexprice
+```
+
+Then in Claude Code, run `/mcp` to confirm server status.
+
+## 6) Claude Desktop setup
+
+Edit the real config file (macOS):
+
+```bash
+cursor "$HOME/Library/Application Support/Claude/claude_desktop_config.json"
+```
+
+Add this MCP server entry:
+
+```json
+{
+  "mcpServers": {
+    "flexprice": {
+      "command": "/Users/<your-user>/bin/flexprice-mcp",
+      "env": {
+        "FLEXPRICE_BASE_URL": "https://api-dev.cloud.flexprice.io",
+        "FLEXPRICE_API_KEY": "sk_your_api_key"
+      }
+    }
+  }
+}
+```
+
+Fully quit and reopen Claude Desktop after saving.
+
+## 7) Try it in chat
+
+Prompt examples:
+
+- "Use Flexprice tools to list customers"
+- "Create a subscription for customer `<id>` on plan `<id>`"
+- "Get invoices from the last 30 days"
+
+## Troubleshooting
+
+| Symptom                                                         | Likely cause                                             | Fix                                           |
+| --------------------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------- |
+| `spawn ... ENOENT`                                              | Wrong `command` path                                     | Use full absolute path to `flexprice-mcp`     |
+| `spawn ... EACCES`                                              | Non-executable binary or path issues                     | `chmod +x` and prefer `$HOME/bin` path        |
+| `FLEXPRICE_BASE_URL or BASE_URL is required`                    | Base URL env not passed                                  | Set `FLEXPRICE_BASE_URL` in MCP config        |
+| `FLEXPRICE_API_KEY or API_KEY is required`                      | API key env not passed                                   | Set `FLEXPRICE_API_KEY` in MCP config         |
+| `open docs/swagger/swagger-3-0.json: no such file or directory` | Relative spec path resolved from wrong working directory | Set `FLEXPRICE_OPENAPI_SPEC` to absolute path |
+| Tools appear but requests fail with 404                         | Wrong API base URL or wrong tenant/environment data      | Verify URL, key scope, and target resources   |
+
+## Security and best practices
+
+- Never commit API keys to git.
+- Store keys only in local MCP client config or shell environment.
+- Rotate keys immediately if exposed.
+
+## Keep the OpenAPI spec updated
+
+If API operations changed, regenerate the spec in the Flexprice app repo:
+
+```bash
+make swagger
+```
+
+That refreshes `docs/swagger/swagger-3-0.json`, which the MCP server uses to register tools.
