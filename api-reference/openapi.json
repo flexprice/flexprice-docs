@@ -2213,6 +2213,18 @@
                 "description": "Get credit grants with the specified filter",
                 "parameters": [
                     {
+                        "name": "credit_grant_ids",
+                        "in": "query",
+                        "style": "form",
+                        "explode": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    {
                         "name": "end_time",
                         "in": "query",
                         "schema": {
@@ -2558,7 +2570,7 @@
                     "CreditGrants"
                 ],
                 "summary": "Delete a credit grant",
-                "description": "Delete a credit grant",
+                "description": "Delete a credit grant. Plan-scoped grants are archived; subscription-scoped grants have their end date set (optional body with effective_date). Request body is optional.",
                 "parameters": [
                     {
                         "name": "id",
@@ -2570,6 +2582,17 @@
                         }
                     }
                 ],
+                "requestBody": {
+                    "description": "Optional: effective_date for subscription-scoped grants",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/dto.DeleteCreditGrantRequest"
+                            }
+                        }
+                    },
+                    "required": false
+                },
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -2606,7 +2629,8 @@
                     {
                         "ApiKeyAuth": []
                     }
-                ]
+                ],
+                "x-codegen-request-body-name": "body"
             }
         },
         "/creditnotes": {
@@ -6817,6 +6841,38 @@
                         }
                     },
                     {
+                        "name": "period_end_gte",
+                        "in": "query",
+                        "description": "period_end_gte filters invoices with period_end >= value",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "period_end_lte",
+                        "in": "query",
+                        "description": "period_end_lte filters invoices with period_end <= value",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "period_start_gte",
+                        "in": "query",
+                        "description": "period_start_gte filters invoices with period_start >= value",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "period_start_lte",
+                        "in": "query",
+                        "description": "period_start_lte filters invoices with period_start <= value",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
                         "name": "skip_line_items",
                         "in": "query",
                         "description": "SkipLineItems if true, will not include line items in the response",
@@ -9333,6 +9389,64 @@
                         "ApiKeyAuth": []
                     }
                 ]
+            }
+        },
+        "/prices/search": {
+            "post": {
+                "tags": [
+                    "Prices"
+                ],
+                "summary": "List prices by filter",
+                "description": "List prices with filter",
+                "requestBody": {
+                    "description": "Filter with DSL support",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/types.PriceFilter"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.ListPricesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "x-codegen-request-body-name": "filter"
             }
         },
         "/prices/units": {
@@ -15112,7 +15226,8 @@
                                 "CREDIT_NOTE",
                                 "CREDIT_EXPIRED",
                                 "WALLET_TERMINATION",
-                                "MANUAL_BALANCE_DEBIT"
+                                "MANUAL_BALANCE_DEBIT",
+                                "CREDIT_ADJUSTMENT"
                             ],
                             "x-enum-varnames": [
                                 "TransactionReasonInvoicePayment",
@@ -15123,7 +15238,8 @@
                                 "TransactionReasonCreditNote",
                                 "TransactionReasonCreditExpired",
                                 "TransactionReasonWalletTermination",
-                                "TransactionReasonManualBalanceDebit"
+                                "TransactionReasonManualBalanceDebit",
+                                "TransactionReasonCreditAdjustment"
                             ]
                         },
                         "x-enum-varnames": [
@@ -15135,7 +15251,8 @@
                             "TransactionReasonCreditNote",
                             "TransactionReasonCreditExpired",
                             "TransactionReasonWalletTermination",
-                            "TransactionReasonManualBalanceDebit"
+                            "TransactionReasonManualBalanceDebit",
+                            "TransactionReasonCreditAdjustment"
                         ]
                     },
                     {
@@ -15732,6 +15849,81 @@
                     },
                     "timeRangeFilter": {
                         "$ref": "#/components/schemas/types.TimeRangeFilter"
+                    }
+                }
+            },
+            "coupon_application.CouponApplication": {
+                "type": "object",
+                "properties": {
+                    "applied_at": {
+                        "type": "string"
+                    },
+                    "coupon_association_id": {
+                        "type": "string"
+                    },
+                    "coupon_id": {
+                        "type": "string"
+                    },
+                    "coupon_snapshot": {
+                        "type": "object",
+                        "additionalProperties": true
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "created_by": {
+                        "type": "string"
+                    },
+                    "currency": {
+                        "type": "string"
+                    },
+                    "discount_percentage": {
+                        "type": "string"
+                    },
+                    "discount_type": {
+                        "$ref": "#/components/schemas/types.CouponType"
+                    },
+                    "discounted_amount": {
+                        "type": "string"
+                    },
+                    "environment_id": {
+                        "type": "string"
+                    },
+                    "final_price": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "invoice_id": {
+                        "type": "string"
+                    },
+                    "invoice_line_item_id": {
+                        "type": "string"
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "original_price": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.Status"
+                    },
+                    "subscription_id": {
+                        "type": "string"
+                    },
+                    "tenant_id": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "updated_by": {
+                        "type": "string"
                     }
                 }
             },
@@ -16981,6 +17173,9 @@
                     "credits": {
                         "type": "string"
                     },
+                    "end_date": {
+                        "type": "string"
+                    },
                     "expiration_duration": {
                         "type": "integer"
                     },
@@ -17010,6 +17205,9 @@
                     },
                     "scope": {
                         "$ref": "#/components/schemas/types.CreditGrantScope"
+                    },
+                    "start_date": {
+                        "type": "string"
                     },
                     "subscription_id": {
                         "type": "string"
@@ -17369,6 +17567,14 @@
                         "type": "string",
                         "description": "entity_type is the optional type of the entity associated with this line item"
                     },
+                    "invoice_level_discount": {
+                        "type": "string",
+                        "description": "invoice_level_discount is the discount amount in invoice currency applied to all line items on the invoice."
+                    },
+                    "line_item_discount": {
+                        "type": "string",
+                        "description": "line_item_discount is the discount amount in invoice currency applied directly to this line item."
+                    },
                     "metadata": {
                         "$ref": "#/components/schemas/types.Metadata"
                     },
@@ -17395,6 +17601,10 @@
                     "plan_id": {
                         "type": "string",
                         "description": "TODO: !REMOVE after migration\nplan_id is the optional unique identifier of the plan associated with this line item"
+                    },
+                    "prepaid_credits_applied": {
+                        "type": "string",
+                        "description": "prepaid_credits_applied is the amount in invoice currency reduced from this line item due to prepaid credits application."
                     },
                     "price_id": {
                         "type": "string",
@@ -17466,17 +17676,13 @@
                         "type": "string",
                         "description": "due_date is the date by which payment is expected"
                     },
-                    "environment_id": {
-                        "type": "string",
-                        "description": "environment_id is the unique identifier of the environment this invoice belongs to"
-                    },
                     "idempotency_key": {
                         "type": "string",
                         "description": "idempotency_key is an optional key used to prevent duplicate invoice creation"
                     },
                     "invoice_coupons": {
                         "type": "array",
-                        "description": "Invoice Coupns",
+                        "description": "Invoice Coupons",
                         "items": {
                             "$ref": "#/components/schemas/dto.InvoiceCoupon"
                         }
@@ -17525,7 +17731,7 @@
                     },
                     "prepared_tax_rates": {
                         "type": "array",
-                        "description": "prepared_tax_rates contains the tax rates pre-resolved by the caller (e.g., billing service)\nThese are applied at invoice level by the invoice service without further resolution",
+                        "description": "prepared_tax_rates contains the tax rates pre-resolved by the caller (e.g., billing service)",
                         "items": {
                             "$ref": "#/components/schemas/dto.TaxRateResponse"
                         }
@@ -17555,6 +17761,10 @@
                     "total": {
                         "type": "string",
                         "description": "total is the total amount of the invoice including taxes and discounts"
+                    },
+                    "total_prepaid_applied": {
+                        "type": "string",
+                        "description": "total_prepaid_applied is the total amount of prepaid applied to this invoice."
                     }
                 }
             },
@@ -18210,9 +18420,6 @@
                     "auto_topup": {
                         "$ref": "#/components/schemas/types.AutoTopup"
                     },
-                    "config": {
-                        "$ref": "#/components/schemas/types.WalletConfig"
-                    },
                     "conversion_rate": {
                         "type": "string",
                         "description": "amount in the currency =  number of credits * conversion_rate\nex if conversion_rate is 1, then 1 USD = 1 credit\nex if conversion_rate is 2, then 1 USD = 0.5 credits\nex if conversion_rate is 0.5, then 1 USD = 2 credits",
@@ -18246,9 +18453,6 @@
                     },
                     "metadata": {
                         "$ref": "#/components/schemas/types.Metadata"
-                    },
-                    "name": {
-                        "type": "string"
                     },
                     "price_unit": {
                         "type": "string",
@@ -18744,6 +18948,15 @@
                     },
                     "message": {
                         "type": "string"
+                    }
+                }
+            },
+            "dto.DeleteCreditGrantRequest": {
+                "type": "object",
+                "properties": {
+                    "effective_date": {
+                        "type": "string",
+                        "description": "EffectiveDate is optional; when set (subscription scope) the grant end date is set to this time."
                     }
                 }
             },
@@ -19843,118 +20056,103 @@
                 "type": "object",
                 "properties": {
                     "amount": {
-                        "type": "string",
-                        "description": "amount is the monetary amount for this line item"
+                        "type": "number"
                     },
                     "commitment_info": {
                         "$ref": "#/components/schemas/types.CommitmentInfo"
                     },
                     "created_at": {
-                        "type": "string",
-                        "description": "created_at is the timestamp when this line item was created"
+                        "type": "string"
                     },
                     "created_by": {
-                        "type": "string",
-                        "description": "created_by is the identifier of the user who created this line item"
+                        "type": "string"
                     },
                     "currency": {
-                        "type": "string",
-                        "description": "currency is the three-letter ISO currency code for this line item"
+                        "type": "string"
                     },
                     "customer_id": {
-                        "type": "string",
-                        "description": "customer_id is the unique identifier of the customer associated with this line item"
+                        "type": "string"
                     },
                     "display_name": {
-                        "type": "string",
-                        "description": "display_name is the optional human-readable name for this line item"
+                        "type": "string"
                     },
                     "entity_id": {
-                        "type": "string",
-                        "description": "entity_id is the optional unique identifier of the entity associated with this line item"
+                        "type": "string"
                     },
                     "entity_type": {
-                        "type": "string",
-                        "description": "entity_type is the optional type of the entity associated with this line item"
+                        "type": "string"
+                    },
+                    "environment_id": {
+                        "type": "string"
                     },
                     "id": {
-                        "type": "string",
-                        "description": "id is the unique identifier for this line item"
+                        "type": "string"
                     },
                     "invoice_id": {
-                        "type": "string",
-                        "description": "invoice_id is the unique identifier of the invoice this line item belongs to"
+                        "type": "string"
+                    },
+                    "invoice_level_discount": {
+                        "type": "number",
+                        "description": "invoice_level_discount is the discount amount in invoice currency applied to all line items on the invoice."
+                    },
+                    "line_item_discount": {
+                        "type": "number",
+                        "description": "line_item_discount is the discount amount in invoice currency applied directly to this line item."
                     },
                     "metadata": {
                         "$ref": "#/components/schemas/types.Metadata"
                     },
                     "meter_display_name": {
-                        "type": "string",
-                        "description": "meter_display_name is the optional human-readable name of the meter"
+                        "type": "string"
                     },
                     "meter_id": {
-                        "type": "string",
-                        "description": "meter_id is the optional unique identifier of the meter used for usage tracking"
+                        "type": "string"
                     },
                     "period_end": {
-                        "type": "string",
-                        "description": "period_end is the optional end date of the period this line item covers"
+                        "type": "string"
                     },
                     "period_start": {
-                        "type": "string",
-                        "description": "period_start is the optional start date of the period this line item covers"
+                        "type": "string"
                     },
                     "plan_display_name": {
-                        "type": "string",
-                        "description": "plan_display_name is the optional human-readable name of the plan"
+                        "type": "string"
                     },
-                    "plan_id": {
-                        "type": "string",
-                        "description": "plan_id is the optional unique identifier of the plan associated with this line item"
+                    "prepaid_credits_applied": {
+                        "type": "number",
+                        "description": "prepaid_credits_applied is the amount in invoice currency reduced from this line item due to prepaid credits application."
                     },
                     "price_id": {
-                        "type": "string",
-                        "description": "price_id is the optional unique identifier of the price associated with this line item"
+                        "type": "string"
                     },
                     "price_type": {
-                        "type": "string",
-                        "description": "price_type indicates the type of pricing (fixed, usage, tiered, etc.)"
+                        "type": "string"
                     },
                     "price_unit": {
-                        "type": "string",
-                        "description": "price_unit is the optional 3-digit ISO code of the price unit associated with this line item"
+                        "type": "string"
                     },
                     "price_unit_amount": {
-                        "type": "string",
-                        "description": "price_unit_amount is the optional amount converted to the price unit currency"
+                        "type": "number"
                     },
                     "price_unit_id": {
-                        "type": "string",
-                        "description": "price_unit_id is the optional unique identifier of the price unit associated with this line item"
+                        "type": "string"
                     },
                     "quantity": {
-                        "type": "string",
-                        "description": "quantity is the quantity of units for this line item"
+                        "type": "number"
                     },
                     "status": {
-                        "type": "string",
-                        "description": "status represents the current status of this line item"
+                        "$ref": "#/components/schemas/types.Status"
                     },
                     "subscription_id": {
-                        "type": "string",
-                        "description": "subscription_id is the optional unique identifier of the subscription associated with this line item"
+                        "type": "string"
                     },
                     "tenant_id": {
-                        "type": "string",
-                        "description": "tenant_id is the unique identifier of the tenant this line item belongs to"
+                        "type": "string"
                     },
                     "updated_at": {
-                        "type": "string",
-                        "description": "updated_at is the timestamp when this line item was last updated"
+                        "type": "string"
                     },
                     "updated_by": {
-                        "type": "string",
-                        "description": "updated_by is the identifier of the user who last updated this line item"
+                        "type": "string"
                     },
                     "usage_analytics": {
                         "type": "array",
@@ -20007,67 +20205,73 @@
             "dto.InvoiceResponse": {
                 "type": "object",
                 "properties": {
+                    "adjustment_amount": {
+                        "type": "number",
+                        "description": "adjustment_amount is the total sum of credit notes of type \"adjustment\".\nThese are non-cash reductions applied to the invoice (e.g. goodwill credit, billing correction)."
+                    },
                     "amount_due": {
-                        "type": "string",
+                        "type": "number",
                         "description": "amount_due is the total amount that needs to be paid for this invoice"
                     },
                     "amount_paid": {
-                        "type": "string",
-                        "description": "amount_paid is the amount that has been paid towards this invoice"
+                        "type": "number",
+                        "description": "amount_paid is the amount that has already been paid towards this invoice"
                     },
                     "amount_remaining": {
-                        "type": "string",
-                        "description": "amount_remaining is the amount still outstanding on this invoice"
+                        "type": "number",
+                        "description": "amount_remaining is the outstanding amount still owed on this invoice (calculated as amount_due minus amount_paid)"
                     },
                     "billing_period": {
                         "type": "string",
-                        "description": "billing_period is the period this invoice covers (e.g., \"monthly\", \"yearly\")"
+                        "description": "billing_period describes the billing period this invoice covers (e.g., \"January 2024\", \"Q1 2024\")"
                     },
                     "billing_reason": {
                         "type": "string",
-                        "description": "billing_reason indicates why this invoice was created (subscription_cycle, manual, etc.)"
+                        "description": "billing_reason indicates why this invoice was generated (e.g., \"subscription_billing\", \"manual_charge\")"
                     },
                     "billing_sequence": {
                         "type": "integer",
-                        "description": "billing_sequence is the optional sequence number for billing cycles"
+                        "description": "billing_sequence is the sequential number indicating the billing cycle for subscription invoices"
                     },
                     "coupon_applications": {
                         "type": "array",
-                        "description": "coupon_applications contains the coupon applications associated with this invoice",
+                        "description": "coupon_applications contains the coupon applications associated with this invoice (overrides embedded field)",
                         "items": {
                             "$ref": "#/components/schemas/dto.CouponApplicationResponse"
                         }
                     },
                     "created_at": {
-                        "type": "string",
-                        "description": "created_at is the timestamp when this invoice was created"
+                        "type": "string"
                     },
                     "created_by": {
-                        "type": "string",
-                        "description": "created_by is the identifier of the user who created this invoice"
+                        "type": "string"
                     },
                     "currency": {
                         "type": "string",
-                        "description": "currency is the three-letter ISO currency code (e.g., USD, EUR) for the invoice"
+                        "description": "currency is the three-letter ISO currency code (e.g., USD, EUR, GBP) that applies to all monetary amounts on this invoice"
                     },
                     "customer": {
                         "$ref": "#/components/schemas/dto.CustomerResponse"
                     },
                     "customer_id": {
                         "type": "string",
-                        "description": "customer_id is the unique identifier of the customer this invoice belongs to"
+                        "description": "customer_id is the ID of the customer who will receive this invoice"
                     },
                     "description": {
                         "type": "string",
-                        "description": "description is the optional text description of the invoice"
+                        "description": "description is an optional description or notes about this invoice"
                     },
                     "due_date": {
                         "type": "string",
-                        "description": "due_date is the date by which payment is expected"
+                        "description": "due_date is the date when payment for this invoice is due"
+                    },
+                    "environment_id": {
+                        "type": "string",
+                        "description": "environment_id is the ID of the environment this invoice belongs to (for multi-environment setups)"
                     },
                     "finalized_at": {
                         "type": "string",
-                        "description": "finalized_at is the timestamp when this invoice was finalized"
+                        "description": "finalized_at is the timestamp when this invoice was finalized and made ready for payment"
                     },
                     "id": {
                         "type": "string",
@@ -20075,15 +20279,15 @@
                     },
                     "idempotency_key": {
                         "type": "string",
-                        "description": "idempotency_key is the optional key used to prevent duplicate invoice creation"
+                        "description": "idempotency_key is a unique key used to prevent duplicate invoice creation when retrying API calls"
                     },
                     "invoice_number": {
                         "type": "string",
-                        "description": "invoice_number is the optional human-readable identifier for the invoice"
+                        "description": "invoice_number is the human-readable invoice number displayed to customers (e.g., INV-2024-001)"
                     },
                     "invoice_pdf_url": {
                         "type": "string",
-                        "description": "invoice_pdf_url is the optional URL to the PDF version of this invoice"
+                        "description": "invoice_pdf_url is the URL where customers can download the PDF version of this invoice"
                     },
                     "invoice_status": {
                         "$ref": "#/components/schemas/types.InvoiceStatus"
@@ -20093,7 +20297,7 @@
                     },
                     "line_items": {
                         "type": "array",
-                        "description": "line_items contains the individual items that make up this invoice",
+                        "description": "line_items contains the individual items that make up this invoice (overrides embedded field)",
                         "items": {
                             "$ref": "#/components/schemas/dto.InvoiceLineItemResponse"
                         }
@@ -20107,33 +20311,36 @@
                     },
                     "paid_at": {
                         "type": "string",
-                        "description": "paid_at is the timestamp when this invoice was paid"
+                        "description": "paid_at is the timestamp when this invoice was fully paid"
                     },
                     "payment_status": {
                         "$ref": "#/components/schemas/types.PaymentStatus"
                     },
                     "period_end": {
                         "type": "string",
-                        "description": "period_end is the end date of the billing period"
+                        "description": "period_end is the end date of the billing period covered by this invoice"
                     },
                     "period_start": {
                         "type": "string",
-                        "description": "period_start is the start date of the billing period"
+                        "description": "period_start is the start date of the billing period covered by this invoice"
+                    },
+                    "refunded_amount": {
+                        "type": "number",
+                        "description": "refunded_amount is the total sum of credit notes of type \"refund\".\nThese are actual refunds issued to the customer."
                     },
                     "status": {
-                        "type": "string",
-                        "description": "status represents the current status of this invoice"
+                        "$ref": "#/components/schemas/types.Status"
                     },
                     "subscription": {
                         "$ref": "#/components/schemas/dto.SubscriptionResponse"
                     },
                     "subscription_id": {
                         "type": "string",
-                        "description": "subscription_id is the optional unique identifier of the subscription associated with this invoice"
+                        "description": "subscription_id is the ID of the subscription this invoice is associated with (only present for subscription-based invoices)"
                     },
                     "subtotal": {
-                        "type": "string",
-                        "description": "subtotal is the amount before taxes and discounts are applied"
+                        "type": "number",
+                        "description": "subtotal is the sum of all line items before any taxes, discounts, or additional fees"
                     },
                     "taxes": {
                         "type": "array",
@@ -20143,36 +20350,37 @@
                         }
                     },
                     "tenant_id": {
-                        "type": "string",
-                        "description": "tenant_id is the unique identifier of the tenant this invoice belongs to"
+                        "type": "string"
                     },
                     "total": {
-                        "type": "string",
-                        "description": "total is the total amount of the invoice including taxes and discounts"
+                        "type": "number",
+                        "description": "total is the final amount including taxes, fees, and discounts"
                     },
                     "total_discount": {
-                        "type": "string",
-                        "description": "total_discount is the total discount amount from coupon applications"
+                        "type": "number",
+                        "description": "total_discount is the sum of all coupon discounts applied to the invoice"
+                    },
+                    "total_prepaid_credits_applied": {
+                        "type": "number",
+                        "description": "total_prepaid_credits_applied is the total amount of prepaid credits applied to this invoice."
                     },
                     "total_tax": {
-                        "type": "string",
-                        "description": "total_tax is the total tax amount for this invoice"
+                        "type": "number",
+                        "description": "total_tax is the sum of all taxes combined at the invoice level."
                     },
                     "updated_at": {
-                        "type": "string",
-                        "description": "updated_at is the timestamp when this invoice was last updated"
+                        "type": "string"
                     },
                     "updated_by": {
-                        "type": "string",
-                        "description": "updated_by is the identifier of the user who last updated this invoice"
+                        "type": "string"
                     },
                     "version": {
                         "type": "integer",
-                        "description": "version is the version number of this invoice"
+                        "description": "version is the version number for tracking changes to this invoice"
                     },
                     "voided_at": {
                         "type": "string",
-                        "description": "voided_at is the timestamp when this invoice was voided"
+                        "description": "voided_at is the timestamp when this invoice was voided or cancelled"
                     }
                 }
             },
@@ -22718,7 +22926,8 @@
                 "type": "object",
                 "properties": {
                     "auto_apply": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "Whether this tax should be automatically applied"
                     },
                     "created_at": {
                         "type": "string"
@@ -22727,37 +22936,44 @@
                         "type": "string"
                     },
                     "currency": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Currency"
                     },
                     "entity_id": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "ID of the entity this tax rate applies to"
                     },
                     "entity_type": {
                         "$ref": "#/components/schemas/types.TaxRateEntityType"
                     },
                     "environment_id": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "EnvironmentID is the ID of the environment this tax rate config belongs to"
                     },
                     "id": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "ID of the ent."
                     },
                     "metadata": {
                         "type": "object",
                         "additionalProperties": {
                             "type": "string"
-                        }
+                        },
+                        "description": "Metadata holds the value of the \"metadata\" field."
                     },
                     "priority": {
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "Priority for tax resolution (lower number = higher priority)"
                     },
                     "status": {
-                        "type": "string"
+                        "$ref": "#/components/schemas/types.Status"
                     },
                     "tax_rate": {
                         "$ref": "#/components/schemas/dto.TaxRateResponse"
                     },
                     "tax_rate_id": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Reference to the TaxRate entity"
                     },
                     "tenant_id": {
                         "type": "string"
@@ -22766,12 +22982,6 @@
                         "type": "string"
                     },
                     "updated_by": {
-                        "type": "string"
-                    },
-                    "valid_from": {
-                        "type": "string"
-                    },
-                    "valid_to": {
                         "type": "string"
                     }
                 }
@@ -23541,9 +23751,6 @@
                     },
                     "metadata": {
                         "$ref": "#/components/schemas/types.Metadata"
-                    },
-                    "name": {
-                        "type": "string"
                     }
                 }
             },
@@ -24362,6 +24569,110 @@
                     }
                 }
             },
+            "invoice.InvoiceLineItem": {
+                "type": "object",
+                "properties": {
+                    "amount": {
+                        "type": "number"
+                    },
+                    "commitment_info": {
+                        "$ref": "#/components/schemas/types.CommitmentInfo"
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "created_by": {
+                        "type": "string"
+                    },
+                    "currency": {
+                        "type": "string"
+                    },
+                    "customer_id": {
+                        "type": "string"
+                    },
+                    "display_name": {
+                        "type": "string"
+                    },
+                    "entity_id": {
+                        "type": "string"
+                    },
+                    "entity_type": {
+                        "type": "string"
+                    },
+                    "environment_id": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "invoice_id": {
+                        "type": "string"
+                    },
+                    "invoice_level_discount": {
+                        "type": "number",
+                        "description": "invoice_level_discount is the discount amount in invoice currency applied to all line items on the invoice."
+                    },
+                    "line_item_discount": {
+                        "type": "number",
+                        "description": "line_item_discount is the discount amount in invoice currency applied directly to this line item."
+                    },
+                    "metadata": {
+                        "$ref": "#/components/schemas/types.Metadata"
+                    },
+                    "meter_display_name": {
+                        "type": "string"
+                    },
+                    "meter_id": {
+                        "type": "string"
+                    },
+                    "period_end": {
+                        "type": "string"
+                    },
+                    "period_start": {
+                        "type": "string"
+                    },
+                    "plan_display_name": {
+                        "type": "string"
+                    },
+                    "prepaid_credits_applied": {
+                        "type": "number",
+                        "description": "prepaid_credits_applied is the amount in invoice currency reduced from this line item due to prepaid credits application."
+                    },
+                    "price_id": {
+                        "type": "string"
+                    },
+                    "price_type": {
+                        "type": "string"
+                    },
+                    "price_unit": {
+                        "type": "string"
+                    },
+                    "price_unit_amount": {
+                        "type": "number"
+                    },
+                    "price_unit_id": {
+                        "type": "string"
+                    },
+                    "quantity": {
+                        "type": "number"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.Status"
+                    },
+                    "subscription_id": {
+                        "type": "string"
+                    },
+                    "tenant_id": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "updated_by": {
+                        "type": "string"
+                    }
+                }
+            },
             "meter.Aggregation": {
                 "type": "object",
                 "properties": {
@@ -25054,6 +25365,9 @@
             "types.AlertConfig": {
                 "type": "object",
                 "properties": {
+                    "enabled": {
+                        "type": "boolean"
+                    },
                     "threshold": {
                         "$ref": "#/components/schemas/types.WalletAlertThreshold"
                     }
@@ -26267,6 +26581,22 @@
                             "$ref": "#/components/schemas/types.PaymentStatus"
                         }
                     },
+                    "period_end_gte": {
+                        "type": "string",
+                        "description": "period_end_gte filters invoices with period_end >= value"
+                    },
+                    "period_end_lte": {
+                        "type": "string",
+                        "description": "period_end_lte filters invoices with period_end <= value"
+                    },
+                    "period_start_gte": {
+                        "type": "string",
+                        "description": "period_start_gte filters invoices with period_start >= value"
+                    },
+                    "period_start_lte": {
+                        "type": "string",
+                        "description": "period_start_lte filters invoices with period_start <= value"
+                    },
                     "skip_line_items": {
                         "type": "boolean",
                         "description": "SkipLineItems if true, will not include line items in the response"
@@ -26559,6 +26889,90 @@
                     "PRICE_ENTITY_TYPE_PRICE",
                     "PRICE_ENTITY_TYPE_COSTSHEET"
                 ]
+            },
+            "types.PriceFilter": {
+                "type": "object",
+                "properties": {
+                    "allow_expired_prices": {
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "end_time": {
+                        "type": "string"
+                    },
+                    "entity_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "entity_type": {
+                        "$ref": "#/components/schemas/types.PriceEntityType"
+                    },
+                    "expand": {
+                        "type": "string"
+                    },
+                    "filters": {
+                        "type": "array",
+                        "description": "DSL filters",
+                        "items": {
+                            "$ref": "#/components/schemas/types.FilterCondition"
+                        }
+                    },
+                    "limit": {
+                        "maximum": 1000,
+                        "minimum": 1,
+                        "type": "integer"
+                    },
+                    "meter_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "offset": {
+                        "minimum": 0,
+                        "type": "integer"
+                    },
+                    "order": {
+                        "type": "string",
+                        "enum": [
+                            "asc",
+                            "desc"
+                        ]
+                    },
+                    "parent_price_id": {
+                        "type": "string"
+                    },
+                    "plan_ids": {
+                        "type": "array",
+                        "description": "Price override filtering fields",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "price_ids": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "sort": {
+                        "type": "string"
+                    },
+                    "start_date_lt": {
+                        "type": "string"
+                    },
+                    "start_time": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.Status"
+                    },
+                    "subscription_id": {
+                        "type": "string"
+                    }
+                }
             },
             "types.PriceType": {
                 "type": "string",
@@ -27265,7 +27679,8 @@
                     "CREDIT_NOTE",
                     "CREDIT_EXPIRED",
                     "WALLET_TERMINATION",
-                    "MANUAL_BALANCE_DEBIT"
+                    "MANUAL_BALANCE_DEBIT",
+                    "CREDIT_ADJUSTMENT"
                 ],
                 "x-enum-varnames": [
                     "TransactionReasonInvoicePayment",
@@ -27276,7 +27691,8 @@
                     "TransactionReasonCreditNote",
                     "TransactionReasonCreditExpired",
                     "TransactionReasonWalletTermination",
-                    "TransactionReasonManualBalanceDebit"
+                    "TransactionReasonManualBalanceDebit",
+                    "TransactionReasonCreditAdjustment"
                 ]
             },
             "types.TransactionStatus": {
@@ -27548,28 +27964,31 @@
                 "enum": [
                     "PAYMENT",
                     "EXTERNAL",
-                    "REQUEST"
+                    "REQUEST",
+                    "INVOICE"
                 ],
                 "x-enum-varnames": [
                     "WalletTxReferenceTypePayment",
                     "WalletTxReferenceTypeExternal",
-                    "WalletTxReferenceTypeRequest"
+                    "WalletTxReferenceTypeRequest",
+                    "WalletTxReferenceTypeInvoice"
                 ]
             },
             "types.WalletType": {
                 "type": "string",
                 "enum": [
-                    "PROMOTIONAL",
-                    "PRE_PAID"
+                    "PRE_PAID",
+                    "POST_PAID"
                 ],
                 "x-enum-varnames": [
-                    "WalletTypePromotional",
-                    "WalletTypePrePaid"
+                    "WalletTypePrePaid",
+                    "WalletTypePostPaid"
                 ]
             },
             "types.WindowSize": {
                 "type": "string",
                 "enum": [
+                    "MONTH",
                     "MINUTE",
                     "15MIN",
                     "30MIN",
@@ -27579,10 +27998,10 @@
                     "12HOUR",
                     "DAY",
                     "WEEK",
-                    "MONTH",
                     "MONTH"
                 ],
                 "x-enum-varnames": [
+                    "DefaultWindowSize",
                     "WindowSizeMinute",
                     "WindowSize15Min",
                     "WindowSize30Min",
@@ -27592,8 +28011,7 @@
                     "WindowSize12Hour",
                     "WindowSizeDay",
                     "WindowSizeWeek",
-                    "WindowSizeMonth",
-                    "DefaultWindowSize"
+                    "WindowSizeMonth"
                 ]
             }
         },
