@@ -1,6 +1,6 @@
 ---
 title: "Conversion rate"
-description: "Conversion rate links your unit (e.g. credits) to base currency (e.g. USD). Billing stays in one currency; you show and charge in your unit."
+description: "Conversion rate links your unit (e.g. credits) to base currency (e.g. USD). Billing stays in one currency."
 ---
 
 ## Overview
@@ -19,40 +19,14 @@ description: "Conversion rate links your unit (e.g. credits) to base currency (e
 
 ### What is conversion rate?
 
-It is the number that links your unit to base currency. It appears in **three** places:
+It is the number that links your unit to base currency. It appears in **two** places:
 
-| Where | Field | Purpose |
-|-------|--------|---------|
-| **Price unit** | `conversion_rate` | Turns price unit amounts into base currency for billing. Formula: `price_unit_amount × conversion_rate = base_currency_amount`. |
-| **Wallet** | `conversion_rate` | Links stored credits to currency (for display and when user spends). Wallet stores balance in **credits**; currency is worked out from this. Formula: `amount in currency = credits × conversion_rate`. Default: `"1"`. |
-| **Wallet** | `topup_conversion_rate` | Same formula; used **only for top-ups**. If you do not set it, the wallet uses `conversion_rate` for top-ups. |
+| Field | Purpose |
+|-------|---------|
+| `conversion_rate` | Links stored credits to currency (for display and when user spends). Wallet stores balance in **credits**; currency is worked out from this. Formula: `amount in currency = credits × conversion_rate`. Default: `"1"`. |
+| `topup_conversion_rate` | Same formula; used **only for top-ups**. If you do not set it, the wallet uses `conversion_rate` for top-ups. |
 
 So: **1 credit = conversion_rate in currency.** Examples: rate 1 → 1 USD = 1 credit; rate 2 → 1 USD = 0.5 credits; rate 0.5 → 1 USD = 2 credits.
-
-### Why it exists
-
-<Steps>
-  <Step title="Single base currency for billing">
-    Bill and store in one base currency while pricing and displaying in credits (or another unit).
-  </Step>
-  <Step title="Optional separate top-up rate">
-  Use a different rate for top-ups so you can give credits at a discount (more credits per dollar) or the opposite (fewer credits per dollar). Debits and balance still use one conversion rate.
-  </Step>
-</Steps>
-
-### Relationship with base currency and price unit
-
-<Steps>
-  <Step title="Base currency">
-    The fiat currency (e.g. `usd`) used for storage and invoicing.
-  </Step>
-  <Step title="Price unit">
-    A custom unit with `conversion_rate` and `base_currency`; reused in plans, prices, and wallets.
-  </Step>
-  <Step title="Wallet created with price unit">
-    The wallet’s `currency` and `conversion_rate` are set from that price unit; any `conversion_rate` in the create-wallet body is **ignored**.
-  </Step>
-</Steps>
 
 ---
 
@@ -64,9 +38,6 @@ So: **1 credit = conversion_rate in currency.** Examples: rate 1 → 1 USD = 1 c
 ### When conversion is used
 
 <Steps>
-  <Step title="Price unit to base currency (billing)">
-    Price unit’s `conversion_rate` is used when applying prices and building invoice line items.
-  </Step>
   <Step title="Wallet top-up (amount to credits)">
     Uses `topup_conversion_rate` (or `conversion_rate` if not set). If you send `amount` and not `credits_to_add`, credits = amount ÷ rate. If both are sent, **credits_to_add** wins and amount is ignored.
   </Step>
@@ -120,18 +91,7 @@ So: **1 credit = conversion_rate in currency.** Examples: rate 1 → 1 USD = 1 c
 
 ## Configuration
 
-### Set conversion rate on a price unit (dashboard)
-
-<Steps>
-  <Step title="Open Price Units">
-    Go to **Product Catalog** → **Price Units** → **Add** (or **Create Price Unit**).
-  </Step>
-  <Step title="Enter conversion rate and base currency">
-    Enter **Conversion rate** and **Base currency** (required). Example: 100 units = 1 USD → use conversion rate **0.01**.
-  </Step>
-</Steps>
-
-### Set conversion rate on a wallet (dashboard)
+### Set conversion rate on a wallet
 
 <Steps>
   <Step title="Open the customer">
@@ -151,69 +111,38 @@ So: **1 credit = conversion_rate in currency.** Examples: rate 1 → 1 USD = 1 c
 
 ### Set conversion rate via API
 
-<Steps>
-  <Step title="Create price unit">
-    `POST /v1/prices/units` — body includes `conversion_rate`, `base_currency`, `name`, `code`, `symbol`. See [Create a new price unit](/api-reference/price-units/create-a-new-price-unit).
-  </Step>
+<Steps> 
   <Step title="Create wallet">
     `POST /v1/wallets` — send `currency` (required), `conversion_rate` (optional, default `"1"`), `topup_conversion_rate` (optional), or `price_unit` (then currency and conversion_rate come from the price unit).
+  
+  **Create wallet with explicit rates:**
+
+ ```json
+ {
+   "customer_id": "cust_xxx",
+   "currency": "usd",
+   "conversion_rate": "0.01",
+   "topup_conversion_rate": "0.01"
+ }
+ ```
   </Step>
+
   <Step title="Top-up wallet">
     `POST /v1/wallets/{id}/top-up` — send `amount` (converted with top-up rate) or `credits_to_add`; if both, credits are used.
-  </Step>
-</Steps>
+   **Top-up by amount** (uses top-up rate):
 
+ ```json
+ {
+   "amount": "10.00",
+   "transaction_reason": "PURCHASED_CREDIT",
+   "idempotency_key": "topup-uniq-123"
+ }
+ ```
+   </Step>
+ </Steps>
 
-### Validation
-
-- **Price unit:** `conversion_rate` is required and must be &gt; 0.
-- **Wallet:** `conversion_rate` defaults to `"1"`. If you set it, it must be &gt; 0. `topup_conversion_rate` must be &gt; 0 if you set it. When you use `price_unit`, that price unit must be Active.
-
-### Example requests
-
-**Create price unit** (100 units = 1 USD):
-
-```json
-{
-  "name": "Credits",
-  "code": "CRD",
-  "symbol": "¢",
-  "base_currency": "usd",
-  "conversion_rate": "0.01"
-}
-```
-
-**Create wallet with price unit** (rate from price unit):
-
-```json
-{
-  "customer_id": "cust_xxx",
-  "price_unit": "CRD",
-  "currency": "usd"
-}
-```
-
-**Create wallet with explicit rates:**
-
-```json
-{
-  "customer_id": "cust_xxx",
-  "currency": "usd",
-  "conversion_rate": "0.01",
-  "topup_conversion_rate": "0.01"
-}
-```
-
-**Top-up by amount** (uses top-up rate):
-
-```json
-{
-  "amount": "10.00",
-  "transaction_reason": "PURCHASED_CREDIT",
-  "idempotency_key": "topup-uniq-123"
-}
-```
-
+ ### Validation
+  - **Wallet:** `conversion_rate` defaults to `"1"`. If you set it, it must be &gt; 0. `topup_conversion_rate` must be &gt; 0 if you set it. When you use `price_unit`, that price unit must be Active.
 ---
 
 ## Use cases
@@ -225,6 +154,9 @@ So: **1 credit = conversion_rate in currency.** Examples: rate 1 → 1 USD = 1 c
   <Step title="Promotional top-up">
     Set `topup_conversion_rate` so users get more credits per 1 USD. `conversion_rate` is still used for spending and for showing balance.
   </Step>
+  <Step title="Discounted top-up">
+    Set **Top-up conversion rate** lower than **Conversion rate** so 1 USD buys more credits when users top up. Spending and balance still use **Conversion rate**. Example: conversion rate 0.01, top-up rate 0.008 → 1 USD = 125 credits on top-up.
+  </Step>
 </Steps>
 
 ---
@@ -235,7 +167,6 @@ So: **1 credit = conversion_rate in currency.** Examples: rate 1 → 1 USD = 1 c
 |------|------------------|
 | **Missing or zero rate** | Price unit: request fails. Wallet: `conversion_rate` can default to `"1"`. Best: send a valid rate or use `price_unit`. |
 | **Invalid or negative rate** | Request fails. Rate must be &gt; 0. |
-| **Rate change** | Wallet balance is in credits. Changing the rate only changes how much currency is shown. New top-ups and debits use the new rate. |
 | **Top-up: amount and credits both sent** | **credits_to_add** is used. **amount** is ignored. |
 | **Wallet with price_unit** | `conversion_rate` in the request is ignored. Currency and rate come from the price unit. |
 
@@ -244,9 +175,6 @@ So: **1 credit = conversion_rate in currency.** Examples: rate 1 → 1 USD = 1 c
 ## Examples
 
 <Steps>
-  <Step title="Price unit">
-    `conversion_rate = "0.01"`, `base_currency = "usd"`. So 100 CRD = 1.00 USD. A charge of 50 CRD becomes 0.50 USD in billing.
-  </Step>
   <Step title="Wallet">
     `conversion_rate = "0.01"`. So 1 credit = 0.01 USD. Top-up 10 USD (same top-up rate) adds 1000 credits. Manual debit 500 credits takes out 5 USD worth.
   </Step>
