@@ -1,0 +1,317 @@
+---
+title: "Model Context Protocol (MCP)"
+description: "Connect Cursor, Claude, VS Code, and other MCP clients to your Flexprice API"
+---
+
+> Connect Cursor, Claude, VS Code, and other MCP-compatible tools to your Flexprice API.
+
+The Flexprice Model Context Protocol (MCP) server provides a set of tools that AI agents can use to interact with the Flexprice API: customers, plans, subscriptions, invoices, payments, events, and more.
+
+## What is the Flexprice MCP server?
+
+- An MCP server that exposes your Flexprice API as **MCP tools** so AI assistants can call your API without reading REST docs.
+- Authenticated via **API key** (no OAuth). You provide the key in your MCP client config.
+- Works with any MCP client that supports stdio: Cursor, VS Code, Claude Desktop, Claude Code, Gemini, Windsurf, and others.
+
+**How you can connect:** Flexprice currently supports two ways to run the MCP server. Pick what fits your workflow:
+
+- **npx (recommended):** One command, no install. Run `npx -y @flexprice/mcp-server start` with your API key and server URL. Ideal for Cursor, VS Code, Claude Code, Gemini, Windsurf, and most MCP clients.
+- **Local or Docker:** Clone the repo and run with Node, or use the official Docker image. Great for development, custom builds, or environments where you prefer not to use npx.
+
+## Quick start
+
+<CardGroup cols={3}>
+  <Card
+    title="Cursor"
+    icon="code"
+    href="cursor://anysphere.cursor-deeplink/mcp/install?name=Flexprice&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBmbGV4cHJpY2UvbWNwLXNlcnZlciIsInN0YXJ0IiwiLS1zZXJ2ZXItdXJsIiwiaHR0cHM6Ly9hcGkuY2xvdWQuZmxleHByaWNlLmlvL3YxIiwiLS1hcGkta2V5LWF1dGgiLCJZT1VSX0FQSV9LRVkiXX0="
+  >
+    One-click install
+  </Card>
+  <Card
+    title="VS Code"
+    icon="code"
+    href="vscode://ms-vscode.vscode-mcp/install?name=Flexprice&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBmbGV4cHJpY2UvbWNwLXNlcnZlciIsInN0YXJ0IiwiLS1zZXJ2ZXItdXJsIiwiaHR0cHM6Ly9hcGkuY2xvdWQuZmxleHByaWNlLmlvL3YxIiwiLS1hcGkta2V5LWF1dGgiLCJZT1VSX0FQSV9LRVkiXX0="
+  >
+    One-click install
+  </Card>
+  <Card title="Claude Code" icon="robot" href="#claude-code">
+    See instructions
+  </Card>
+  <Card title="Gemini" icon="sparkles" href="#gemini">
+    See instructions
+  </Card>
+  <Card title="Windsurf" icon="wind" href="#windsurf">
+    See instructions
+  </Card>
+  <Card title="Other clients" icon="terminal" href="#other-clients">
+    See all options
+  </Card>
+</CardGroup>
+
+## Authentication
+
+The MCP server uses your **Flexprice API key** only (no OAuth).
+
+- **Where to get the key:** From your Flexprice account (Dashboard or API keys settings).
+- **Where to set it:** In the MCP config as `--api-key-auth YOUR_API_KEY` (npx) or in the `env` object as `API_KEY_APIKEYAUTH` (local/Docker). Do not commit API keys; rotate if exposed.
+
+<Warning>
+  **Base URL / API URL (important):** The MCP server’s `--server-url` (or
+  equivalent) must use one of FlexPrice’s API base URLs. The two allowed URLs
+  are:
+  
+   - **US Region:** `https://us.api.flexprice.io/v1` 
+   - **India Region:** 
+  `https://api.cloud.flexprice.io/v1`
+</Warning>
+
+## Security and credentials
+
+- Do not commit API keys. Keep your key only in local MCP config or environment variables.
+- Rotate keys if a key is ever committed or exposed.
+- We recommend enabling human confirmation for write or destructive operations in your MCP client.
+
+<Warning>
+  We advise caution when giving LLMs write access to production data. Always
+  review actions before execution. Use caution when using the Flexprice MCP with
+  other servers to avoid prompt injection attacks.
+</Warning>
+
+## Installation instructions
+
+### Cursor
+
+<Card
+  title="Cursor"
+  icon="code"
+  horizontal
+  href="cursor://anysphere.cursor-deeplink/mcp/install?name=Flexprice&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBmbGV4cHJpY2UvbWNwLXNlcnZlciIsInN0YXJ0IiwiLS1zZXJ2ZXItdXJsIiwiaHR0cHM6Ly9hcGkuY2xvdWQuZmxleHByaWNlLmlvL3YxIiwiLS1hcGkta2V5LWF1dGgiLCJZT1VSX0FQSV9LRVkiXX0="
+>
+  Click to install the MCP server configuration for Cursor.
+</Card>
+
+Manual installation:
+
+1. Open **Cursor → Settings → Cursor Settings** and go to the **MCP** tab.
+2. Click **+ Add new global MCP server** (or open the MCP configuration file).
+3. Add the following to your `~/.cursor/mcp.json` file. Replace `YOUR_API_KEY` with your Flexprice API key. See [Cursor MCP documentation](https://docs.cursor.com/context/model-context-protocol).
+
+```json
+{
+  "mcpServers": {
+    "flexprice": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@flexprice/mcp-server",
+        "start",
+        "--server-url",
+        "https://api.cloud.flexprice.io/v1",
+        "--api-key-auth",
+        "YOUR_API_KEY"
+      ]
+    }
+  }
+}
+```
+
+4. Save and restart Cursor.
+
+### VS Code
+
+<Card
+  title="VS Code"
+  icon="code"
+  horizontal
+  href="vscode://ms-vscode.vscode-mcp/install?name=Flexprice&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBmbGV4cHJpY2UvbWNwLXNlcnZlciIsInN0YXJ0IiwiLS1zZXJ2ZXItdXJsIiwiaHR0cHM6Ly9hcGkuY2xvdWQuZmxleHByaWNlLmlvL3YxIiwiLS1hcGkta2V5LWF1dGgiLCJZT1VSX0FQSV9LRVkiXX0="
+>
+  Click to install the MCP server configuration for VS Code.
+</Card>
+
+Manual installation:
+
+1. Open the Command Palette (**Ctrl+Shift+P** / **Cmd+Shift+P**) and run **MCP: Add Server** or **MCP: Open User Configuration**.
+2. Add the following to your MCP config. Replace `YOUR_API_KEY` with your Flexprice API key. See [VS Code MCP documentation](https://code.visualstudio.com/docs/copilot/chat/mcp-servers).
+
+```json
+{
+  "servers": {
+    "flexprice": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@flexprice/mcp-server",
+        "start",
+        "--server-url",
+        "https://api.cloud.flexprice.io/v1",
+        "--api-key-auth",
+        "YOUR_API_KEY"
+      ]
+    }
+  }
+}
+```
+
+3. Save and restart VS Code.
+
+### Claude Code
+
+<Card title="Claude Code" icon="robot" horizontal href="#claude-code">
+  See instructions below.
+</Card>
+
+Manual installation:
+
+1. Run the following command to add the Flexprice MCP server. Replace `YOUR_API_KEY` with your Flexprice API key.
+
+```bash
+claude mcp add Flexprice -- npx -y @flexprice/mcp-server start --server-url https://api.cloud.flexprice.io/v1 --api-key-auth YOUR_API_KEY
+```
+
+2. Enter Claude Code: `claude`
+3. List MCP servers with `/mcp` to confirm the server is connected. See [Claude Code MCP documentation](https://docs.anthropic.com/en/docs/claude-code/mcp#configure-mcp-servers).
+
+### Gemini
+
+<Card title="Gemini" icon="sparkles" horizontal href="#gemini">
+  See instructions below.
+</Card>
+
+Manual installation:
+
+1. Run the following command. Replace `YOUR_API_KEY` with your Flexprice API key.
+
+```bash
+gemini mcp add Flexprice -- npx -y @flexprice/mcp-server start --server-url https://api.cloud.flexprice.io/v1 --api-key-auth YOUR_API_KEY
+```
+
+2. Enter Gemini: `gemini` and use `/mcp list` to verify. See [Gemini CLI](https://geminicli.com/) for details.
+
+### Windsurf
+
+<Card title="Windsurf" icon="wind" horizontal href="#windsurf">
+  See instructions below.
+</Card>
+
+Manual installation:
+
+1. Open Windsurf Settings → Cascade → **Manage MCPs** → **View raw config**.
+2. Add the Flexprice server to the config (same JSON structure as Cursor). Replace `YOUR_API_KEY` with your Flexprice API key. See [Windsurf MCP documentation](https://docs.windsurf.com/windsurf/cascade/mcp).
+
+### Other clients
+
+<Card title="Other clients" icon="terminal" horizontal href="#other-clients">
+  See instructions below.
+</Card>
+
+For **Claude Desktop** and other MCP clients, use the same npm package config. Example (Claude Desktop: add to your Claude Desktop config file, then quit and reopen):
+
+```json
+{
+  "mcpServers": {
+    "flexprice": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@flexprice/mcp-server",
+        "start",
+        "--server-url",
+        "https://api.cloud.flexprice.io/v1",
+        "--api-key-auth",
+        "YOUR_API_KEY"
+      ]
+    }
+  }
+}
+```
+
+**Config file locations:** Claude Desktop (macOS): `~/Library/Application Support/Claude/claude_desktop_config.json`; Windows: `%APPDATA%\Claude\claude_desktop_config.json`.
+
+**Alternative: run from local repo (Node).** If you cloned the Flexprice repo and run the server with `node`:
+
+```json
+{
+  "mcpServers": {
+    "flexprice": {
+      "command": "node",
+      "args": ["/path/to/mcp-server/bin/mcp-server.js", "start"],
+      "env": {
+        "API_KEY_APIKEYAUTH": "your_api_key_here",
+        "BASE_URL": "https://api.cloud.flexprice.io/v1"
+      }
+    }
+  }
+}
+```
+
+**Alternative: Docker (stdio).**
+
+```json
+{
+  "mcpServers": {
+    "flexprice": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "API_KEY_APIKEYAUTH",
+        "-e",
+        "BASE_URL",
+        "flexprice-mcp"
+      ],
+      "env": {
+        "API_KEY_APIKEYAUTH": "your_api_key_here",
+        "BASE_URL": "https://api.cloud.flexprice.io/v1"
+      }
+    }
+  }
+}
+```
+
+Replace `/path/to/mcp-server` and env values as needed. Save the config and restart your client.
+
+## Example workflows
+
+Once connected, you can ask your AI assistant to:
+
+- "List my customers" or "Get customer by id …"
+- "Create a subscription for customer … on plan …"
+- "Get plan by id …" or "List plans"
+- "Get usage for subscription …"
+
+## Available tools
+
+The server exposes the Flexprice API as MCP tools (one tool per OpenAPI operation). We recommend enabling human confirmation of tools and exercising caution when using the Flexprice MCP with other servers to avoid prompt injection attacks.
+
+| Resource      | Example tools                                                                |
+| ------------- | ---------------------------------------------------------------------------- |
+| Customers     | `get_customers`, `post_customers`, `get_customers_id`                        |
+| Plans         | `get_plans`, `get_plans_id`, `post_plans`                                    |
+| Subscriptions | `post_subscriptions`, `get_subscriptions_id`, `post_subscriptions_id_cancel` |
+| Invoices      | `get_invoices`, `get_invoices_id`, `post_invoices`                           |
+| Payments      | `get_payments`, `post_payments`                                              |
+| Events        | `post_events`, `post_events_bulk`                                            |
+| Features      | `get_features`, `post_features`                                              |
+| Prices        | `get_prices`, `post_prices`                                                  |
+| Wallets       | `get_wallets_id`, `post_wallets_id_top_up`                                   |
+
+For the full list, see your MCP client's tool list after connecting or the [API Reference](/api-reference/introduction).
+
+## Troubleshooting
+
+| Symptom                  | Fix                                                                                                                                                                                                                                                                  |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Server does not appear   | Save the MCP config and restart your client (Cursor, VS Code, Claude Desktop).                                                                                                                                                                                       |
+| Invalid URL or 404       | The server uses `BASE_URL` + path. Set base URL to `https://api.cloud.flexprice.io/v1` (include `/v1`, no trailing slash). For npx: use `--server-url https://api.cloud.flexprice.io/v1`. For local/Docker: set `BASE_URL` in `.env` or the MCP config `env` object. |
+| API or connection errors | Verify your API key and base URL. Test with `curl -H "x-api-key: YOUR_KEY" https://api.cloud.flexprice.io/v1/customers`.                                                                                                                                             |
+| Rate limiting            | Reduce request frequency or contact Flexprice support.                                                                                                                                                                                                               |
+| Port in use (local run)  | Change the port in config or stop the process using it (e.g. `lsof -i :3000` then `kill -9 PID`).                                                                                                                                                                    |
+| Docker issues            | Ensure env vars are passed into the container. Rebuild with `--no-cache` if the build fails.                                                                                                                                                                         |
+
+## See also
+
+- [API Reference](/api-reference/introduction): full list of Flexprice API operations (each maps to an MCP tool).
