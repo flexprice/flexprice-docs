@@ -1,0 +1,282 @@
+---
+title: "Implement Credit-Based Pricing for API Usage (Apollo-Style)"
+description: "Production-ready cookbook: implement Apollo-style credit-based pricing with Flexprice using the API—price unit, wallet, top-up, debit, and balance."
+---
+
+## Overview
+
+This cookbook solves the problem of **selling and consuming in credits** (e.g. per API call or action) while **billing in a single base currency** (e.g. USD). Use it when different actions have different cost weights, usage varies per customer, and you want flexible top-ups and debits. It is written for **developers** integrating Flexprice via API to build Apollo-style credit-based products.
+
+Each step focuses on **what you're doing**, **which fields to send or use**, and **how it fits into your app**; request/response JSON is there to copy or adapt, with short explanations so the snippets make sense on their own.
+
+---
+
+## What You'll Build
+
+By the end of this cookbook you will have:
+
+- A **Price Unit** (e.g. "Credits") with conversion to base currency, created via API.
+- A **Customer** and a **credit wallet** created via API (using the price unit or explicit conversion rate).
+- **Top-up** flow (free or purchased credits) with a sample request and response.
+- **Debit** flow when a user performs an action (e.g. export), with idempotency.
+- **Real-time balance** check and handling of insufficient balance.
+- Awareness of **edge cases** (expiry, refund, admin adjustments) and **best practices**.
+
+---
+
+## Architecture / Flow
+
+<Steps>
+  <Step title="Admin/System creates Price Unit (Credits)">
+    Flexprice stores the conversion rate to base currency (e.g. 100 credits = 1 USD).
+  </Step>
+  <Step title="Admin/System creates Customer">
+    Flexprice returns `customer_id` (or you use `external_customer_id` for lookups).
+  </Step>
+  <Step title="Admin/System creates Wallet">
+    Wallet is created with `price_unit` (e.g. CRD) or with `currency` + `conversion_rate`. Flexprice returns `wallet_id`.
+  </Step>
+  <Step title="User purchases or receives credits">
+    Your backend calls the Top-up API; wallet balance (credits and currency) increases.
+  </Step>
+  <Step title="User performs an action (e.g. export)">
+    Your app checks balance, then calls the Debit API; credits are deducted. If balance is insufficient, the API returns an error and you prompt to buy more.
+  </Step>
+  <Step title="Optional: Auto top-up and alerts">
+    You can configure auto top-up and low-balance alerts so credits are refilled when balance is low.
+  </Step>
+</Steps>
+
+---
+
+## Prerequisites
+
+Before starting the step-by-step implementation, ensure:
+
+- **Flexprice environment** is running and you have the API base URL (e.g. `https://your-flexprice.com`).
+- **Authenticated API access** (API key or auth header) for private endpoints. See [Configuration](/docs/getting-started/configuration).
+- **Customer** exists. Create one via API or dashboard and note `customer_id` or `external_customer_id`. See [Create customer](/docs/customers/create).
+- (Optional) **Product/Plan** created if you sell credit packages via subscriptions; not required for wallet-only credits.
+
+---
+
+## Step-by-Step Implementation
+
+Each step below explains **what you're doing**, **which fields matter**, and **what to do with the response** in your code. The JSON is there to copy or adapt; the narrative tells you why.
+
+---
+
+### Step 1: Create a Price Unit (Credits)
+
+**What you're doing:** Defining a custom unit (e.g. "Credits") so Flexprice can convert between credits and your base currency (e.g. USD). Billing and storage stay in base currency; you show and charge users in credits.
+
+**Fields to send:**
+
+| Field | Required | Meaning |
+|-------|----------|---------|
+| `name` | Yes | Display name (e.g. "Credits"). |
+| `code` | Yes | Short code you'll use when creating wallets (e.g. `CRD`). Must be unique. |
+| `symbol` | Yes | Symbol shown in UI (e.g. `¢` or `cr`). |
+| `base_currency` | Yes | Billing currency (e.g. `usd`). |
+| `conversion_rate` | Yes | One credit in base currency. Example: `"0.01"` means 100 credits = 1.00 USD. |
+
+**Request:** `POST /v1/price-units`
+
+```json
+{
+  "name": "Credits",
+  "code": "CRD",
+  "symbol": "¢",
+  "base_currency": "usd",
+  "conversion_rate": "0.01"
+}
+```
+
+**What to use from the response:** Save the **`code`** (e.g. `CRD`)—you'll send it as `price_unit` when creating the wallet in Step 3. The response also includes `id`, `status`, and timestamps; you need `code` for the next step.
+
+---
+
+### Step 2: Create a Customer
+
+**What you're doing:** Creating a customer record so you can attach a wallet to them. If you already have a customer (e.g. from your own DB), create one in Flexprice with the same `external_id` so you can look them up later.
+
+**Fields to send:** `name` (required), `external_id` (optional but recommended—your own ID for this customer).
+
+**Request:** `POST /v1/customers`
+
+```json
+{
+  "name": "Acme Corporation",
+  "external_id": "cust_acme_001"
+}
+```
+
+**What to use from the response:** Save **`id`** (e.g. `cust_01XYZ789`). You'll send it as `customer_id` in Step 3. If you use `external_id` in your app, you can later fetch wallets by customer using either `id` or `external_id`.
+
+---
+
+### Step 3: Create a Wallet (Credits)
+
+**What you're doing:** Creating a prepaid wallet for that customer. The wallet will hold credits; Flexprice also tracks the equivalent amount in base currency using the conversion rate. You can either reference the price unit you created (simplest) or pass currency and rates yourself.
+
+**Option A — Use price unit (recommended):** Send `customer_id` (from Step 2) and `price_unit` (the `code` from Step 1, e.g. `CRD`). Flexprice will set `currency` and `conversion_rate` from the price unit.
+
+**Option B — Set rates yourself:** Send `customer_id`, `currency` (e.g. `usd`), `conversion_rate`, and optionally `topup_conversion_rate` (for a different rate when topping up, e.g. promos).
+
+**Request:** `POST /v1/wallets`
+
+```json
+{
+  "customer_id": "cust_01XYZ789",
+  "price_unit": "CRD",
+  "wallet_type": "PRE_PAID"
+}
+```
+
+**What to use from the response:** Save **`id`** (e.g. `wal_01WALLET456`). This is the `wallet_id` you'll use for top-up, debit, and balance. The wallet starts with `balance` and `credit_balance` at 0 until you top up. Optional: you can send `initial_credits_to_load` in the request to set an initial balance in one call.
+
+---
+
+### Step 4: Top Up the Wallet
+
+**What you're doing:** Adding credits to the wallet (e.g. after signup, purchase, or subscription grant). You send how many credits to add and a reason; Flexprice updates the balance and creates a transaction record.
+
+**Fields to send:**
+
+| Field | Required | Meaning |
+|-------|----------|---------|
+| `credits_to_add` | Yes* | Number of credits to add (e.g. `"1000"`). *Or send `amount` in currency instead. |
+| `transaction_reason` | Yes | Why credits were added. Use: `FREE_CREDIT_GRANT`, `PURCHASED_CREDIT_INVOICED`, `PURCHASED_CREDIT_DIRECT`, `SUBSCRIPTION_CREDIT_GRANT`, or `CREDIT_NOTE`. |
+| `idempotency_key` | No (but recommended) | Unique key for this top-up (e.g. `topup-{customer}-{date}`). If you retry, the same key prevents double-adding. |
+| `description` | No | Human-readable note (e.g. "Initial signup credits"). |
+| `expiry_date_utc` | No | If set, these credits expire at this time; useful for promos or trials. |
+
+**Request:** `POST /v1/wallets/{wallet_id}/top-up` (use the wallet `id` from Step 3.)
+
+```json
+{
+  "credits_to_add": "1000",
+  "transaction_reason": "FREE_CREDIT_GRANT",
+  "description": "Initial signup credits",
+  "idempotency_key": "topup-acme-001-20250115"
+}
+```
+
+**What to use from the response:** The response includes `wallet_transaction` (with `credit_balance_after`, `id`, etc.) and updated `wallet` (with new `balance` and `credit_balance`). You can show the user the new balance from `wallet.credit_balance` and `wallet.balance`. If you sent `amount` in currency instead of `credits_to_add`, Flexprice converts using the wallet's top-up conversion rate; if both are sent, `credits_to_add` wins.
+
+---
+
+### Step 5: Debit the Wallet (When User Performs an Action)
+
+**What you're doing:** Deducting credits when the user performs an action (e.g. one export = 5 credits). Your app should either check balance first (Step 6) or handle a 400 and prompt to buy more. **You must send an `idempotency_key`** so that retries (e.g. network failure) do not debit twice.
+
+**Fields to send:**
+
+| Field | Required | Meaning |
+|-------|----------|---------|
+| `credits` | Yes | Number of credits to deduct (e.g. `"5"`). |
+| `transaction_reason` | Yes | For manual/action debits use `MANUAL_BALANCE_DEBIT`. |
+| `idempotency_key` | Yes | Unique key for this debit (e.g. `debit-{action}-{request-id}`). Same key on retry = same debit, no double charge. |
+| `description` | No | Reason for the debit (e.g. "Contact export - 5 credits") for your audit trail. |
+
+**Request:** `POST /v1/wallets/{wallet_id}/debit`
+
+```json
+{
+  "credits": "5",
+  "transaction_reason": "MANUAL_BALANCE_DEBIT",
+  "idempotency_key": "debit-export-acme-001-20250115-001",
+  "description": "Contact export - 5 credits"
+}
+```
+
+**What to use from the response:** The API returns the **updated wallet** (same shape as Step 3). Use `credit_balance` and `balance` to show the new balance. If the user doesn't have enough credits, you get **400** with an invalid-operation error—handle it by showing "Insufficient credits" and prompting a top-up or purchase.
+
+---
+
+### Step 6: Get Real-Time Balance
+
+**What you're doing:** Reading the current balance before showing the user or before attempting a debit. This avoids unnecessary failed debits and gives you both credit and currency amounts to display.
+
+**Request:** `GET /v1/wallets/{wallet_id}/balance/real-time` (no body.)
+
+**What to use from the response:** Use **`real_time_credit_balance`** and **`real_time_balance`** (currency) for display and for deciding if the user can perform an action (e.g. "Export costs 5 credits; you have 995"). If the wallet has pending charges, these real-time fields reflect that; `balance_updated_at` tells you when the balance was last updated.
+
+---
+
+## Error Handling
+
+**How to handle errors:** Flexprice returns a JSON body with `success: false` and an `error` object containing `message` (user-facing or log-friendly) and optional `details` (e.g. field names and values). Use the HTTP status code and `error.message` to decide what to show the user or whether to retry.
+
+**Example:** A validation error might look like:
+
+```json
+{ "success": false, "error": { "message": "Credits to add must be a positive value", "details": { "credits_to_add": "0" } } }
+```
+
+**What to do in your code:** Check `success === false`; read `error.message` and, if present, `error.details`. Map them to a clear UI message (e.g. "Please enter a positive number of credits") or to a retry/abort decision. For debits and top-ups, always send an **idempotency key** so a retry does not double-apply.
+
+**Common scenarios and how to respond:**
+
+| Scenario | HTTP | What to do |
+|----------|------|------------|
+| Missing `customer_id` / `external_customer_id` on create wallet | 400 | Require one of them in your UI/API. |
+| Invalid `conversion_rate` (e.g. zero or negative) | 400 | Validate before sending; show "Conversion rate must be positive." |
+| `credits_to_add` &lt;= 0 or missing for top-up | 400 | Validate amount; show "Credits to add must be greater than 0." |
+| Invalid `transaction_reason` | 400 | Use only allowed values for top-up or debit (see steps above). |
+| **Insufficient balance** on debit | 400 | Show "Insufficient credits" and prompt to buy more or top up; optionally check balance (Step 6) before calling debit. |
+| Wallet not found | 404 | Check wallet ID or create wallet first. |
+| Customer not found | 404 | Create customer or check ID. |
+| Wallet not active | 400 | Wallet may be terminated; do not debit. |
+
+---
+
+## Edge Cases
+
+<Steps>
+  <Step title="Expiry">
+    Credits can have an expiry date (`expiry_date_utc` on top-up). Flexprice consumes soonest-expiring credits first. Expired credits are removed by a cron. See [Manual Debit](/docs/wallet/manual-debit) for consumption order.
+  </Step>
+  <Step title="Downgrade">
+    If credits are tied to a plan (e.g. subscription credit grants), changing or downgrading the plan may affect future grants. See subscription and credit-grant docs.
+  </Step>
+  <Step title="Refund">
+    To refund credits, use a manual debit with a clear description, or use credit notes and top-up with reason `CREDIT_NOTE`. See [Manual Debit](/docs/wallet/manual-debit).
+  </Step>
+  <Step title="Insufficient balance">
+    Debit API returns 400 with an invalid-operation error. Check balance before the action, or handle the error and prompt to purchase more or top up.
+  </Step>
+  <Step title="Admin adjustments">
+    Use manual debit with `transaction_reason: MANUAL_BALANCE_DEBIT` and a `description` (e.g. "Support adjustment"). For large or one-off corrections, use idempotency keys and audit logs.
+  </Step>
+</Steps>
+
+---
+
+## Best Practices
+
+<Steps>
+  <Step title="Performance">
+    Call `GET /v1/wallets/:id/balance/real-time` (or the cached variant) before debits to avoid unnecessary failed requests. Use idempotency keys on every debit and top-up.
+  </Step>
+  <Step title="UX">
+    Show balance in **credits and currency** (use the wallet's `conversion_rate`). Set up [low-balance alerts](/docs/wallet/low-balance-alert) and [auto top-up](/docs/wallet/auto-top-up) so users are not blocked unexpectedly.
+  </Step>
+  <Step title="Billing">
+    All billing is in base currency. Prepaid wallet balance can be applied to usage-based line items automatically. See [Prepaid and promotional credits](/docs/wallet/prepaid-and-promotional) and [Partial payments](/docs/invoices/partial-payments).
+  </Step>
+</Steps>
+
+---
+
+## Summary
+
+You implemented Apollo-style credit-based pricing with Flexprice: **Price Unit** (Credits) → **Customer** → **Wallet** (with `price_unit` or conversion rate) → **Top-up** (credits) → **Debit** (on user action) with idempotency → **Real-time balance**. Billing stays in base currency; you display and operate in credits.
+
+**Related guides**
+
+- [Build Credit-Based Pricing like Apollo.io](/docs/boiler-plate/credit-based-pricing) — conceptual guide and dashboard setup
+- [Wallet conversion rate](/docs/wallet/conversion-rate) — conversion rate and top-up rate behavior
+- [Manual Debit](/docs/wallet/manual-debit) — debit behavior and credit consumption order
+- [Top-up wallet](/docs/wallet/top-up) — top-up flows and options
+- [Pricing unit (custom pricing)](/docs/product-catalogue/custom-pricing/pricing-unit) — price units and custom currency

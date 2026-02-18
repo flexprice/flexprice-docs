@@ -1,0 +1,241 @@
+---
+title: "Build Credit-based Pricing like Apollo.io"
+description: "Apollo.ai is a developer platform for designing, testing, and deploying autonomous AI agents and workflows with a visual and code-based environment."
+---
+
+## Overview
+
+Apollo.io uses a credit-based pricing model where users spend credits to access contact data (like emails, phone numbers, and exports), with higher plans offering more monthly credits.
+
+
+## Pricing Breakdown
+
+<Frame>
+  ![Feature
+  Module](/public/images/docs/subscription-flow/credit-based-pricing.png)
+</Frame>
+
+For a **step-by-step API cookbook** with request/response examples, see [Cookbook: Implement Credit-Based Pricing for API Usage](/docs/boiler-plate/cookbook-credit-based-pricing).
+
+---
+
+## 1. Apollo-Style Credit Model
+
+### Key Behaviors
+
+<Steps>
+  <Step title="Purchase credits">
+    Users **purchase credits** (packages or add-ons).
+  </Step>
+  <Step title="Set cost per action">
+    Each **action has a credit cost** (e.g. 1 for search, 5 for export).
+  </Step>
+  <Step title="Deduct and track">
+    Credits are **deducted per action**; balance is tracked per customer.
+  </Step>
+  <Step title="Enforce balance">
+    When balance is **zero**, block the action or prompt to buy more.
+  </Step>
+</Steps>
+
+### Example: Credit Cost per Action
+
+| Action            | Credit Cost |
+| ----------------- | ----------- |
+| Contact Search    | 1 credit    |
+| Contact Export    | 5 credits   |
+| Email Enrichment  | 2 credits   |
+| Phone Reveal      | 10 credits  |
+
+### Example: Credit Packages (Prepaid)
+
+| Plan    | Credits  | Price  |
+| ------- | -------- | ------ |
+| Starter | 1,000    | $29    |
+| Growth  | 5,000    | $99    |
+| Pro     | 20,000   | $299   |
+
+Credits can reset monthly, never expire, or expire after X days—depending on your product.
+
+---
+
+## 2. When to Use Credit-Based Pricing
+
+<Steps>
+  <Step title="Different cost weights">
+    Different actions have **different cost weights**.
+  </Step>
+  <Step title="Variable usage">
+    Usage **varies a lot per customer**.
+  </Step>
+  <Step title="Flexible consumption">
+    You want **flexible consumption** and add-ons or top-ups.
+  </Step>
+</Steps>
+
+---
+
+## 3. Complete Flow Summary
+
+The end-to-end flow for credit-based pricing in Flexprice:
+
+<Steps>
+  <Step title="Create Price Unit">
+    Create a **Price Unit** (e.g. “Credits”) with conversion to base currency.
+  </Step>
+  <Step title="Create Customer">
+    Create **Customer** (with External ID for your system).
+  </Step>
+  <Step title="Create Wallet in Credits">
+    Create **Wallet** in the Credits Price Unit for that customer.
+  </Step>
+  <Step title="Top up wallet">
+    **Top up** the wallet (initial purchase or add-ons).
+  </Step>
+  <Step title="Debit on action">
+    **Debit** the wallet when the user performs an action (e.g. via API or Manual Debit).
+  </Step>
+  <Step title="Optional: Auto top-up">
+    Configure **auto top-up** when balance is low.
+  </Step>
+  <Step title="Billing / Invoices">
+    Flexprice bills in base currency; wallet balance is shown in credits.
+  </Step>
+</Steps>
+
+---
+
+## Flexprice Set-up
+
+To implement Apollo-style credit-based pricing in Flexprice, follow these steps in order.
+
+<Steps>
+  <Step title="Step 1: Create a Price Unit (Credits)">
+    Navigate to **Flexprice Dashboard** → **Product Catalog** → **Price Units**
+
+    Click **Add** (or **Create Price Unit**).
+
+    **Price Unit configuration (e.g. Credits):**
+    - **Name**: `Credits`
+    - **Code**: `CRD` (use this when creating wallets or plans)
+    - **Symbol**: `¢` (or your preferred symbol)
+    - **Base currency**: `USD` (or your billing currency)
+    - **Conversion rate**: e.g. `0.01` → 100 credits = 1.00 USD
+
+    Click **Create Price Unit** and ensure the unit is **Published** so it appears in Currency dropdowns.
+
+    For more on custom pricing, see [Custom Pricing](/docs/product-catalogue/custom-pricing/pricing-unit) and [Using custom currency in plans](/docs/product-catalogue/custom-pricing/custom-currency-in-plans).
+  </Step>
+
+  <Step title="Step 2: Create Customer">
+    Navigate to **Flexprice Dashboard** → **Customer Management** → **Customers**
+
+    Click **Add Customer**.
+
+    **Required:**
+    - **Customer Name**: e.g. `Acme Corporation`
+    - **External ID**: e.g. `cust_acme_001` (unique ID from your system; use this when debiting or topping up via API)
+
+    Click **Save**.
+
+    For details, see [Customer Management](/docs/customers/create).
+  </Step>
+
+  <Step title="Step 3: Create Wallet in Credits">
+    Open the customer you created → **Wallet** tab.
+
+    Click **Add Wallet**.
+
+    **Wallet configuration:**
+    - **Currency**: **Custom** → select your Price Unit (e.g. **Credits (CRD)**)
+    - Balance will be shown and stored in credits; Flexprice converts to base currency for billing.
+
+    Click **Save**. The customer now has a wallet in your credit unit.
+
+    For more, see [Create Wallet](/docs/wallet/create) and [Custom currency in plans and wallets](/docs/product-catalogue/custom-pricing/use-cases).
+  </Step>
+
+  <Step title="Step 4: Top Up the Wallet (Initial Credits)">
+    On the customer’s **Wallet** tab, click **Top-up Wallet**.
+
+    - Choose the credit type that matches your Price Unit (**Custom** → Credits).
+    - Enter the amount in credits (e.g. 1,000).
+    - Complete the top-up (e.g. **Add Credits** or link to payment).
+
+    The wallet balance increases in credits. Use this for initial purchase or add-on packs.
+
+    For more, see [Top-up wallet](/docs/wallet/top-up) and [Auto top-up](/docs/wallet/auto-top-up).
+  </Step>
+
+  <Step title="Step 5: Debit Wallet When User Performs an Action">
+    When a user performs an action (search, export, enrichment, etc.) in your product:
+
+    <Steps>
+      <Step title="Look up credit cost">
+        **Look up the credit cost** for that action (from your mapping, e.g. Section 1 table).
+      </Step>
+      <Step title="Check balance">
+        **Check** the customer’s wallet balance (via Flexprice API or dashboard).
+      </Step>
+      <Step title="Debit if sufficient">
+        If **balance ≥ cost**: call the Flexprice API to **debit** the wallet by that amount, then perform the action.
+      </Step>
+      <Step title="Reject or prompt if insufficient">
+        If **balance &lt; cost**: return an error or prompt to purchase more credits.
+      </Step>
+    </Steps>
+
+    **Debit via API:** Use the Flexprice API to deduct from the wallet (see your API reference for wallet debit endpoint). Pass the customer identifier (e.g. External ID) and the amount in the **credit unit**.
+
+    **Debit via Dashboard:** **Customer** → **Wallet** → **Manual Debit**; enter the amount in credits and reason (e.g. “Contact export – 5 credits”).
+
+    For more, see [Manual Debit](/docs/wallet/manual-debit).
+  </Step>
+
+  <Step title="Step 6 (Optional): Auto Top-Up When Balance Is Low">
+    To automatically add credits when the wallet balance falls below a threshold:
+
+    Configure **Auto top-up** for the wallet (e.g. when balance &lt; 100 credits, charge the customer and add 1,000 credits). Flexprice supports configurable triggers and amounts.
+
+    For more, see [Auto top-up](/docs/wallet/auto-top-up).
+  </Step>
+
+  <Step title="Step 7: Verify Balance and Transactions">
+    <Steps>
+      <Step title="Wallet balance">
+        **Customer** → **Wallet** → view balance in credits.
+      </Step>
+      <Step title="Transaction history">
+        **Wallet** → **Transactions** to see top-ups and debits.
+      </Step>
+      <Step title="Invoices">
+        Billing and invoices use base currency; line items can show credit usage where applicable.
+      </Step>
+    </Steps>
+
+    For more, see [Wallet transactions](/docs/wallet/transactions).
+  </Step>
+</Steps>
+
+---
+
+## Next Steps
+
+After completing the setup:
+
+<Steps>
+  <Step title="Map actions to credit costs">
+    Map actions to credit costs in your application (e.g. 1 credit per search, 5 per export) and call the debit API (or Manual Debit) after each action.
+  </Step>
+  <Step title="Monitor wallet balances">
+    Set low-balance alerts if needed; see [Low balance alert](/docs/product-catalogue/features/wallet-balance-alert).
+  </Step>
+  <Step title="Review invoices">
+    Check that credit top-ups and usage are reflected correctly in base currency.
+  </Step>
+  <Step title="Optional: Plans with credit packages">
+    Create **plans** that include credit packages as recurring or one-time charges using the same Price Unit; see [Custom currency in plans](/docs/product-catalogue/custom-pricing/custom-currency-in-plans).
+  </Step>
+</Steps>
+
+For custom pricing concepts and API details, see [Custom Pricing](/docs/product-catalogue/custom-pricing/pricing-unit) and the [API Reference](/api-reference/introduction).
