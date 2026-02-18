@@ -62,8 +62,7 @@ The MCP server uses your **Flexprice API key** only (no OAuth).
   are:
   
    - **US Region:** `https://us.api.flexprice.io/v1` 
-   - **India Region:** 
-  `https://api.cloud.flexprice.io/v1`
+   - **India Region:** `https://api.cloud.flexprice.io/v1`
 </Warning>
 
 ## Security and credentials
@@ -306,7 +305,7 @@ For the full list, see your MCP client's tool list after connecting or the [API 
 | Symptom                  | Fix                                                                                                                                                                                                                                                                  |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Server does not appear   | Save the MCP config and restart your client (Cursor, VS Code, Claude Desktop).                                                                                                                                                                                       |
-| Invalid URL or 404       | The server uses `BASE_URL` + path. Set base URL to `https://api.cloud.flexprice.io/v1` (include `/v1`, no trailing slash). For npx: use `--server-url https://us.api.flexprice.io/v1`. For local/Docker: set `BASE_URL` in `.env` or the MCP config `env` object. |
+| Invalid URL or 404       | The server uses `BASE_URL` + path. Set base URL to `https://us.api.flexprice.io/v1` (include `/v1`, no trailing slash). For npx: use `--server-url https://us.api.flexprice.io/v1`. For local/Docker: set `BASE_URL` in `.env` or the MCP config `env` object. |
 | API or connection errors | Verify your API key and base URL. Test with `curl -H "x-api-key: YOUR_KEY" https://us.api.flexprice.io/v1/customers`.                                                                                                                                             |
 | Rate limiting            | Reduce request frequency or contact Flexprice support.                                                                                                                                                                                                               |
 | Port in use (local run)  | Change the port in config or stop the process using it (e.g. `lsof -i :3000` then `kill -9 PID`).                                                                                                                                                                    |
