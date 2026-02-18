@@ -1,0 +1,438 @@
+---
+title: "Reservation Discount"
+description: "Configure per-line-item commitments and overage pricing for granular control over subscription billing. Reservation discounts allow you to set minimum usage guarantees and premium rates for excess usage on individual line items."
+---
+
+# Reservation Discount
+
+Reservation discount (also known as line-item commitments) provides granular control over subscription pricing by allowing you to configure commitments and overage rates at the individual line item level. Unlike subscription-level commitments, reservation discounts give you precise control over each component of your pricing.
+
+## Overview
+
+Reservation discounts enable you to:
+
+- **Set per-line-item commitments**: Configure minimum usage guarantees for specific features or services
+- **Define overage rates**: Apply premium pricing to usage beyond committed amounts
+- **Ensure minimum revenue**: Guarantee baseline revenue per line item with true-up fees
+- **Support flexible commitment types**: Choose between amount-based or quantity-based commitments
+- **Enable window-based commitments**: Apply commitments per time window (hourly, daily) instead of per billing period
+
+## How Reservation Discount Works
+
+When a reservation discount is configured for a subscription line item:
+
+1. **Commitment**: You define a minimum amount or quantity the customer commits to for that specific line item
+2. **Overage Factor**: You set a multiplier (e.g., 1.5x) that applies to usage exceeding the commitment
+3. **True-Up (Optional)**: If enabled, customers pay the full commitment even if their usage falls short
+4. **Window Mode (Optional)**: Apply commitment per time window rather than per billing period
+
+### Billing Calculation Logic
+
+**When usage ≥ commitment:**
+```
+Total Charge = Commitment Amount + (Usage - Commitment) × Overage Factor
+```
+
+**When usage < commitment and true-up enabled:**
+```
+Total Charge = Commitment Amount
+True-Up Fee = Commitment Amount - Usage Cost
+```
+
+**When usage < commitment and true-up disabled:**
+```
+Total Charge = Usage Cost
+```
+
+## Configuration Options
+
+### Commitment Type
+
+Choose how the commitment is measured:
+
+- **Amount-Based**: Commitment specified as a dollar amount (e.g., $1,000)
+  - Best for: Fixed minimum spend requirements
+  - Example: Customer commits to $500/month for API usage
+
+- **Quantity-Based**: Commitment specified as units/quantity (e.g., 10,000 API calls)
+  - Best for: Usage-based commitments with known quantities
+  - Example: Customer commits to 5,000 GB of data transfer
+
+### Overage Factor
+
+A multiplier applied to usage beyond the commitment amount:
+
+- **Standard Rate (1.0)**: No premium for overage
+- **Premium Rate (> 1.0)**: Higher rate for excess usage (e.g., 1.5x means 50% premium)
+- **Discount Rate (< 1.0)**: Lower rate for excess usage (less common)
+
+**Example:** With 1.5x overage factor and $1,000 commitment:
+- Usage = $1,500
+- Charge = $1,000 + ($500 × 1.5) = $1,750
+
+### True-Up
+
+Ensures customers pay the full commitment even if usage is low:
+
+- **Enabled**: Charge full commitment amount regardless of usage
+- **Disabled**: Charge only actual usage if below commitment
+
+**Use Cases:**
+- Guaranteed minimum revenue per line item
+- Reserved capacity pricing
+- Volume commitments
+
+### Window Commitment
+
+Apply commitment per time window instead of per billing period:
+
+- **Per-Billing-Period (Default)**: Commitment applies to entire billing cycle
+- **Per-Window (Optional)**: Commitment applies to each hour/day/week
+
+**Example with hourly window commitment:**
+- Commitment: $100/hour
+- Hour 1 usage: $150 → Charge: $100 + ($50 × overage factor)
+- Hour 2 usage: $80 → Charge: $80 (or $100 if true-up enabled)
+
+## Steps to Configure Reservation Discount
+
+1. **Navigate to Create Subscription**
+   - Go to Customers → Select Customer → Add Subscription
+
+2. **Select a Plan**
+   - Choose the pricing plan with line items you want to configure
+
+3. **Configure Line Item Commitment**
+   - Scroll to the line item commitment section
+   - Select the line item (price) to configure
+
+<Frame>
+   ![Select Line Item](/public/images/docs/Subscriptions/ReservationDiscount/select-line-item.png)
+</Frame>
+
+4. **Set Commitment Parameters**
+
+   **Choose Commitment Type:**
+   - Select "Amount" for dollar-based commitment
+   - Select "Quantity" for unit-based commitment
+
+   <Frame>
+      ![Choose Commitment Type](/public/images/docs/Subscriptions/ReservationDiscount/commitment-type.png)
+   </Frame>
+
+5. **Define Commitment Value**
+   - Enter the commitment amount or quantity
+   - The system will auto-calculate the corresponding value based on pricing
+
+   <Frame>
+      ![Set Commitment Value](/public/images/docs/Subscriptions/ReservationDiscount/commitment-value.png)
+   </Frame>
+
+6. **Configure Overage Factor**
+   - Enter the multiplier for excess usage (e.g., 1.5 for 50% premium)
+   - Default is 1.0 (no premium)
+
+   <Frame>
+      ![Set Overage Factor](/public/images/docs/Subscriptions/ReservationDiscount/overage-factor.png)
+   </Frame>
+
+7. **Enable True-Up (Optional)**
+   - Toggle true-up if you want to charge the minimum commitment even when usage is low
+
+   <Frame>
+      ![Enable True-Up](/public/images/docs/Subscriptions/ReservationDiscount/true-up.png)
+   </Frame>
+
+8. **Enable Window Commitment (Optional)**
+   - Toggle window commitment for per-window (hourly/daily) commitments
+   - Applies commitment to each time window independently
+
+   <Frame>
+      ![Enable Window Commitment](/public/images/docs/Subscriptions/ReservationDiscount/window-commitment.png)
+   </Frame>
+
+9. **Save Configuration**
+   - Review the commitment summary
+   - Click "Add Subscription" to create the subscription with reservation discount
+
+## Calculation Examples
+
+### Example 1: Amount-Based Commitment with Overage
+
+**Configuration:**
+- Line Item: API Usage (metered)
+- Commitment Type: Amount
+- Commitment Amount: $1,000
+- Overage Factor: 1.5x
+- True-Up: Disabled
+
+**Scenario A - Usage Exceeds Commitment:**
+```
+Actual Usage Cost: $1,500
+Commitment: $1,000
+Overage: $1,500 - $1,000 = $500
+Overage Charge: $500 × 1.5 = $750
+
+Total Charge: $1,000 + $750 = $1,750
+```
+
+**Scenario B - Usage Below Commitment:**
+```
+Actual Usage Cost: $800
+Commitment: $1,000
+True-Up: Disabled
+
+Total Charge: $800 (pay only for actual usage)
+```
+
+---
+
+### Example 2: Quantity-Based Commitment with True-Up
+
+**Configuration:**
+- Line Item: Data Transfer (metered at $0.10/GB)
+- Commitment Type: Quantity
+- Commitment Quantity: 5,000 GB (= $500 at $0.10/GB)
+- Overage Factor: 2.0x
+- True-Up: Enabled
+
+**Scenario A - Usage Exceeds Commitment:**
+```
+Actual Usage: 7,000 GB
+Usage Cost: 7,000 × $0.10 = $700
+Commitment Amount: 5,000 × $0.10 = $500
+Overage: $700 - $500 = $200
+Overage Charge: $200 × 2.0 = $400
+
+Total Charge: $500 + $400 = $900
+```
+
+**Scenario B - Usage Below Commitment:**
+```
+Actual Usage: 3,000 GB
+Usage Cost: 3,000 × $0.10 = $300
+Commitment Amount: $500
+True-Up: Enabled
+True-Up Fee: $500 - $300 = $200
+
+Total Charge: $500 (commitment enforced via true-up)
+```
+
+---
+
+### Example 3: Window Commitment (Hourly)
+
+**Configuration:**
+- Line Item: Compute Credits
+- Commitment Type: Amount
+- Commitment Amount: $100 per hour
+- Overage Factor: 1.5x
+- True-Up: Enabled
+- Window Commitment: Enabled (hourly)
+
+**Billing Period with 3 Hours:**
+
+**Hour 1:**
+```
+Usage: $150
+Commitment: $100
+Overage: $50
+Overage Charge: $50 × 1.5 = $75
+Hour 1 Charge: $100 + $75 = $175
+```
+
+**Hour 2:**
+```
+Usage: $80
+Commitment: $100
+True-Up: $100 - $80 = $20
+Hour 2 Charge: $100 (commitment enforced)
+```
+
+**Hour 3:**
+```
+Usage: $200
+Commitment: $100
+Overage: $100
+Overage Charge: $100 × 1.5 = $150
+Hour 3 Charge: $100 + $150 = $250
+```
+
+**Total Billing Period Charge: $175 + $100 + $250 = $525**
+
+## Use Cases
+
+### Reserved Capacity Pricing
+
+**Scenario:** Infrastructure provider offering guaranteed capacity
+
+**Configuration:**
+- Commitment Type: Quantity
+- Commitment Quantity: 10 servers
+- Overage Factor: 1.5x
+- True-Up: Enabled
+
+**Benefits:**
+- Customer reserves minimum capacity
+- Provider guarantees availability
+- Premium pricing for burst capacity
+
+---
+
+### Enterprise API Packages
+
+**Scenario:** SaaS company offering API tier with minimum commitment
+
+**Configuration:**
+- Commitment Type: Amount
+- Commitment Amount: $5,000/month
+- Overage Factor: 1.2x
+- True-Up: Disabled
+
+**Benefits:**
+- Predictable base revenue
+- Flexible overage pricing
+- No penalty for low usage months
+
+---
+
+### Peak-Hour Premium Pricing
+
+**Scenario:** Processing service with time-based pricing
+
+**Configuration:**
+- Commitment Type: Amount
+- Commitment Amount: $200/hour
+- Overage Factor: 2.0x
+- Window Commitment: Enabled (hourly)
+- True-Up: Disabled
+
+**Benefits:**
+- Hourly commitment tracking
+- Premium rates for peak usage
+- Fair billing for variable workloads
+
+---
+
+### Volume Commitment Discounts
+
+**Scenario:** Data storage with volume guarantees
+
+**Configuration:**
+- Commitment Type: Quantity
+- Commitment Quantity: 100 TB
+- Overage Factor: 1.0x
+- True-Up: Enabled
+
+**Benefits:**
+- Customer locks in volume pricing
+- Guaranteed minimum revenue
+- Standard rates for overage
+
+## Reservation Discount vs Subscription-Level Commitment
+
+| Feature | Reservation Discount | Subscription-Level Commitment |
+|---------|---------------------|------------------------------|
+| **Scope** | Per line item | Entire subscription |
+| **Granularity** | Each feature/service independently | All charges combined |
+| **Configuration** | Different settings per line item | One setting for all |
+| **Use Case** | Complex multi-service pricing | Simple minimum spend |
+| **Flexibility** | High - mix and match | Lower - all-or-nothing |
+| **Window Support** | Yes | No |
+
+**When to Use Reservation Discount:**
+- Multiple services with different commitment models
+- Need granular control over feature pricing
+- Want per-feature overage rates
+- Require window-based commitments
+
+**When to Use Subscription-Level Commitment:**
+- Simple minimum spend guarantee
+- All services share same commitment logic
+- Easier configuration for basic use cases
+
+## Best Practices
+
+### 1. Choose the Right Commitment Type
+
+- **Use Amount-Based** when:
+  - Pricing is complex with tiers or packages
+  - You want guaranteed dollar revenue
+  - Quantities vary significantly
+
+- **Use Quantity-Based** when:
+  - Pricing is simple (per-unit)
+  - Customers think in units not dollars
+  - Easier to communicate and understand
+
+### 2. Set Appropriate Overage Factors
+
+- **1.0x**: No premium, encourages usage
+- **1.2-1.5x**: Moderate premium, standard practice
+- **2.0x+**: High premium, discourages overage
+
+### 3. Consider True-Up Carefully
+
+- **Enable** when:
+  - Need guaranteed minimum revenue
+  - Reserving capacity or resources
+  - Customer agrees to minimum commitment
+
+- **Disable** when:
+  - Want flexible, usage-based billing
+  - Customer preference for pay-as-you-go
+  - Building usage over time
+
+### 4. Window Commitments for Variable Workloads
+
+- Ideal for services with:
+  - Time-based pricing (hourly/daily)
+  - Variable load patterns
+  - Peak usage pricing
+
+- Avoid for:
+  - Stable, predictable usage
+  - Monthly aggregation preferred
+  - Complex customer communication needed
+
+### 5. Document and Communicate
+
+- Clearly explain commitment terms to customers
+- Provide examples in contracts
+- Show estimated billing scenarios
+- Monitor and report usage vs commitment
+
+## Troubleshooting
+
+### Common Issues
+
+**Issue: Commitment not being applied**
+- Verify line item commitment is configured for the correct price_id
+- Check that subscription is active
+- Ensure billing period has started
+
+**Issue: Incorrect overage calculations**
+- Confirm overage factor is set correctly
+- Verify commitment amount/quantity matches pricing
+- Check for quantity-based vs amount-based mismatch
+
+**Issue: True-up not charging minimum**
+- Ensure true-up toggle is enabled
+- Verify usage is actually below commitment
+- Check for conflicting subscription-level settings
+
+**Issue: Window commitment not working as expected**
+- Confirm window commitment toggle is enabled
+- Verify correct window size (hourly/daily)
+- Check that usage data has proper timestamps
+
+## Related Topics
+
+- [Subscription-Level Commitment](/docs/subscriptions/commitment) - Simple minimum spend commitments
+- [Creating Subscriptions](/docs/subscriptions/customers-create-subscription) - How to create subscriptions
+- [Override Line Items](/docs/subscriptions/override-line-items) - Customize subscription pricing
+- [Viewing Subscriptions](/docs/subscriptions/view) - Monitor subscription status
+
+---
+
+*For technical implementation details, refer to the [API Reference](/api-reference/subscriptions).*

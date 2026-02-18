@@ -1,6 +1,6 @@
 ---
 title: "SUM"
-description: "Sums the values of a specified property across all matching events."
+description: "Sum values with optional bucketed calculations."
 ---
 
 Step-by-Step Setup when creating a SUM-based metered feature:
@@ -17,6 +17,7 @@ Step-by-Step Setup when creating a SUM-based metered feature:
    - **Event Name**: `data.transfer` (must match your event data)
    - **Aggregation Function**: Sum
    - **Aggregation Field**: `gb` (the property to sum)
+   - **Bucket Size**: Optional - Leave empty for standard SUM, or select (HOUR, DAY, etc.) for bucketed SUM
 
 4. **Usage Settings**
    - **Usage Reset**: Periodic (for monthly limits) or Cumulative
@@ -24,9 +25,25 @@ Step-by-Step Setup when creating a SUM-based metered feature:
 
 5. **Save Feature**
 
-## Calculation Example
+## SUM - Two Distinct Modes
 
-### Event Data
+SUM aggregation operates in **two completely different modes** depending on whether `bucket_size` is specified:
+
+### Mode 1: Standard SUM (Non-Bucketed)
+**When:** `bucket_size` is NOT specified  
+**Returns:** Total sum of all values across all events  
+**Use for:** Simple cumulative tracking
+
+### Mode 2: Bucketed SUM (Windowed)
+**When:** `bucket_size` IS specified  
+**Returns:** Sum of bucket totals from each time window  
+**Use for:** Time-windowed billing, interval-based summation
+
+## Calculation Examples
+
+### Standard SUM Example
+
+#### Event Data
 ```json
 [
   {
@@ -59,18 +76,107 @@ Step-by-Step Setup when creating a SUM-based metered feature:
 ]
 ```
 
-### Calculation Process
+#### Standard SUM Calculation
 1. **Event Matching**: All events with `event_name = "data.transfer"`
 2. **Deduplication**: Remove duplicate event IDs, keeping latest value
    - `evt_001` → `7.1 GB` (latest value for this ID)
    - `evt_002` → `3.8 GB`
 3. **Sum Result**: `7.1 + 3.8 = 10.9 GB`
 
-**Result**: `10.9 GBs`
+**Result**: `10.9 GB`
+
+---
+
+### Bucketed SUM Example
+
+#### Configuration
+- **Bucket Size:** HOUR
+- **Slab Pricing:**
+  - **0-10 GB:** 0 Rs (free tier)
+  - **10-20 GB:** 2 Rs per GB 
+  - **20+ GB:** 3 Rs per GB
+
+#### Event Data
+```json
+[
+  {
+    "event_id": "evt_001",
+    "event_name": "compute.usage",
+    "external_customer_id": "customer_123",
+    "timestamp": "2024-01-15T07:15:00Z",
+    "properties": {
+      "credits": 100
+    }
+  },
+  {
+    "event_id": "evt_002",
+    "event_name": "compute.usage",
+    "external_customer_id": "customer_123",
+    "timestamp": "2024-01-15T07:45:00Z",
+    "properties": {
+      "credits": 150
+    }
+  },
+  {
+    "event_id": "evt_003",
+    "event_name": "compute.usage",
+    "external_customer_id": "customer_123",
+    "timestamp": "2024-01-15T08:15:00Z",
+    "properties": {
+      "credits": 200
+    }
+  },
+  {
+    "event_id": "evt_004",
+    "event_name": "compute.usage",
+    "external_customer_id": "customer_123",
+    "timestamp": "2024-01-15T08:30:00Z",
+    "properties": {
+      "credits": 300
+    }
+  },
+  {
+    "event_id": "evt_005",
+    "event_name": "compute.usage",
+    "external_customer_id": "customer_123",
+    "timestamp": "2024-01-15T08:45:00Z",
+    "properties": {
+      "credits": 100
+    }
+  }
+]
+```
+
+### Bucketed SUM Formula
+```
+total_result = SUM(bucket_1) + SUM(bucket_2) + ... + SUM(bucket_n)
+```
+Where each bucket represents a time window defined by `bucket_size`.
+
+#### Calculation Process
+
+**Hour 1 (7:00-8:00 UTC):**
+- Events: 100 credits, 150 credits
+- **Bucket Sum:** 250 credits
+
+**Hour 2 (8:00-9:00 UTC):**
+- Events: 200 credits, 300 credits, 100 credits  
+- **Bucket Sum:** 600 credits
+
+**Total Bucketed SUM:** 250 + 600 = **850 credits**
+
+#### Tiered Billing Calculation
+**Billing Calculation for 850 credits total:**
+- First 10 credits: 0 Rs
+- Next 10 credits (10-20): 10 × 2 = 20 Rs
+- Remaining 830 credits (20-850): 830 × 3 = 2490 Rs
+- **Total: 2510 Rs**
 
 ## Use Cases
 
-### Data Transfer Tracking
+### Standard SUM Use Cases
+
+#### Data Transfer Tracking
 **Perfect for**: Bandwidth usage, file downloads, API data transfer
 ```json
 {
@@ -82,7 +188,7 @@ Step-by-Step Setup when creating a SUM-based metered feature:
 }
 ```
 
-### Compute Time
+#### Compute Time
 **Perfect for**: CPU hours, GPU usage, processing time
 ```json
 {
@@ -94,7 +200,7 @@ Step-by-Step Setup when creating a SUM-based metered feature:
 }
 ```
 
-### Storage Usage
+#### Storage Usage
 **Perfect for**: Disk space, database storage, file storage
 ```json
 {
@@ -106,7 +212,7 @@ Step-by-Step Setup when creating a SUM-based metered feature:
 }
 ```
 
-### Credits Consumed
+#### Credits Consumed
 **Perfect for**: AI model usage, API credits, processing credits
 ```json
 {
@@ -118,13 +224,90 @@ Step-by-Step Setup when creating a SUM-based metered feature:
 }
 ```
 
-### When to Use SUM
+### Bucketed SUM Use Cases
 
-✅ **Use SUM when:**
-- Tracking quantities or volumes
-- Measuring resource consumption
-- Accumulating usage values
-- Need precise numeric totals
+#### Hourly Compute Credits
+**Perfect for**: Per-hour billing for compute resources, interval-based usage
+```json
+{
+  "event_name": "compute.credits",
+  "external_customer_id": "merchant_789",
+  "properties": {
+    "credits_used": 50
+  }
+}
+```
+*With HOUR bucket_size, bills based on sum per hour*
+
+#### Daily Storage Consumption
+**Perfect for**: Tracking daily accumulated storage, per-day usage billing
+```json
+{
+  "event_name": "storage.daily",
+  "external_customer_id": "customer_101",
+  "properties": {
+    "gb_stored": 100
+  }
+}
+```
+*With DAY bucket_size, aggregates daily totals*
+
+#### Time-Windowed API Usage
+**Perfect for**: Rate limiting enforcement, time-based quota tracking
+```json
+{
+  "event_name": "api.requests",
+  "external_customer_id": "developer_user",
+  "properties": {
+    "request_count": 10
+  }
+}
+```
+*With HOUR bucket_size, track per-hour request totals*
+
+#### Peak Hour Data Processing
+**Perfect for**: Billing based on hourly processing capacity, interval-based workloads
+```json
+{
+  "event_name": "data.processing",
+  "external_customer_id": "analytics_customer",
+  "properties": {
+    "gb_processed": 25
+  }
+}
+```
+*With HOUR bucket_size, sum processing per hour for billing*
+
+### When to Use Each Mode
+
+✅ **Use Standard SUM when:**
+- Need total cumulative values
+- Simple aggregate billing
+- No time window considerations
+- Tracking overall consumption
+
+✅ **Use Bucketed SUM when:**
+- Time-windowed billing models
+- Per-hour/day/week aggregation needed
+- Rate limiting or quota enforcement
+- Sum of interval-based totals
+- Billing based on time-bucketed usage
+
+### Key Differences
+
+| Aspect | Standard SUM | Bucketed SUM |
+|--------|--------------|--------------|
+| **Configuration** | No bucket_size | Requires bucket_size |
+| **Calculation** | Total sum of all values | Sum of bucket sums |
+| **Use Case** | Overall cumulative tracking | Time-windowed aggregation |
+| **Result** | Single total value | Sum of time-window totals |
+
+### ⚠️ Critical Notes
+
+- **bucket_size can ONLY be used with MAX or SUM aggregation** - No other aggregation supports this
+- **Bucketed SUM sums the bucket totals** - Each bucket's sum is calculated first, then all bucket sums are added together
+- **Time windows are based on UTC** - Ensure your timestamps are properly handled for your timezone
+- **Bucket size is immutable** - Cannot be changed after feature creation
 
 ## Next Steps
 
