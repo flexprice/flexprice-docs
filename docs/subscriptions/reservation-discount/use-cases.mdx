@@ -1,0 +1,170 @@
+### Reserved Capacity Pricing
+
+**Scenario:** Infrastructure provider offering guaranteed capacity
+
+**Configuration:**
+- Commitment Type: Quantity
+- Commitment Quantity: 10 servers
+- Overage Factor: 1.5x
+- True-Up: Enabled
+
+**Benefits:**
+- Customer reserves minimum capacity
+- Provider guarantees availability
+- Premium pricing for burst capacity
+
+---
+
+### Enterprise API Packages
+
+**Scenario:** SaaS company offering API tier with minimum commitment
+
+**Configuration:**
+- Commitment Type: Amount
+- Commitment Amount: $5,000/month
+- Overage Factor: 1.2x
+- True-Up: Disabled
+
+**Benefits:**
+- Predictable base revenue
+- Flexible overage pricing
+- No penalty for low usage months
+
+---
+
+### Peak-Hour Premium Pricing
+
+**Scenario:** Processing service with time-based pricing
+
+**Configuration:**
+- Commitment Type: Amount
+- Commitment Amount: $200/hour
+- Overage Factor: 2.0x
+- Window Commitment: Enabled (hourly)
+- True-Up: Disabled
+
+**Benefits:**
+- Hourly commitment tracking
+- Premium rates for peak usage
+- Fair billing for variable workloads
+
+---
+
+### Volume Commitment Discounts
+
+**Scenario:** Data storage with volume guarantees
+
+**Configuration:**
+- Commitment Type: Quantity
+- Commitment Quantity: 100 TB
+- Overage Factor: 1.0x
+- True-Up: Enabled
+
+**Benefits:**
+- Customer locks in volume pricing
+- Guaranteed minimum revenue
+- Standard rates for overage
+
+## Reservation Discount vs Subscription-Level Commitment
+
+| Feature | Reservation Discount | Subscription-Level Commitment |
+|---------|---------------------|------------------------------|
+| **Scope** | Per line item | Entire subscription |
+| **Granularity** | Each feature/service independently | All charges combined |
+| **Configuration** | Different settings per line item | One setting for all |
+| **Use Case** | Complex multi-service pricing | Simple minimum spend |
+| **Flexibility** | High - mix and match | Lower - all-or-nothing |
+| **Window Support** | Yes | No |
+
+**When to Use Reservation Discount:**
+
+<Steps>
+  <Step title="Multiple services with different commitment models">
+    Use when you have multiple services that need different commitment models.
+  </Step>
+  <Step title="Granular control over feature pricing">
+    Use when you need granular control over feature pricing.
+  </Step>
+  <Step title="Per-feature overage rates">
+    Use when you want per-feature overage rates.
+  </Step>
+  <Step title="Window-based commitments">
+    Use when you require window-based commitments.
+  </Step>
+</Steps>
+
+**When to Use Subscription-Level Commitment:**
+
+<Steps>
+  <Step title="Simple minimum spend guarantee">
+    Use for a simple minimum spend guarantee across the subscription.
+  </Step>
+  <Step title="Same commitment logic for all services">
+    Use when all services share the same commitment logic.
+  </Step>
+  <Step title="Easier configuration for basic use cases">
+    Use when you want easier configuration for basic use cases.
+  </Step>
+</Steps>
+
+## Best Practices
+
+### 1. Choose the Right Commitment Type
+
+- **Use Amount-Based** when:
+  - Pricing is complex with tiers or packages
+  - You want guaranteed dollar revenue
+  - Quantities vary significantly
+
+- **Use Quantity-Based** when:
+  - Pricing is simple (per-unit)
+  - Customers think in units not dollars
+  - Easier to communicate and understand
+
+### 2. Set Appropriate Overage Factors
+
+- **1.0x**: No premium, encourages usage
+- **1.2-1.5x**: Moderate premium, standard practice
+- **2.0x+**: High premium, discourages overage
+
+### 3. Consider True-Up Carefully
+
+- **Enable** when:
+  - Need guaranteed minimum revenue
+  - Reserving capacity or resources
+  - Customer agrees to minimum commitment
+
+- **Disable** when:
+  - Want flexible, usage-based billing
+  - Customer preference for pay-as-you-go
+  - Building usage over time
+
+### 4. Window Commitments for Variable Workloads
+
+- Ideal for services with:
+  - Time-based pricing (hourly/daily)
+  - Variable load patterns
+  - Peak usage pricing
+
+- Avoid for:
+  - Stable, predictable usage
+  - Monthly aggregation preferred
+  - Complex customer communication needed
+
+### 5. Document and Communicate
+
+- Clearly explain commitment terms to customers
+- Provide examples in contracts
+- Show estimated billing scenarios
+- Monitor and report usage vs commitment
+
+## Related Topics
+
+- [Subscription-Level Commitment](/docs/subscriptions/commitment) - Simple minimum spend commitments
+- [Creating Subscriptions](/docs/subscriptions/customers-create-subscription) - How to create subscriptions
+- [Override Line Items](/docs/subscriptions/override-line-items) - Customize subscription pricing
+- [Viewing Subscriptions](/docs/subscriptions/view) - Monitor subscription status
+
+---
+
+*For technical implementation details, refer to the [API Reference](/api-reference/subscriptions).*
