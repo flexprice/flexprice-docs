@@ -84,13 +84,10 @@ An AI platform sells inference compute at **$2 / vCPU-hour**. They want customer
 
   <Step title="Scenario 1 — Usage exceeds commitment (700 vCPU-hours)">
     ```
-    Usage:              700 vCPU-hours
-    Usage cost:         700 × $2        = $1,400
-    Commitment cost:    500 × $2        = $1,000
-    Overage:            $1,400 − $1,000 = $400
-    Overage charge:     $400 × 1.5      = $600
-
-    Total Invoice:      $1,000 + $600   = $1,600
+    Overage qty:    700 − 500 = 200 vCPU-hours
+    Commitment:     500 vCPU-hours × $2          = $1,000
+    Overage:        200 vCPU-hours × ($2 × 1.5)  = $600
+    Total Invoice:  $1,000 + $600                = $1,600
     ```
 
     {/* <Frame>
@@ -102,13 +99,10 @@ An AI platform sells inference compute at **$2 / vCPU-hour**. They want customer
     True-up is enabled so the full commitment is enforced.
 
     ```
-    Usage:              300 vCPU-hours
-    Usage cost:         300 × $2        = $600
-    Commitment cost:                      $1,000
-    Shortfall:          $1,000 − $600   = $400
-    True-up fee:                          $400
-
-    Total Invoice:                        $1,000 (commitment enforced)
+    Shortfall qty:  500 − 300 = 200 vCPU-hours
+    Usage cost:     300 vCPU-hours × $2  = $600
+    True-up fee:    200 vCPU-hours × $2  = $400
+    Total Invoice:  $600 + $400          = $1,000
     ```
 
     {/* <Frame>
@@ -120,10 +114,8 @@ An AI platform sells inference compute at **$2 / vCPU-hour**. They want customer
     Same usage but with true-up turned off. The customer pays only for what they consumed.
 
     ```
-    Usage:              300 vCPU-hours
-    Usage cost:         300 × $2        = $600
-
-    Total Invoice:                        $600 (actual usage only)
+    Usage cost:     300 vCPU-hours × $2  = $600
+    Total Invoice:                       = $600
     ```
   </Step>
 </Steps>
@@ -176,27 +168,26 @@ A cloud infrastructure company sells GPU compute at **$2 / GPU-hour**. Instead o
 
   <Step title="Hour 1 — Usage exceeds commitment (15 GPU-hours)">
     ```
-    Usage cost:      15 × $2 = $30
-    Commitment:      10 × $2 = $20
-    Overage:         ($30 − $20) × 1.5 = $15
-    Hour 1 charge:   $20 + $15 = $35
+    Overage qty:    15 − 10 = 5 GPU-hours
+    Commitment:     10 GPU-hours × $2          = $20
+    Overage:        5 GPU-hours × ($2 × 1.5)   = $15
+    Hour 1 charge:  $20 + $15                  = $35
     ```
   </Step>
 
   <Step title="Hour 2 — Usage below commitment, true-up kicks in (6 GPU-hours)">
     ```
-    Usage cost:      6 × $2 = $12
-    Commitment:      $20
-    True-up fee:     $20 − $12 = $8
-    Hour 2 charge:   $20
+    Shortfall qty:  10 − 6 = 4 GPU-hours
+    Usage cost:     6 GPU-hours × $2  = $12
+    True-up fee:    4 GPU-hours × $2  = $8
+    Hour 2 charge:  $12 + $8          = $20
     ```
   </Step>
 
   <Step title="Hour 3 — Usage matches commitment exactly (10 GPU-hours)">
     ```
-    Usage cost:      10 × $2 = $20
-    Commitment:      $20
-    Hour 3 charge:   $20
+    Usage cost:     10 GPU-hours × $2 = $20
+    Hour 3 charge:                    = $20
     ```
   </Step>
 
