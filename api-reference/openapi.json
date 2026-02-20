@@ -43,14 +43,17 @@
                         "schema": {
                             "type": "string",
                             "enum": [
-                                "onetime"
+                                "onetime",
+                                "multiple_instance"
                             ],
                             "x-enum-varnames": [
-                                "AddonTypeOnetime"
+                                "AddonTypeOnetime",
+                                "AddonTypeMultipleInstance"
                             ]
                         },
                         "x-enum-varnames": [
-                            "AddonTypeOnetime"
+                            "AddonTypeOnetime",
+                            "AddonTypeMultipleInstance"
                         ]
                     },
                     {
@@ -10677,6 +10680,19 @@
                         }
                     },
                     {
+                        "name": "parent_subscription_ids",
+                        "in": "query",
+                        "description": "ParentSubscriptionIDs filters by parent subscription IDs",
+                        "style": "form",
+                        "explode": false,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    {
                         "name": "plan_id",
                         "in": "query",
                         "description": "PlanID filters by plan ID",
@@ -11271,6 +11287,73 @@
                         "ApiKeyAuth": []
                     }
                 ]
+            },
+            "put": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Update subscription",
+                "description": "Update a subscription. parent_subscription_id can be set to another subscription ID, cleared by sending \"\", or left unchanged if omitted.",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Subscription ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Update Subscription Request",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/dto.UpdateSubscriptionRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.SubscriptionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "x-codegen-request-body-name": "request"
             }
         },
         "/subscriptions/{id}/activate": {
@@ -11784,6 +11867,85 @@
                         "ApiKeyAuth": []
                     }
                 ]
+            }
+        },
+        "/subscriptions/{id}/lineitems": {
+            "post": {
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Create subscription line item",
+                "description": "Add a new line item to an existing subscription (price_id or inline price)",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Subscription ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Create Line Item Request",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/dto.CreateSubscriptionLineItemRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.SubscriptionLineItemResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "x-codegen-request-body-name": "request"
             }
         },
         "/subscriptions/{id}/pause": {
@@ -14472,14 +14634,6 @@
                                 "type": "string"
                             }
                         }
-                    },
-                    {
-                        "name": "expand",
-                        "in": "query",
-                        "description": "Expand fields (e.g., credits_available_breakdown)",
-                        "schema": {
-                            "type": "string"
-                        }
                     }
                 ],
                 "responses": {
@@ -16287,14 +16441,6 @@
                         "items": {
                             "$ref": "#/components/schemas/dto.EntitlementSource"
                         }
-                    }
-                }
-            },
-            "dto.AlertConfig": {
-                "type": "object",
-                "properties": {
-                    "threshold": {
-                        "$ref": "#/components/schemas/dto.Threshold"
                     }
                 }
             },
@@ -18108,6 +18254,61 @@
                     }
                 }
             },
+            "dto.CreateSubscriptionLineItemRequest": {
+                "type": "object",
+                "properties": {
+                    "commitment_amount": {
+                        "type": "number",
+                        "description": "Commitment fields"
+                    },
+                    "commitment_duration": {
+                        "$ref": "#/components/schemas/types.BillingPeriod"
+                    },
+                    "commitment_overage_factor": {
+                        "type": "number"
+                    },
+                    "commitment_quantity": {
+                        "type": "number"
+                    },
+                    "commitment_true_up_enabled": {
+                        "type": "boolean"
+                    },
+                    "commitment_type": {
+                        "$ref": "#/components/schemas/types.CommitmentType"
+                    },
+                    "commitment_windowed": {
+                        "type": "boolean"
+                    },
+                    "display_name": {
+                        "type": "string"
+                    },
+                    "end_date": {
+                        "type": "string"
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "price": {
+                        "$ref": "#/components/schemas/dto.SubscriptionPriceCreateRequest"
+                    },
+                    "price_id": {
+                        "type": "string",
+                        "description": "PriceID references an existing price (plan, addon, or subscription-scoped). Exactly one of price_id or price must be set."
+                    },
+                    "quantity": {
+                        "type": "number"
+                    },
+                    "start_date": {
+                        "type": "string"
+                    },
+                    "subscription_phase_id": {
+                        "type": "string"
+                    }
+                }
+            },
             "dto.CreateSubscriptionRequest": {
                 "required": [
                     "billing_cadence",
@@ -18142,6 +18343,9 @@
                     "commitment_amount": {
                         "type": "string",
                         "description": "CommitmentAmount is the minimum amount a customer commits to paying for a billing period"
+                    },
+                    "commitment_duration": {
+                        "$ref": "#/components/schemas/types.BillingPeriod"
                     },
                     "coupons": {
                         "type": "array",
@@ -18200,6 +18404,13 @@
                             }
                         }
                     },
+                    "line_items": {
+                        "type": "array",
+                        "description": "LineItems are extra line items to add at creation (each with price_id or price), in addition to plan prices",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.CreateSubscriptionLineItemRequest"
+                        }
+                    },
                     "lookup_key": {
                         "type": "string"
                     },
@@ -18227,8 +18438,15 @@
                             "$ref": "#/components/schemas/dto.OverrideLineItemRequest"
                         }
                     },
+                    "parent_subscription_id": {
+                        "type": "string",
+                        "description": "ParentSubscriptionID is the parent subscription ID for hierarchy (e.g. child subscription under a parent)"
+                    },
                     "payment_behavior": {
                         "$ref": "#/components/schemas/types.PaymentBehavior"
+                    },
+                    "payment_terms": {
+                        "$ref": "#/components/schemas/types.PaymentTerms"
                     },
                     "phases": {
                         "type": "array",
@@ -18410,12 +18628,8 @@
                 ],
                 "type": "object",
                 "properties": {
-                    "alert_config": {
-                        "$ref": "#/components/schemas/dto.AlertConfig"
-                    },
-                    "alert_enabled": {
-                        "type": "boolean",
-                        "description": "alert_enabled is the flag to enable alerts for the wallet\ndefaults to true, can be explicitly set to false to disable alerts"
+                    "alert_settings": {
+                        "$ref": "#/components/schemas/types.AlertSettings"
                     },
                     "auto_topup": {
                         "$ref": "#/components/schemas/types.AutoTopup"
@@ -18722,6 +18936,29 @@
                     "voided_at": {
                         "type": "string",
                         "description": "voided_at is the timestamp when the credit note was voided"
+                    }
+                }
+            },
+            "dto.CustomAnalyticItem": {
+                "type": "object",
+                "properties": {
+                    "feature_name": {
+                        "type": "string",
+                        "description": "Name of the feature this applies to"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "Calculation name (e.g., \"Revenue per Minute\")"
+                    },
+                    "type": {
+                        "type": "string",
+                        "description": "\"feature\", \"meter\", \"event_name\""
+                    },
+                    "value": {
+                        "type": "string"
                     }
                 }
             },
@@ -19673,6 +19910,12 @@
                     "currency": {
                         "type": "string"
                     },
+                    "custom_analytics": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.CustomAnalyticItem"
+                        }
+                    },
                     "items": {
                         "type": "array",
                         "items": {
@@ -19842,6 +20085,10 @@
                                 "type": "string"
                             }
                         }
+                    },
+                    "group_by_property": {
+                        "type": "string",
+                        "description": "GroupByProperty is the property name in event.properties to group by before aggregating.\nWhen set, aggregation is applied per unique value of this property within each bucket,\nthen the per-group results are summed to produce the bucket total."
                     },
                     "multiplier": {
                         "type": "string"
@@ -20390,6 +20637,9 @@
                     "commitment_amount": {
                         "type": "number",
                         "description": "CommitmentAmount is the minimum amount committed for this line item"
+                    },
+                    "commitment_duration": {
+                        "$ref": "#/components/schemas/types.BillingPeriod"
                     },
                     "commitment_quantity": {
                         "type": "number",
@@ -21976,6 +22226,9 @@
                         "type": "number",
                         "description": "Commitment fields"
                     },
+                    "commitment_duration": {
+                        "$ref": "#/components/schemas/types.BillingPeriod"
+                    },
                     "commitment_overage_factor": {
                         "type": "number"
                     },
@@ -22245,6 +22498,97 @@
                     }
                 }
             },
+            "dto.SubscriptionPriceCreateRequest": {
+                "required": [
+                    "billing_cadence",
+                    "billing_model",
+                    "billing_period",
+                    "invoice_cadence",
+                    "price_unit_type",
+                    "type"
+                ],
+                "type": "object",
+                "properties": {
+                    "amount": {
+                        "type": "string"
+                    },
+                    "billing_cadence": {
+                        "$ref": "#/components/schemas/types.BillingCadence"
+                    },
+                    "billing_model": {
+                        "$ref": "#/components/schemas/types.BillingModel"
+                    },
+                    "billing_period": {
+                        "$ref": "#/components/schemas/types.BillingPeriod"
+                    },
+                    "billing_period_count": {
+                        "type": "integer"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "display_name": {
+                        "type": "string"
+                    },
+                    "end_date": {
+                        "type": "string"
+                    },
+                    "filter_values": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "invoice_cadence": {
+                        "$ref": "#/components/schemas/types.InvoiceCadence"
+                    },
+                    "lookup_key": {
+                        "type": "string"
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "meter_id": {
+                        "type": "string"
+                    },
+                    "min_quantity": {
+                        "type": "integer"
+                    },
+                    "price_unit_config": {
+                        "$ref": "#/components/schemas/dto.PriceUnitConfig"
+                    },
+                    "price_unit_type": {
+                        "$ref": "#/components/schemas/types.PriceUnitType"
+                    },
+                    "start_date": {
+                        "type": "string"
+                    },
+                    "tier_mode": {
+                        "$ref": "#/components/schemas/types.BillingTier"
+                    },
+                    "tiers": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/dto.CreatePriceTier"
+                        }
+                    },
+                    "transform_quantity": {
+                        "$ref": "#/components/schemas/price.TransformQuantity"
+                    },
+                    "trial_period": {
+                        "type": "integer"
+                    },
+                    "type": {
+                        "$ref": "#/components/schemas/types.PriceType"
+                    }
+                }
+            },
             "dto.SubscriptionResponse": {
                 "type": "object",
                 "properties": {
@@ -22288,6 +22632,9 @@
                     "commitment_amount": {
                         "type": "string",
                         "description": "CommitmentAmount is the minimum amount a customer commits to paying for a billing period"
+                    },
+                    "commitment_duration": {
+                        "$ref": "#/components/schemas/types.BillingPeriod"
                     },
                     "coupon_associations": {
                         "type": "array",
@@ -22374,6 +22721,10 @@
                         "type": "string",
                         "description": "OverageFactor is a multiplier applied to usage beyond the commitment amount"
                     },
+                    "parent_subscription_id": {
+                        "type": "string",
+                        "description": "ParentSubscriptionID is the parent subscription ID for hierarchy (e.g. child subscription under a parent)"
+                    },
                     "pause_status": {
                         "$ref": "#/components/schemas/types.PauseStatus"
                     },
@@ -22386,6 +22737,9 @@
                     "payment_behavior": {
                         "type": "string",
                         "description": "PaymentBehavior determines how subscription payments are handled"
+                    },
+                    "payment_terms": {
+                        "$ref": "#/components/schemas/types.PaymentTerms"
                     },
                     "phases": {
                         "type": "array",
@@ -22481,6 +22835,9 @@
                         "type": "string",
                         "description": "CommitmentAmount is the minimum amount a customer commits to paying for a billing period"
                     },
+                    "commitment_duration": {
+                        "$ref": "#/components/schemas/types.BillingPeriod"
+                    },
                     "coupon_associations": {
                         "type": "array",
                         "description": "CouponAssociations are included when \"coupon_associations\" is in expand parameter",
@@ -22564,6 +22921,10 @@
                         "type": "string",
                         "description": "OverageFactor is a multiplier applied to usage beyond the commitment amount"
                     },
+                    "parent_subscription_id": {
+                        "type": "string",
+                        "description": "ParentSubscriptionID is the parent subscription ID for hierarchy (e.g. child subscription under a parent)"
+                    },
                     "pause_status": {
                         "$ref": "#/components/schemas/types.PauseStatus"
                     },
@@ -22577,6 +22938,9 @@
                     "payment_behavior": {
                         "type": "string",
                         "description": "PaymentBehavior determines how subscription payments are handled"
+                    },
+                    "payment_terms": {
+                        "$ref": "#/components/schemas/types.PaymentTerms"
                     },
                     "phases": {
                         "type": "array",
@@ -23147,18 +23511,6 @@
                     }
                 }
             },
-            "dto.Threshold": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string",
-                        "description": "amount"
-                    },
-                    "value": {
-                        "type": "string"
-                    }
-                }
-            },
             "dto.TopUpWalletRequest": {
                 "required": [
                     "transaction_reason"
@@ -23638,6 +23990,9 @@
                         "type": "number",
                         "description": "Commitment fields"
                     },
+                    "commitment_duration": {
+                        "$ref": "#/components/schemas/types.BillingPeriod"
+                    },
                     "commitment_overage_factor": {
                         "type": "number"
                     },
@@ -23676,6 +24031,24 @@
                     },
                     "transform_quantity": {
                         "$ref": "#/components/schemas/price.TransformQuantity"
+                    }
+                }
+            },
+            "dto.UpdateSubscriptionRequest": {
+                "type": "object",
+                "properties": {
+                    "cancel_at": {
+                        "type": "string"
+                    },
+                    "cancel_at_period_end": {
+                        "type": "boolean"
+                    },
+                    "parent_subscription_id": {
+                        "type": "string",
+                        "description": "ParentSubscriptionID sets or clears the parent subscription. Omit to leave unchanged; send \"\" to clear."
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/types.SubscriptionStatus"
                     }
                 }
             },
@@ -23734,11 +24107,8 @@
             "dto.UpdateWalletRequest": {
                 "type": "object",
                 "properties": {
-                    "alert_config": {
-                        "$ref": "#/components/schemas/dto.AlertConfig"
-                    },
-                    "alert_enabled": {
-                        "type": "boolean"
+                    "alert_settings": {
+                        "$ref": "#/components/schemas/types.AlertSettings"
                     },
                     "auto_topup": {
                         "$ref": "#/components/schemas/types.AutoTopup"
@@ -23751,6 +24121,9 @@
                     },
                     "metadata": {
                         "$ref": "#/components/schemas/types.Metadata"
+                    },
+                    "name": {
+                        "type": "string"
                     }
                 }
             },
@@ -23953,14 +24326,11 @@
             "dto.WalletBalanceResponse": {
                 "type": "object",
                 "properties": {
-                    "alert_config": {
-                        "$ref": "#/components/schemas/types.AlertConfig"
-                    },
-                    "alert_enabled": {
-                        "type": "boolean"
+                    "alert_settings": {
+                        "$ref": "#/components/schemas/types.AlertSettings"
                     },
                     "alert_state": {
-                        "type": "string"
+                        "$ref": "#/components/schemas/types.AlertState"
                     },
                     "auto_topup": {
                         "$ref": "#/components/schemas/types.AutoTopup"
@@ -24050,14 +24420,11 @@
             "dto.WalletResponse": {
                 "type": "object",
                 "properties": {
-                    "alert_config": {
-                        "$ref": "#/components/schemas/types.AlertConfig"
-                    },
-                    "alert_enabled": {
-                        "type": "boolean"
+                    "alert_settings": {
+                        "$ref": "#/components/schemas/types.AlertSettings"
                     },
                     "alert_state": {
-                        "type": "string"
+                        "$ref": "#/components/schemas/types.AlertState"
                     },
                     "auto_topup": {
                         "$ref": "#/components/schemas/types.AutoTopup"
@@ -24683,6 +25050,10 @@
                         "type": "string",
                         "description": "Field is the key in $event.properties on which the aggregation is to be applied\nFor ex if the aggregation type is sum for API usage, the field could be \"duration_ms\""
                     },
+                    "group_by": {
+                        "type": "string",
+                        "description": "GroupBy is the property name in event.properties to group by before aggregating.\nCurrently only supported for MAX aggregation with bucket_size.\nWhen set, aggregation is applied per unique value of this property within each bucket,\nthen the per-group results are summed to produce the bucket total."
+                    },
                     "multiplier": {
                         "type": "string",
                         "description": "Multiplier is the multiplier for the aggregation\nFor ex if the aggregation type is sum_with_multiplier for API usage, the multiplier could be 1000\nto scale up by a factor of 1000. If not provided, it will be null."
@@ -24994,6 +25365,9 @@
                     "commitment_amount": {
                         "type": "number",
                         "description": "Commitment fields"
+                    },
+                    "commitment_duration": {
+                        "$ref": "#/components/schemas/types.BillingPeriod"
                     },
                     "commitment_overage_factor": {
                         "type": "number"
@@ -25309,10 +25683,12 @@
             "types.AddonType": {
                 "type": "string",
                 "enum": [
-                    "onetime"
+                    "onetime",
+                    "multiple_instance"
                 ],
                 "x-enum-varnames": [
-                    "AddonTypeOnetime"
+                    "AddonTypeOnetime",
+                    "AddonTypeMultipleInstance"
                 ]
             },
             "types.AggregationType": {
@@ -25361,17 +25737,6 @@
                     "AlertConditionAbove",
                     "AlertConditionBelow"
                 ]
-            },
-            "types.AlertConfig": {
-                "type": "object",
-                "properties": {
-                    "enabled": {
-                        "type": "boolean"
-                    },
-                    "threshold": {
-                        "$ref": "#/components/schemas/types.WalletAlertThreshold"
-                    }
-                }
             },
             "types.AlertEntityType": {
                 "type": "string",
@@ -25501,15 +25866,6 @@
                         "type": "number"
                     }
                 }
-            },
-            "types.AlertThresholdType": {
-                "type": "string",
-                "enum": [
-                    "amount"
-                ],
-                "x-enum-varnames": [
-                    "AlertThresholdTypeAmount"
-                ]
             },
             "types.AlertType": {
                 "type": "string",
@@ -25696,6 +26052,9 @@
                     "computed_true_up_amount": {
                         "type": "string",
                         "description": "total_cost = computed_commitment_utilized_amount + computed_overage_amount + computed_true_up_amount"
+                    },
+                    "duration": {
+                        "$ref": "#/components/schemas/types.BillingPeriod"
                     },
                     "is_windowed": {
                         "type": "boolean"
@@ -26818,6 +27177,25 @@
                     "PaymentStatusPartiallyRefunded"
                 ]
             },
+            "types.PaymentTerms": {
+                "type": "string",
+                "enum": [
+                    "15 NET",
+                    "30 NET",
+                    "45 NET",
+                    "60 NET",
+                    "75 NET",
+                    "90 NET"
+                ],
+                "x-enum-varnames": [
+                    "PaymentTerms15Net",
+                    "PaymentTerms30Net",
+                    "PaymentTerms45Net",
+                    "PaymentTerms60Net",
+                    "PaymentTerms75Net",
+                    "PaymentTerms90Net"
+                ]
+            },
             "types.PlanFilter": {
                 "type": "object",
                 "properties": {
@@ -27479,6 +27857,13 @@
                             "desc"
                         ]
                     },
+                    "parent_subscription_ids": {
+                        "type": "array",
+                        "description": "ParentSubscriptionIDs filters by parent subscription IDs",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
                     "plan_id": {
                         "type": "string",
                         "description": "PlanID filters by plan ID"
@@ -27518,11 +27903,13 @@
                 "type": "string",
                 "enum": [
                     "plan",
-                    "addon"
+                    "addon",
+                    "subscription"
                 ],
                 "x-enum-varnames": [
                     "SubscriptionLineItemEntityTypePlan",
-                    "SubscriptionLineItemEntityTypeAddon"
+                    "SubscriptionLineItemEntityTypeAddon",
+                    "SubscriptionLineItemEntityTypeSubscription"
                 ]
             },
             "types.SubscriptionScheduleChangeType": {
@@ -27792,17 +28179,6 @@
                     "UserTypeServiceAccount"
                 ]
             },
-            "types.WalletAlertThreshold": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "$ref": "#/components/schemas/types.AlertThresholdType"
-                    },
-                    "value": {
-                        "type": "number"
-                    }
-                }
-            },
             "types.WalletConfig": {
                 "type": "object",
                 "properties": {
@@ -27988,7 +28364,6 @@
             "types.WindowSize": {
                 "type": "string",
                 "enum": [
-                    "MONTH",
                     "MINUTE",
                     "15MIN",
                     "30MIN",
@@ -27998,10 +28373,10 @@
                     "12HOUR",
                     "DAY",
                     "WEEK",
+                    "MONTH",
                     "MONTH"
                 ],
                 "x-enum-varnames": [
-                    "DefaultWindowSize",
                     "WindowSizeMinute",
                     "WindowSize15Min",
                     "WindowSize30Min",
@@ -28011,7 +28386,8 @@
                     "WindowSize12Hour",
                     "WindowSizeDay",
                     "WindowSizeWeek",
-                    "WindowSizeMonth"
+                    "WindowSizeMonth",
+                    "DefaultWindowSize"
                 ]
             }
         },
