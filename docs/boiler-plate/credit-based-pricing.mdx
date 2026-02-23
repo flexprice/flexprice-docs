@@ -1,40 +1,40 @@
 ---
 title: "Build Credit-based Pricing like Apollo.io"
-description: "Credit-based pricing is a usage-based model where customers prepay for a set number of credits and spend them as they use features, with each action deducting a fixed credit amount."
+description: "Credit-based pricing is a usage-based model where customers prepay for a set number of credits and spend them as they use features, with each action deducting a defined credit amount."
 ---
 
 ## Overview
 
-Apollo.io uses a credit-based pricing model where users spend credits to access contact data (like emails, phone numbers, and exports), with higher plans offering more monthly credits.
+Apollo.io uses a credit-based pricing model where users spend credits to access contact data (like emails, phone numbers, and exports), with higher plans offering more monthly credits. This guide shows how to build the same model in Flexprice.
 
 ### Purchase credits vs Plan-based credits
 
-- **Purchase credits (direct):** The customer buys credits with money without a subscription. You top up their wallet; there is no plan or entitlement. Use this for one-off credit packs or add-ons.
-- **Plan-based credits:** The customer subscribes to a plan and receives **recurring credit grants** (e.g. 30,000 credits per month) plus **entitlement** to specific features. Credits are tied to the subscription; when the plan is attached, grants and feature access are provisioned together.
+- **Purchase credits (direct):** To use this path, create a customer, create a wallet in credits, then top up the wallet. No plan or subscription. Use it for one-off credit packs or add-ons.
+- **Plan-based credits:** To use this path, create a plan with credit grants and entitlements, then add a subscription for the customer. They get credits and feature access from the plan (e.g. 30,000 credits per month).
 
-You can offer one path, the other, or both (e.g. subscription with monthly grants plus the option to buy extra credits).
+**What you can build:** Only direct purchase, only plan-based, or both (e.g. plan plus option to buy extra credits).
 
 ## Pricing Breakdown
 
 <Frame>
-  ![Credit-based pricing breakdown](/public/images/docs/subscription-flow/credit-based-pricing.png)
+  ![Credit-based pricing breakdown](/public/images/docs/subscription-flow/apollo-credit-based-pricing.png)
 </Frame>
 
 ## 1. Key Chargeable Features in Apollo
 
-- Apollo uses a prepaid credit burndown model for contact data access. Credits are deducted immediately when a user performs a data-reveal or enrichment action.
+In this model, credits are deducted when the user does an action (e.g. unlock email, export). In Flexprice you will map each action to a credit cost and debit the wallet.
 
 ### A. Contact Data Unlock & Enrichment
 
 #### How Credits Are Applied
 
-**Prepaid Allocation**: When a user subscribes **allocated_credits = plan_credit_limit**. Plans can be billed annually with **recurring grants** (e.g. credits per month).
+**Prepaid allocation:** When a user subscribes, they receive credits up to the plan limit. You configure this as recurring grants on the plan. Plans can be billed annually with **recurring grants** (e.g. credits per month).
 - **Professional plan → 48,000 credits/year** (or e.g. 4,000/month as recurring grants)
 - **Basic → 30,000 credits/year** (or e.g. 2,500/month as recurring grants)
 
-Example: Basic plan, **annually billed**, includes a set number of credits per month (recurring grants) for outbound/reach usage.
+**Example:** For a Basic plan billed annually, give 2,500 credits per month via recurring grants. When you create your plan, mirror these as recurring grants.
 
-**Action-Based Deduction**
+**What you’ll do:** Assign a credit cost to each action and debit that amount from the wallet when the user does it.
 
 | Action                | Credit Cost          |
 | --------------------- | -------------------- |
@@ -48,9 +48,7 @@ Example: Basic plan, **annually billed**, includes a set number of credits per m
 
 #### How Credits Are Applied
 
-**Email Sending Model** Depending on plan:
-- **Daily send limits per mailbox**
-- **OR credits per email sent**
+**Email Sending Model:** Depending on plan, choose one: **daily send limits per mailbox** or **credits per email sent**. When you set up features, create a metered feature (e.g. Emails Sent) and set the credit cost per use.
 
 | Action                       | Credit Cost         |
 | ---------------------------- | ------------------- |
@@ -67,16 +65,16 @@ Example: Basic plan, **annually billed**, includes a set number of credits per m
 
 <Steps>
   <Step title="Purchase credits">
-    Users **purchase credits** (packages or add-ons).
+    Let users purchase credits (packages or add-ons) by topping up their wallet.
   </Step>
   <Step title="Set cost per action">
-    Each **action has a credit cost** (e.g. 1 for search, 5 for export).
+    Define a credit cost for each action (e.g. 1 for search, 5 for export) in your app or feature config.
   </Step>
   <Step title="Deduct and track">
-    Credits are **deducted per action**; balance is tracked per customer.
+    On each action, debit the wallet by the action’s cost. Flexprice tracks the balance.
   </Step>
   <Step title="Enforce balance">
-    When balance is **zero**, block the action or prompt to buy more.
+    If balance is zero, block the action and prompt the user to buy more credits or upgrade.
   </Step>
 </Steps>
 
@@ -97,9 +95,9 @@ Example: Basic plan, **annually billed**, includes a set number of credits per m
 | Growth  | 5,000    | $99    |
 | Pro     | 20,000   | $299   |
 
-Credits can reset monthly, never expire, or expire after X days—depending on your product.
+**You decide:** Credits can reset monthly, never expire, or expire after N days. Configure this in your plan or billing logic.
 
-**Overage:** After included credits are used, charge overage (e.g. 1.00 USD per credit or per use). Flexprice can bill usage above the grant; configure overage on the plan or charge.
+**To charge overage:** In Flexprice, configure overage on the plan or charge (e.g. 1.00 USD per extra credit). Usage above the included grant is then billed automatically.
 
 ---
 
@@ -107,13 +105,13 @@ Credits can reset monthly, never expire, or expire after X days—depending on y
 
 <Steps>
   <Step title="Different cost weights">
-    Different actions have **different cost weights**.
+    Use credit-based pricing when different actions have different cost weights (e.g. 1 credit for search vs 10 for phone reveal).
   </Step>
   <Step title="Variable usage">
-    Usage **varies a lot per customer**.
+    Use it when usage varies a lot per customer and a fixed plan doesn’t fit.
   </Step>
   <Step title="Flexible consumption">
-    You want **flexible consumption** and add-ons or top-ups.
+    Use it when you want flexible consumption and optional add-ons or top-ups.
   </Step>
 </Steps>
 
@@ -121,38 +119,38 @@ Credits can reset monthly, never expire, or expire after X days—depending on y
 
 ## 4. Complete Flow Summary
 
-The end-to-end flow for credit-based pricing in Flexprice:
+**High level, you will:**
 
 <Steps>
   <Step title="Create Price Unit">
     Create a **Price Unit** (e.g. “Credits”) with conversion to base currency.
   </Step>
   <Step title="Create Features">
-    Create **metered features** for each action that costs credits (e.g. Contact Export, Email Enrichment). Link them to plans via **entitlements** so you can control which features a customer can use and optional free usage (e.g. 50 free then deduct from credits). See [Linking features to plans](/docs/product-catalogue/features/linking-to-plans).
+    Create **metered features** for each action that costs credits. Link each feature to plans via **entitlements**; there you set which features each plan gets and optional free usage (e.g. 50 free, then deduct from credits). See [Linking features to plans](/docs/product-catalogue/features/linking-to-plans).
   </Step>
   <Step title="Create Plan">
-    Create a **Plan** that includes credit packages or usage charges (e.g. annually billed with recurring credit grants per month).
+    Create a **Plan** with credit packages or usage charges (e.g. annually billed with recurring credit grants per month).
   </Step>
   <Step title="Create Customer">
-    Create **Customer** (with External ID for your system).
+    Create a **Customer** (with External ID for your system).
   </Step>
   <Step title="Create Wallet in Credits">
-    Create **Wallet** in the Credits Price Unit for that customer.
+    Create a **Wallet** in the Credits Price Unit for that customer.
   </Step>
   <Step title="Credit grant and entitlement">
-    For **plan-based credits:** Attach a **subscription** (customer + plan). Credits are granted per the plan (e.g. recurring monthly grants). **Entitlement** (which features the customer can use, and any free tier) comes from the plan. For **direct purchase** only, skip subscription and top up the wallet instead.
+    For **plan-based credits:** Add Subscription → choose the plan. The customer gets the plan’s credit grants and feature access. For **direct purchase only**, skip this and top up the wallet in the next step.
   </Step>
   <Step title="Top up wallet">
-    **Top up** the wallet (initial purchase, add-ons, or one-off credits). For plan-based, grants may fill the wallet automatically when the subscription is active.
+    Top up the wallet (initial purchase, add-ons, or one-off credits). For plan-based, credits from the plan fill the wallet each period. For direct purchase, you or the user top up manually.
   </Step>
   <Step title="On each action: Check entitlement → balance → debit">
-    When the user performs an action: (1) **Check entitlement**—does this customer’s plan allow this feature? (2) **Check wallet balance**—do they have enough credits? (3) If yes, **debit** the wallet (via API or Manual Debit) and perform the action; if no, block or prompt to buy more.
+    When the user performs an action: (1) **Check** if the plan allows this feature. (2) **Check** wallet balance. (3) If enough credits, **debit** the wallet (API or Manual Debit) and run the action. (4) If not, block or prompt to buy more.
   </Step>
   <Step title="Optional: Auto top-up">
     Configure **auto top-up** when balance is low.
   </Step>
   <Step title="Billing / Invoices">
-    Flexprice bills in base currency; wallet balance is shown in credits.
+    Invoices are in base currency; the customer sees wallet balance in credits.
   </Step>
 </Steps>
 
@@ -171,17 +169,15 @@ To implement Apollo-style credit-based pricing in Flexprice, follow these steps 
   ![Create Features (metered) for credit-based pricing](/public/images/docs/subscription-flow/credit-based-features.png)
   </Frame>
 
-    Click **Create Feature** for each action that costs credits (e.g. Contact Export, Email Enrichment). Use **Metered** feature type; set **Event Name** and **Aggregation** so usage events can be sent. You will link these features to your plan and set **entitlements** (e.g. free usage limit, then deduct from credits).
+    For each action that costs credits (e.g. Contact Export, Email Enrichment): click **Create Feature**, choose **Metered**, and set **Event Name** and **Aggregation**. Later you’ll link these to the plan and set entitlements (e.g. 50 free, then deduct from credits).
 
-    For more, check-out [Creating a feature](/docs/product-catalogue/features/create) and [Linking features to plans](/docs/product-catalogue/features/linking-to-plans).
+    For more, see [Creating a feature](/docs/product-catalogue/features/create) and [Linking features to plans](/docs/product-catalogue/features/linking-to-plans).
   </Step>
 
   <Step title="Step 2: Create Plan (with Credits or Recurring Grants)">
     Navigate to **Flexprice Dashboard** → **Product Catalog** → **Plans**
 
-    Click **Add** to create a plan. Configure plan details (e.g. **Basic**, annually billed). Add charges that deliver credits (e.g. recurring credit grant per month) or link metered features with pricing. Configure **entitlements** for the plan so subscribers get access to the right features (and optional free tier before credits are deducted).
-
-    For plan-based credits, when a customer subscribes to this plan, they receive the configured credit grants (e.g. monthly). For more, check-out [Creating a Plan](/docs/product-catalogue/plans/create) and [Linking features to plans](/docs/product-catalogue/features/linking-to-plans).
+    **Do this:** (1) Click **Add** and enter plan name and billing (e.g. Basic, annually). (2) Add charges that provide credits (e.g. recurring credit grant per month) or link metered features with pricing. (3) In **Entitlements**, link features so subscribers get the right access and optional free usage. When a customer is assigned this plan, they receive the credit grants you configured (e.g. monthly). For more, see [Creating a Plan](/docs/product-catalogue/plans/create) and [Linking features to plans](/docs/product-catalogue/features/linking-to-plans).
   </Step>
 
   <Step title="Step 3: Create Customer">
@@ -193,10 +189,9 @@ To implement Apollo-style credit-based pricing in Flexprice, follow these steps 
   </Frame>
 
 
-    **Required:**
-    - **Customer Name**: e.g. `Flex Corporation`
+    **Enter at least:** Customer Name (e.g. `Flex Corporation`). Add **External ID** if you use it for API lookups.
 
-    For details, check-out [Customer Management](/docs/customers/create).
+    For details, see [Customer Management](/docs/customers/create).
   </Step>
 
   <Step title="Step 4: Create Wallet in Credits">
@@ -206,21 +201,19 @@ To implement Apollo-style credit-based pricing in Flexprice, follow these steps 
   ![Create Wallet in Credits (CRD)](/public/images/docs/subscription-flow/credit-based-wallet.png)
   </Frame>
 
-    **Wallet configuration:**
-    - **Currency**: **Custom** → select your Price Unit (e.g. **Credits (CRD)**)
-    - Balance will be shown and stored in credits; Flexprice converts to base currency for billing.
+    **Do this:** Set **Currency** to **Custom**, then select your Credits Price Unit (e.g. **Credits (CRD)**). Balance is shown in credits; Flexprice converts to base currency for billing.
 
-    For more, check-out [Create Wallet](/docs/wallet/create) and [Custom pricing use cases](/docs/product-catalogue/custom-pricing/use-cases).
+    For more, see [Create Wallet](/docs/wallet/create) and [Custom pricing use cases](/docs/product-catalogue/custom-pricing/use-cases).
   </Step>
 
   <Step title="Step 5: Credit Grant and Entitlement (Plan-Based Path)">
-    For **plan-based credits:** Open the customer → **Add Subscription** → select the plan you created. When the subscription is active, the customer receives the plan’s **credit grants** (e.g. recurring monthly credits) and **entitlement** to the features linked to that plan. Entitlements define which features they can use and, if you configured it, free usage before deducting from the wallet.
+    **Do this:** Open the customer → **Add Subscription** → select your plan. **Result:** The customer gets the plan’s credit grants (e.g. monthly) and access to the features you linked to that plan (including any free usage you set).
 
     <Frame>
   ![Add Subscription and credit grants](/public/images/docs/subscription-flow/credit-grants.png)
   </Frame>
 
-    For **direct purchase only**, skip this step and use Step 7 to top up the wallet. For more, check-out [Plans](/docs/product-catalogue/plans/create) and [Linking features to plans](/docs/product-catalogue/features/linking-to-plans).
+    For **direct purchase only**, skip this step and top up the wallet in Step 6. For more, see [Plans](/docs/product-catalogue/plans/create) and [Linking features to plans](/docs/product-catalogue/features/linking-to-plans).
   </Step>
 
   <Step title="Step 6: Top Up the Wallet (Initial or Add-On Credits)">
@@ -230,61 +223,49 @@ To implement Apollo-style credit-based pricing in Flexprice, follow these steps 
     - Enter the amount in credits (e.g. 1,000).
     - Complete the top-up (e.g. **Add Credits** or link to payment).
 
-    The wallet balance increases in credits. Use this for initial purchase or add-on packs.
+    **Use this step for:** First-time credit purchase or add-on packs.
 
-    For more, check-out [Top-up wallet](/docs/wallet/top-up) and [Auto top-up](/docs/wallet/auto-top-up).
+    For more, see [Top-up wallet](/docs/wallet/top-up) and [Auto top-up](/docs/wallet/auto-top-up).
   </Step>
 
   <Step title="Step 7: Debit Wallet When User Performs an Action">
-    When a user performs an action (search, export, enrichment, etc.) in your product:
+    Each time a user does an action (search, export, enrichment), do the following in your app or backend:
 
     <Steps>
       <Step title="Check entitlement">
-        **Check entitlement**: Does this customer’s plan allow this feature? Entitlements (and optional free usage before deducting credits) are configured when [linking features to plans](/docs/product-catalogue/features/linking-to-plans). If the customer has no access, block the action.
+        **Check entitlement:** Does this customer’s plan allow this feature? (You set this when [linking features to plans](/docs/product-catalogue/features/linking-to-plans).) If not, block the action.
       </Step>
       <Step title="Look up credit cost">
-        **Look up the credit cost** for that action (from your mapping, e.g. the credit cost tables in Section 1 (Key Chargeable Features in Apollo)).
+        **Look up credit cost:** Use your mapping (e.g. the tables in **Key Chargeable Features in Apollo** above) and get the cost for this action.
       </Step>
       <Step title="Check balance">
-        **Check** the customer’s wallet balance (via Flexprice API or dashboard).
+        **Check balance:** Call the Flexprice API or open the dashboard and read the customer's wallet balance.
       </Step>
       <Step title="Debit if sufficient">
-        If **balance ≥ cost**: call the Flexprice API to **debit** the wallet by that amount, then perform the action.
+        If **balance ≥ cost**, call the Flexprice API to **debit** the wallet by that amount, then perform the action.
       </Step>
       <Step title="Reject or prompt if insufficient">
-        If **balance &lt; cost**: return an error or prompt to purchase more credits.
+        If **balance &lt; cost**, return an error or prompt to purchase more credits.
       </Step>
     </Steps>
 
-    **Debit via API:** Use the Flexprice API to deduct from the wallet (see your API reference for wallet debit endpoint). Pass the customer identifier (e.g. External ID) and the amount in the **credit unit**.
+    **Debit via API:** Call the wallet debit endpoint with the customer identifier (e.g. External ID) and the amount in credits.
 
     **Debit via Dashboard:** **Customer** → **Wallet** → **Manual Debit**; enter the amount in credits and reason (e.g. “Contact export – 5 credits”).
 
-    For more, check-out [Manual Debit](/docs/wallet/manual-debit).
+    For more, see [Manual Debit](/docs/wallet/manual-debit).
   </Step>
 
   <Step title="Step 8 (Optional): Auto Top-Up When Balance Is Low">
-    To automatically add credits when the wallet balance falls below a threshold:
+    **Optional.** To add credits automatically when balance is low: open the wallet and configure **Auto top-up** (e.g. when balance &lt; 100, add 1,000 credits). Set the trigger and amount in the dashboard.
 
-    Configure **Auto top-up** for the wallet (e.g. when balance &lt; 100 credits, charge the customer and add 1,000 credits). Flexprice supports configurable triggers and amounts.
-
-    For more, check-out [Auto top-up](/docs/wallet/auto-top-up).
+    For more, see [Auto top-up](/docs/wallet/auto-top-up).
   </Step>
 
   <Step title="Step 9: Verify Balance and Transactions">
-    <Steps>
-      <Step title="Wallet balance">
-        **Customer** → **Wallet** → view balance in credits.
-      </Step>
-      <Step title="Transaction history">
-        **Wallet** → **Transactions** to see top-ups and debits.
-      </Step>
-      <Step title="Invoices">
-        Billing and invoices use base currency; line items can show credit usage where applicable.
-      </Step>
-    </Steps>
+    **To verify:** (1) Open **Customer** → **Wallet** to see balance in credits. (2) Open **Wallet** → **Transactions** for top-ups and debits. (3) Check **Invoices**; they use base currency and can show credit usage.
 
-    For more, check-out [Wallet transactions](/docs/wallet/transactions).
+    For more, see [Wallet transactions](/docs/wallet/transactions).
   </Step>
 </Steps>
 
@@ -292,20 +273,20 @@ To implement Apollo-style credit-based pricing in Flexprice, follow these steps 
 
 ## Next Steps
 
-After completing the setup:
+**After setup, do this:**
 
 <Steps>
   <Step title="Map actions to credit costs">
     Map actions to credit costs in your application (e.g. 1 credit per search, 5 per export) and call the debit API (or Manual Debit) after each action.
   </Step>
   <Step title="Monitor wallet balances">
-    Set low-balance alerts if needed; see [Low balance alert](/docs/product-catalogue/features/wallet-balance-alert).
+    **Optional:** Set low-balance alerts; see [Low balance alert](/docs/product-catalogue/features/wallet-balance-alert).
   </Step>
   <Step title="Review invoices">
-    Check that credit top-ups and usage are reflected correctly in base currency.
+    Check that invoices show credit top-ups and usage correctly in base currency.
   </Step>
   <Step title="Optional: Plans with credit packages">
-    Create **plans** that include credit packages as recurring or one-time charges using the same Price Unit; see [Custom pricing use cases](/docs/product-catalogue/custom-pricing/use-cases).
+    Add more plans with credit packages (recurring or one-time) using the same Price Unit; see [Custom pricing use cases](/docs/product-catalogue/custom-pricing/use-cases).
   </Step>
 </Steps>
 
