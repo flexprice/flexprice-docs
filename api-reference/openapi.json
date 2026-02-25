@@ -3740,6 +3740,14 @@
                 "description": "Get all wallets for a customer by lookup key or id",
                 "parameters": [
                     {
+                        "name": "-",
+                        "in": "query",
+                        "description": "populated from x-max-live header, not query param",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
                         "name": "expand",
                         "in": "query",
                         "schema": {
@@ -8711,6 +8719,95 @@
                         "ApiKeyAuth": []
                     }
                 ]
+            }
+        },
+        "/plans/{id}/clone": {
+            "post": {
+                "tags": [
+                    "Plans"
+                ],
+                "summary": "Clone a plan",
+                "description": "Clone an existing plan, copying its active prices, published entitlements, and published credit grants",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Source Plan ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "Clone configuration",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/dto.ClonePlanRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/dto.PlanResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "x-codegen-request-body-name": "request"
             }
         },
         "/plans/{id}/creditgrants": {
@@ -14036,64 +14133,6 @@
                 ]
             }
         },
-        "/tenants": {
-            "post": {
-                "tags": [
-                    "Tenants"
-                ],
-                "summary": "Create a new tenant",
-                "description": "Create a new tenant",
-                "requestBody": {
-                    "description": "Create tenant request",
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/dto.CreateTenantRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/dto.TenantResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/errors.ErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/errors.ErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "x-codegen-request-body-name": "request"
-            }
-        },
         "/tenants/update": {
             "put": {
                 "tags": [
@@ -16669,6 +16708,30 @@
                     }
                 }
             },
+            "dto.ClonePlanRequest": {
+                "type": "object",
+                "properties": {
+                    "description": {
+                        "type": "string",
+                        "description": "Description overrides the source plan's description when provided"
+                    },
+                    "display_order": {
+                        "type": "integer",
+                        "description": "DisplayOrder overrides the source plan's display order when provided"
+                    },
+                    "lookup_key": {
+                        "type": "string",
+                        "description": "LookupKey is required and must be unique across published plans"
+                    },
+                    "metadata": {
+                        "$ref": "#/components/schemas/types.Metadata"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "Name is required and must be different from the source plan's name"
+                    }
+                }
+            },
             "dto.ConnectionResponse": {
                 "type": "object",
                 "properties": {
@@ -18585,20 +18648,6 @@
                     },
                     "tax_rate_type": {
                         "$ref": "#/components/schemas/types.TaxRateType"
-                    }
-                }
-            },
-            "dto.CreateTenantRequest": {
-                "required": [
-                    "name"
-                ],
-                "type": "object",
-                "properties": {
-                    "billing_details": {
-                        "$ref": "#/components/schemas/dto.TenantBillingDetails"
-                    },
-                    "name": {
-                        "type": "string"
                     }
                 }
             },
@@ -22222,18 +22271,22 @@
                     "billing_period": {
                         "$ref": "#/components/schemas/types.BillingPeriod"
                     },
+                    "billing_period_count": {
+                        "type": "integer",
+                        "description": "from price at create; default 1"
+                    },
                     "commitment_amount": {
-                        "type": "number",
+                        "type": "string",
                         "description": "Commitment fields"
                     },
                     "commitment_duration": {
                         "$ref": "#/components/schemas/types.BillingPeriod"
                     },
                     "commitment_overage_factor": {
-                        "type": "number"
+                        "type": "string"
                     },
                     "commitment_quantity": {
-                        "type": "number"
+                        "type": "string"
                     },
                     "commitment_true_up_enabled": {
                         "type": "boolean"
@@ -25362,18 +25415,22 @@
                     "billing_period": {
                         "$ref": "#/components/schemas/types.BillingPeriod"
                     },
+                    "billing_period_count": {
+                        "type": "integer",
+                        "description": "from price at create; default 1"
+                    },
                     "commitment_amount": {
-                        "type": "number",
+                        "type": "string",
                         "description": "Commitment fields"
                     },
                     "commitment_duration": {
                         "$ref": "#/components/schemas/types.BillingPeriod"
                     },
                     "commitment_overage_factor": {
-                        "type": "number"
+                        "type": "string"
                     },
                     "commitment_quantity": {
-                        "type": "number"
+                        "type": "string"
                     },
                     "commitment_true_up_enabled": {
                         "type": "boolean"
@@ -28364,6 +28421,7 @@
             "types.WindowSize": {
                 "type": "string",
                 "enum": [
+                    "MONTH",
                     "MINUTE",
                     "15MIN",
                     "30MIN",
@@ -28373,10 +28431,10 @@
                     "12HOUR",
                     "DAY",
                     "WEEK",
-                    "MONTH",
                     "MONTH"
                 ],
                 "x-enum-varnames": [
+                    "DefaultWindowSize",
                     "WindowSizeMinute",
                     "WindowSize15Min",
                     "WindowSize30Min",
@@ -28386,8 +28444,7 @@
                     "WindowSize12Hour",
                     "WindowSizeDay",
                     "WindowSizeWeek",
-                    "WindowSizeMonth",
-                    "DefaultWindowSize"
+                    "WindowSizeMonth"
                 ]
             }
         },
