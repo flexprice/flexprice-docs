@@ -36,12 +36,11 @@ MAX aggregation can operate in two modes depending on whether `bucket_size` is s
 **Use for:** Simple peak detection
 
 ### Mode 2: Bucketed MAX (Windowed)
-**When:** `bucket_size` IS specified  
+**When:** `bucket_size` Is specified  
 **Returns:** Sum of maximum values from each time bucket (see formula below)  
 **Use for:** Cumulative peak billing, tiered capacity models
 
-**Optional: Bucketed MAX with group_by**  
-When **Group By** is also set (a single property name string), within **each time bucket** events are grouped by that property. For each bucket: MAX is computed per group, then those group maximums are summed. The final result is the sum of these per-bucket totals. Use this for per-resource or per-entity peak billing within time windows (e.g. per resource, per project, per region). **group_by has no effect without bucket_size.**
+**Group by (optional)**: Only when Bucket Size is set. You choose one event property (e.g. `resource_id`). In each time bucket, events are grouped by that property; we take the **max per group** and add those. Then we add the results from all buckets. Use when you bill per resource or per entity (e.g. per project, per region).
 
 ## Calculation Examples
 
