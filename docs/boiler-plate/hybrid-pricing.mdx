@@ -1,15 +1,11 @@
 ---
-title: "Build Hybrid Pricing (Subscription + Entitlement) like Resend"
-description: "Learn hybrid pricing (subscription + usage + entitlements) using Resend as an example, and configure it in Flexprice."
+title: "Build Hybrid Pricing like Resend"
+description: "**Hybrid pricing** combines fixed **subscription** fees (recurring base charge) with usage-based metering (pay-per-use overages), plus **entitlements** that gate features and set limits per plan."
 ---
 
 ## Overview
 
-**Hybrid pricing** = **subscription** (recurring fee) + **metered usage** (pay for what you use) + **entitlements** (which features and limits each plan gets). Plans differ by price, volume, and gated features (e.g. analytics, support).
-
 Resend does this with tiers (Free, Pro, Scale, Enterprise): each tier has a recurring fee, usage charges (emails sent or contacts stored), and feature gating (retention, domains, support, analytics). In Flexprice you use one plan with recurring + usage-based charges and features linked via entitlements.
-
-**Who this is for:** Product and billing engineers, PMs.
 
 ## Pricing Breakdown
 
@@ -27,8 +23,8 @@ Resend charges by **usage** (emails sent or contacts stored) and **gates feature
 
 **Pricing (volume tiers):**
 
-- **Transactional Scale:** 100,000 emails = $90 → **$0.90 per 1,000 emails**
-- **Transactional Scale:** 1,000,000 emails/month = $650 → **$0.65 per 1,000 emails**
+- **Transactional Scale:** 100,000 emails = $90 → $0.90 per 1,000 emails
+- **Transactional Scale:** 1,000,000 emails/month = $650 → $0.65 per 1,000 emails
 - **Transactional Pro:** e.g. $20/mo for 50k emails (common entry point)
 
 | Tier     | Example volume | Effective rate   |
@@ -64,7 +60,7 @@ Plan tiers (Free, Pro, Scale, Enterprise) control both **volume/price** and **wh
 | Analytics (Mktg) | No     | Yes     | Yes           | Yes          |
 | Dedicated IP     | —      | Add-on  | Add-on        | Included (Mktg) |
 
-In Flexprice you control this by **linking features to plans** (entitlements): set included quantity, usage reset, and soft or hard limits for metered features; grant or restrict boolean/static features per plan. See [Linking features to plans](/docs/product-catalogue/features/linking-to-plans).
+In Flexprice you control this by **linking features to plans** (entitlements): set included quantity, usage reset, and soft or hard limits for metered features; grant or restrict boolean/static features per plan. For more, see [Linking features to plans](/docs/product-catalogue/features/linking-to-plans).
 
 ---
 
@@ -76,27 +72,16 @@ In Flexprice you can choose **soft limit** (overage allowed, with or without ext
 
 ---
 
-## 4. When to Use Which Plan
-
-| Scenario                    | Recommended plan | Reason                          |
-| --------------------------- | ---------------- | ------------------------------- |
-| Side project, low volume    | Free             | Cost-free validation            |
-| Startup scaling to 100k+    | Pro / Scale      | Balance of features and cost    |
-| Multi-brand / agency        | Scale            | Domain and audience flexibility |
-| Enterprise (compliance, etc.) | Enterprise     | Deliverability and support      |
-
-Transactional Pro at $20/mo with 50k emails is a common entry point; Scale unlocks Slack support and higher domain limits.
-
----
-
 ## Concepts and Terms
 
 - **Subscription:** A customer attached to a plan. The subscription determines billing and which entitlements the customer has.
 - **Plan:** A set of pricing rules: **recurring charges** (flat fee per billing period) and optionally **usage-based charges** (metered). A plan that has both is **hybrid** in Flexprice.
 - **Feature:** Something you track or gate—**Metered** (usage, e.g. emails sent), **Boolean** (on/off access), or **Static** (fixed attribute).
 - **Entitlement:** A feature linked to a plan with access rules: for metered features, included quantity, reset period, and soft or hard limit; for boolean/static, grant or restrict.
+**Entitlements are free.**
 
-For more detail, see [Linking features to plans](/docs/product-catalogue/features/linking-to-plans) and [Plans overview](/docs/product-catalogue/plans/overview).
+
+For more detail, check-out [Linking features to plans](/docs/product-catalogue/features/linking-to-plans) and [Plans overview](/docs/product-catalogue/plans/overview).
 
 ## Complete Flow Summary
 
@@ -152,32 +137,36 @@ To implement Resend-style hybrid pricing in Flexprice (Transactional track), fol
     - **Feature Lookup Key**: `emails_sent` (immutable, unique)
     - **Feature Type**: `Metered`
     - **Event Name**: e.g. `emails.sent` (must match exactly when sending events)
-    - **Aggregation**: `Sum` (e.g. over `count` or `emails`)
+    - **Aggregation**: `Count` (e.g. over `Sum` or `emails`)
     - **Unit**: `email` or `emails`
 
     > **Note:** The Event Name must match exactly when you send usage events via API. Save it for later use.
 
     For a second track (Marketing), add a feature such as **Contacts Stored** with its own event name and aggregation. This guide uses one metered feature: **Emails Sent**.
 
-    For more, see [Creating a feature](/docs/product-catalogue/features/create).
+    For more, check-out [Creating a feature](/docs/product-catalogue/features/create).
 
   </Step>
 
   <Step title="Step 2: Create plan with hybrid charges">
     Navigate to **Flexprice Dashboard** → **Product Catalog** → **Plans**
 
+    <Frame>
+      ![Create a plan](/public/images/docs/subscription-flow/plan-charges.png)
+    </Frame>
+
     Click **Add** at the top-right to create a new plan. Enter plan details, then click **Next** to configure charges.
 
     **Plan details:**
-    - **Plan Name**: `Transactional Pro`
-    - **Lookup Key**: e.g. `transactional_pro` (immutable, unique)
+    - **Plan Name**: `Pro`
+    - **Lookup Key**: e.g. `plan-pro` (Auto-generated)
     - **Billing period**: e.g. Monthly
 
     **Add hybrid charges:**
     1. **Recurring charge:** Add a **recurring** charge (e.g. $20/month). This is the base subscription fee for the tier. Click **Add** to save.
-    2. **Usage-based charge:** Add a **usage-based** charge for the metered feature **Emails Sent**. Set pricing (e.g. flat fee per email, or package/tiered with included quantity and overage). Example: first 50,000 emails included, then $0.90 per 1,000 emails. Click **Add**, then **Save** to finalize the plan.
+    2. **Usage-based charge:** Add a **usage-based** charge for the metered feature **Emails Sent**. Set pricing (e.g. flat fee per email, or package/tiered with included quantity and overage). Example: first 50,000 emails included, then $0.2 per 1,000 emails. Click **Add**, then **Save** to finalize the plan.
 
-    For more, see [Creating a Plan](/docs/product-catalogue/plans/create) and [Plans pricing](/docs/product-catalogue/plans/pricing) (recurring and hybrid charges).
+    For more, check-out [Creating a Plan](/docs/product-catalogue/plans/create) and [Plans pricing](/docs/product-catalogue/plans/pricing) (recurring and hybrid charges).
 
   </Step>
 
@@ -195,7 +184,7 @@ To implement Resend-style hybrid pricing in Flexprice (Transactional track), fol
 
     If you created **boolean or static features** (e.g. Analytics, Slack support), add them to the plan and set grant/restrict so higher tiers get access. Click **Save**.
 
-    For more, see [Linking features to plans](/docs/product-catalogue/features/linking-to-plans).
+    For more, check-out [Linking features to plans](/docs/product-catalogue/features/linking-to-plans).
 
   </Step>
 
@@ -206,9 +195,9 @@ To implement Resend-style hybrid pricing in Flexprice (Transactional track), fol
 
     **Required:**
     - **Customer Name**: e.g. `flexprice organisation`
-    - **External ID**: e.g. `cust_acme_001`
+    - **External ID**: e.g. `cust-flexprice-organisation`
 
-    Click **Save** to create the customer. For more, see [Customer Management](/docs/customers/create).
+    Click **Save** to create the customer. For more, check-out [Customer Management](/docs/customers/create).
 
   </Step>
 
@@ -222,7 +211,7 @@ To implement Resend-style hybrid pricing in Flexprice (Transactional track), fol
     - **Select plan**: Choose **Transactional Pro** (or the plan you created).
     - **Start date**: Set subscription start (billing and entitlements apply from this date).
 
-    Click **Save** (or **Add Subscription**). The customer now has the plan’s recurring charge and entitlement to the linked features and usage limits. For more, see [Create Subscription](/docs/subscriptions/customers-create-subscription).
+    Click **Save** (or **Add Subscription**). The customer now has the plan’s recurring charge and entitlement to the linked features and usage limits. For more, check-out [Create Subscription](/docs/subscriptions/customers-create-subscription).
 
   </Step>
 
@@ -230,9 +219,15 @@ To implement Resend-style hybrid pricing in Flexprice (Transactional track), fol
     Send **usage events** to Flexprice with the same **event name** as the metered feature (e.g. `emails.sent`). Usage is aggregated and billed according to the plan’s usage-based charges and respects the entitlements (included quantity, soft/hard limit).
 
     - **Verify events:** Use the Event Debugger or usage views to confirm events are received and attributed to the customer.
-    - **Invoices:** Generated at the end of each billing cycle; they include the recurring fee and usage-based line items.
+     <Frame>
+      ![usage Events](/public/images/docs/subscription-flow/usage-event.png)
+    </Frame>
 
-    For more, see [Connecting to Billing](/docs/event-ingestion/connecting-to-billing) and your API reference for sending usage events.
+    - **Invoices:** Generated at the end of each billing cycle; they include the recurring fee and usage-based line items.
+     <Frame>
+      ![Subscription Invoice](/public/images/docs/subscription-flow/subscription-invoice.png)
+    </Frame>
+    For more, check-out [Connecting to Billing](/docs/event-ingestion/connecting-to-billing) and your API reference for sending usage events.
 
   </Step>
 </Steps>
@@ -242,6 +237,5 @@ To implement Resend-style hybrid pricing in Flexprice (Transactional track), fol
 - **Map your app to Flexprice:** Emit usage events that match the metered feature event names (e.g. `emails.sent`) and associate them with the customer (e.g. via External ID).
 - **Configure overage and limits:** Use [Linking features to plans](/docs/product-catalogue/features/linking-to-plans) to set soft vs hard limits and overage pricing per plan.
 - **Add more plans:** Create Free, Scale, and Enterprise plans with different recurring fees, usage tiers, and entitlements (e.g. analytics, retention) to mirror Resend’s tiers.
-- **Second track (Marketing):** Repeat the same pattern with a **Contacts Stored** metered feature and a separate plan or same plan with multiple usage-based charges.
 
-For event ingestion and billing flow, see [Connecting to Billing](/docs/event-ingestion/connecting-to-billing). For plan and charge configuration, see [Creating a Plan](/docs/product-catalogue/plans/create) and [Linking features to plans](/docs/product-catalogue/features/linking-to-plans).
+For event ingestion and billing flow, check-out [Connecting to Billing](/docs/event-ingestion/connecting-to-billing). For plan and charge configuration, check-out [Creating a Plan](/docs/product-catalogue/plans/create) and [Linking features to plans](/docs/product-catalogue/features/linking-to-plans).
