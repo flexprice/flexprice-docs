@@ -1,6 +1,6 @@
 ---
 title: "MAX"
-description: "Get the maximum value of a property with optional bucketed calculations."
+description: "Get the maximum value of a property with optional bucketed or group-by calculations."
 ---
 
 Step-by-Step Setup when creating a MAX-based metered feature:
@@ -18,6 +18,7 @@ Step-by-Step Setup when creating a MAX-based metered feature:
    - **Aggregation Function**: Max
    - **Aggregation Field**: `user_count` (the property to find maximum for)
    - **Bucket Size**: Optional - Leave empty for standard MAX, or select (HOUR, DAY, etc.) for bucketed MAX
+   - **Group By**: Optional - Only used with bucketed MAX. When Bucket Size is set, specify a single property name (e.g. `resource_id`) to compute MAX per group within each time bucket, then sum (per bucket and across buckets)
 
 4. **Usage Settings**
    - **Usage Reset**: Periodic (for peak tracking per period)
@@ -25,19 +26,22 @@ Step-by-Step Setup when creating a MAX-based metered feature:
 
 5. **Save Feature**
 
-## MAX - Two Distinct Modes
+## MAX - Modes
 
-MAX aggregation operates in **two completely different modes** depending on whether `bucket_size` is specified:
+MAX aggregation can operate in two modes depending on whether `bucket_size` is specified. **`group_by` is only applied when using bucketed MAX** (i.e. when `bucket_size` is set).
 
 ### Mode 1: Standard MAX (Non-Bucketed)
-**When:** `bucket_size` is NOT specified  
+**When:** `bucket_size` is NOT specified (group_by is not used)  
 **Returns:** Overall maximum value across all events  
 **Use for:** Simple peak detection
 
 ### Mode 2: Bucketed MAX (Windowed)
 **When:** `bucket_size` IS specified  
-**Returns:** Sum of maximum values from each time bucket  
+**Returns:** Sum of maximum values from each time bucket (see formula below)  
 **Use for:** Cumulative peak billing, tiered capacity models
+
+**Optional: Bucketed MAX with group_by**  
+When **Group By** is also set (a single property name string), within **each time bucket** events are grouped by that property. For each bucket: MAX is computed per group, then those group maximums are summed. The final result is the sum of these per-bucket totals. Use this for per-resource or per-entity peak billing within time windows (e.g. per resource, per project, per region). **group_by has no effect without bucket_size.**
 
 ## Calculation Examples
 
@@ -167,6 +171,80 @@ Where each bucket represents a time window defined by `bucket_size`.
 - Remaining 8 GB (10-18): 8 × 3 = 24 Rs
 - **Total: 34 Rs**
 
+---
+
+### Bucketed MAX with group_by Example
+
+**Group By** is only available with bucketed MAX. When set, within **each time bucket** events are grouped by the chosen property; MAX is computed per group in that bucket, then those group maximums are summed. The final result is the sum of these per-bucket totals. Useful for per-resource or per-entity peak billing within time windows.
+
+#### Configuration
+- **Aggregation Field:** `data`
+- **Bucket Size:** HOUR (required for group_by to apply)
+- **Group By:** `resource_id` (single property name; must exist on event properties)
+
+<Frame>
+  ![MAX feature with Bucket Size and Group By configured](/public/images/docs/Product%20catalogue/Features/Aggregations/max-group-by.png)
+</Frame>
+
+*Screenshot: Metered feature with Aggregation Function = Max, Aggregation Field = data, Bucket Size = HOUR, and Group By = resource_id.*
+
+#### Event Data
+```json
+[
+  {
+    "event_id": "evt_A",
+    "event_name": "resource.usage",
+    "external_customer_id": "customer_123",
+    "timestamp": "2024-01-15T10:00:00Z",
+    "properties": {
+      "data": 10,
+      "resource_id": "resource_a"
+    }
+  },
+  {
+    "event_id": "evt_B",
+    "event_name": "resource.usage",
+    "external_customer_id": "customer_123",
+    "timestamp": "2024-01-15T10:30:00Z",
+    "properties": {
+      "data": 20,
+      "resource_id": "resource_b"
+    }
+  },
+  {
+    "event_id": "evt_C",
+    "event_name": "resource.usage",
+    "external_customer_id": "customer_123",
+    "timestamp": "2024-01-15T11:15:00Z",
+    "properties": {
+      "data": 15,
+      "resource_id": "resource_a"
+    }
+  }
+]
+```
+
+#### Bucketed MAX with group_by Formula
+```
+total_result = sum over buckets of ( MAX(group_1 in bucket) + MAX(group_2 in bucket) + ... + MAX(group_n in bucket) )
+```
+Within each time bucket, events are grouped by the `group_by` property; each group’s maximum is taken, then summed. Those per-bucket sums are then added together.
+
+#### Calculation Process
+
+**Hour 1 (10:00–11:00 UTC):**
+- **resource_a:** 10 → MAX = 10  
+- **resource_b:** 20 → MAX = 20  
+- **Bucket 1 total:** 10 + 20 = **30**
+
+**Hour 2 (11:00–12:00 UTC):**
+- **resource_a:** 15 → MAX = 15  
+- **Bucket 2 total:** **15**
+
+**Total (Bucketed MAX with group_by):** 30 + 15 = **45**
+
+Without `group_by`, bucketed MAX would give 20 + 15 = 35 (max per hour). With `group_by: "resource_id"`, within each hour we sum the max per resource, then sum across hours: **45**.
+
 ## Use Cases
 
 ### Standard MAX Use Cases
@@ -221,6 +299,36 @@ Where each bucket represents a time window defined by `bucket_size`.
 }
 ```
 
+### Bucketed MAX with group_by Use Cases
+
+*Requires Bucket Size to be set; group_by is only applied with bucketed MAX.*
+
+#### Per-Resource or Per-Entity Peak Billing
+**Perfect for**: Billing on the sum of peak usage per resource within each time window (e.g. per resource ID, per project ID, per region)
+```json
+{
+  "event_name": "resource.usage",
+  "external_customer_id": "customer_123",
+  "properties": {
+    "data": 50,
+    "resource_id": "res_abc"
+  }
+}
+```
+
+#### Multi-Tenant or Multi-Project Peak
+**Perfect for**: Sum of each tenant’s or project’s maximum usage
+```json
+{
+  "event_name": "capacity.usage",
+  "external_customer_id": "platform_customer",
+  "properties": {
+    "gb_used": 100,
+    "project_id": "proj_xyz"
+  }
+}
+```
+
 ### When to Use Each Mode
 
 ✅ **Use Standard MAX when:**
@@ -234,19 +342,26 @@ Where each bucket represents a time window defined by `bucket_size`.
 - Tiered capacity pricing
 - Sum of peaks across time windows
 
+✅ **Use Bucketed MAX with group_by when:**
+- You already use bucketed MAX (Bucket Size is set) and want per-resource or per-entity breakdown
+- Billing per resource, per project, or per entity **within each time bucket**
+- `group_by` is a single property name string on your events  
+- **Note:** group_by is only applied when bucket_size is set
+
 ### Key Differences
 
-| Aspect | Standard MAX | Bucketed MAX |
-|--------|--------------|--------------|
-| **Configuration** | No bucket_size | Requires bucket_size |
-| **Calculation** | Single maximum value | Sum of bucket maximums |
-| **Use Case** | Overall peak detection | Cumulative peak billing |
-| **Result** | Simple max value | Sum of time-window peaks |
+| Aspect | Standard MAX | Bucketed MAX | Bucketed MAX + group_by |
+|--------|--------------|--------------|--------------------------|
+| **Configuration** | No bucket_size | Requires bucket_size | Requires bucket_size + group_by (single field) |
+| **Calculation** | Single maximum value | Sum of bucket maximums | Per bucket: sum of group maximums; then sum across buckets |
+| **Use Case** | Overall peak detection | Cumulative peak billing | Per-resource / per-entity peak within time windows |
+| **Result** | Simple max value | Sum of time-window peaks | Sum of (per-bucket sum of each group’s max) |
 
 ### ⚠️ Critical Notes
 
 - **bucket_size can ONLY be used with MAX aggregation** - No other aggregation supports this
 - **Bucketed MAX sums the maximums** - Does NOT return max of maximums
+- **group_by is only applied with bucketed MAX** - You must set Bucket Size for group_by to take effect. Within each time bucket, events are grouped by the `group_by` property; MAX is computed per group, then those group maximums are summed (per bucket), and bucket results are summed
 
 ## Next Steps
 
