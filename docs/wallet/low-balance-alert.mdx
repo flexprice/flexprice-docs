@@ -1,109 +1,130 @@
 ---
 title: "Low Balance Alert"
-description: "Configure wallet balance alerts to receive notifications when customer wallet balance falls below specified thresholds."
+description: "Configure Wallet Sentinel Alerts to get notified when a customer's wallet balance crosses configurable Info, Warning, or Critical thresholds."
 ---
 
-The Low Balance Alert feature in Flexprice allows you to set up automated notifications when a customer's wallet balance drops below a predefined threshold. This helps ensure timely top-ups and prevents service interruptions due to insufficient funds.
+Wallet Sentinel Alerts in Flexprice let you monitor wallet balance with **three alert levels** so you can act before balance becomes critical. You can enable or disable alerts per wallet and set a custom threshold and trigger condition for each level.
 
-**Benefits of Low Balance Alerts:**
+**Benefits:**
 
-- **Proactive Management**: Get notified before wallet balance reaches zero
-- **Improved Customer Experience**: Prevent service interruptions
-- **Better Cash Flow**: Encourage timely wallet top-ups
-- **Automated Monitoring**: No manual checking required
+- **Proactive management** — Get notified at Info and Warning levels before balance reaches critical
+- **Granular control** — Separate thresholds for informational, warning, and critical states
+- **Flexible conditions** — Trigger when balance is above or below a value (e.g. "below" for low balance)
+- **Per-wallet settings** — Enable or disable alerts and configure thresholds per wallet
 
-## Configuring Low Balance Alerts
+## Alert Levels
 
-To set up low balance alerts for a customer's wallet, follow these steps:
+| Level | Purpose |
+|-------|--------|
+| **Info** | Informational alert when balance crosses a defined threshold |
+| **Warning** | Early warning level before critical |
+| **Critical** | Critical alert level requiring immediate action |
 
-### Step 1: Navigate to Customer Wallet
+Each level can be configured with:
 
-- Go to **Billing** in the main navigation
-- Select **Customers** from the billing section
-- Select the desired customer from the customer list
-- Navigate to the **Wallet** tab in the customer's profile
+- A **threshold value** (in the wallet’s currency, e.g. USD)
+- A **trigger condition** (e.g. **below** — alert when balance is below the threshold).
 
-### Step 2: Access Alert Settings
+<Note>
+  Flexprice supports two conditions for thresholds: **Below** and **Above**.
+</Note>
 
-- Click the **three-dot menu (⋮)** in the top right corner of the wallet section
-- Select **Alert Settings** from the dropdown menu
+Alerts are turned on or off for a wallet using **Enable Alerts** (`alert_enabled` in the API).
 
-<Frame>
-  ![Alert Settings Dropdown](/images/alert_setting_dropdown.png)
-</Frame>
+## Configuring Wallet Sentinel Alerts
 
-### Step 3: Configure Alert Settings
+<Steps>
+  <Step title="Navigate to Customer Wallet">
+    - Go to **Billing** in the main navigation
+    - Select **Customers**, then the desired customer
+    - Open the **Wallet** tab in the customer profile
+  </Step>
 
-A dialog box titled "Wallet Alert Settings" will appear with the following configuration options:
+  <Step title="Access Alert Settings">
+    - Click the **three-dot menu (⋮)** in the top right corner of the wallet section 
+    - Select **Alert Settings** from the dropdown
+    <Frame>
+      ![Access Alert Settings](/public/images/docs/Wallet/low_balance_alert/access-alert-settings.png)
+    </Frame>
+  </Step>
 
-<Frame>
-  ![Low Balance Alert Settings Dialog](/images/low_balance_alert_expanded.png)
-</Frame>
+  <Step title="Enable Alerts">
+    In the **Wallet Alert Settings** dialog, turn **Enable Alerts** **on** to activate monitoring against your configured thresholds
+    <Frame>
+      ![Enable Alert Settings](/public/images/docs/Wallet/low_balance_alert/enable-alert-settings.png)
+    </Frame>
+  </Step>
 
-#### Configuration Options
-
-- **Enable Alerts**: Turn on the toggle switch to activate low balance notifications
-- **Threshold Value**: Enter the minimum balance amount in the wallet's currency (e.g., 50.00 INR)
-- **Save Changes**: Click to apply the alert settings
-- **Cancel**: Click to discard changes and close the dialog
+  <Step title="Configure Thresholds">
+    - Set **Critical**, **Warning**, and **Info** thresholds. For each level set **Threshold Value** and **Condition** (e.g. **Below** — alert when balance is below the threshold).
+    - Use **Remove** to drop a level you don't need. 
+    - Click **Save Changes** to apply.
+    <Frame>
+      ![Configure Alert Settings](/public/images/docs/Wallet/low_balance_alert/configure-alert-settings.png)
+    </Frame>
+  </Step>
+</Steps>
 
 ## Alert Behavior
 
-Once configured, the low balance alert system will:
+Once configured and enabled, the sentinel will:
 
-- **Monitor Balance**: Continuously track the wallet balance
-- **Trigger Notifications**: Send alerts when balance falls below the threshold
-- **Real-time Updates**: Provide immediate notifications through the dashboard
-- **Persistent Alerts**: Continue monitoring until balance is restored above threshold
+- **Monitor balance** — Evaluate wallet balance against your thresholds (e.g. after top-ups, debits, and accounting for usage)
+- **Trigger by level** — Raise **Info**, **Warning**, or **Critical** alert based on which threshold is crossed
+- **Update state** — Reflect current state (e.g. ok, info, warning, in_alarm) on the wallet and in alert history
+- **Notify** — Send webhooks when alert state changes
+
+<Info>
+  Webhooks are sent when alert state changes (e.g. ok → warning, warning → in_alarm). Configure your webhook endpoint to receive these notifications.
+</Info>
 
 ## Managing Alert Settings
 
-### Viewing Current Alerts
+### Viewing Current Configuration
 
-- Navigate to the customer's wallet section
-- Look for alert indicators in the wallet interface
-- Check the alert settings dialog for current configuration
+Open the customer’s **Wallet** tab, click the **three-dot menu (⋮)** → **Alert Settings**. The dialog shows **Enable Alerts** and all threshold levels (Critical, Warning, Info) with their values and conditions.
 
-### Modifying Alert Settings
+### Changing Thresholds or Condition
 
-- Access the Alert Settings dialog as described above
-- Modify the threshold value or toggle alerts on/off
-- Save changes to update the configuration
+In the **Alert Settings** dialog box, adjust **Enable Alerts**, any threshold value, or condition per level, then click **Save Changes** to apply.
 
 ### Disabling Alerts
 
-- Open the Alert Settings dialog
-- Toggle off the "Enable Alerts" switch
-- Click **Save Changes** to disable notifications
+Set **Enable Alerts** to **off** in the **Alert Settings** dialog and click **Save Changes** (or set `alert_enabled` to `false` via API).
+
+<Warning>
+  The wallet will no longer generate real time balance alerts until you enable them again.
+</Warning>
 
 ## Use Cases
 
-### SaaS Companies
+### SaaS and Usage-Based Billing
 
-- **Usage-based Billing**: Alert customers before they hit usage limits
-- **Prepaid Credits**: Notify when prepaid credits are running low
+- **Low balance warnings** — Info at 5, Warning at 0, Critical below 0 so you can top up before going negative
+- **Prepaid credits** — Notify when credits are running low at multiple levels to avoid running out of credits unexpectedly
 - **Service Continuity**: Prevent service interruptions due to insufficient funds
 
 ### E-commerce Platforms
 
-- **Wallet Management**: Monitor customer wallet balances
-- **Promotional Credits**: Alert when promotional credits are about to expire
+- **Wallet monitoring** — Different severities for different teams or workflows
+- **Promotional or prepaid wallets** — Alerts when balance is low relative to typical usage
 - **Payment Processing**: Ensure sufficient funds for transactions
 
-### API Providers
+### API and Credit-Based Products
 
-- **Usage Monitoring**: Track API usage against wallet balance
+- **Usage vs balance** — Early Info/Warning so support or automation can act before Critical
+- **Multi-wallet** — Per-wallet sentinel settings so each wallet has its own thresholds
 - **Rate Limiting**: Prevent service disruption due to insufficient credits
 - **Customer Support**: Proactive customer communication
 
 ## Best Practices
 
-💡 **Set Realistic Thresholds**: Choose threshold values that provide sufficient warning time for top-ups
+💡 **Set realistic thresholds** — Choose values that give enough time to top up (e.g. Warning above zero if you want to avoid negative balance)
 
-💡 **Consider Usage Patterns**: Set thresholds based on typical wallet usage and top-up frequency
+💡 **Use all three levels** — Use Info for early notice, Warning for action soon, Critical for immediate action
 
-💡 **Regular Review**: Periodically review and adjust alert thresholds based on customer behavior
+💡 **Match condition to goal** — Use **below** for “low balance” alerts; use **above** if you want alerts when balance exceeds a cap
 
-💡 **Multi-channel Notifications**: Consider implementing email and dashboard notifications for better coverage
+💡 **Review periodically** — Adjust thresholds based on usage patterns and top-up behavior
 
-💡 **Threshold Escalation**: Set up multiple threshold levels for different alert severities
+💡 **Combine with auto top-up** — Use sentinel alerts together with auto top-up so critical levels can trigger automatic top-up when configured
