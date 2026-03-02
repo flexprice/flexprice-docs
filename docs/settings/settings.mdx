@@ -1,46 +1,49 @@
-# Flexprice Settings Guide
+---
+title: "Settings"
+description: "Configure subscription auto-cancellation, invoice numbering, and wallet balance alerts at the tenant and environment level."
+---
 
-This guide documents the configuration settings available in Flexprice, their usage, and implementation details.
-Settings are managed at the tenant × environment level, providing complete isolation between different environments within and across tenants.
+Settings in Flexprice control behavior for respective environment against tenant, providing complete isolation between different environments within and across tenants. All settings are scoped to per (tenant, environment) pair, validated on write, cached for one hour, and audited.
 
-## Table of Contents
+**Benefits:**
 
-- [Settings Overview](#settings-overview)
-- [Available Settings](#available-settings)
-  - [Subscription Configuration](#subscription-configuration)
-  - [Invoice Configuration](#invoice-configuration)
-- [API Endpoints](#api-endpoints)
-- [Best Practices](#best-practices)
-
-## Settings Overview
-
-Settings in Flexprice are:
-
-- **Scoped**: Per tenant and environment
-- **Cached**: With 1-hour TTL
-- **Validated**: With strict type checking and value constraints
-- **Audited**: All changes are tracked
-- **Isolated**: Complete tenant and environment isolation
-- **Mergeable**: Support partial updates without losing existing values
+- **Tenant and environment isolation** — Each tenant and environment has its own settings; no cross-contamination
+- **Flexible updates** — Partial updates supported; only send the fields you want to change
+- **Automatic caching** — Settings are cached for one hour to reduce latency
+- **Audit trail** — All changes tracked with user and timestamp
+- **Validated on write** — Strict type checking and value constraints prevent invalid configuration
 
 ## Available Settings
 
-### Subscription Configuration
+Flexprice supports three setting keys:
 
-**Key**: `subscription_config`
+- **Subscription Configuration** (`subscription_config`) — Controls subscription auto-cancellation for unpaid invoices
+- **Invoice Configuration** (`invoice_config`) — Controls invoice number generation and due date calculation
+- **Wallet Balance Alert Configuration** (`wallet_balance_alert_config`) —  Wallet balance alert thresholds configurations per tenant per environment
 
-**Purpose**: Controls subscription auto-cancellation behavior for unpaid invoices.
+---
 
-**Schema**:
+## Subscription Configuration
+
+**Key:** `subscription_config`
+
+Controls subscription auto-cancellation for unpaid invoices. When enabled, subscriptions are automatically cancelled after grace period if invoices remain unpaid.
+
+### Schema
 
 ```json
 {
-  "grace_period_days": number,     // REQUIRED for new settings, Optional for updates
-  "auto_cancellation_enabled": boolean  // Optional, defaults to false if not provided
+  "grace_period_days": number,
+  "auto_cancellation_enabled": boolean
 }
 ```
 
-**Default Values** (only applied when creating through API):
+- **`grace_period_days`** — Required for new settings; optional on update. Integer ≥ 1, no decimals. Number of days after invoice due date before auto-cancellation.
+- **`auto_cancellation_enabled`** — Optional; defaults to `false`. Boolean. Enable or disable auto-cancellation for this tenant and environment.
+
+### Default Values
+
+When creating a new setting via API, defaults are:
 
 ```json
 {
@@ -49,69 +52,53 @@ Settings in Flexprice are:
 }
 ```
 
-**Validation Rules**:
+### What Happens When Auto-Cancellation Is Enabled
 
-1. For NEW settings:
+When you enable auto-cancellation and set a grace period:
 
-   - `grace_period_days`:
-     - Required field
-     - Must be integer >= 1
-     - Must be a whole number (no decimals)
-   - `auto_cancellation_enabled`:
-     - Optional field
-     - Must be boolean if provided
-     - Defaults to false if not provided
+- **Subscriptions with overdue unpaid invoices** — If an invoice remains unpaid past its due date plus the grace period, the subscription is cancelled immediately (not at the end of the billing period).
+- **You get notified** — A `subscription.canceled` webhook is sent so you can sync your systems.
+- **Clean shutdown** — Future credit grants for that subscription are cancelled, and a final invoice is generated for any partial period used.
+- **Audit trail** — Cancellations are recorded with reason and metadata so you can see why and when a subscription was cancelled.
 
-2. For UPDATES:
-   - Partial updates are supported
-   - Only provided fields are validated
-   - Same validation rules apply as for new settings
-   - Omitted fields preserve existing values
+### Validation
 
-**Auto-Cancellation Workflow**:
+- **New settings:** `grace_period_days` required, integer ≥ 1, no decimals. `auto_cancellation_enabled` optional, boolean, default `false`.
+- **Updates:** Partial updates allowed; only provided fields validated; omitted fields unchanged.
 
-1. System periodically checks all ACTIVE subscriptions in tenants with auto-cancellation enabled
-2. For each subscription, it evaluates unpaid invoices where:
-   - Invoice has remaining amount > 0 OR payment_status != succeeded
-   - Current time is after invoice due date
-   - Current time is after (due_date + grace_period_days)
-3. When eligible:
-   - Subscription is cancelled immediately (not at period end)
-   - Webhook event `subscription.canceled` is emitted
-   - All future credit grants are cancelled
-   - Final invoice is generated for the partial period if not end-of-period cancellation
-4. System logs and metadata capture:
-   - In application logs:
-     - Cancellation reason: "grace_period_expired"
-     - Cancelled by: "auto_cancellation_system"
-     - Grace period duration
-     - Tenant and environment IDs
-   - In subscription metadata:
-     - Cancellation type: "immediate"
-     - Effective date (in RFC3339 format)
-     - Cancellation timestamp (in cancelled_at field)
+---
 
-### Invoice Configuration
+## Invoice Configuration
 
-**Key**: `invoice_config`
+**Key:** `invoice_config`
 
-**Purpose**: Controls invoice number generation, formatting, and due date calculation.
+Controls invoice number generation (prefix, format, sequence, timezone) and due date calculation.
 
-**Schema**:
+### Schema
 
 ```json
 {
-  "prefix": string,           // REQUIRED for new settings, Optional for updates
-  "format": string,          // REQUIRED for new settings, Optional for updates
-  "start_sequence": number,  // REQUIRED for new settings, Optional for updates
-  "timezone": string,       // REQUIRED for new settings, Optional for updates
-  "separator": string,      // REQUIRED for new settings, Optional for updates
-  "suffix_length": number,  // REQUIRED for new settings, Optional for updates
-  "due_date_days": number   // Optional, defaults to 1 if not provided
+  "prefix": string,
+  "format": string,
+  "start_sequence": number,
+  "timezone": string,
+  "separator": string,
+  "suffix_length": number,
+  "due_date_days": number
 }
 ```
 
-**Default Values** (only applied when creating through API):
+- **`prefix`** — Required for new settings; optional on update. Non-empty string, not only whitespace. Invoice number prefix (e.g. `"INV"`).
+- **`format`** — Required for new settings; optional on update. One of `YYYYMM`, `YYYYMMDD`, `YYMMDD`, `YY`, `YYYY`. Date format in invoice number.
+- **`start_sequence`** — Required for new settings; optional on update. Integer ≥ 0, no decimals. Starting sequence number.
+- **`timezone`** — Required for new settings; optional on update. Valid IANA timezone (e.g. `America/New_York`, `UTC`) or common abbreviation (e.g. `EST`, `GMT`). Timezone for date formatting.
+- **`separator`** — Required for new settings; optional on update. String (empty allowed). Character(s) between prefix, date, and sequence (e.g. `"-"`).
+- **`suffix_length`** — Required for new settings; optional on update. Integer 1–10. Number of digits for sequence (padded with zeros).
+- **`due_date_days`** — Optional; defaults to `1`. Integer ≥ 0, no decimals. Number of days after invoice creation to set due date.
+
+### Default Values
+
+When creating a new setting via API, defaults are:
 
 ```json
 {
@@ -125,94 +112,81 @@ Settings in Flexprice are:
 }
 ```
 
-**Validation Rules**:
+### What You Get
 
-1. For NEW settings:
+Invoice numbers are generated in the format you configure: prefix, optional separator, date (based on your format and timezone), then a zero-padded sequence. Each tenant and environment has its own sequence, so numbers stay unique and predictable. The sequence resets according to the date format (e.g. monthly for `YYYYMM`, daily for `YYYYMMDD`).
 
-   - Invoice Sequence Prefix Settings
-     - `prefix`:
-       - Required field
-       - Must be non-empty string
-       - Cannot be only whitespace
-     - `format`:
-       - Required field
-       - Must be one of: `YYYYMM`, `YYYYMMDD`, `YYMMDD`, `YY`, `YYYY`
-     - `start_sequence`:
-       - Required field
-       - Must be integer >= 0
-       - Must be a whole number (no decimals)
-     - `timezone`:
-       - Required field
-       - Must be valid IANA timezone or common abbreviation
-       - Cannot be empty string
-     - `separator`:
-       - Required field
-       - Must be string (empty string allowed)
-     - `suffix_length`:
-       - Required field
-       - Must be integer between 1 and 10
-   - Auto Canellation Settings
-     - `due_date_days`:
-       - Must be integer >= 0 if provided
-       - Must be a whole number (no decimals)
+**Example with separator:**
 
-2. For UPDATES:
-   - Partial updates are supported
-   - Only provided fields are validated
-   - Same validation rules apply as for new settings
-   - Omitted fields preserve existing values
-   - Can update only `due_date_days` without other fields
+Configuration: `prefix: "INV"`, `format: "YYYYMM"`, `separator: "-"`, `suffix_length: 5`.
 
-**Invoice Number Generation**:
+Generated: `INV-202501-00001`, `INV-202501-00002`.
 
-1. Format Pattern: `{prefix}{separator}{formatted_date}{separator}{padded_sequence}`
-2. Sequence numbers:
-   - Reset monthly based on the format (e.g., monthly for YYYYMM)
-   - Padded with zeros to match suffix_length
-   - Tenant and environment isolated
-3. Example with separator:
+**Example without separator:**
 
-   ```
-   Configuration:
-   - prefix: "INV"
-   - format: "YYYYMM"
-   - separator: "-"
-   - suffix_length: 5
+Configuration: `prefix: "INV"`, `format: "YYYYMM"`, `separator: ""`, `suffix_length: 5`.
 
-   Generated numbers:
-   INV-202501-00001
-   INV-202501-00002
-   ```
+Generated: `INV20250100001`, `INV20250100002`.
 
-4. Example without separator:
+### Supported Timezones
 
-   ```
-   Configuration:
-   - prefix: "INV"
-   - format: "YYYYMM"
-   - separator: ""
-   - suffix_length: 5
+- **IANA names (recommended):** `America/New_York`, `Europe/London`, `Asia/Tokyo`, `UTC`.
+- **Common abbreviations:** `EST`, `CST`, `MST`, `PST`, `GMT`, `CET`, `EET`, `IST`, `JST`, `KST`, `AEST`, `AWST`, and more.
 
-   Generated numbers:
-   INV20250100001
-   INV20250100002
-   ```
+### Validation
 
-**Supported Timezone Formats**:
+- **New settings:** All fields except `due_date_days` required; see constraints above.
+- **Updates:** Partial updates allowed; same rules for provided fields; omitted fields unchanged.
 
-1. IANA Timezone Names (Recommended):
+---
 
-   - America/New_York
-   - Europe/London
-   - Asia/Tokyo
-   - UTC
+## Wallet Balance Alert Configuration
 
-2. Common Abbreviations:
-   - US: EST, CST, MST, PST, HST, AKST
-   - Europe: GMT, CET, EET, WET, BST
-   - Asia: IST, JST, KST, CCT
-   - Australia: AEST, AWST
-   - Others: MSK, CAT, EAT, WAT
+**Key:** `wallet_balance_alert_config`
+
+Sets the **default** balance alert configuration for the tenant and environment. It applies only to wallets that do not have their own alert settings. Per-wallet alert configuration is done via [Wallet Sentinel Alerts](/docs/wallet/low-balance-alert) (or `alert_settings` on the wallet in the API).
+
+### What This Setting Controls
+
+- **When enabled** — Wallets in this tenant and environment that have no per-wallet alert settings use this config as their default. Balance alerts run for those wallets using the thresholds you set here.
+- **When disabled** — Wallets that would otherwise use this default do not receive balance alerts until they have their own alert settings or you turn this setting back on.
+- **Per-wallet overrides** — Any wallet with its own `alert_settings` always uses those; this setting only applies to wallets without per-wallet config.
+
+Resolution order for a given wallet: Flexprice uses the wallet’s own alert settings if present; otherwise it uses this tenant-and-environment default. If the default is disabled, wallets without per-wallet settings do not receive balance alerts.
+
+### Schema
+
+```json
+{
+  "alert_enabled": boolean,
+  "critical": { "threshold": string, "condition": "below" | "above" },
+  "warning":  { "threshold": string, "condition": "below" | "above" },
+  "info":     { "threshold": string, "condition": "below" | "above" }
+}
+```
+
+- **`alert_enabled`** — Required. Boolean. Turn alerts on or off at tenant and environment level.
+- **`critical`**, **`warning`**, **`info`** — Optional. Each has `threshold` (string, e.g. `"0"`, `"-5"`, `"10"`) and `condition` (`"below"` or `"above"`).
+
+### Default Value
+
+When no custom value is stored (or after DELETE), the default is:
+
+```json
+{
+  "critical": { "threshold": "0", "condition": "below" },
+  "alert_enabled": false
+}
+```
+
+### Validation
+
+- If `alert_enabled` is `true`, at least one of `critical`, `warning`, or `info` must be present.
+- Threshold ordering: for `"below"`, critical < warning < info; for `"above"`, critical > warning > info (as applicable).
+
+### Alert behavior (same as per-wallet alerts)
+
+Once a wallet is using alert config (either its own or this default), behavior matches [Wallet Sentinel Alerts](/docs/wallet/low-balance-alert): balance is monitored against the thresholds, **Info** / **Warning** / **Critical** are raised when thresholds are crossed, state is updated on the wallet, and webhooks are sent when alert state changes.
 
 ## API Endpoints
 
@@ -323,51 +297,54 @@ DELETE /v1/settings/:key
 - `400 Bad Request`: Invalid setting key
 - `403 Forbidden`: Missing tenant or environment context
 
-**Notes for All Endpoints**:
+---
 
-- All endpoints require authentication
-- All endpoints require tenant and environment context
-- All operations are audited with:
-  - User ID performing the action
-  - Timestamp
-  - Previous and new values (for updates)
-  - Action type (create/update/delete)
-- Settings are uniquely identified by (tenant_id, environment_id, key)
-- All responses include standard error format for validation failures
-- All endpoints respect tenant isolation
+## Use Cases
+
+### Subscription Auto-Cancellation
+
+- **SaaS with trial plans** — Auto-cancel free trials after grace period if no payment method is added
+- **B2B billing** — Cancel subscriptions with overdue invoices after a grace period (e.g. 30 days)
+- **Compliance** — Automatically stop service for customers who haven't paid within the grace period
+
+### Invoice Numbering
+
+- **Multi-region operations** — Use timezone to generate invoice numbers in the customer's local time
+- **Custom branding** — Set prefix and separator to match your invoice format (e.g. `ACME-202501-00001`)
+- **Sequence isolation** — Each tenant and environment has its own sequence; no conflicts
+
+### Wallet Balance Alerts (Tenant and Environment Default)
+
+- **Enable alerts for all wallets** — Set tenant and environment default so new wallets inherit alert config
+- **Disable alerts globally** — Turn off async consumer for that environment by setting `alert_enabled: false`
+- **Fallback for wallets without config** — Wallets with no `alert_settings` use this default
+
+---
 
 ## Best Practices
 
-1. **Initialization**:
+💡 **Send required fields on create** — When creating a new setting, include all required fields; defaults apply only on API create.
 
-   - Always provide all required fields when creating new settings
-   - Default values only apply when using API creation
-   - Validate all required fields before submission
-   - Use IANA timezone names instead of abbreviations when possible
+💡 **Use partial updates** — Send only the fields you want to change; omitted fields keep their existing values.
 
-2. **Updates**:
+💡 **Prefer IANA timezones** — For `invoice_config`, use IANA names (e.g. `America/New_York`) instead of abbreviations for clarity and daylight saving time support.
 
-   - Use partial updates to modify only needed fields
-   - Existing values are preserved automatically
-   - No need to provide all fields in updates
-   - Only provided fields are validated
+💡 **Set a default for wallet balance alerts** — Use `wallet_balance_alert_config` to define default thresholds for all wallets in this tenant and environment that don’t have their own alert settings. Enable it so those wallets get balance alerts; disable or DELETE to turn alerts off for them.
 
-3. **Monitoring**:
+💡 **Restrict who can change settings** — Limit setting changes to admin users; use tenant-scoped API keys and review audit logs.
 
-   - Track setting changes in audit logs
-   - Monitor auto-cancellation events
-   - Review grace period effectiveness
-   - Watch for timezone-related issues
+💡 **Match grace period to your dunning process** — Set `grace_period_days` to align with how long you allow overdue invoices before cancelling (e.g. after how many reminder emails or days).
 
-4. **Security**:
+💡 **Monitor auto-cancellation outcomes** — Use `subscription.canceled` webhooks to see which subscriptions were cancelled and adjust grace period or dunning if needed.
 
-   - Only admin users should modify settings
-   - Verify tenant context on all operations
-   - Use tenant-specific API keys
-   - Audit all setting changes
+💡 **Use invoice prefix and format for traceability** — A clear prefix and consistent date format in invoice numbers make it easier to match invoices to periods and environments.
 
-5. **Performance**:
-   - Settings are cached with 1-hour TTL
-   - Use partial updates to minimize data transfer
-   - Consider timezone impact on operations
-   - Monitor sequence number resets
+💡 **Combine with per-wallet alerts** — Set `wallet_balance_alert_config` as the default, then override on specific wallets via [Wallet Sentinel Alerts](/docs/wallet/low-balance-alert) where you need different thresholds.
+
+---
+
+## Related Documentation
+
+- [Wallet Sentinel Alerts](/docs/wallet/low-balance-alert) — Configure per-wallet balance alerts
+- [Subscriptions](/docs/subscriptions/overview) — Manage customer subscriptions
+- [Invoices](/docs/invoices/overview) — Invoice lifecycle and payment tracking
