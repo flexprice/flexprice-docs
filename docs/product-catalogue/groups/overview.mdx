@@ -1,0 +1,52 @@
+---
+title: "Overview"
+description: "Create named groups (e.g. Usage Pricing, Add-on Charges) for features and prices, and see grouped invoice line-items, usage and cost broken down by group in analytics and the customer portal."
+---
+
+Groups in Flexprice let you organize **prices** and **features** into named buckets—e.g. by product line, region, or tier. You can then filter and display them by group in invoices, catalogs, analytics, and the [customer portal](/docs/customers/customer-portal#usage-tab) Usage tab.
+
+<Info>
+  Flexprice supports grouping for **prices** and **features**. Each group holds one entity type only (`entity_type: "price"` or `"feature"`).
+</Info>
+
+**Benefits:**
+
+- **Organize** — Bucket prices or features by product line, region, tier, or any dimension
+- **Filter** — Search groups by `lookup_key`, `name`, `entity_type`. List entities with group on each
+- **Charges (prices)** — Group charges in a plan. Grouped invoice line-items
+- **Features** — Group features for lists and filters. Feature search can filter by `group_id`. Usage breakdown in analytics and [customer portal](/docs/customers/customer-portal#usage-tab) reflects feature usage and cost by group
+
+## API reference
+
+| Action | Method | Endpoint |
+|--------|--------|----------|
+| Create group | POST | `/v1/groups` |
+| Get group | GET | `/v1/groups/:id` |
+| Query groups | POST | `/v1/groups/search` |
+| Delete group | DELETE | `/v1/groups/:id` |
+| Create price (with group) | POST | `/v1/prices` |
+| Update price (set/clear group) | PUT | `/v1/prices/:id` |
+| Create feature (with group) | POST | `/v1/features` |
+| Update feature (set/clear group) | PUT | `/v1/features/:id` |
+
+**Create group:** Body: `name`, `entity_type` (`"price"` or `"feature"`), `lookup_key`. Response returns `id` — use as `group_id` on prices or features.
+
+**Delete group:** Soft-delete. Every entity in that group has `group_id` cleared.
+
+<Warning>
+  When you delete a group, every price or feature in that group has its `group_id` cleared (no orphaned references).
+</Warning>
+
+## Validation
+
+| Scope | Rule |
+|-------|------|
+| **Group** | `entity_type` must be `"price"` or `"feature"`. `lookup_key` required; unique per tenant and environment (published groups). |
+| **Price** | If `group_id` is set, the group must exist, be published, and have `entity_type` `"price"`. |
+| **Feature** | If `group_id` is set, the group must exist, be published, and have `entity_type` `"feature"`. |
+
+## What's next
+
+- [Create a group](/docs/product-catalogue/groups/create) — Choose Entity Type (Price or Feature), then assign entities
+- [Charges grouping](/docs/product-catalogue/groups/charges-grouping) — Assign prices to a group when adding or editing a charge
+- [Feature grouping](/docs/product-catalogue/groups/feature-grouping) — Assign features to a group when creating or editing a feature
