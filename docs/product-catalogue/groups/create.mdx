@@ -1,0 +1,60 @@
+---
+title: "Creating a group"
+description: "Create and list groups. Entity type is set once at creation and cannot be changed."
+---
+
+A group has a single **Entity type** (Price or Feature), chosen when you create it. That type cannot be changed later. Price groups are used for plan charges. Feature groups are used for features.
+
+## Steps to create a group
+
+<Steps>
+  <Step title="Navigate to Groups">
+    - Go to **Product Catalog** → **Groups**
+    - Use **Filter** and **Sort** as needed. **+ Add** creates a new group
+    <Frame>
+      ![Groups list](/public/images/docs/Groups/list.png)
+    </Frame>
+  </Step>
+
+  <Step title="Create a group">
+    - Click **+ Add**
+    - In the **Create Group** dialog, enter **Group Name**, **Lookup Key** (unique per tenant and environment), and select **Entity Type** (**Price** or **Feature**)
+    - Click **Create Group**
+    <Frame>
+      ![Create Group](/public/images/docs/Groups/create.png)
+    </Frame>
+  </Step>
+</Steps>
+
+The list shows **Type** (Price or Feature) for each group.
+
+<Frame>
+  ![Groups list — feature groups](/public/images/docs/Groups/list-all-groups.png)
+</Frame>
+
+## API
+
+| Action      | Method | Endpoint            |
+|-------------|--------|---------------------|
+| Create      | POST   | `/v1/groups`        |
+| Get one     | GET    | `/v1/groups/:id`   |
+| List/search | POST   | `/v1/groups/search` |
+| Delete      | DELETE | `/v1/groups/:id`   |
+
+**Create:** Body must include `name`, `entity_type` (`"price"` or `"feature"`), `lookup_key`. Response returns `id`. Use it as `group_id` on prices or features.
+
+**List/search:** Filter by `entity_type`, `name`, `lookup_key`, and other supported fields.
+
+**Get one:** Returns the group with `entity_ids` (IDs of prices or features in that group).
+
+**Delete:** Soft-delete. Every entity in that group has its `group_id` cleared.
+
+<Warning>
+  When you delete a group, every price or feature in that group has its `group_id` cleared (no orphaned references).
+</Warning>
+
+## Validation
+
+| Scope | Rule |
+|-------|------|
+| **Group** | `entity_type` must be `"price"` or `"feature"`. `lookup_key` is required and must be unique per tenant and environment (published groups). |
