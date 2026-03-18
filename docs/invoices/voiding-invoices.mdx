@@ -1,0 +1,379 @@
+---
+title: "Voiding Invoices"
+description: "Complete guide to voiding invoices, refund processing, and cancellation workflows"
+---
+
+## Overview
+
+Voiding an invoice cancels it and automatically refunds any paid amounts to the customer's prepaid wallet. This operation is essential for handling billing corrections, customer refund requests, and invoice cancellations while maintaining a complete audit trail.
+
+### When to Void an Invoice
+
+| Scenario | Action |
+|----------|--------|
+| Customer requests cancellation | Void to refund |
+| Billing error discovered | Void then recalculate |
+| Duplicate invoice created | Void the duplicate |
+| Cancel before payment collection | Void to prevent charging |
+| Service not delivered | Void and refund |
+
+<Info>
+After voiding a subscription invoice, you can create a corrected replacement. See [Recalculating Invoices](/docs/invoices/recalculating-invoices) for details.
+</Info>
+
+---
+
+## Allowed Statuses
+
+VoidInvoice can be called on invoices in the following states:
+
+### Invoice Status
+
+- **`draft`** - Invoice not yet finalized
+- **`finalized`** - Invoice issued and locked
+
+### Payment Status
+
+- **`pending`** - No payment attempted
+- **`failed`** - Payment attempt unsuccessful  
+- **`succeeded`** - Payment completed
+- **`partially_refunded`** - Some amount already refunded
+- **`overpaid`** - Customer paid more than amount due
+
+<Warning>
+Invoices with payment status `refunded` cannot be voided as they're already fully refunded.
+</Warning>
+
+---
+
+## Refund Behavior
+
+When an invoice is voided, Flexprice automatically calculates and processes refunds.
+
+### Refund Amount Calculation
+
+```
+refund_amount = amount_paid + total_prepaid_credits_applied
+```
+
+This ensures customers are refunded for:
+
+1. **Direct payments** (`amount_paid`) - Money paid via payment gateway
+2. **Prepaid credits used** (`total_prepaid_credits_applied`) - Credits deducted from wallet
+
+### Refund Destination
+
+- Refunds always go to a **prepaid wallet** in the invoice currency
+- If no matching wallet exists, one is automatically created
+- Wallet type must be `PREPAID` (promotional wallets are not eligible)
+- Currency must match invoice currency exactly
+
+<Warning>
+**Refunds always go to prepaid wallets, never directly to payment methods.** If you need to refund to the original payment method, you must:
+
+1. Void the invoice (refunds to wallet)
+2. Manually process payment refund through payment gateway
+3. Manually debit the prepaid wallet to avoid double-refund
+</Warning>
+
+---
+
+## API Reference
+
+### Endpoint
+
+```http
+POST /api/v1/invoices/{invoice_id}/void
+```
+
+### Request Body
+
+```json
+{
+  "metadata": {
+    "reason": "Billing error - incorrect pricing applied",
+    "voided_by": "support_user_id",
+    "ticket_id": "SUP-12345"
+  }
+}
+```
+
+The `metadata` field is optional but recommended for audit trail purposes.
+
+### Success Response (200)
+
+```json
+{
+  "id": "inv_abc123",
+  "status": "voided",
+  "voided_at": "2026-03-07T10:30:00Z",
+  "payment_status": "refunded",
+  "refunded_amount": "150.00",
+  "currency": "usd"
+}
+```
+
+### Example with cURL
+
+```bash
+curl -X POST https://us.api.flexprice.io/v1/invoices/inv_abc123/void \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "metadata": {
+      "reason": "Customer request",
+      "voided_by": "admin@company.com"
+    }
+  }'
+```
+
+---
+
+## Side Effects
+
+When an invoice is voided, the following changes occur:
+
+### 1. Invoice Updates
+
+- `invoice_status` → `voided`
+- `voided_at` → current timestamp
+- `refunded_amount` → incremented by refund amount
+- `payment_status` → `refunded` (if refund issued)
+- `metadata` → merged with request metadata
+
+### 2. Wallet Transaction
+
+- New transaction created with `transaction_reason: INVOICE_VOID_REFUND`
+- Transaction uses invoice ID as idempotency key (ensures no duplicate refunds)
+- Wallet balance increased by refund amount
+
+### 3. Webhook Events
+
+- `invoice.update.voided` event published with refund details
+
+---
+
+## Edge Cases
+
+### Zero-Amount Invoices
+
+If the invoice has no amount paid and no prepaid credits applied:
+
+- Invoice status changes to `voided`
+- No wallet transaction created
+- Payment status remains `pending`
+- No refund processed
+
+**Example:**
+```
+Invoice: $0.00 amount_paid, $0.00 prepaid_credits_applied
+Result: Voided, no refund, no wallet created
+```
+
+### Partially Refunded Invoices
+
+If the invoice already has partial refunds:
+
+- New refund amount is **added** to existing `refunded_amount`
+- Both `amount_paid` and remaining prepaid credits are refunded
+
+**Example:**
+```
+Initial state:
+  amount_paid: $100.00
+  prepaid_credits_applied: $50.00
+  refunded_amount: $30.00 (from previous partial refund)
+  
+After void:
+  refund_issued: $100.00 + $50.00 = $150.00
+  refunded_amount: $30.00 + $150.00 = $180.00
+```
+
+### Multiple Currencies
+
+Wallets and invoices must have matching currencies:
+
+- Refund only goes to wallet with same currency as invoice
+- If customer has USD wallet but invoice is in EUR, no USD wallet will be used
+- New wallet created in invoice currency if no match exists
+
+---
+
+## Idempotency
+
+Voiding is idempotent through two mechanisms:
+
+### 1. Wallet Transaction Idempotency
+
+- Uses invoice ID as idempotency key
+- Prevents duplicate refund transactions
+
+### 2. Status Validation
+
+- Second void attempt on already-voided invoice returns error
+- Error: `invoice_status_not_allowed`
+
+**Example:**
+
+```bash
+# First void - succeeds
+POST /invoices/inv_123/void
+Response: 200 OK
+
+# Second void - fails gracefully
+POST /invoices/inv_123/void
+Response: 400 Bad Request
+{
+  "error": "invoice_status_not_allowed",
+  "message": "invoice status - voided is not allowed"
+}
+```
+
+---
+
+## Best Practices
+
+### When to Void vs Delete
+
+**Void the invoice when:**
+
+- Customer has already paid (refund needed)
+- Credits were applied from wallet
+- You need to create replacement invoice
+- Audit trail must show the correction
+
+**Delete draft invoice when:**
+
+- Invoice never finalized
+- No payments or credits applied
+- No replacement needed
+- Simple cleanup scenario
+
+### Refund Processing
+
+**Best Practices:**
+
+1. **Check wallet balance** after void to verify refund
+2. **Monitor webhook events** for refund confirmation
+3. **Document void reason** in metadata
+4. **Notify customer** about refund and timeline
+5. **Track support tickets** in metadata for reference
+
+### Audit Trail
+
+Always maintain complete audit information:
+
+**Timestamps:**
+- `voided_at` - When invoice was voided
+- `created_at` - Original invoice creation time
+
+**Metadata:**
+- Store void reason
+- Track who initiated void
+- Reference support tickets or issues
+
+**Example Metadata:**
+```json
+{
+  "reason": "Incorrect pricing applied",
+  "voided_by": "support@company.com",
+  "ticket_id": "SUP-12345",
+  "original_total": "250.00",
+  "refund_amount": "250.00"
+}
+```
+
+---
+
+## Testing
+
+When testing void:
+
+- Use a draft or finalized invoice and confirm status becomes `voided`.
+- For paid invoices, confirm refund amount and that wallet balance increases.
+- For zero-amount invoices, confirm no wallet is created and payment status stays `pending`.
+- Confirm a second void on the same invoice is rejected.
+
+---
+
+## Webhooks
+
+### `invoice.update.voided` Event
+
+Triggered when an invoice is successfully voided.
+
+```json
+{
+  "event": "invoice.update.voided",
+  "timestamp": "2026-03-07T10:30:00Z",
+  "data": {
+    "invoice_id": "inv_123",
+    "customer_id": "cus_456",
+    "subscription_id": "sub_789",
+    "previous_status": "finalized",
+    "current_status": "voided",
+    "refunded_amount": "150.00",
+    "currency": "usd",
+    "voided_at": "2026-03-07T10:30:00Z"
+  }
+}
+```
+
+### Webhook Best Practices
+
+1. **Handle void events** to notify customer of refund
+2. **Use idempotency** when processing webhook events
+3. **Verify signatures** to ensure webhook authenticity
+4. **Respond quickly** (< 5 seconds) to avoid retries
+5. **Log all events** for audit purposes
+
+---
+
+## FAQ
+
+### Can I void an invoice that hasn't been paid?
+
+Yes. Voiding works for both paid and unpaid invoices. If unpaid, no refund is processed, but the invoice status changes to `voided` and won't be collected.
+
+### What happens to prepaid credits when an invoice is voided?
+
+Prepaid credits that were applied to the invoice are refunded back to the customer's prepaid wallet. They become available for use on future invoices.
+
+### How long are voided invoices retained?
+
+Voided invoices are retained indefinitely for audit purposes. They remain accessible via API and appear in invoice lists with `status: voided` filter.
+
+### Can I unvoid an invoice?
+
+No. Once voided, an invoice cannot be restored. If you need to charge the customer again, you must create a new invoice or recalculate the voided invoice (for subscription invoices only).
+
+### What if I void the wrong invoice?
+
+If you void the wrong invoice:
+
+1. The refund is already processed (can't be reversed automatically)
+2. For subscription invoices: [Recalculate](/docs/invoices/recalculating-invoices) to create a new invoice
+3. For one-off invoices: Create a new one-off invoice
+4. Contact customer to explain the correction
+
+### Do void refunds trigger payment gateway refunds?
+
+No. Refunds go to prepaid wallets in Flexprice, not to payment gateways. If you need to refund to the original payment method, you must manually process that through your payment gateway and then debit the wallet to prevent double-refund.
+
+---
+
+## Next Steps
+
+After voiding an invoice, you may want to:
+
+- **Create a corrected invoice:** For subscription invoices, see [Recalculating Invoices](/docs/invoices/recalculating-invoices)
+- **Notify the customer:** Send email/notification about the refund
+- **Update your records:** Document the void reason in your internal systems
+- **Monitor the wallet:** Verify refund appears in customer's wallet
+
+**For additional help, see:**
+
+- [Invoice Overview](/docs/invoices/overview)
+- [Managing Invoices](/docs/invoices/managing)
+- [Wallet Management](/docs/wallet/prepaid-and-promotional)
+- [Recalculating Invoices](/docs/invoices/recalculating-invoices)
