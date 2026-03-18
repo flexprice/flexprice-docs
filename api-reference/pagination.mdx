@@ -7,7 +7,7 @@ description: "Learn how to paginate through API responses using offset-based pag
 
 The Flexprice API uses offset-based pagination for endpoints that list resources, such as the [List Customers](/api-reference/customer/list-customers) endpoint. This lets you load resources incrementally without transferring large amounts of data in a single request.
 
-Use the `limit` and `offset` query parameters to control how many items are returned and where to start in the result set.
+Use the `limit` and `offset` query parameters to control how many items are returned and where to start in the result set. For the first request, you typically use `offset=0`. The API then returns an updated `offset` in the response that you can reuse directly for the next page.
 
 ## Paginated API responses
 
@@ -21,8 +21,8 @@ The response format is:
        ...
     ],
     "pagination": {
-        "limit": 20,
-        "offset": 0,
+        "limit": 50,
+        "offset": 50,
         "total": 150
     }
 }
@@ -30,16 +30,16 @@ The response format is:
 
 **Response fields:**
 
-- `limit`: Maximum number of items per page (default: 20, maximum: 1000)
-- `offset`: Starting position in the result set (default: 0)
-- `total`: Total number of items available across all pages
+- `limit`: Maximum Number of items returned in this page (default: 50).
+- `offset`: The offset you should use when requesting the **next** page. For the first request, you typically pass `offset=0`; the API returns `offset = request_offset + limit` in the response.
+- `total`: Total number of items in the database that match your query, not just the items in the current response.
 
 **Fetching the next page:**
 
-To get the next page, increment `offset` by `limit`. For example:
-- First page: `limit=20&offset=0` returns items 1-20
-- Second page: `limit=20&offset=20` returns items 21-40
-- Third page: `limit=20&offset=40` returns items 41-60
+To get the next page, reuse the `offset` value returned in the previous response instead of computing it yourself. For example:
+- First request: `limit=50&offset=0` returns items 1-50 and a `pagination.offset` value of `50`.
+- Second request: `limit=50&offset=50` (using the previous `pagination.offset`) returns items 51-100 and a `pagination.offset` value of `100`.
+- Third request: `limit=50&offset=100` returns items 101-150, and so on.
 
 **Sorting:**
 
@@ -47,4 +47,4 @@ By default, resources are sorted by `created_at` in descending order (newest fir
 
 ## Limits
 
-The default page size is 20 items. You can request up to 1000 items per page using the `limit` query parameter.
+The default page size is 50 items. You can request up to 1000 items per page using the `limit` query parameter.
