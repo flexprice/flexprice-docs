@@ -1,8 +1,273 @@
 ---
 title: "Changelog"
 description: "What we’ve been shipping at Flexprice lately"
+mode: "center"
 ---
 
+<Update label="March 16th 2026">
+  ## Organization members & dashboard access
+ 
+  Invite teammates to your organization and manage dashboard access from the Flexprice UI.
+ 
+  * Invite and manage team members within your organization directly from the dashboard.
+ 
+  <br />
+ 
+  ## Feature grouping
+ 
+  Organize features into logical groups for cleaner plan configuration and customer-facing entitlement display.
+ 
+  * **Logical feature groups**: Group related features together for better organization and clarity
+ 
+  <br />
+
+  <Frame>
+    <img src="/public/images/docs/Groups/create-feature-with-grouping.png" alt="Create feature with group" style={{ borderRadius: '0.5rem' }} />
+  </Frame>
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/groups/feature-grouping" title="Feature grouping - Documentation" />
+ 
+  <br />
+ 
+  **Other changes**
+ 
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * General UI optimizations for improved performance and consistency
+      * Enhanced navigation and visual polish across the dashboard
+    </Accordion>
+  </AccordionGroup>
+</Update>
+ 
+<Update label="March 9th 2026">
+
+ 
+  ## Settings overhaul
+ 
+  Settings have been restructured for faster navigation and a clearer separation of tenant, billing, and integration configurations.
+ 
+  * **Revamped settings**: Improved organization and discoverability of configuration options
+ 
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/settings/settings" title="Settings - Documentation" />
+ 
+  <br />
+ 
+  ## Custom dashboard theming
+ 
+  Personalize the Flexprice dashboard with your brand colors and visual preferences.
+ 
+  * **Theme customization**: Apply custom colors and branding to match your organization’s identity
+ 
+  <br />
+  **Other changes**
+ 
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Sentry spans now include user ID for more actionable error attribution and debugging
+    </Accordion>
+  </AccordionGroup>
+</Update>
+ 
+<Update label="March 2nd 2026">
+  ## Plan cloning
+ 
+  Duplicate an existing plan with all its prices and configuration as a starting point for a new plan.
+ 
+  * **Clone plans**: Quickly create new plans based on existing configurations
+ 
+  <br />
+
+  <Frame>
+    <img src="/public/images/docs/Product%20catalogue/Plans/Cloning%20a%20plan/navigate.png" alt="Clone plan from plan menu" style={{ borderRadius: '0.5rem' }} />
+  </Frame>
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/plans/clone" title="Cloning a plan - Documentation" />
+ 
+  <br />
+ 
+  ## Multiple billing periods
+ 
+  A single plan can now support multiple billing cadences (monthly, annual, etc.) simultaneously.
+ 
+  * **Flexible billing cadences**: Offer customers different billing period options within the same plan
+ 
+  <br />
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/plans/create" title="Creating a plan - Documentation" />
+ 
+  <br />
+ 
+  ## Price grouping
+ 
+  Added support for grouping in prices for better organization and display.
+ 
+  * **Group prices**: Organize related prices into logical groups
+ 
+  <br />
+
+  <Frame>
+    <img src="/public/images/docs/Groups/assign-group-to-charges.png" alt="Assign group to plan charges" style={{ borderRadius: '0.5rem' }} />
+  </Frame>
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/groups/charges-grouping" title="Charges grouping - Documentation" />
+ 
+  <br />
+</Update>
+ 
+<Update label="February 23rd 2026">
+  ## Wallet alerts
+ 
+  Real-time wallet balance monitoring with configurable alert thresholds.
+ 
+  * **Real-time balance event processing**: Wallet alert triggers now process all balance events with improved cache handling for accuracy
+  * **Ongoing balance notifications**: Low-balance alerts are sent continuously as the wallet balance stays below threshold, not just on first breach
+  * **Alert cache expiration**: Alert cache entries now expire after a configurable max-alive window to prevent stale suppression of alerts
+ 
+  <br />
+
+  <Frame>
+    <img src="/public/images/docs/Wallet/low_balance_alert/configure-alert-settings.png" alt="Wallet alert settings" style={{ borderRadius: '0.5rem' }} />
+  </Frame>
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/wallet/low-balance-alert" title="Low balance alert - Documentation" />
+
+  <br />
+ 
+  ## API cleanup
+ 
+  Simplified the onboarding surface by removing deprecated APIs.
+ 
+  * **Deprecated tenant APIs removed**: Removed deprecated tenant creation APIs to streamline onboarding
+ 
+  <br />
+
+  <Card icon="code" horizontal={true} href="/api-reference/introduction" title="API Reference" />
+ 
+  <br />
+ 
+  **Other changes**
+ 
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Plan-level price sync lock implemented with a configurable TTL (default 2 hours) to prevent conflicting concurrent updates
+    </Accordion>
+  </AccordionGroup>
+</Update>
+ 
+<Update label="February 16th 2026">
+  ## Parent subscriptions
+ 
+  Group related subscriptions under a parent for consolidated billing and hierarchy management.
+ 
+  * **Subscription hierarchy**: Organize subscriptions with parent-child relationships
+ 
+  <br />
+
+  <Card icon="code" horizontal={true} href="/api-reference/subscriptions/update-subscription" title="Update subscription - API Reference" />
+ 
+  <br />
+ 
+  ## Commitment duration
+ 
+  Define minimum commitment periods on subscriptions to enforce contract terms.
+ 
+  * **Backend support**: Define commitment periods programmatically via API
+  * **Dashboard configuration**: Configure and view commitment durations directly from the subscription management dashboard
+ 
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/subscriptions/commitment" title="Commitment - Documentation" />
+ 
+  <br />
+ 
+  ## Multiple instance add-ons
+ 
+  Attach the same add-on multiple times to a single subscription with independent quantities and pricing.
+ 
+  * **Flexible add-on instances**: Support for multiple instances of the same add-on per subscription
+ 
+  <br />
+  <Card icon="code" horizontal={true} href="/api-reference/addons/create-addon" title="Create add-ons - API Reference" />
+ 
+  <br />
+ 
+  ## Custom analytics
+ 
+  Build and view custom usage and revenue breakdowns tailored to your business metrics.
+ 
+  * **Custom dashboards**: Create analytics views specific to your business needs
+  * **Overridden price tracking**: Analytics now reflect overridden prices accurately
+ 
+  <br />
+
+  <Frame>
+    <img src="/public/images/docs/Groups/analytics-usage-breakdown.png" alt="Usage breakdown by group in analytics" style={{ borderRadius: '0.5rem' }} />
+  </Frame>
+
+  <br />
+
+  **Other changes**
+ 
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Temporal workflow history and filters for better observability into background job execution
+      * VAPI pricing units added to support voice API consumption-based billing
+      * Edit subscription UI improvements
+    </Accordion>
+ 
+    <Accordion title="API">
+      * Charges search API now supports filtering for more precise query results
+    </Accordion>
+  </AccordionGroup>
+</Update>
+ 
+<Update label="February 9th 2026">
+  ## Credit grant editing
+ 
+  Modify the amount, expiry, or metadata of existing credit grants without needing to void and recreate them.
+ 
+  * **Edit existing grants**: Update credit grant details directly without voiding
+ 
+  <br />
+
+  <Card icon="code" horizontal={true} href="/api-reference/credit-grants/update-credit-grant" title="Update credit grant - API Reference" />
+ 
+  <br />
+ 
+  ## Prepaid and postpaid wallets
+ 
+  Choose between prepaid balance top-ups or postpaid usage-based wallet modes per customer.
+ 
+  * **Wallet modes**: Configure wallets as prepaid or postpaid based on customer needs
+ 
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/wallet/prepaid-and-promotional" title="Prepaid & promotional credits - Documentation" />
+ 
+  <br />
+ 
+  ## Backdated pricing
+ 
+  Create and update prices with past effective dates to accurately reflect historical billing arrangements.
+ 
+  * **Backdated price creation**: Create prices with a past effective date
+  * **Retroactive price updates**: Update existing prices retroactively to correct or adjust past pricing configurations
+ 
+  <br />
+</Update>
+ 
 <Update label="February 2nd 2026">
   ## Sentry and observability improvements
 
