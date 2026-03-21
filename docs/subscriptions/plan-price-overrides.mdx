@@ -3,8 +3,6 @@ title: "Plan Price Overrides"
 description: "Give a specific customer custom rates without changing the plan for everyone else. Apply overrides at subscription creation time."
 ---
 
-# Plan Price Overrides
-
 Plan price overrides let you customize pricing for a specific customer when creating a subscription. The plan itself stays unchanged — only this subscription uses the overridden rates.
 
 ## When to Use
@@ -16,7 +14,6 @@ Plan price overrides let you customize pricing for a specific customer when crea
 
 If you need to change pricing for **all** subscribers, update the plan price instead and run a price sync. See [Subscription Line Item Overrides](/docs/subscriptions/subscription-line-item-overrides).
 
----
 
 ## How to Apply Overrides
 
@@ -50,7 +47,6 @@ POST /subscriptions
 
 You can override multiple prices in one request.
 
----
 
 ## What You Can Override
 
@@ -66,7 +62,6 @@ You can override multiple prices in one request.
 | `price_unit_amount` | decimal | For custom price unit prices |
 | `price_unit_tiers` | array | Custom tiers for custom price unit + TIERED |
 
----
 
 ## What You Cannot Override
 
@@ -83,7 +78,6 @@ These fields are always inherited from the original plan price and cannot be cha
 | `price_unit_type` | Cannot switch FIAT ↔ CUSTOM |
 | `display_name` | Preserved from original |
 
----
 
 ## Validation Rules
 
@@ -94,11 +88,10 @@ These fields are always inherited from the original plan price and cannot be cha
 - `transform_quantity.divide_by` must be greater than 0
 - `price_id` must reference a price that exists in the selected plan
 
----
 
 ## How It Works Internally
 
-When an override is processed, FlexPrice:
+When an override is processed, Flexprice:
 
 1. Creates a new **subscription-scoped price** with `entity_type = SUBSCRIPTION` and the overridden values
 2. Sets `parent_price_id` on the new price to the original plan price's ID — preserving the lineage
@@ -112,7 +105,6 @@ Plan Price (shared)
             └── Line Item → price_id = subscription-scoped price
 ```
 
----
 
 ## Billing Behavior After Override
 
@@ -120,7 +112,6 @@ Plan Price (shared)
 - If the plan price is later updated, **this subscription's override is not affected**
 - If a [price sync](/docs/subscriptions/subscription-line-item-overrides) is run, **the overridden line item is not replaced** — sync only fills in missing line items
 
----
 
 ## Examples
 
@@ -170,13 +161,11 @@ Plan Price (shared)
 }
 ```
 
----
 
 ## Updating an Override After Creation
 
 To change an override on a live subscription, update the line item directly using the subscription line item update API. See [Subscription Line Item Overrides](/docs/subscriptions/subscription-line-item-overrides).
 
----
 
 ## Related Topics
 
