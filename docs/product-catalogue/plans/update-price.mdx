@@ -3,11 +3,7 @@ title: "Updating a Plan Price"
 description: "Update a plan price's amount, tiers, or metadata — and safely propagate the change to all active subscribers using the price sync workflow."
 ---
 
-# Updating a Plan Price
-
 Updating a plan price changes how it is charged going forward. Depending on what you change, the system either mutates the price in place or creates a new price version. After updating pricing fields, you need to run the price sync workflow to propagate the change to existing subscribers.
-
----
 
 ## The Update Price API
 
@@ -50,8 +46,6 @@ These are immutable after a price is created:
 | `price_unit_type` | Cannot switch FIAT ↔ CUSTOM |
 | `entity_type` / `entity_id` | Price ownership is fixed |
 
----
-
 ## Two Update Paths
 
 ### Path A — Metadata-only update (in-place)
@@ -67,8 +61,6 @@ PUT /prices/price_abc
 ```
 
 Response: the updated price object. Done.
-
----
 
 ### Path B — Pricing field update (new version created)
 
@@ -91,8 +83,6 @@ Response: the new price object (`id` will be different from the original).
 <Warning>
   Save the new price `id` from the response. Existing subscription line items still reference the old price ID. The sync workflow creates new line items referencing the new price.
 </Warning>
-
----
 
 ## Syncing the Change to Existing Subscribers
 
@@ -127,8 +117,8 @@ POST /workflows/search
 }
 ```
 
-- If `pagination.total > 0` → a sync is already running. Do not trigger another. Poll `GET /workflows/{workflow_id}/{run_id}` every 30 seconds until `status` is `Completed` or `Failed`, then continue to Step 3.
-- If `pagination.total == 0` → proceed to Step 3.
+- If `pagination.total > 0` — a sync is already running. Do not trigger another. Poll `GET /workflows/{workflow_id}/{run_id}` every 30 seconds until `status` is `Completed` or `Failed`, then continue to Step 3.
+- If `pagination.total == 0` — proceed to Step 3.
 
 **Step 3 — Trigger sync**
 
@@ -174,8 +164,6 @@ Check the sync summary in the completed workflow response:
 
 `line_items_terminated` = old price line items closed. `line_items_created` = new price line items added.
 
----
-
 ## What Sync Does After a Price Update
 
 When you update a price, the old price gets an `end_date` and a new price is created. The sync workflow:
@@ -184,8 +172,6 @@ When you update a price, the old price gets an `end_date` and a new price is cre
 2. **Creates** new line items for the new price on all subscriptions that don't have one yet
 
 Subscriptions with **overridden** line items (custom pricing) are **not affected** — their line items point to subscription-scoped prices, not the plan price you just updated.
-
----
 
 ## Using `effective_from`
 
@@ -200,8 +186,6 @@ Subscriptions with **overridden** line items (custom pricing) are **not affected
 <Note>
   The sync workflow creates new line items with `start_date = price.start_date`. If you set `effective_from: "2026-04-01"`, the new line items will start on April 1 and the old ones will end on April 1.
 </Note>
-
----
 
 ## Examples
 
@@ -243,8 +227,6 @@ PUT /prices/price_api_calls
 ```
 
 No sync required.
-
----
 
 ## Related Topics
 

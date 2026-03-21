@@ -3,11 +3,7 @@ title: "Subscription Line Item Overrides"
 description: "Add, update, or remove individual charges on a live subscription, and push plan pricing changes to existing subscribers using the price sync workflow."
 ---
 
-# Subscription Line Item Overrides
-
 A subscription's line items are the actual billing records — one per price. After a subscription is live, you can add new line items, update existing ones, remove them, or push plan-level pricing changes to all subscribers using the price sync workflow.
-
----
 
 ## What Is a Line Item?
 
@@ -17,7 +13,6 @@ Each line item on a subscription:
 - Is what the billing engine uses to generate invoice charges
 - Can point to a plan price (standard) or a subscription-scoped price (overridden)
 
----
 
 ## Adding a Line Item
 
@@ -37,7 +32,6 @@ POST /subscriptions/{id}/line-items
 
 If the price is usage-based, `quantity` is automatically set to `0` — usage is computed from metered events.
 
----
 
 ## Updating a Line Item
 
@@ -54,7 +48,6 @@ When you change pricing fields (amount, tiers, billing model), the system:
 
 When you only change metadata or commitment fields, the line item is updated in-place — no new price is created.
 
----
 
 ## Removing a Line Item
 
@@ -72,7 +65,6 @@ DELETE /subscriptions/{id}/line-items/{line_item_id}
 
 This sets `end_date` on the line item. The line item record is retained for billing history. Billing stops at the effective date.
 
----
 
 ## Pushing Plan Price Changes to Existing Subscriptions (Price Sync)
 
@@ -152,7 +144,6 @@ On `Failed`, call `GET /workflows/{workflow_id}/{run_id}` to review the error co
 | `TimedOut` | Exceeded the 1-hour timeout |
 | `Unknown` | Status not yet synced from Temporal |
 
----
 
 ## Date Handling
 
@@ -196,7 +187,6 @@ Sync uses the plan price's dates directly: `start_date = price.start_date`, `end
 - `line_item.end_date <= subscription.end_date` (when subscription has one)
 - `line_item.start_date <= line_item.end_date` (when both set)
 
----
 
 ## Decision Guide
 
@@ -211,7 +201,6 @@ Sync uses the plan price's dates directly: `start_date = price.start_date`, `end
 | A subscriber has an override — push global pricing update to them | Update their line item directly (sync won't touch overrides) |
 | Change the amount on one subscription's charge | Update line item with new amount |
 
----
 
 ## Edge Cases & Gotchas
 
@@ -230,7 +219,6 @@ The sync API uses a Redis distributed lock (2-hour TTL). Always check for a runn
 **Usage prices always get quantity = 0.**
 Setting `quantity` on a usage-based price override is rejected. Usage is computed from ingested events, not the line item quantity.
 
----
 
 ## Related Topics
 
