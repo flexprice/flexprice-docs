@@ -1,0 +1,382 @@
+---
+title: "Customer Hierarchy: Workflows & Behavior"
+description: "Step-by-step guides for setting up hierarchies, managing subscriptions, usage aggregation, and edge cases"
+---
+
+This page covers the operational workflows for Customer Hierarchy. For a conceptual overview and model comparison, see [Customer Hierarchy](/docs/customers/customer-hierarchy).
+
+---
+
+## 1. Creating the Customer Relationship
+
+Before configuring subscriptions, establish the parent-child relationship at the customer level.
+
+### Step 1: Create the Parent Customer
+
+Create a standard customer. No special fields are required for the parent.
+
+```json
+POST /customers
+{
+  "name": "Global Corp HQ",
+  "email": "billing@globalcorp.com",
+  "external_id": "ext_hq_001"
+}
+```
+
+### Step 2: Create Child Customers
+
+Include `parent_customer_id` when creating each child customer, referencing the parent's Flexprice customer ID.
+
+```json
+POST /customers
+{
+  "name": "APAC Division",
+  "email": "apac@globalcorp.com",
+  "external_id": "ext_apac_001",
+  "parent_customer_id": "cus_hq_abc123"
+}
+```
+
+Or assign a parent to an existing customer via `PATCH`:
+
+```json
+PATCH /customers/{customer_id}
+{
+  "parent_customer_id": "cus_hq_abc123"
+}
+```
+
+<Note>
+  A parent customer can have at most **100** direct children. Creating or assigning a parent relationship that would exceed that count is rejected.
+</Note>
+
+### Step 3: Verify the Relationship
+
+Via the dashboard:
+1. Open the child customer's details page
+2. Click the **Information** tab
+3. The **Customer Details** section shows **Parent Customer** with a link to the parent's page
+
+Via the API, list all children of a parent:
+```
+GET /customers/{parent_customer_id}/children
+```
+
+<Warning>
+  A customer can only have one parent. Assigning a new `parent_customer_id` to a customer that already has one is rejected. Remove the existing relationship first.
+</Warning>
+
+<Note>
+  The `parent_customer_id` on a customer establishes the organizational relationship. Billing behavior (who gets invoiced, whose usage is aggregated) is determined separately at the subscription level.
+</Note>
+
+---
+
+## 2. Model A: Invoice Delegation
+
+Use this model when child customers have their own subscriptions but invoices should go to the parent.
+
+### Creating a Subscription with Invoice Delegation
+
+#### Via Dashboard
+
+1. Navigate to **Subscriptions** and click **Create Subscription**
+2. Select the **child customer** as the subscription owner
+3. Choose a plan and configure billing details
+4. In the **Invoice Customer** section, select **Invoice To Parent**
+   - This option is only available if the selected customer has a `parent_customer_id` set
+5. Click **Create Subscription**
+
+![Subscription creation page showing Invoice Customer section with Invoice To Parent and Invoice To Self options](../../../../invoice-billing.png)
+
+#### Via API
+
+```json
+POST /subscriptions
+{
+  "customer_id": "cus_apac_xyz",
+  "plan_id": "plan_enterprise",
+  "invoice_billing": "invoice_to_parent",
+  "currency": "usd",
+  "billing_period": "month",
+  "billing_period_count": 1
+}
+```
+
+**`invoice_billing` values:**
+- `invoice_to_self`: invoices go to the subscription's own customer (default)
+- `invoice_to_parent`: invoices go to the parent customer; requires `parent_customer_id` to be set on the customer
+
+<Note>
+  `invoice_billing` is immutable after subscription creation. To change it, cancel the subscription and create a new one.
+</Note>
+
+### How Invoice Delegation Works
+
+1. Flexprice records `invoicing_customer_id` on the subscription (set to the parent customer's ID)
+2. At invoice generation time, Flexprice reads `invoicing_customer_id` and creates the invoice under the parent customer
+3. Invoice line items reference the source (child) subscription. The invoice is attributed correctly even though it appears in the parent's billing history
+4. The parent's payment methods and wallet balance are used for settlement
+
+### Lifecycle Behavior (Model A)
+
+| Event | Behavior |
+|---|---|
+| Child subscription paused | Only that child's subscription is paused; parent and other children unaffected |
+| Child subscription cancelled | Final invoice goes to parent customer; child subscription terminates independently |
+| Plan change on child subscription | `invoice_billing` config is preserved; new invoices continue going to parent |
+| Parent customer archived | Invoices already exist; new invoice generation may fail. Archive with caution |
+
+---
+
+## 3. Model B: Usage Aggregation
+
+Use this model when the parent owns one subscription and child usage should pool toward it, enabling volume pricing that spans the entire organization.
+
+### Creating a Parent Subscription with Usage Aggregation
+
+#### Via API
+
+```json
+POST /subscriptions
+{
+  "customer_id": "cus_hq_abc123",
+  "plan_id": "plan_enterprise_volume",
+  "usage_customer_ids": ["cus_apac_xyz", "cus_emea_xyz", "cus_americas_xyz"],
+  "currency": "usd",
+  "billing_period": "month",
+  "billing_period_count": 1
+}
+```
+
+<Note>
+  Customer hierarchy allows at most **100** direct child customers per parent. A parent subscription's `usage_customer_ids` list is capped at the same **100** customers. Flexprice derives that subscription limit from the hierarchy rules, so you cannot attach more usage customers than the parent is allowed to have as children.
+</Note>
+
+**What Flexprice does automatically:**
+- Creates the parent subscription with `subscription_type: parent`
+- For each ID in `usage_customer_ids`, creates an **inherited subscription** with `subscription_type: inherited`
+- Inherited subscriptions copy the parent's `billing_period`, `billing_period_count`, `billing_anchor`, and `currency`
+- Inherited subscriptions carry **no line items**; they are skeleton records that link each child to the parent's usage pool
+
+<Warning>
+  `usage_customer_ids` and `invoice_billing: invoice_to_parent` are mutually exclusive. A single subscription cannot use both models simultaneously.
+</Warning>
+
+### Adding Children to an Existing Subscription
+
+You can upgrade a standalone subscription to a parent subscription by passing `usage_customer_ids` in an update:
+
+```json
+PUT /subscriptions/{subscription_id}
+{
+  "usage_customer_ids": ["cus_apac_xyz", "cus_emea_xyz"]
+}
+```
+
+**Behavior:**
+- Each newly listed child gets an inherited subscription created with the current billing period dates
+- Usage from newly added children is included from this point forward
+- **There is no retroactive usage attribution** for the current billing period before the child was added
+
+<Note>
+  You can add children to an existing subscription but cannot remove them. To remove a child, cancel the subscription and recreate it with the updated `usage_customer_ids` list.
+</Note>
+
+### Viewing Inherited Subscriptions
+
+To see the parent subscription's children:
+```
+GET /customers/{parent_customer_id}/children
+```
+
+To filter subscriptions by parent:
+```
+GET /subscriptions?parent_subscription_ids={parent_subscription_id}
+```
+
+Via the dashboard: the parent customer's **Subscriptions** tab shows the parent subscription; each child customer's page shows their inherited subscription.
+
+### Lifecycle Cascading (Model B)
+
+When you act on the **parent** subscription, Flexprice cascades the action to all inherited children atomically.
+
+| Action on Parent | Effect on Inherited Children |
+|---|---|
+| Pause | All children paused |
+| Resume | All children resumed; billing period synced to parent |
+| Cancel (immediate) | All children cancelled immediately |
+| Cancel (end-of-period) | All children cancelled at end of billing period |
+| Plan change | Parent plan updated; inherited subscriptions updated to reflect new plan |
+
+<Note>
+  Inherited subscriptions are read-only. You cannot pause, resume, cancel, or modify an inherited subscription directly. All lifecycle operations must be performed on the parent subscription.
+</Note>
+
+### Removing a Child
+
+<Warning>
+  Removing a child from an active parent subscription is **not supported**. To remove a child, you must cancel the parent subscription and recreate it with the updated `usage_customer_ids` list. This will create a new billing period for all children.
+</Warning>
+
+---
+
+## 4. Usage Processing
+
+This section applies to Model B (Usage Aggregation).
+
+### How Usage Is Aggregated
+
+```
+Event Ingestion (per child entity)
+        │
+        ▼
+ClickHouse: events keyed by external_customer_id
+        │
+        ▼  (at billing time or on-demand)
+GetFeatureUsage(
+  customerIDs = [parent_ext_id, child_A_ext_id, child_B_ext_id, ...]
+)
+        │
+        ▼
+Single aggregated result → Parent subscription line items
+        │
+        ▼
+Invoice generated for Parent Customer
+```
+
+**Key points:**
+
+- Usage events must be ingested with the correct `external_customer_id` for each entity. The parent and each child are distinct customers with distinct IDs.
+- Aggregation is performed in a **single query** across all hierarchy members; there is no intermediate per-child rollup step.
+- Volume tiers on the plan apply to the **aggregated total**, not per-child usage. This is the primary value of Model B.
+
+### Per-Child Usage Breakdown
+
+For chargeback reporting or internal cost attribution, you can retrieve per-child usage breakdowns via the Usage Analytics API:
+
+```json
+GET /usage/analytics
+{
+  "subscription_id": "sub_parent_123",
+  "include_children": true,
+  "include_child_customers_breakdown": true
+}
+```
+
+The response includes:
+- `aggregated_usage`: total usage across parent + all children
+- `child_breakdowns`: array of per-child usage summaries with `customer_id`, `external_id`, and feature-level usage
+
+<Note>
+  Per-child breakdowns are available in the API but are **not reflected on the invoice itself**. Invoices show aggregated usage under the parent's line items. Use the Analytics API for chargeback and attribution reporting.
+</Note>
+
+---
+
+## 5. Billing & Invoicing
+
+### Model A: Invoice Delegation
+
+- Each child subscription has its own billing cycle and triggers invoice generation independently
+- At generation time, the invoice is assigned to the parent customer (`invoicing_customer_id`)
+- Invoice line items show the source subscription and usage breakdown
+- Multiple children can all invoice to the same parent. Each generates a separate invoice per billing cycle
+
+### Model B: Usage Aggregation
+
+- One invoice per billing period, generated from the parent subscription
+- All usage charges reflect aggregated usage from parent + all children
+- Invoice line items are grouped at the parent subscription level; no per-child line item breakdown on the invoice
+- For per-child attribution, use the Usage Analytics API (see above)
+
+### Wallet & Credits
+
+For **both models**, all financial operations occur at the parent customer level:
+
+| Resource | Who it belongs to | Applied to hierarchy invoices? |
+|---|---|---|
+| Parent wallet | Parent customer | Yes |
+| Parent credit ledger | Parent customer | Yes |
+| Child wallet | Child customer | No |
+| Child credit ledger | Child customer | No |
+
+Prepaid credits and promotional wallets must be loaded onto the **parent customer** to apply to hierarchy-billed invoices. Usage deductions from child subscriptions will draw down the **parent's** balance.
+
+---
+
+## 6. Advanced Scenarios
+
+### Adding a Child Mid-Cycle (Model B)
+
+To add a new child to an active parent subscription mid-cycle:
+
+```json
+PUT /subscriptions/{parent_subscription_id}
+{
+  "usage_customer_ids": ["cus_apac_xyz", "cus_emea_xyz", "cus_new_child_xyz"]
+}
+```
+
+- The new child's inherited subscription is created with the current billing period dates
+- Usage from the new child is included from this API call forward
+- Usage from the new child **before** this call is not retroactively attributed
+
+### Currency Handling
+
+**Model A**: Each child subscription specifies its own `currency`. The parent receives invoices in whatever currency each child subscription uses. Multiple currencies from different children are possible.
+
+**Model B**: All inherited subscriptions inherit the parent subscription's `currency`. The system does not validate that child customers and the parent share the same currency preference. Ensure consistency when setting up.
+
+### Multiple Children, Single Parent
+
+Both models support multiple children under one parent, up to the hierarchy maximum of **100** direct children per parent. In Model B, all `usage_customer_ids` (up to that same **100** cap) are aggregated into a single parent subscription. In Model A, each child's subscription independently routes its invoices to the parent.
+
+### Hierarchy and Plan Changes (Model A)
+
+When you change the plan on a child subscription that uses `invoice_to_parent`:
+- The `invoice_billing` setting is preserved
+- The new plan's invoices continue to go to the parent
+- Any proration invoice from the plan change is also assigned to the parent
+
+### Hierarchy and Subscription Cancellation
+
+**Model A**: Cancelling a child subscription generates a final invoice assigned to the parent customer.
+
+**Model B**: Cancelling the parent subscription cascades to all children. A single final invoice is generated for the parent, covering any remaining usage from all children in the current period.
+
+---
+
+## 7. Edge Cases & System Guarantees
+
+### System Guarantees
+
+- **Atomic cascades**: Pause, resume, and cancel operations on a parent subscription propagate to all inherited children within a single database transaction. Partial failures are rolled back.
+- **Read-only children** (Model B): Inherited subscriptions cannot be independently modified, preventing state drift between parent and children.
+- **Usage aggregation correctness**: The multi-customer usage query uses a single `IN (...)` clause across all hierarchy members; usage is not summed from separate per-child queries, preventing double-counting as long as events are ingested with unique `external_customer_id` values per entity.
+- **Conflict prevention**: A customer cannot simultaneously hold a standalone subscription and be part of a hierarchy as a child. Flexprice rejects conflicting subscription creation.
+
+### Not Supported
+
+| Scenario | Status | Workaround |
+|---|---|---|
+| Remove a child from an active parent subscription (Model B) | Not supported | Cancel the parent subscription; recreate with updated `usage_customer_ids` |
+| Change `invoice_billing` after subscription creation | Not supported | Cancel and recreate the subscription |
+| Nested hierarchies (grandparent → parent → child) | Not supported | Max 1 level of hierarchy |
+| A child in multiple hierarchies simultaneously | Not supported | Remove from existing hierarchy first |
+| Mix Model A and Model B on the same subscription | Not supported | They are mutually exclusive |
+| Retroactive usage attribution when adding a child mid-cycle | Not supported | Usage is attributed from the API call date forward only |
+| Per-child line items on invoices (Model B) | Not on invoice | Use the Usage Analytics API for per-child breakdowns |
+| More than 100 direct children under one parent | Rejected | Maximum **100** child customers per parent in the hierarchy |
+| More than 100 customers in `usage_customer_ids` (Model B) | Rejected | Same **100** limit as the customer hierarchy; split across subscriptions or restructure if needed |
+
+### Hierarchy breadth and usage limits
+
+<Note>
+  Flexprice enforces a maximum of **100** direct child customers per parent. For usage aggregation, `usage_customer_ids` is limited to **100** entries on a single subscription. That cap matches the hierarchy maximum because usage customers must satisfy the parent-child hierarchy rules.
+</Note>
+
+### Known Limitation: Hierarchy Conflict Detection
+
+Hierarchy conflict validation checks subscriptions in `active`, `trialing`, and `draft` states. Subscriptions in `paused` or `incomplete` states are not currently checked. If a subscription is in one of these states, it is possible to create conflicting hierarchy configurations that would otherwise be rejected. Resolve any paused or incomplete subscriptions before modifying hierarchy relationships.
