@@ -1,0 +1,175 @@
+---
+title: "Plan Price Overrides"
+description: "Give a specific customer custom rates without changing the plan for everyone else. Apply overrides at subscription creation time."
+---
+
+Plan price overrides let you customize pricing for a specific customer when creating a subscription. The plan itself stays unchanged — only this subscription uses the overridden rates.
+
+## When to Use
+
+- Enterprise customer with a negotiated rate
+- Promotional or introductory pricing for a specific account
+- Volume discounts agreed outside of your standard plan tiers
+- Early adopter or partner pricing
+
+If you need to change pricing for **all** subscribers, update the plan price instead and run a price sync. See [Subscription Line Item Overrides](/docs/subscriptions/subscription-line-item-overrides).
+
+
+## How to Apply Overrides
+
+Pass an `override_line_items` array in the create subscription request. Each entry references a plan price by `price_id` and specifies what to change.
+
+```json
+POST /subscriptions
+{
+  "customer_id": "cust_xxx",
+  "plan_id": "plan_xxx",
+  "currency": "usd",
+  "billing_cadence": "RECURRING",
+  "billing_period": "MONTHLY",
+  "override_line_items": [
+    {
+      "price_id": "price_base_fee",
+      "amount": "299.00"
+    },
+    {
+      "price_id": "price_api_calls",
+      "billing_model": "TIERED",
+      "tier_mode": "VOLUME",
+      "tiers": [
+        { "up_to": 100000, "unit_amount": "0.0005" },
+        { "up_to": null,   "unit_amount": "0.0002" }
+      ]
+    }
+  ]
+}
+```
+
+You can override multiple prices in one request.
+
+
+## What You Can Override
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `price_id` | string | **Required.** The plan price to override |
+| `amount` | decimal | For flat fee prices (FIAT pricing) |
+| `quantity` | decimal | Fixed prices only — cannot be set for usage-based prices |
+| `billing_model` | string | `FLAT_FEE`, `TIERED`, or `PACKAGE` |
+| `tier_mode` | string | `VOLUME` or `SLAB` — for TIERED billing model |
+| `tiers` | array | Custom tier breakpoints for TIERED/FIAT pricing |
+| `transform_quantity` | object | For PACKAGE billing: `divide_by` and `round` |
+| `price_unit_amount` | decimal | For custom price unit prices |
+| `price_unit_tiers` | array | Custom tiers for custom price unit + TIERED |
+
+
+## What You Cannot Override
+
+These fields are always inherited from the original plan price and cannot be changed:
+
+| Field | Why |
+|-------|-----|
+| `currency` | Locked to the subscription's currency |
+| `billing_period` / `billing_period_count` | Billing cycle alignment is fixed |
+| `billing_cadence` | Cannot switch recurring ↔ one-time |
+| `invoice_cadence` | ARREAR/ADVANCE is fixed per price |
+| `trial_period` | Trial config is plan-level |
+| `meter_id` | The usage metric cannot be swapped |
+| `price_unit_type` | Cannot switch FIAT ↔ CUSTOM |
+| `display_name` | Preserved from original |
+
+
+## Validation Rules
+
+- At least one override field must be provided per entry
+- `amount` and `quantity` must be non-negative
+- `quantity` is not allowed on usage-based prices (usage is metered, not quantity-based)
+- Cannot mix FIAT fields (`amount`, `tiers`) with custom price unit fields (`price_unit_amount`, `price_unit_tiers`) in the same entry
+- `transform_quantity.divide_by` must be greater than 0
+- `price_id` must reference a price that exists in the selected plan
+
+
+## How It Works Internally
+
+When an override is processed, Flexprice:
+
+1. Creates a new **subscription-scoped price** with `entity_type = SUBSCRIPTION` and the overridden values
+2. Sets `parent_price_id` on the new price to the original plan price's ID — preserving the lineage
+3. The subscription's line item points to this subscription-scoped price
+
+The plan price is untouched. Other subscribers on the same plan are unaffected.
+
+```
+Plan Price (shared)
+    └── Subscription-scoped Price (this customer only)
+            └── Line Item → price_id = subscription-scoped price
+```
+
+
+## Billing Behavior After Override
+
+- All invoicing for this subscription uses the subscription-scoped price
+- If the plan price is later updated, **this subscription's override is not affected**
+- If a [price sync](/docs/subscriptions/subscription-line-item-overrides) is run, **the overridden line item is not replaced** — sync only fills in missing line items
+
+
+## Examples
+
+### Flat Fee Discount
+
+```json
+{
+  "price_id": "price_monthly_base",
+  "amount": "199.00"
+}
+```
+
+### Custom Usage Tiers
+
+```json
+{
+  "price_id": "price_api_calls",
+  "billing_model": "TIERED",
+  "tier_mode": "VOLUME",
+  "tiers": [
+    { "up_to": 50000,  "unit_amount": "0.002" },
+    { "up_to": 200000, "unit_amount": "0.001" },
+    { "up_to": null,   "unit_amount": "0.0005" }
+  ]
+}
+```
+
+### Package Pricing Override
+
+```json
+{
+  "price_id": "price_sms",
+  "billing_model": "PACKAGE",
+  "transform_quantity": {
+    "divide_by": 500,
+    "round": "up"
+  }
+}
+```
+
+### Quantity Override (Fixed Price)
+
+```json
+{
+  "price_id": "price_seats",
+  "quantity": "50.0"
+}
+```
+
+
+## Updating an Override After Creation
+
+To change an override on a live subscription, update the line item directly using the subscription line item update API. See [Subscription Line Item Overrides](/docs/subscriptions/subscription-line-item-overrides).
+
+
+## Related Topics
+
+- [Creating Subscriptions](/docs/subscriptions/customers-create-subscription)
+- [Subscription Line Item Overrides](/docs/subscriptions/subscription-line-item-overrides)
+- [Plan Pricing](/docs/product-catalogue/plans/pricing)
+- [Billing Models](/docs/product-catalogue/plans/billing-models/flat-fee)
