@@ -1,0 +1,241 @@
+---
+title: "Subscription Line Item Overrides"
+description: "Add, update, or remove individual charges on a live subscription, and push plan pricing changes to existing subscribers using the price sync workflow."
+---
+
+# Subscription Line Item Overrides
+
+A subscription's line items are the actual billing records — one per price. After a subscription is live, you can add new line items, update existing ones, remove them, or push plan-level pricing changes to all subscribers using the price sync workflow.
+
+---
+
+## What Is a Line Item?
+
+Each line item on a subscription:
+- References one price (`price_id`)
+- Has its own `start_date` and `end_date`
+- Is what the billing engine uses to generate invoice charges
+- Can point to a plan price (standard) or a subscription-scoped price (overridden)
+
+---
+
+## Adding a Line Item
+
+Use this when you want to add a charge that wasn't part of the original subscription — for example, an add-on price or a usage meter you've just enabled.
+
+```
+POST /subscriptions/{id}/line-items
+```
+
+```json
+{
+  "price_id": "price_new_feature",
+  "quantity": "1.0",
+  "start_date": "2026-04-01T00:00:00Z"
+}
+```
+
+If the price is usage-based, `quantity` is automatically set to `0` — usage is computed from metered events.
+
+---
+
+## Updating a Line Item
+
+Use this to change the pricing or quantity of an existing line item.
+
+```
+PATCH /subscriptions/{id}/line-items/{line_item_id}
+```
+
+When you change pricing fields (amount, tiers, billing model), the system:
+1. Terminates the old line item at `effective_from`
+2. Creates a new subscription-scoped price with the updated values
+3. Creates a new line item starting at `effective_from`
+
+When you only change metadata or commitment fields, the line item is updated in-place — no new price is created.
+
+---
+
+## Removing a Line Item
+
+Use this to stop billing for a specific charge.
+
+```
+DELETE /subscriptions/{id}/line-items/{line_item_id}
+```
+
+```json
+{
+  "effective_from": "2026-04-01T00:00:00Z"
+}
+```
+
+This sets `end_date` on the line item. The line item record is retained for billing history. Billing stops at the effective date.
+
+---
+
+## Pushing Plan Price Changes to Existing Subscriptions (Price Sync)
+
+When you update a plan's prices, existing subscriptions are **not automatically updated**. The price sync workflow propagates plan changes to all active subscribers on a plan.
+
+### What Sync Does
+
+**Phase 1 — Terminate expired line items:**
+Finds line items for plan prices that have an `end_date` in the past. Sets `line_item.end_date = price.end_date`. Those charges stop billing.
+
+**Phase 2 — Create missing line items:**
+Finds plan prices that do not have a corresponding line item on each active subscription. Creates the missing line items with values from the plan price.
+
+| Field set by sync | Value |
+|-------------------|-------|
+| `price_id` | Plan price ID |
+| `quantity` | `0` for usage prices; `1` for fixed |
+| `start_date` | `price.start_date` (from plan price) |
+| `end_date` | `price.end_date` (from plan price) |
+| `metadata["added_by"]` | `"plan_sync_api"` |
+
+**What sync does NOT do:**
+- Does not update line items that already exist
+- Does not overwrite line items with overridden (subscription-scoped) prices
+- Does not delete line items for plan prices that were removed (set `price.end_date` to stop billing for removed prices)
+
+### Recommended Sequence for Plan Pricing Changes
+
+**Step 1 — Update plan prices**
+```
+POST /plans/{id}/prices       ← add new price
+PUT  /plans/{id}/prices/{id}  ← update existing price
+```
+
+**Step 2 — Check for a running sync**
+```json
+POST /workflows/search
+{
+  "workflow_type": "PriceSyncWorkflow",
+  "entity_id": "<plan_id>",
+  "workflow_status": "Running"
+}
+```
+If `pagination.total > 0`, a sync is already running. Wait for it before triggering a new one.
+
+**Step 3 — Trigger sync**
+```
+POST /plans/{id}/sync/subscriptions
+```
+Response:
+```json
+{
+  "workflow_id": "PriceSyncWorkflow-plan_xxx",
+  "run_id": "run_abc123",
+  "message": "price sync workflow started successfully"
+}
+```
+
+**Step 4 — Poll until complete**
+```
+GET /workflows/{workflow_id}/{run_id}
+```
+Poll every 30 seconds. Check `status` in the response.
+
+**Step 5 — Handle failure**
+On `Failed`, call `GET /workflows/{workflow_id}/{run_id}` to review the error context and re-trigger after fixing the root cause.
+
+### Workflow Status Values
+
+| Status | Meaning |
+|--------|---------|
+| `Running` | Currently executing |
+| `Completed` | Finished successfully |
+| `Failed` | Terminated with an error |
+| `Canceled` | Manually canceled |
+| `Terminated` | Force-terminated |
+| `TimedOut` | Exceeded the 1-hour timeout |
+| `Unknown` | Status not yet synced from Temporal |
+
+---
+
+## Date Handling
+
+### Line Item Start Date
+
+```
+line_item.start_date = max(
+    subscription.start_date,
+    price.start_date        (if set),
+    request.start_date      (if set)
+)
+```
+
+The latest of the three applies. Timestamps are stored in UTC, truncated to milliseconds.
+
+### Line Item End Date
+
+```
+line_item.end_date = request.end_date              (if provided)
+                   = subscription.end_date          (if subscription has one)
+                   = nil                            (open-ended)
+```
+
+### When Sync Creates Line Items
+
+Sync uses the plan price's dates directly: `start_date = price.start_date`, `end_date = price.end_date`. If the plan price has no dates, the created line item also has no dates (open-ended).
+
+### All Combinations
+
+| Scenario | `line_item.start_date` | `line_item.end_date` |
+|----------|------------------------|----------------------|
+| Price has no start/end dates | `subscription.start_date` | `subscription.end_date` or nil |
+| `price.start_date` < `sub.start_date` | `sub.start_date` | `sub.end_date` or nil |
+| `price.start_date` > `sub.start_date` | `price.start_date` | `sub.end_date` or nil |
+| `price.end_date` set | per above | `price.end_date` (via sync) |
+| Request includes `start_date` | `max(sub, price, request)` | per above |
+
+### Validation
+
+- `line_item.start_date >= subscription.start_date`
+- `line_item.end_date <= subscription.end_date` (when subscription has one)
+- `line_item.start_date <= line_item.end_date` (when both set)
+
+---
+
+## Decision Guide
+
+| Situation | Right Approach |
+|-----------|---------------|
+| Give one customer a different rate at subscription creation | [Plan price override](/docs/subscriptions/plan-price-overrides) |
+| Change pricing for all subscribers on a plan | Update plan price → run price sync |
+| Add a new charge to one live subscription | `POST /subscriptions/{id}/line-items` |
+| Add a new price to a plan and push to all subscribers | Add price to plan → run price sync |
+| Remove a charge from one subscription | `DELETE /subscriptions/{id}/line-items/{id}` |
+| Remove a price from a plan and stop billing everyone | Set `price.end_date` → run price sync |
+| A subscriber has an override — push global pricing update to them | Update their line item directly (sync won't touch overrides) |
+| Change the amount on one subscription's charge | Update line item with new amount |
+
+---
+
+## Edge Cases & Gotchas
+
+**Overrides survive sync.**
+Sync only creates items for missing `(subscription_id, price_id)` pairs. An overridden line item already exists (pointing to a subscription-scoped price), so sync never replaces it.
+
+**Removing a plan price does not stop billing automatically.**
+Sync has no delete phase. To stop billing for a plan price, set `price.end_date`. The sync termination phase will then close the line items.
+
+**Prices without dates don't expire.**
+If a plan price has no `start_date` or `end_date`, line items created by sync have no date bounds and remain active until the subscription ends or you manually terminate them.
+
+**Concurrent sync protection.**
+The sync API uses a Redis distributed lock (2-hour TTL). Always check for a running workflow before triggering to avoid redundant runs.
+
+**Usage prices always get quantity = 0.**
+Setting `quantity` on a usage-based price override is rejected. Usage is computed from ingested events, not the line item quantity.
+
+---
+
+## Related Topics
+
+- [Plan Price Overrides](/docs/subscriptions/plan-price-overrides)
+- [Creating Subscriptions](/docs/subscriptions/customers-create-subscription)
+- [Plan Pricing](/docs/product-catalogue/plans/pricing)
+- [Event Ingestion](/docs/event-ingestion/overview)
+- [Pause & Resume Workflows](/docs/subscriptions/workflows/pause)
