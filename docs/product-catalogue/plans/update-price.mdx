@@ -1,0 +1,254 @@
+---
+title: "Updating a Plan Price"
+description: "Update a plan price's amount, tiers, or metadata — and safely propagate the change to all active subscribers using the price sync workflow."
+---
+
+# Updating a Plan Price
+
+Updating a plan price changes how it is charged going forward. Depending on what you change, the system either mutates the price in place or creates a new price version. After updating pricing fields, you need to run the price sync workflow to propagate the change to existing subscribers.
+
+---
+
+## The Update Price API
+
+```
+PUT /prices/{id}
+```
+
+All fields are optional. Only include the fields you want to change.
+
+### Available Fields
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `amount` | decimal | New unit price (FIAT prices) |
+| `billing_model` | string | `FLAT_FEE`, `TIERED`, or `PACKAGE` |
+| `tier_mode` | string | `VOLUME` or `SLAB` — for TIERED model |
+| `tiers` | array | New tier breakpoints (TIERED/FIAT) |
+| `transform_quantity` | object | Package billing: `divide_by` and `round` |
+| `price_unit_amount` | decimal | New unit price (CUSTOM price unit) |
+| `price_unit_tiers` | array | New tiers (CUSTOM price unit + TIERED) |
+| `display_name` | string | Display label shown on invoices |
+| `description` | string | Internal description |
+| `lookup_key` | string | Unique lookup key |
+| `metadata` | object | Key-value metadata |
+| `group_id` | string | Assign/reassign to a price group; `""` clears the group |
+| `effective_from` | timestamp | When the new price version takes effect (default: now) |
+
+### Fields You Cannot Change
+
+These are immutable after a price is created:
+
+| Field | Why |
+|-------|-----|
+| `type` | Cannot switch FIXED ↔ USAGE |
+| `currency` | Currency is locked at creation |
+| `billing_period` / `billing_period_count` | Billing cycle is fixed |
+| `billing_cadence` | Cannot switch recurring ↔ one-time |
+| `invoice_cadence` | ARREAR/ADVANCE is fixed |
+| `meter_id` | The usage metric cannot be swapped |
+| `price_unit_type` | Cannot switch FIAT ↔ CUSTOM |
+| `entity_type` / `entity_id` | Price ownership is fixed |
+
+---
+
+## Two Update Paths
+
+### Path A — Metadata-only update (in-place)
+
+If you only update `display_name`, `description`, `lookup_key`, `metadata`, or `group_id`, the price is updated **in place**. No new price version is created. No sync is needed.
+
+```json
+PUT /prices/price_abc
+{
+  "display_name": "API Calls (v2)",
+  "metadata": { "tier": "enterprise" }
+}
+```
+
+Response: the updated price object. Done.
+
+---
+
+### Path B — Pricing field update (new version created)
+
+If you update any pricing field (`amount`, `billing_model`, `tiers`, `tier_mode`, `transform_quantity`, `price_unit_amount`, `price_unit_tiers`), the system:
+
+1. **Terminates the current price** — sets its `end_date` to `effective_from` (or now if not provided)
+2. **Creates a new price** — starts exactly at `effective_from`, with the updated values
+3. Returns the **new price** in the response (with a new `id`)
+
+```json
+PUT /prices/price_abc
+{
+  "amount": "49.99",
+  "effective_from": "2026-04-01T00:00:00Z"
+}
+```
+
+Response: the new price object (`id` will be different from the original).
+
+<Warning>
+  Save the new price `id` from the response. Existing subscription line items still reference the old price ID. The sync workflow creates new line items referencing the new price.
+</Warning>
+
+---
+
+## Syncing the Change to Existing Subscribers
+
+After a pricing field update, existing subscriptions are **not automatically updated**. You must run the price sync workflow to propagate the new price to all active subscribers on the plan.
+
+### Why Manual Sync?
+
+The sync workflow can affect large numbers of subscriptions. Triggering it automatically on every price update would be unpredictable. Doing it explicitly gives you control over timing.
+
+### Safe Sync Sequence
+
+**Step 1 — Update the price**
+
+```json
+PUT /prices/{price_id}
+{
+  "amount": "49.99",
+  "effective_from": "2026-04-01T00:00:00Z"
+}
+```
+
+Note the plan ID associated with this price (needed for sync).
+
+**Step 2 — Check for a running sync**
+
+```json
+POST /workflows/search
+{
+  "workflow_type": "PriceSyncWorkflow",
+  "entity_id": "<plan_id>",
+  "workflow_status": "Running"
+}
+```
+
+- If `pagination.total > 0` → a sync is already running. Do not trigger another. Poll `GET /workflows/{workflow_id}/{run_id}` every 30 seconds until `status` is `Completed` or `Failed`, then continue to Step 3.
+- If `pagination.total == 0` → proceed to Step 3.
+
+**Step 3 — Trigger sync**
+
+```
+POST /plans/{plan_id}/sync/subscriptions
+```
+
+Response:
+```json
+{
+  "workflow_id": "PriceSyncWorkflow-plan_xxx",
+  "run_id": "run_abc123",
+  "message": "price sync workflow started successfully"
+}
+```
+
+**Step 4 — Poll until complete**
+
+```
+GET /workflows/{workflow_id}/{run_id}
+```
+
+Poll every 30 seconds. Terminal states:
+
+| Status | Action |
+|--------|--------|
+| `Completed` | Done — all subscribers updated |
+| `Failed` | Check error details, fix root cause, re-trigger |
+| `Canceled` / `Terminated` / `TimedOut` | Re-trigger sync |
+
+**Step 5 — Verify (optional)**
+
+Check the sync summary in the completed workflow response:
+```json
+{
+  "summary": {
+    "line_items_found_for_creation": 120,
+    "line_items_created": 120,
+    "line_items_terminated": 120
+  }
+}
+```
+
+`line_items_terminated` = old price line items closed. `line_items_created` = new price line items added.
+
+---
+
+## What Sync Does After a Price Update
+
+When you update a price, the old price gets an `end_date` and a new price is created. The sync workflow:
+
+1. **Terminates** existing line items that reference the old price (their `end_date` is set to match the old price's `end_date`)
+2. **Creates** new line items for the new price on all subscriptions that don't have one yet
+
+Subscriptions with **overridden** line items (custom pricing) are **not affected** — their line items point to subscription-scoped prices, not the plan price you just updated.
+
+---
+
+## Using `effective_from`
+
+`effective_from` controls when the old price expires and the new one starts.
+
+| Scenario | Recommendation |
+|----------|---------------|
+| Change takes effect immediately | Omit `effective_from` (defaults to now) |
+| Change takes effect at start of next billing period | Set `effective_from` to the next period start |
+| Scheduled future price change | Set `effective_from` to the future date, trigger sync in advance |
+
+<Note>
+  The sync workflow creates new line items with `start_date = price.start_date`. If you set `effective_from: "2026-04-01"`, the new line items will start on April 1 and the old ones will end on April 1.
+</Note>
+
+---
+
+## Examples
+
+### Update a flat fee amount
+
+```json
+PUT /prices/price_monthly_base
+{
+  "amount": "79.00",
+  "effective_from": "2026-04-01T00:00:00Z"
+}
+```
+
+Then sync: `POST /plans/plan_growth/sync/subscriptions`
+
+### Update usage tiers
+
+```json
+PUT /prices/price_api_calls
+{
+  "billing_model": "TIERED",
+  "tier_mode": "VOLUME",
+  "tiers": [
+    { "up_to": 50000,  "unit_amount": "0.002" },
+    { "up_to": 200000, "unit_amount": "0.001" },
+    { "up_to": null,   "unit_amount": "0.0005" }
+  ]
+}
+```
+
+### Update metadata only (no sync needed)
+
+```json
+PUT /prices/price_api_calls
+{
+  "display_name": "API Calls — Updated Tiers",
+  "metadata": { "updated_by": "billing-team" }
+}
+```
+
+No sync required.
+
+---
+
+## Related Topics
+
+- [Subscription Line Item Overrides](/docs/subscriptions/subscription-line-item-overrides)
+- [Plan Price Overrides](/docs/subscriptions/plan-price-overrides)
+- [Plan Pricing](/docs/product-catalogue/plans/pricing)
+- [Billing Models](/docs/product-catalogue/plans/billing-models/flat-fee)
