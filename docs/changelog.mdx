@@ -4,6 +4,105 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="March 23rd 2026">
+  ## Paddle payment integration
+
+  Accept payments through Paddle with full checkout, customer sync, and webhook support — no custom code required.
+
+  * **Checkout overlay**: Customers complete payments via Paddle's hosted checkout, embedded directly in your billing flow with JWT-signed checkout URLs
+  * **Bidirectional customer sync**: Customers are automatically synced between Flexprice and Paddle, with deduplication and address management
+  * **Webhook processing**: Transaction completions, customer creation, and address updates from Paddle are processed automatically with built-in idempotency
+  * **Enhanced error handling**: Multi-layer idempotency checks on invoice sync prevent duplicate Paddle transactions on retries
+
+  <br />
+
+  <Frame>
+    <img src="/images/docs/integrations/paddle/connection.png" alt="Paddle connection setup" style={{ borderRadius: '0.5rem' }} />
+  </Frame>
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/integrations/paddle/connection-setup" title="Paddle connection setup - Documentation" />
+
+  <br />
+
+  ## Multi-cadence billing
+
+  A single subscription can now contain line items with different billing periods — monthly, quarterly, and annual charges all on one subscription.
+
+  * **Mixed billing periods**: Assign different billing cadences (monthly, quarterly, annual) to individual line items within the same subscription
+  * **Smart invoice inclusion**: Line items are automatically included on the correct invoices based on their cadence and invoice timing (advance or arrear)
+  * **Flexible cancellation strategies**: Choose between immediate, minimum-period-end, or maximum-period-end cancellation to honor varying commitment lengths
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/plans/create" title="Creating a plan - Documentation" />
+
+  <br />
+
+  ## Bulk event ingestion
+
+  Ingest raw events in bulk for backfills, testing, and high-throughput pipelines with a new dedicated API endpoint.
+
+  * **Bulk raw event API**: New `POST /v1/events/raw/bulk` endpoint accepts up to 1,000 raw events per request for async processing via Kafka
+  * **Ingestion filter**: Allowlist specific external customer IDs for live billing while preserving all raw events — ideal for controlled pilot rollouts
+  * **Sequential usage fetch**: New `GetUsageBulkSync` method provides reliable, sequential meter usage lookups with per-meter timeout protection for billing accuracy
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/event-ingestion/sending-events" title="Sending events - Documentation" />
+
+  <br />
+
+  ## Draft subscriptions
+
+  Create subscriptions in a draft state before activating them, allowing configuration and invoice preview before going live.
+
+  * **Draft lifecycle**: Create subscriptions with `DRAFT` status that skip invoice generation and payment processing until explicitly activated
+  * **Invoice preview**: Preview estimated charges for draft subscriptions before activation
+  * **Dashboard support**: Draft subscriptions now appear in customer subscription lists and support activation with configurable start dates
+
+  <br />
+
+  ## Invoice overpaid tracking
+
+  Track and display overpaid amounts when customers pay more than the invoice total.
+
+  * **Overpaid amount display**: Invoices now show an `overpaid_amount` field when the payment exceeds the amount due
+  * **Status visibility**: A new "Overpaid" payment status is displayed in invoice tables and detail views
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Webhook delivery now uses Kafka for reliable, distributed event processing — in-memory PubSub support has been removed
+      * Sentry logging enhanced with log-level filtering, unique per-request trace IDs, and health endpoint noise reduction
+      * Multi-addon entitlement fetching improved to support multiple instances of the same add-on per subscription
+      * Onboarding experience refreshed with welcome banners, embedded video tutorials, and quick-start guide cards
+      * MCP scope annotations added to Swagger documentation for better AI-agent interoperability
+      * Webhook event types now documented in the OpenAPI spec
+      * Go Docker image bumped to golang:1.24-alpine
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Fixed inactive line item handling for previous billing period calculations
+      * Invoice idempotency key generation scoped to minute-level precision to prevent duplicate invoices within the same billing cycle
+      * Add-on line item termination now correctly handled during subscription cancellation
+      * Webhook secrets are now obscured in API responses for improved security
+      * Reverted overly strict settings validation that blocked certain configuration reads
+    </Accordion>
+
+    <Accordion title="API">
+      * New `POST /v1/events/raw/bulk` endpoint for bulk raw event ingestion
+      * Subscriptions API now supports listing and filtering by `DRAFT` status
+      * Event ingestion filter setting added for customer-level allowlisting
+      * GitHub release step added for Go SDK CI pipeline
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
 <Update label="March 16th 2026">
   ## Organization members & dashboard access
  
