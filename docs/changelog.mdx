@@ -4,6 +4,88 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="March 30th 2026">
+  ## Revenue dashboard
+
+  Visualize revenue across your customer base with a new analytics dashboard — filterable by time period with per-customer breakdowns.
+
+  * **Time-series graphs**: View total revenue and usage trends over configurable date ranges (this month, this quarter, this year, and prior-period comparisons)
+  * **Per-customer breakdown**: Each customer row shows total revenue, usage-based revenue, and fixed revenue with drill-down links to customer details
+  * **Flexible filtering**: Filter by custom date ranges or preset periods — results are sorted by total revenue descending for quick identification of top accounts
+
+  <br />
+
+  ## Invoice compute workflow
+
+  Trigger invoice computation on demand via API — synchronously for immediate results or asynchronously via Temporal for large invoices.
+
+  * **Sync and async modes**: Call `POST /v1/invoices/:id/compute` with `?sync=true` for blocking execution, or default async mode that returns a workflow ID for polling
+  * **Temporal-backed processing**: Async compute runs as a durable Temporal workflow with automatic retries, 10-minute timeout, and exponential backoff
+  * **Deferred credits and taxes**: Subscription invoice computation now applies only coupons during draft — credit deductions and tax calculations are deferred to finalization, preventing premature wallet debits
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/invoices/overview" title="Invoices - Documentation" />
+
+  <br />
+
+  ## Scheduled subscription cancellation
+
+  Cancel subscriptions on a specific future date instead of only immediately or at period end.
+
+  * **Scheduled date cancellation**: New `scheduled_date` cancellation type accepts a `cancel_at` timestamp for precise future cancellation scheduling
+  * **Guard validations**: The scheduled date must be in the future — the API rejects past dates with a clear validation error
+  * **Dashboard support**: The subscription cancellation dialog in the dashboard now includes the scheduled cancellation option with a date picker
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/subscriptions/view" title="Subscriptions - Documentation" />
+
+  <br />
+
+  ## Integration events system
+
+  Integrations now react to system events in real time — invoice finalization and customer creation automatically trigger vendor sync workflows.
+
+  * **Event-driven dispatch**: A dedicated Kafka consumer group listens to `system_events` and routes `invoice.finalized` and `customer.created` events to the appropriate provider sync workflows
+  * **Integration mapping link**: New `POST /v1/integrations/link` endpoint manually links Flexprice entities to external provider records with provider-specific side effects (e.g., Razorpay customer metadata sync)
+  * **Configurable rate limits**: Integration event processing supports per-tenant consumer group isolation and configurable rate limits via `integration_events` settings
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * OpenTelemetry observability expanded with a generic exporter, configurable protocol, health-check filtering, and structured OTel log fields
+      * PostgreSQL → ClickHouse sync added for prices, subscriptions, and subscription line items for analytics workloads
+      * Wallet balance calculation now excludes future-period draft invoices from pending balance to avoid overstating committed spend
+      * Default invoice finalization delay increased to 10 minutes — gives integrations and async workflows time to complete before sealing
+      * Skipped invoices are now hidden from search results and restricted to subscription invoice types only
+      * Razorpay payment links now enforce a minimum expiration buffer to prevent premature link expiry
+      * Commitment bucket fill logic capped with `now()` for period end to prevent future-dated empty bucket entries
+      * Temporal workflow configuration now supports max concurrent workflow limits
+      * SDK READMEs updated with webhook handling documentation for all supported languages
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Fixed credit deduction timing — credits and taxes on subscription invoices are now deferred to finalization instead of being applied during draft computation
+      * Fixed silent zero-usage bug — `GetDistinctEventNames` failures now return errors instead of silently zeroing meter usage
+      * Fixed calendar billing period end calculation for quarterly and half-yearly subscriptions
+      * Fixed invoice compute API to correctly handle recomputation of skipped and draft invoices
+      * Removed `final` keyword from ClickHouse event queries to avoid read inconsistencies
+      * Deprecated parent customer hierarchy removed from the frontend customer views
+    </Accordion>
+
+    <Accordion title="API">
+      * New `POST /v1/invoices/:id/compute` endpoint with sync and async modes for on-demand invoice computation
+      * New `POST /v1/integrations/link` endpoint to manually map Flexprice entities to external provider records
+      * New `POST /v1/dashboard/revenue-dashboard` endpoint for per-customer revenue analytics with time-series data
+      * Subscription cancellation API now accepts `scheduled_date` cancellation type with a `cancel_at` field
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
 <Update label="March 23rd 2026">
   ## Paddle payment integration
 
