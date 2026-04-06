@@ -17,7 +17,7 @@ Customer synchronization ensures that customers exist in both Flexprice and Stri
 
 Customer sync now works **on-demand** with bidirectional support:
 
-```mermaid
+```mermaid actions={false}
 graph LR
     A[Flexprice Customer] -->|On-Demand Sync| B[Stripe Customer]
     C[Payment Link Request] -->|Triggers Sync| B
@@ -218,7 +218,7 @@ Customers created in Stripe are automatically synced via webhooks.
 
 ### On-Demand Sync Flow (Payment-Triggered)
 
-```mermaid
+```mermaid actions={false}
 graph TD
     A[Payment Request] --> B[EnsureCustomerSyncedToStripe]
     B --> C{Check Metadata}
@@ -235,7 +235,7 @@ graph TD
 
 ### Stripe → Flexprice Sync Flow (Unchanged)
 
-```mermaid
+```mermaid actions={false}
 graph TD
     A[Webhook Received] --> B[Verify Signature]
     B --> C[Parse Customer Data]
