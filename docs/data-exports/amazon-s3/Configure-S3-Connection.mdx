@@ -1,0 +1,111 @@
+
+Navigate to **Flexprice Dashboard** → **Tools** → **Export** → **Amazon S3**
+
+<Frame>
+  ![S3 Data Exports
+  Page](/images/docs/data-exports/amazon-s3/s3-export-page.png)
+</Frame>
+
+### Prerequisites
+
+Before configuring S3 exports, ensure you have:
+
+1. An AWS account with S3 access
+2. An S3 bucket created in your desired region
+3. AWS credentials (Access Key ID and Secret Access Key)
+4. Appropriate IAM permissions for S3 operations
+
+### Create an S3 Connection
+
+An S3 connection stores your AWS credentials and serves as the authentication mechanism for all export operations.
+
+<Frame>
+  ![Create S3
+  Connection](/images/docs/data-exports/amazon-s3/create-connection.png)
+</Frame>
+
+<Steps>
+  <Step title="Choose Connection Type">
+    Select one of the following connection types:
+
+    **Option 1: Flexprice-Managed S3 Connection**
+    
+    Use Flexprice's managed S3 infrastructure for hassle-free exports:
+    
+    - ✅ No AWS account required
+    - ✅ Instant setup with zero configuration
+    - ✅ Managed security and access control
+    - ✅ Download files directly from Flexprice dashboard
+    
+    **When to Use:**
+    - Quick setup without AWS infrastructure
+    - You don't want to manage S3 buckets and IAM policies
+    - You need immediate data exports with minimal configuration
+
+    <Note>
+      **Flexprice-Managed Storage**: Your data will be stored securely in Flexprice-managed S3 buckets. Files are encrypted at rest and accessible via secure download links.
+    </Note>
+
+    **Option 2: Your Own S3 Connection**
+    
+    Connect to your own AWS S3 bucket for complete control. Continue to the next steps to configure your own connection.
+  </Step>
+
+  <Step title="Enter Connection Details">
+    If using your own S3 connection, provide the following information:
+
+    - **Connection Name**: Enter a descriptive name for your S3 connection (e.g., "Production S3 Export")
+    - **AWS Access Key ID**: Enter your AWS access key ID
+      - Format: Starts with `AKIA` for permanent credentials
+      - Format: Starts with `ASIA` for temporary/session credentials
+      - Required for authentication
+    - **AWS Secret Access Key**: Enter your AWS secret access key
+      - This credential is encrypted and stored securely
+      - Never exposed in API responses
+    - **AWS Session Token** (Optional): Enter only if using temporary credentials
+      - Use this when working with assumed roles or temporary credentials
+      - Leave empty for permanent IAM user credentials
+  </Step>
+
+  <Step title="Configure IAM Permissions">
+    Before creating the connection, ensure your IAM user or role has the following permissions. Create an IAM policy with the following structure:
+
+    ```json
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Sid": "FlexPriceS3ExportAccess",
+          "Effect": "Allow",
+          "Action": ["s3:PutObject", "s3:GetObject", "s3:ListBucket"],
+          "Resource": [
+            "arn:aws:s3:::your-bucket-name/*",
+            "arn:aws:s3:::your-bucket-name"
+          ]
+        },
+        {
+          "Sid": "HeadObject",
+          "Effect": "Allow",
+          "Action": "s3:HeadObject",
+          "Resource": "*"
+        }
+      ]
+    }
+    ```
+
+    <Warning>
+      Replace `your-bucket-name` with your actual S3 bucket name. Ensure the IAM
+      user or role has this policy attached before creating the connection.
+    </Warning>
+
+    <Note>
+      **Security Best Practice**: Create a dedicated IAM user with minimal
+      permissions for S3 exports. Grant only the necessary S3 permissions
+      (`s3:PutObject`, `s3:GetObject`, `s3:ListBucket`).
+    </Note>
+  </Step>
+
+  <Step title="Create and Verify Connection">
+    After entering all required information, create the connection. The system will validate your credentials and connection settings. Once created, the connection will be available for use in scheduled export tasks.
+  </Step>
+</Steps>
