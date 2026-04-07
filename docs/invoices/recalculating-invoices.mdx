@@ -1,0 +1,441 @@
+---
+title: "Recalculating Invoices"
+description: "Create corrected replacement invoices for voided subscription invoices"
+---
+
+## Overview
+
+After voiding an invoice, you can create a replacement invoice covering the same billing period with corrected pricing, usage, or configuration. This operation is specifically designed for subscription invoices that require billing corrections.
+
+### When to Recalculate
+
+| Scenario | Steps |
+|----------|-------|
+| Billing error on finalized invoice | Void → Fix configuration → Recalculate |
+| Incorrect usage data | Void → Correct usage → Recalculate |
+| Pricing configuration changed | Void → Update prices → Recalculate |
+| Wrong subscription line items | Void → Update line items → Recalculate |
+
+<Note>
+RecalculateInvoice creates a completely fresh invoice. It does NOT modify the voided invoice. The original voided invoice is preserved for audit purposes and linked to the new invoice via `recalculated_invoice_id`.
+</Note>
+
+---
+
+## Prerequisites
+
+Before you can recalculate an invoice, **it must be voided**.
+
+### Quick Void Overview
+
+Voiding an invoice:
+- Changes invoice status to `voided`
+- Refunds customer to prepaid wallet
+- Maintains audit trail via `voided_at` timestamp
+
+**Only subscription invoices in voided status can be recalculated.**
+
+<Info>
+For complete details on voiding including refund behavior, edge cases, and best practices, see [Voiding Invoices](/docs/invoices/voiding-invoices).
+</Info>
+
+### Void Before Recalculate
+
+```bash
+# Step 1: Void the incorrect invoice
+POST /api/v1/invoices/inv_incorrect_123/void
+
+# Response: Invoice now has status "voided"
+
+# Step 2: Recalculate (covered in this guide)
+POST /api/v1/invoices/inv_incorrect_123/recalculate
+```
+
+---
+
+## Validation Rules
+
+Recalculation requires specific conditions to be met:
+
+### Required Conditions
+
+| Requirement | Details |
+|-------------|---------|
+| **Invoice Status** | Must be `voided` |
+| **Invoice Type** | Must be `subscription` (one-off invoices not supported) |
+| **Subscription ID** | Must be present and valid |
+| **Period Dates** | Both `period_start` and `period_end` required |
+| **Not Recalculated** | `recalculated_invoice_id` must be `null` |
+
+### Why These Restrictions?
+
+- **Voided only**: Prevents accidental recalculation of active invoices
+- **Subscription only**: One-off invoices don't have recurring billing context
+- **Period dates**: Needed to determine which subscription line items to bill
+- **Not recalculated**: Prevents creating multiple replacement invoices
+
+<Warning>
+One-off invoices cannot be recalculated. For one-off invoices, you must:
+1. Void the incorrect invoice (refunds customer)
+2. Create a new one-off invoice with corrected data
+</Warning>
+
+---
+
+## API Reference
+
+### Endpoint
+
+```http
+POST /api/v1/invoices/{voided_invoice_id}/recalculate
+```
+
+### Request
+
+No request body required. The endpoint uses the voided invoice's subscription and period information to generate a fresh invoice.
+
+### Success Response (200)
+
+```json
+{
+  "id": "inv_new_xyz789",
+  "subscription_id": "sub_abc123",
+  "period_start": "2026-03-01T00:00:00Z",
+  "period_end": "2026-03-31T23:59:59Z",
+  "status": "draft",
+  "subtotal": "125.50",
+  "total": "135.14",
+  "currency": "usd",
+  "line_items": [
+    {
+      "id": "ili_001",
+      "description": "Pro Plan - Monthly",
+      "amount": "99.00",
+      "quantity": "1"
+    },
+    {
+      "id": "ili_002",
+      "description": "API Calls - Usage",
+      "amount": "26.50",
+      "quantity": "5300"
+    }
+  ]
+}
+```
+
+### Example with cURL
+
+```bash
+curl -X POST https://us.api.flexprice.io/v1/invoices/inv_voided_123/recalculate \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+---
+
+## Idempotency
+
+Recalculation prevents duplicate replacements through the `recalculated_invoice_id` field.
+
+### First Recalculation
+
+```bash
+POST /invoices/inv_voided_123/recalculate
+Response: 200 OK
+{
+  "id": "inv_new_456",
+  ...
+}
+```
+
+### Second Recalculation Attempt
+
+```bash
+POST /invoices/inv_voided_123/recalculate
+Response: 400 Bad Request
+{
+  "error": "already_recalculated",
+  "message": "invoice inv_voided_123 was already recalculated as inv_new_456",
+  "recalculated_invoice_id": "inv_new_456"
+}
+```
+
+### Finding Replacement Invoice
+
+```bash
+GET /invoices/inv_voided_123
+Response: 200 OK
+{
+  "id": "inv_voided_123",
+  "status": "voided",
+  "recalculated_invoice_id": "inv_new_456"
+}
+```
+
+---
+
+## Complete Workflow Example
+
+### Scenario: Billing Error Correction
+
+A customer was incorrectly charged for API usage. Here's the complete correction flow:
+
+#### Step 1: Void the Incorrect Invoice
+
+```bash
+POST /api/v1/invoices/inv_original_123/void
+```
+
+Response:
+```json
+{
+  "id": "inv_original_123",
+  "status": "voided",
+  "voided_at": "2026-03-07T10:30:00Z",
+  "payment_status": "refunded",
+  "refunded_amount": "250.00",
+  "amount_paid": "200.00",
+  "total_prepaid_credits_applied": "50.00"
+}
+```
+
+**What Happened:**
+- Invoice status changed to `voided`
+- Customer refunded $250 ($200 payment + $50 prepaid credits)
+- Refund deposited to customer's prepaid wallet
+
+#### Step 2: Fix the Configuration
+
+Before recalculating, correct the billing issue:
+- Update subscription line items
+- Fix pricing configuration
+- Adjust usage data if needed
+
+```bash
+# Example: Update subscription to correct pricing
+PATCH /api/v1/subscriptions/sub_abc123
+{
+  "line_items": [
+    {
+      "price_id": "price_corrected",
+      "quantity": 1
+    }
+  ]
+}
+```
+
+#### Step 3: Recalculate with Correct Data
+
+```bash
+POST /api/v1/invoices/inv_original_123/recalculate
+```
+
+Response:
+```json
+{
+  "id": "inv_corrected_789",
+  "subscription_id": "sub_abc123",
+  "status": "draft",
+  "subtotal": "150.00",
+  "total": "162.00",
+  "line_items": [
+    {
+      "description": "Pro Plan - Monthly (Corrected)",
+      "amount": "150.00"
+    }
+  ]
+}
+```
+
+**What Happened:**
+- New invoice created with corrected charges ($150 vs $200)
+- Original invoice linked: `recalculated_invoice_id = inv_corrected_789`
+- New invoice in `draft` for review
+
+#### Step 4: Review and Finalize
+
+```bash
+# Review the draft invoice
+GET /api/v1/invoices/inv_corrected_789
+
+# Finalize when satisfied
+POST /api/v1/invoices/inv_corrected_789/finalize
+```
+
+The corrected invoice is now issued to the customer.
+
+---
+
+## Best Practices
+
+### Before Recalculating
+
+✅ **Do:**
+- Verify the void was successful
+- Fix the root cause (pricing, usage, config)
+- Review subscription current state
+- Check for active coupons/credits
+- Document what you're fixing
+
+❌ **Don't:**
+- Recalculate before fixing the issue
+- Assume new invoice will be identical
+- Skip reviewing draft invoice
+- Forget to finalize new invoice
+
+### After Recalculating
+
+**1. Review the new invoice carefully**
+- Verify line items are correct
+- Check subtotal and taxes
+- Confirm coupon/credit application
+
+**2. Compare with original**
+- Document what changed
+- Explain differences to customer
+- Keep records for audit
+
+**3. Finalize when ready**
+- New invoice starts as `draft`
+- Must be explicitly finalized
+- Triggers payment collection if configured
+
+### Audit Trail
+
+Flexprice maintains complete audit trail through:
+
+**Invoice Links:**
+```
+Voided Invoice → recalculated_invoice_id → New Invoice
+```
+
+**Timestamps:**
+- `voided_at` - When original invoice was voided
+- `created_at` on new invoice - When replacement created
+
+**Query Pattern:**
+```bash
+# Find all voided invoices for a subscription
+GET /api/v1/invoices?subscription_id=sub_123&status=voided
+
+# For each voided invoice, check recalculated_invoice_id
+GET /api/v1/invoices/{voided_invoice_id}
+
+# Fetch the replacement
+GET /api/v1/invoices/{recalculated_invoice_id}
+```
+
+---
+
+## Testing
+
+When testing recalculation:
+
+- Void a subscription invoice first, then call recalculate and confirm a new draft invoice is returned.
+- Confirm the new invoice has a different ID and the same subscription and period as the voided one.
+- Confirm the voided invoice’s `recalculated_invoice_id` points to the new invoice.
+- Confirm calling recalculate again on the same voided invoice is rejected (already recalculated).
+
+---
+
+## Webhooks
+
+### `invoice.create.draft` Event
+
+Triggered when recalculation creates a new draft invoice.
+
+```json
+{
+  "event": "invoice.create.draft",
+  "timestamp": "2026-03-07T10:35:00Z",
+  "data": {
+    "invoice_id": "inv_new_789",
+    "customer_id": "cus_456",
+    "subscription_id": "sub_789",
+    "total": "125.00",
+    "currency": "usd",
+    "period_start": "2026-03-01T00:00:00Z",
+    "period_end": "2026-03-31T23:59:59Z"
+  }
+}
+```
+
+### Webhook Best Practices
+
+1. **Track recalculation events** to alert team of corrections
+2. **Use idempotency** when processing webhook events
+3. **Verify signatures** to ensure webhook authenticity
+4. **Link to original** voided invoice in your records
+5. **Review before finalizing** the new draft invoice
+
+---
+
+## FAQ
+
+### Can I recalculate a one-off invoice?
+
+No. Only subscription invoices support recalculation. For one-off invoices:
+1. Void the incorrect invoice (refunds customer)
+2. Create a new one-off invoice with corrected data
+
+### Does recalculation use current or historical pricing?
+
+Recalculation uses **current** subscription configuration, including:
+- Current plan prices
+- Current line items
+- Current coupons
+- Current tax rates
+
+This means the new invoice may differ if configuration changed since the original invoice.
+
+### Can I recalculate the same invoice multiple times?
+
+Not directly. Once recalculated, the `recalculated_invoice_id` field prevents duplicate recalculations. 
+
+**Workaround if the replacement is also wrong:**
+1. Void the replacement invoice
+2. The original voided invoice still points to the (now voided) replacement
+3. You'll need to manually track which is the latest valid invoice
+
+**Better approach:** Get it right the first time by reviewing the draft invoice before finalizing.
+
+### What if the customer no longer has an active subscription?
+
+Recalculation will fail if the subscription is cancelled or deleted. You must:
+- Reactivate the subscription temporarily
+- Recalculate the invoice
+- Re-cancel if needed
+
+Or manually create a one-off invoice as a workaround.
+
+### What happens to the voided invoice after recalculation?
+
+The voided invoice:
+- Remains in `voided` status
+- Has `recalculated_invoice_id` pointing to new invoice
+- Is retained indefinitely for audit purposes
+- Still shows in invoice lists with status filter
+
+### Can I recalculate if I haven't voided the invoice yet?
+
+No. You must void the invoice first. The recalculation endpoint specifically requires a voided invoice to prevent accidental corrections of active invoices.
+
+---
+
+## Summary
+
+Flexprice's recalculation workflow provides robust billing correction capabilities for subscription invoices:
+
+- **Void first** to refund customers (see [Voiding Invoices](/docs/invoices/voiding-invoices))
+- **Fix the issue** in subscription configuration
+- **Recalculate** to create corrected replacement invoice
+- **Review draft** before finalizing
+- **Complete audit trail** via invoice linking
+
+**Key Takeaway:** Always void first, fix the issue, then recalculate. The new invoice is created in draft status for your review before finalizing.
+
+**For additional help, see:**
+
+- [Voiding Invoices](/docs/invoices/voiding-invoices)
+- [Invoice Overview](/docs/invoices/overview)
+- [Managing Invoices](/docs/invoices/managing)
+- [Subscription Management](/docs/subscriptions/customers-create-subscription)

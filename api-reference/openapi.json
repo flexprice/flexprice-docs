@@ -3368,145 +3368,6 @@
                 ]
             }
         },
-        "/environments": {
-            "post": {
-                "tags": [
-                    "Environments"
-                ],
-                "summary": "Create environment",
-                "description": "Use when setting up a new environment (e.g. production, staging) for the tenant. Ideal for separating billing or config per environment.",
-                "operationId": "createEnvironment",
-                "requestBody": {
-                    "description": "Environment",
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/dto.CreateEnvironmentRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/dto.EnvironmentResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/errors.ErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Server error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/errors.ErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "x-codegen-request-body-name": "environment"
-            }
-        },
-        "/environments/{id}": {
-            "put": {
-                "tags": [
-                    "Environments"
-                ],
-                "summary": "Update environment",
-                "description": "Use when changing environment name or settings (e.g. renaming or updating metadata).",
-                "operationId": "updateEnvironment",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "description": "Environment ID",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "description": "Environment",
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/dto.UpdateEnvironmentRequest"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/dto.EnvironmentResponse"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/errors.ErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Resource not found",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/errors.ErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Server error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/errors.ErrorResponse"
-                                }
-                            }
-                        }
-                    }
-                },
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "x-codegen-request-body-name": "environment"
-            }
-        },
         "/events": {
             "post": {
                 "tags": [
@@ -5172,9 +5033,77 @@
                 "tags": [
                     "Invoices"
                 ],
-                "summary": "Recalculate invoice",
-                "description": "Use when subscription or usage data changed and you need to refresh a draft invoice before finalizing. Optional finalize=true to lock after recalc.",
+                "summary": "Recalculate invoice (voided invoice)",
+                "description": "Starts an async workflow that creates a fresh replacement invoice for a voided SUBSCRIPTION invoice (same billing period). Returns workflow_id and run_id; poll workflow status or GET the new invoice via recalculated_invoice_id after completion.",
                 "operationId": "recalculateInvoice",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Invoice ID",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/models.TemporalWorkflowResult"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request or invoice already recalculated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Invoice not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ]
+            }
+        },
+        "/invoices/{id}/recalculate-v2": {
+            "post": {
+                "tags": [
+                    "Invoices"
+                ],
+                "summary": "Recalculate draft invoice (v2)",
+                "description": "Recalculates a draft SUBSCRIPTION invoice in-place (replaces line items, reapplies credits/coupons/taxes). Use when subscription or usage data changed before finalizing.",
+                "operationId": "recalculateInvoiceV2",
                 "parameters": [
                     {
                         "name": "id",
@@ -11255,11 +11184,11 @@
                 "tags": [
                     "Users"
                 ],
-                "summary": "Create service account",
-                "description": "Use when provisioning API access for automation, CI/CD pipelines, or headless integrations that need scoped API keys.",
+                "summary": "Create user or service account",
+                "description": "Create a user account (type=user, email required; returns user + password for login) or a service account (type=service_account, roles required) for API/automation access.",
                 "operationId": "createUser",
                 "requestBody": {
-                    "description": "Create service account request (type must be 'service_account', roles are required)",
+                    "description": "Create user (email, type=user) or service account (type=service_account, roles)",
                     "content": {
                         "application/json": {
                             "schema": {
@@ -11275,7 +11204,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/dto.UserResponse"
+                                    "$ref": "#/components/schemas/dto.CreateUserResponse"
                                 }
                             }
                         }
@@ -12289,7 +12218,8 @@
                                 "CREDIT_EXPIRED",
                                 "WALLET_TERMINATION",
                                 "MANUAL_BALANCE_DEBIT",
-                                "CREDIT_ADJUSTMENT"
+                                "CREDIT_ADJUSTMENT",
+                                "INVOICE_VOID_REFUND"
                             ],
                             "x-enum-varnames": [
                                 "TransactionReasonInvoicePayment",
@@ -12301,7 +12231,8 @@
                                 "TransactionReasonCreditExpired",
                                 "TransactionReasonWalletTermination",
                                 "TransactionReasonManualBalanceDebit",
-                                "TransactionReasonCreditAdjustment"
+                                "TransactionReasonCreditAdjustment",
+                                "TransactionReasonInvoiceVoidRefund"
                             ]
                         },
                         "x-enum-varnames": [
@@ -12314,7 +12245,8 @@
                             "TransactionReasonCreditExpired",
                             "TransactionReasonWalletTermination",
                             "TransactionReasonManualBalanceDebit",
-                            "TransactionReasonCreditAdjustment"
+                            "TransactionReasonCreditAdjustment",
+                            "TransactionReasonInvoiceVoidRefund"
                         ]
                     },
                     {
@@ -14534,21 +14466,6 @@
                     }
                 }
             },
-            "dto.CreateEnvironmentRequest": {
-                "required": [
-                    "name",
-                    "type"
-                ],
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string"
-                    },
-                    "type": {
-                        "type": "string"
-                    }
-                }
-            },
             "dto.CreateFeatureRequest": {
                 "required": [
                     "name",
@@ -14576,6 +14493,9 @@
                     },
                     "name": {
                         "type": "string"
+                    },
+                    "reporting_unit": {
+                        "$ref": "#/components/schemas/types.ReportingUnit"
                     },
                     "type": {
                         "$ref": "#/components/schemas/types.FeatureType"
@@ -15533,18 +15453,47 @@
             },
             "dto.CreateUserRequest": {
                 "required": [
-                    "roles",
                     "type"
                 ],
                 "type": "object",
                 "properties": {
+                    "email": {
+                        "type": "string",
+                        "description": "Required when type is \"user\""
+                    },
                     "roles": {
-                        "minItems": 1,
                         "type": "array",
-                        "description": "Roles are required",
+                        "description": "Required when type is \"service_account\"",
                         "items": {
                             "type": "string"
                         }
+                    },
+                    "type": {
+                        "$ref": "#/components/schemas/types.UserType"
+                    }
+                }
+            },
+            "dto.CreateUserResponse": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string",
+                        "description": "Empty for service accounts"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "password": {
+                        "type": "string"
+                    },
+                    "roles": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "tenant": {
+                        "$ref": "#/components/schemas/dto.TenantResponse"
                     },
                     "type": {
                         "$ref": "#/components/schemas/types.UserType"
@@ -16312,26 +16261,6 @@
                     }
                 }
             },
-            "dto.EnvironmentResponse": {
-                "type": "object",
-                "properties": {
-                    "created_at": {
-                        "type": "string"
-                    },
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "type": {
-                        "type": "string"
-                    },
-                    "updated_at": {
-                        "type": "string"
-                    }
-                }
-            },
             "dto.Event": {
                 "type": "object",
                 "properties": {
@@ -16408,6 +16337,9 @@
                     },
                     "name": {
                         "type": "string"
+                    },
+                    "reporting_unit": {
+                        "$ref": "#/components/schemas/types.ReportingUnit"
                     },
                     "status": {
                         "$ref": "#/components/schemas/types.Status"
@@ -17468,6 +17400,10 @@
                     "period_start": {
                         "type": "string",
                         "description": "period_start is the start date of the billing period covered by this invoice"
+                    },
+                    "recalculated_invoice_id": {
+                        "type": "string",
+                        "description": "recalculated_invoice_id is the ID of the replacement invoice created when this invoice was voided and recalculated.\nWhen set, it forms a parent\u2192child link from this (voided) invoice to the new replacement invoice."
                     },
                     "refunded_amount": {
                         "type": "string",
@@ -20555,17 +20491,6 @@
                     }
                 }
             },
-            "dto.UpdateEnvironmentRequest": {
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string"
-                    },
-                    "type": {
-                        "type": "string"
-                    }
-                }
-            },
             "dto.UpdateFeatureRequest": {
                 "type": "object",
                 "properties": {
@@ -20586,6 +20511,9 @@
                     },
                     "name": {
                         "type": "string"
+                    },
+                    "reporting_unit": {
+                        "$ref": "#/components/schemas/types.ReportingUnit"
                     },
                     "unit_plural": {
                         "type": "string"
@@ -20695,7 +20623,7 @@
                     },
                     "group_id": {
                         "type": "string",
-                        "description": "GroupID is the id of the group to update the price in"
+                        "description": "GroupID is the id of the group to update the price in.\nIf not provided (nil), the group will not be changed\nIf provided as empty string (\"\"), the group will be removed (price will be ungrouped)\nIf provided as a group ID, the price will be assigned to that group (must exist and be published)"
                     },
                     "lookup_key": {
                         "type": "string",
@@ -20973,6 +20901,9 @@
                         },
                         "description": "Stores property values for flexible grouping (e.g., org_id -> \"org123\")"
                     },
+                    "reporting_unit": {
+                        "$ref": "#/components/schemas/types.ReportingUnit"
+                    },
                     "source": {
                         "type": "string"
                     },
@@ -20999,6 +20930,10 @@
                     },
                     "total_usage": {
                         "type": "string"
+                    },
+                    "total_usage_display": {
+                        "type": "string",
+                        "description": "Empty string when feature has no reporting unit; otherwise the value in reporting units"
                     },
                     "unit": {
                         "type": "string"
@@ -21667,6 +21602,9 @@
                     },
                     "name": {
                         "type": "string"
+                    },
+                    "reporting_unit": {
+                        "$ref": "#/components/schemas/types.ReportingUnit"
                     },
                     "status": {
                         "$ref": "#/components/schemas/types.Status"
@@ -24086,7 +24024,8 @@
                     "CREDIT_EXPIRED",
                     "WALLET_TERMINATION",
                     "MANUAL_BALANCE_DEBIT",
-                    "CREDIT_ADJUSTMENT"
+                    "CREDIT_ADJUSTMENT",
+                    "INVOICE_VOID_REFUND"
                 ],
                 "x-enum-varnames": [
                     "TransactionReasonInvoicePayment",
@@ -24098,7 +24037,8 @@
                     "TransactionReasonCreditExpired",
                     "TransactionReasonWalletTermination",
                     "TransactionReasonManualBalanceDebit",
-                    "TransactionReasonCreditAdjustment"
+                    "TransactionReasonCreditAdjustment",
+                    "TransactionReasonInvoiceVoidRefund"
                 ],
                 "x-speakeasy-name-override": "TransactionReason"
             },
@@ -25201,6 +25141,24 @@
                     "type": "string"
                 },
                 "x-speakeasy-name-override": "Metadata"
+            },
+            "types.ReportingUnit": {
+                "type": "object",
+                "properties": {
+                    "conversion_rate": {
+                        "type": "number",
+                        "description": "Multiplier: reporting_unit_value = unit_value * conversion_rate; must be > 0"
+                    },
+                    "unit_plural": {
+                        "type": "string",
+                        "description": "Display unit label, plural (e.g. \"seconds\")"
+                    },
+                    "unit_singular": {
+                        "type": "string",
+                        "description": "Display unit label, singular (e.g. \"second\")"
+                    }
+                },
+                "x-speakeasy-name-override": "ReportingUnit"
             }
         },
         "securitySchemes": {
