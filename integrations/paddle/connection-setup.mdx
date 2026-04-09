@@ -1,0 +1,197 @@
+---
+title: 'Paddle Connection Setup'
+description: 'Complete guide to setting up and configuring Paddle connections in Flexprice'
+---
+
+## Overview
+
+A Paddle connection in Flexprice stores encrypted credentials that allow the system to interact with your Paddle account for:
+
+- Creating customers and addresses in Paddle
+- Syncing invoices to Paddle as transactions
+- Processing payments via Flexprice Checkout (Paddle-hosted overlay)
+- Receiving webhook notifications from Paddle
+- Automatic reconciliation of payments between Paddle and Flexprice
+
+## Prerequisites
+
+Before setting up your Paddle connection, ensure you have:
+
+1. **Active Paddle Billing Account** - Sign up at [paddle.com](https://www.paddle.com)
+2. **API Key** - Available in your Paddle Dashboard (Developers → Authentication)
+3. **Webhook Secret** - Configured in Paddle Dashboard (Developers → Notifications)
+4. **Client-Side Token** - For Overlay checkout page
+5. **Flexprice Environment** - Valid Flexprice environment
+6. **Default Payment Link** - Set up the Flexprice checkout URL (see Step 2)
+7. **Domain Approval** - flexprice.io domain approved in Paddle (see Step 2)
+
+## Step 1: Gather Paddle Credentials
+
+### Required Credentials
+
+| Credential | Location in Paddle Dashboard | Required | Purpose |
+|------------|-----------------------------|----------|---------|
+| **API Key** | Developers → Authentication | ✅ | API authentication |
+| **Webhook Secret** | Developers → Notifications → [Your Endpoint] |  ✅| Webhook signature verification |
+| **Client-Side Token** | Developers → Authentication | ✅ | Paddle.js initialization on checkout page |
+| **Redirect URL** | Connection metadata (not Paddle) | Recommended | Success URL after payment |
+
+### Finding Your Credentials
+
+1. **API Key:**
+   - Go to Paddle Dashboard → Developers → Authentication
+   - Copy your API key (use `pdl_sdbx_` prefix for sandbox, live prefix for production)
+
+2. **Webhook Secret:**
+   - Go to Paddle Dashboard → Developers → Notifications
+   - Create or select your webhook endpoint
+   - Copy the webhook secret (used for signature verification)
+
+3. **Client-Side Token:**
+   - Go to Paddle Dashboard → Developers → Authentication
+   - Copy the client-side token (e.g. `test_xxx` or `live_xxx`) for Paddle.js
+
+<Frame>
+  ![Paddle Authentication - API Keys and Client-Side Tokens](/images/docs/integrations/paddle/paddle-api-keys.png)
+</Frame>
+
+## Step 2: Configure Paddle Checkout & Webhooks
+
+### Default Payment Link
+
+Paddle requires a default payment link to create transactions. All payment links will use this domain for the payment form.
+
+1. Go to Paddle Dashboard → Checkout → Checkout settings
+2. Set **Default payment link** to: `https://admin.flexprice.io/checkout`
+3. Submit your domain for approval via **Request website approval** if not already approved
+
+<Frame>
+  ![Paddle Default Payment Link](/images/docs/integrations/paddle/paddle-default-payment-link.png)
+</Frame>
+
+### Website Approval
+
+Your domain must be approved before checkout works in production.
+
+1. Go to Paddle Dashboard → Checkout → Request website approval
+2. Add and approve the flexprice.io domain (or your production domain)
+
+<Frame>
+  ![Paddle Website Approval](/images/docs/integrations/paddle/paddle-website-approval.png)
+</Frame>
+
+### Setting Up the Webhook
+
+1. Go to Paddle Dashboard → Developers → Notifications
+2. Click **Add notification destination**
+3. Enter your webhook URL (see format below)
+4. Select the required events listed below
+5. Copy the **Webhook Secret** for your connection
+
+**Webhook URL Format:**
+
+```
+https://api.cloud.flexprice.io/v1/webhooks/paddle/tenant_01K1TJDVNSN7TWY8CZY870QMNV/env_01K1TJJF0CJR410C6QVPYQTNV0
+```
+
+*(Replace `tenant_01K1TJDVNSN7TWY8CZY870QMNV` and `env_01K1TJJF0CJR410C6QVPYQTNV0` with your tenant and environment IDs. If you use a different Flexprice region, use the base URL for your region instead of `https://api.cloud.flexprice.io`.)*
+
+**Required Webhook Events** – Configure these events in your Paddle webhook endpoint:
+
+| Event Type | Purpose |
+|------------|---------|
+| `transaction.completed` | Track successful payment completions and reconcile invoices |
+| `customer.created` | Sync customers created in Paddle to Flexprice |
+| `address.created` | Update customer address mapping for invoice sync |
+
+<Frame>
+  ![Paddle Webhook Configuration](/images/docs/integrations/paddle/paddle-webhook.png)
+</Frame>
+
+## Step 3: Create Paddle Connection
+
+### Using Flexprice Dashboard
+
+You can create a Paddle connection directly from the Flexprice dashboard:
+
+<Steps>
+  <Step title="Navigate to Integrations">
+    Go to **Flexprice dashboard** → **Integrations** → **Paddle** → **Add a connection**.
+  </Step>
+  <Step title="Enter credentials">
+    Enter your API Key, Webhook Secret, and Client-Side Token (recommended). Optionally add a Redirect URL in metadata for post-payment redirects.
+  </Step>
+  <Step title="Save connection">
+    Click to create the connection. Flexprice will store your credentials securely.
+  </Step>
+</Steps>
+
+<Frame>
+  ![Paddle Connection Setup](/images/docs/integrations/paddle/connection.png)
+</Frame>
+
+```json
+{
+  "name": "Paddle Production",
+  "provider_type": "paddle",
+  "encrypted_secret_data": {
+    "api_key": "pdl_live_...",
+    "webhook_secret": "...",
+    "client_side_token": "live_..."
+  },
+  "metadata": {
+    "redirect_url": "https://your-app.com/billing/success"
+  }
+}
+```
+
+## Customer & Address Sync
+
+Customer sync is **on-demand** and primarily **one-way** (Flexprice → Paddle). Customers are synced when creating invoices or payment links.
+
+- **Address required:** Paddle needs a customer address (at least country) to create transactions. Flexprice creates the address in Paddle from customer data when syncing.
+- **Entity mapping:** Links Flexprice customers to Paddle customer IDs via metadata and entity integration mapping.
+- **Paddle-origin customers:** `customer.created` and `address.created` webhooks sync Paddle customers into Flexprice and update address mapping.
+
+## Invoice Sync & Flexprice Checkout
+
+1. Flexprice creates a **Paddle transaction** from invoice line items (customer + address on transaction).
+2. Paddle returns a **checkout URL** (your default link + `?_ptxn=txn_xxx`).
+3. Flexprice appends a signed **`token`** (JWT) with `client_side_token` and `success_url` so your checkout page can run Paddle.js.
+4. Customer pays via Paddle overlay; if they click **save card**, Paddle stores the payment method.
+5. `transaction.completed` webhook reconciles the payment. If Paddle adds tax and the amount exceeds the invoice total, Flexprice marks the invoice as **overpaid**.
+
+## Security Best Practices
+
+### Credential Management
+
+1. **Environment Separation**: Use sandbox keys (`pdl_sdbx_`) for development
+2. **Key Rotation**: Regularly rotate your Paddle API keys
+3. **Encryption**: All credentials are encrypted at rest in Flexprice
+
+### Webhook Security
+
+1. **HTTPS Only**: Always use HTTPS for webhook endpoints
+2. **Signature Verification**: Flexprice verifies all webhook signatures
+3. **Secret Management**: Keep webhook secrets secure and rotate regularly
+
+## Troubleshooting
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| Invoice sync fails – "Paddle address ID not found" | Customer missing country or address not synced | Add country to customer address; ensure address has valid country code |
+| Connection test fails | Invalid API keys | Verify keys in Paddle Dashboard |
+| Webhook not received | Incorrect webhook URL | Check URL format and endpoint |
+| Checkout won't open | Missing client_side_token or token param | Add client_side_token to connection; ensure checkout reads `token` from URL |
+| Invoice marked overpaid | Paddle added tax on top of invoice amount | Align tax mode (internal vs external) in Paddle with your invoice pricing |
+
+## Next Steps
+
+After setting up your Paddle connection:
+
+1. **Test Customer Sync**: Create a test customer with address and sync an invoice
+2. **Verify Checkout**: Complete a test payment via Flexprice Checkout
+3. **Monitor Webhooks**: Ensure webhook events are being received
+4. **Go Live**: Switch to production keys when ready
+
+For detailed API documentation, see the [API Reference](/api-reference/introduction).
