@@ -1,30 +1,32 @@
 ---
 title: "Customer Hierarchy"
-description: "Configure billing relationships at the subscription level — decouple who uses your service from who pays for it"
+description: "Configure billing relationships at the subscription level so you can separate who uses your product from who pays for it."
 ---
 
 <Tip>
   **Customer = identity, Subscription = contract, Hierarchy = subscription configuration**
 </Tip>
 
-**Customer Hierarchy** is an enterprise-grade feature that lets you configure billing relationships at the subscription level. Rather than linking customers together as parent-child entities, Flexprice keeps customers flat and puts all billing configuration on the subscription itself.
+## Overview
 
-This means you can:
+**Customer Hierarchy** is an enterprise feature for configuring billing relationships on each subscription. Flexprice keeps **customers** flat (no parent fields on customer records). All hierarchy behavior lives on the **subscription**, so you can mix models per contract without restructuring customer data.
 
-- Route invoices to a different customer than the one using the service
-- Have one subscription govern usage across multiple child customers
-- Change billing relationships per-subscription without touching customer records
+With Customer Hierarchy you can:
 
-## Choosing Your Approach
+- Send invoices to a different customer than the one using the service (**delegated payer**)
+- Cover many customers with one parent subscription and roll up usage into a single invoice (**consolidated subscription**)
+- Change how a subscription bills without editing customer records
 
-Customer Hierarchy supports two independent modes. Choose based on who controls the plan and pricing:
+## Two ways to use Customer Hierarchy
 
-| | Subscription Inheritance | Invoice Redirection |
+Customer Hierarchy supports two independent patterns. Pick one based on who owns the plan and line items:
+
+| | Consolidated subscription | Delegated payer |
 |---|---|---|
 | **Plan & line items** | Owned by the parent subscription | Owned by the child's subscription |
 | **Usage tracked on** | Child customers (via inherited subscriptions) | Child customer (their own subscription) |
-| **Invoice goes to** | Parent customer | A specified billing customer |
-| **Best for** | Enterprise: one plan, many subsidiaries | Reseller: each customer has their own plan, parent pays |
+| **Invoice goes to** | Parent customer | A specified billing customer (bill-to) |
+| **Best for** | Enterprise: one plan, many subsidiaries | Reseller: each customer has their own plan, a central payer |
 | **API field** | `inheritance.external_customer_ids_to_inherit_subscription` | `inheritance.invoicing_customer_external_id` |
 
 <Note>
@@ -33,7 +35,7 @@ Customer Hierarchy supports two independent modes. Choose based on who controls 
   `invoicing_customer_external_id` in the same subscription.
 </Note>
 
-## How It Works
+## How it works
 
 Every subscription has a `subscription_type` that describes its role in a hierarchy:
 
@@ -41,22 +43,24 @@ Every subscription has a `subscription_type` that describes its role in a hierar
 |---|---|
 | `standalone` | A regular subscription with no hierarchy relationship (default) |
 | `parent` | Owns the plan and line items; usage from child subscriptions rolls up here |
-| `inherited` | A skeleton subscription auto-created for each child customer; carries no line items — events are matched via the parent subscription |
+| `inherited` | A skeleton subscription auto-created for each child customer; it carries no line items, and events are matched via the parent subscription |
 
-Customers themselves remain flat entities. There are no parent fields on a customer record — hierarchy is entirely a subscription-level configuration.
+Customers remain flat entities. There are no parent fields on a customer record; hierarchy is configured only on subscriptions.
 
-## Flow A: Subscription Inheritance
+## Consolidated subscription
 
-Use this when one plan governs multiple customers and you want all invoices consolidated under the parent.
+Use this when **one plan** covers multiple customers and you want **one invoice** to the parent (usage roll-up on a single contract).
+
+Flexprice implements this with a **parent** subscription plus **inherited** skeleton subscriptions for each child. Inherited subscriptions have no line items of their own; usage from child customers is matched and aggregated through the parent.
 
 **Example:** Global Corp HQ purchases an enterprise plan. APAC Team and EMEA Team each generate usage, but HQ receives one invoice.
 
 ### Step 1: Create customers
 
-Create the parent customer and each child customer normally through the Dashboard or API. No hierarchy fields exist on customers — they are flat records.
+Create the parent customer and each child customer through the Dashboard or API. Customer records have no hierarchy fields; they stay flat.
 
 <Frame>
-  ![Create customer form — no parent fields present](/public/images/docs/CustomerHierarchy/create-customer.png)
+  ![Create customer form with no parent fields](/public/images/docs/CustomerHierarchy/create-customer.png)
 </Frame>
 
 ### Step 2: Create the parent subscription
@@ -99,34 +103,34 @@ When you submit the request above, Flexprice:
 
 1. Creates the **parent subscription** with `subscription_type: parent` for the HQ customer
 2. Auto-creates an **inherited skeleton subscription** (`subscription_type: inherited`) for each child external ID
-3. Inherited subscriptions carry no plan line items — usage events from child customers are matched and aggregated via the parent subscription
+3. Keeps inherited subscriptions free of plan line items; usage events from child customers are matched and aggregated via the parent subscription
 
 ### Step 3: Verify
 
-Open the parent subscription's detail page. You'll see child skeleton subscriptions listed under it.
+Open the parent subscription's detail page. Child skeleton subscriptions appear under it.
 
 <Frame>
   ![Parent subscription detail page showing linked inherited subscriptions for child customers](/public/images/docs/CustomerHierarchy/flow-a-verify-parent-sub.png)
 </Frame>
 
-## Flow B: Invoice Redirection
+## Delegated payer
 
-Use this when each customer owns their own subscription (plan, line items, usage all at child level), but a billing entity — a parent company or reseller — should receive and pay the invoice.
+Use this when each end customer has their **own** subscription (plan, line items, and usage on the child), but a **different customer** should be the **bill-to** party: invoices, tax, and wallet drawdown follow that **delegated payer** (for example a parent company or reseller).
 
-**Example:** A reseller manages 10 end customers, each with their own starter plan. The reseller receives all 10 invoices and pays them centrally.
+**Example:** A reseller manages 10 end customers, each on their own starter plan. The reseller receives and pays all related invoices centrally.
 
 ### Step 1: Create customers
 
-Create the subscription owner (child) and the billing customer separately. No hierarchy fields on either customer record.
+Create the subscription owner (child) and the billing customer separately. Neither customer record has hierarchy fields.
 
-### Step 2: Create the subscription with invoicing redirect
+### Step 2: Create the subscription with a delegated payer
 
 <Tabs>
   <Tab title="Dashboard">
     1. Navigate to **Subscriptions** and click **Create Subscription**
     2. Select the **child customer** as the subscription owner
     3. Choose a plan
-    4. In the **Invoice To** field, select or enter the billing customer's external ID
+    4. In the **Invoice To** field, select or enter the delegated payer's external ID (the customer who will receive the invoice)
     5. Click **Create Subscription**
 
     <Frame>
@@ -155,8 +159,8 @@ Create the subscription owner (child) and the billing customer separately. No hi
 
 - Subscription is created with `subscription_type: standalone` on the child customer
 - Plan, line items, entitlements, and usage tracking all remain on the child
-- Invoices are routed to the billing customer (`ext-reseller`)
-- The billing customer's wallet and payment methods are used for settlement
+- Invoices are issued to the delegated payer (`ext-reseller`)
+- The delegated payer's wallet and payment methods are used for settlement
 
 <Note>
   The invoicing customer is set at subscription creation and cannot be changed
@@ -164,53 +168,57 @@ Create the subscription owner (child) and the billing customer separately. No hi
   one.
 </Note>
 
-## Invoice & Payment Behavior
+## Invoice and payment behavior
 
-| | Flow A: Subscription Inheritance | Flow B: Invoice Redirection |
+| | Consolidated subscription | Delegated payer |
 |---|---|---|
 | **Usage tracked on** | Each child customer (via inherited subscription) | Child customer (their own subscription) |
-| **Invoice generated for** | Parent customer | Specified billing customer |
-| **Wallet deducted from** | Parent customer | Billing customer |
-| **Tax based on** | Parent customer's billing details | Billing customer's billing details |
+| **Invoice generated for** | Parent customer | Delegated payer (billing customer) |
+| **Wallet deducted from** | Parent customer | Delegated payer |
+| **Tax based on** | Parent customer's billing details | Delegated payer's billing details |
 | **Currency** | Set at the parent subscription | Set at the child subscription |
 
-## Use Cases
+## Use cases
 
-**Enterprise with subsidiaries** *(Flow A)*
+**Enterprise with subsidiaries** *(Consolidated subscription)*
+
 Global HQ purchases a plan. Regional divisions (APAC, EMEA, Americas) each generate usage independently, but HQ receives one consolidated invoice with line items per division.
 
-**Reseller / partner model** *(Flow B)*
+**Reseller / partner model** *(Delegated payer)*
+
 A reseller signs up their clients as separate customers in Flexprice. Each client has their own subscription and usage tracking, but the reseller receives and pays all invoices.
 
-**Department-level billing** *(Flow A or B)*
-A company's central IT or Finance team handles vendor payments. Engineering, Marketing, and Sales each track their own usage — invoices roll up to the central team.
+**Department-level billing** *(Consolidated subscription or delegated payer)*
 
-**Multi-brand holding company** *(Flow A)*
+A company's central IT or Finance team handles vendor payments. Engineering, Marketing, and Sales each track their own usage, and invoices roll up to the central team (or the central team is set as the delegated payer, depending on your model).
+
+**Multi-brand holding company** *(Consolidated subscription)*
+
 A holding company owns multiple brands. Each brand operates independently as a customer with its own subscriptions. The holding company's finance department receives all invoices.
 
-## Frequently Asked Questions
+## Frequently asked questions
 
 <AccordionGroup>
   <Accordion title="Can parent and child subscriptions use different currencies?">
-    In **Flow A**, currency is set on the parent subscription and applies to all invoices generated for it. Child inherited subscriptions adopt the parent's currency.
+    In **consolidated subscription** mode, currency is set on the parent subscription and applies to all invoices generated for it. Child inherited subscriptions use the parent's currency.
 
-    In **Flow B**, each subscription sets its own currency independently, since each child owns a full subscription.
+    In **delegated payer** mode, each subscription sets its own currency independently, since each child owns a full subscription.
   </Accordion>
 
   <Accordion title="How does tax work?">
-    Tax is calculated based on the invoicing customer's billing details — the parent customer in Flow A, or the specified billing customer in Flow B. The subscription owner's billing address is not used for tax in either flow.
+    Tax uses the **invoicing customer's** billing details: the parent customer in consolidated subscription mode, or the delegated payer in delegated payer mode. The subscription owner's billing address is not used for tax in either pattern.
   </Accordion>
 
   <Accordion title="How does wallet drawdown work?">
-    The wallet is deducted from the invoicing customer's balance, not the subscription owner's. In Flow A, the parent customer's wallet is drawn down. In Flow B, the billing customer's wallet is used.
+    The wallet is deducted from the invoicing customer's balance, not the subscription owner's. In consolidated subscription mode, the parent customer's wallet is drawn down. In delegated payer mode, the delegated payer's wallet is used.
   </Accordion>
 
   <Accordion title="What happens when the parent subscription is upgraded or downgraded?">
-    Plan changes apply to the parent subscription only. Inherited skeleton subscriptions are not directly affected — they continue to route usage events to the updated parent.
+    Plan changes apply to the parent subscription only. Inherited skeleton subscriptions are not directly affected; they keep routing usage events to the updated parent. (This applies to **consolidated subscription** setups with a `parent` subscription.)
   </Accordion>
 
   <Accordion title="What happens when the parent subscription is cancelled?">
-    A final invoice is generated for the invoicing customer. Inherited skeleton subscriptions linked to the parent are also cancelled at the same time.
+    A final invoice is generated for the invoicing customer. Inherited skeleton subscriptions linked to the parent are cancelled at the same time. (This applies to **consolidated subscription** mode.)
   </Accordion>
 
   <Accordion title="Can I change the invoicing customer after a subscription is created?">
