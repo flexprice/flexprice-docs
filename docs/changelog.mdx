@@ -4,6 +4,94 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="April 6th 2026">
+  ## Inherited subscriptions
+
+  Subscriptions now support an inheritance model — a parent subscription can propagate charges, cancellations, and billing configuration to child subscriptions attached to the same customer.
+
+  * **Subscription types**: Subscriptions are now typed as `STANDALONE`, `PARENT`, or `INHERITED` — controlling how billing is routed and how cancellations cascade
+  * **Inherited subscription creation**: Create subscriptions that inherit from a parent, with automatic customer resolution and unified code paths for create and modify operations
+  * **Cascade cancellation**: Cancelling a parent subscription automatically propagates cancellation to all inherited child subscriptions
+  * **Validation guards**: The API prevents creating standalone or parent subscriptions on customers that already have an inherited subscription, avoiding conflicting billing hierarchies
+  * **Dashboard support**: The subscription edit page now shows an inherited subscriptions section for managing child subscriptions from the parent view
+
+  <br />
+
+  ## SDK v2.1
+
+  The Flexprice Go, Python, and TypeScript SDKs have been updated to v2.1, with major developer experience improvements across error handling, idempotency, and pagination.
+
+  * **Error utilities**: New `errorutils` package provides typed helpers — `IsNotFound`, `IsValidation`, `IsConflict` — for clean error handling without string matching
+  * **Per-request idempotency**: `WithIdempotencyKey` option lets you attach an idempotency key to any mutating request without modifying global config
+  * **Auto-pagination**: List endpoints now support automatic pagination — iterate over all results without managing page tokens manually
+  * **Retry configuration**: Read-only `POST` operations (like usage queries and previews) now retry automatically; retry settings are configurable globally or per-request
+  * **SDK examples**: Comprehensive end-to-end examples added for Go, TypeScript, and Python covering the full subscription and billing lifecycle
+
+  <br />
+
+  <Card icon="code" horizontal={true} href="/api-reference/introduction" title="API Reference" />
+
+  <br />
+
+  ## Invoice internal preview
+
+  Preview invoice charges before finalization with a new internal preview endpoint — useful for validating billing logic before committing to an invoice.
+
+  * **Preview endpoint**: New `POST /v1/invoices/internal/preview` computes a draft invoice view without persisting any state — returns line items, totals, and applied discounts
+  * **PDF force regeneration**: The invoice PDF URL endpoint now accepts a `force_generate` parameter to regenerate PDFs on demand, bypassing the cached version
+
+  <br />
+
+  ## Usage charge arrear constraint
+
+  Usage-based charges are now constrained to arrear billing — the API enforces that usage charges cannot be configured for advance billing.
+
+  * **Arrear-only enforcement**: Prices with usage charge models are validated at creation and update time to ensure they are always billed in arrear, preventing misconfigured advance billing setups
+
+  <br />
+
+  ## Entitlement usage reset period
+
+  Plan entitlements can now be configured with a usage reset period directly from the plan builder.
+
+  * **Reset period UX**: The plan creation and edit flow now includes a reset period selector for entitlements — configure how frequently usage limits reset (daily, weekly, monthly, etc.) without leaving the dashboard
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Customer list now defaults to filtering by `PUBLISHED` status — inactive customers are hidden by default with the ability to clear the filter
+      * Invoice finalization delay reduced from 5 days to 2 hours — integrations and async workflows have a shorter window before invoices are sealed
+      * Temporal invoice workflows now start with a configurable delay, giving downstream systems time to react before processing begins
+      * System events enhanced with entity type and entity ID fields, and a new `event_name` column for structured audit log queries
+      * OTel log level filtering now respected in the pipeline — debug-level noise no longer propagates to exporters configured for higher levels
+      * Temporal worker concurrency defaults reduced to prevent out-of-memory kills under high load
+      * API error messages extracted and displayed more accurately throughout the dashboard — network and validation errors now surface actionable text instead of raw response objects
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Revenue dashboard date range filter now includes UTC-inclusive period boundaries — data at period edges was previously excluded
+      * ClickHouse aggregator queries no longer use the `FINAL` keyword — removes read inconsistencies on tables with frequent merges
+      * Invoice computation now correctly identifies inherited subscriptions and skips re-computation when appropriate
+      * Credit purchased invoice payment status flow corrected — status transitions now follow the expected finalization sequence
+      * Subscription invoice draft idempotency key now includes `billing_reason` — prevents duplicate drafts across different billing triggers within the same period
+      * Duplicate draft event publishing removed from `CreateInvoice` — downstream consumers no longer receive redundant `invoice.drafted` events
+      * Invoice PDF generation now handles nil line items without panicking
+    </Accordion>
+
+    <Accordion title="API">
+      * New `POST /v1/invoices/internal/preview` endpoint for computing a preview invoice without persisting state
+      * Subscription type field (`STANDALONE`, `PARENT`, `INHERITED`) added to the subscriptions API with filtering support
+      * New endpoint for modifying subscription inheritance — add or remove inherited subscriptions from a parent
+      * `force_generate` parameter added to the invoice PDF URL endpoint for on-demand PDF regeneration
+      * Go SDK v2.1.0 and v2.1.1 released with error utilities, idempotency key support, auto-pagination, and configurable retry strategy
+      * TypeScript SDK updated to use `CustomerFromLookup` type for customer resolution responses
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
 <Update label="March 30th 2026">
   ## Revenue dashboard
 
