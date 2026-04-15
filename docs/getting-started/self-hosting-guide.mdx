@@ -29,10 +29,13 @@ The fastest way to run Flexprice on your own machine or a single server is with 
 Before you begin, make sure you have the following installed:
 
 <Check>
-  [Golang](https://go.dev/)
+  [Golang](https://go.dev/) 1.23+
 </Check>
 <Check>
-  [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/)
+  [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) (Docker Desktop, OrbStack, or Podman Desktop all work)
+</Check>
+<Check>
+  `make` (pre-installed on macOS/Linux; on Windows use WSL or install via [chocolatey](https://chocolatey.org/packages/make))
 </Check>
 <Check>
   One of these supported platforms:
@@ -41,9 +44,14 @@ Before you begin, make sure you have the following installed:
   - WSL under Windows
 </Check>
 
+<Note>
+  You do **not** need `psql`, `kafka-cli`, or any other database client installed locally.
+  All database operations run inside Docker containers via `docker compose exec`.
+</Note>
+
 ## Quick Setup with Docker Compose
 
-The easiest way to get started is using our Docker Compose setup:
+The easiest way to get started is using our automated setup command:
 
 ```bash
 # Clone the repository
@@ -58,9 +66,30 @@ make dev-setup
   This single command takes care of everything you need to get started:
   1. Starting all required infrastructure (PostgreSQL, Kafka, ClickHouse, Temporal)
   2. Building the Flexprice application image
-  3. Running database migrations and initializing Kafka
-  4. Starting all Flexprice services (API, Consumer, Worker)
+  3. Running database migrations (PostgreSQL via Ent ORM + ClickHouse) and initializing Kafka topics
+  4. Seeding default tenant and environment data
+  5. Starting all Flexprice services (API, Consumer, Worker)
 </Tip>
+
+### Default API Key
+
+After setup, use the following key to authenticate local API requests:
+
+```
+sk_local_flexprice_test_key
+```
+
+Pass it in the `x-api-key` request header:
+
+```bash
+curl -H "x-api-key: sk_local_flexprice_test_key" http://localhost:8080/v1/customers
+```
+
+<Note>
+  The key is pre-configured in `internal/config/config.yaml`. Entity tables are created
+  entirely by the Ent ORM layer — the Postgres migration files only bootstrap schemas,
+  extensions, and stored functions.
+</Note>
 
 ## Accessing Services
 
@@ -74,18 +103,25 @@ Once setup is complete, you can access:
     http://localhost:8088
   </Card>
   <Card title="Kafka UI" icon="message-dots">
-    http://localhost:8084
+    http://localhost:8084 (requires `--profile dev`)
   </Card>
-  <Card title="ClickHouse UI" icon="database">
+  <Card title="ClickHouse HTTP" icon="database">
     http://localhost:8123
   </Card>
 </CardGroup>
+
+<Note>
+  The Kafka UI requires the `dev` profile:
+  ```bash
+  docker compose --profile dev up -d kafka-ui
+  ```
+</Note>
 
 ## Useful Commands
 
 Here are some common commands you might need during development:
 
-<Accordion title="Restart Flexprice Services">
+<Accordion title="Restart Flexprice Services (keep infrastructure running)">
 ```bash
 make restart-flexprice
 ```
@@ -97,31 +133,34 @@ make down
 ```
 </Accordion>
 
-<Accordion title="Clean Start">
+<Accordion title="Full Clean Start (destroys all data volumes)">
 ```bash
 make clean-start
 ```
 </Accordion>
 
-<Accordion title="Build Flexprice Image">
+<Accordion title="Rebuild and Restart Only Flexprice Services">
 ```bash
-make build-image
+make build-image && make restart-flexprice
 ```
 </Accordion>
 
-<Accordion title="Start Only Flexprice Services">
+<Accordion title="Re-run Seed Data (idempotent)">
 ```bash
-make start-flexprice
+make seed-db
 ```
 </Accordion>
 
-## Running Without Docker
+## Running Without Docker (API only)
 
-If you prefer to run the application directly:
+If you prefer to run the application binary directly while keeping infrastructure in Docker:
 
 ```bash
-# Start the required infrastructure
+# Start required infrastructure
 docker compose up -d postgres kafka clickhouse temporal temporal-ui
+
+# Run migrations
+make migrate-postgres migrate-clickhouse migrate-ent seed-db init-kafka
 
 # Run the application locally
 go run cmd/server/main.go
@@ -141,7 +180,7 @@ Use these credentials to connect to the various services:
 
 <Accordion title="ClickHouse">
   - **Host**: localhost
-  - **Port**: 9000
+  - **Port**: 9000 (native) / 8123 (HTTP)
   - **Database**: flexprice
   - **Username**: flexprice
   - **Password**: flexprice123
@@ -149,7 +188,7 @@ Use these credentials to connect to the various services:
 
 <Accordion title="Kafka">
   - **Bootstrap Server**: localhost:29092
-  - **UI**: http://localhost:8084 (with profile 'dev')
+  - **UI**: http://localhost:8084 (requires `--profile dev`)
 </Accordion>
 
 ## API Documentation
@@ -159,64 +198,125 @@ Flexprice provides comprehensive API documentation in OpenAPI 3.0 format.
 ### Setting up Postman
 
 1. Open Postman
-2. Click on "Import" in the top left
-3. Select "Import File"
+2. Click on **Import** in the top left
+3. Select **Import File**
 4. Choose `docs/swagger/swagger-3-0.json`
-5. Click "Import"
+5. Click **Import**
 6. Create a new environment for local development:
-   - **Name**: Local
-   - **Variable**: `baseUrl`
-   - **Value**: `http://localhost:8080/v1`
-   - **Variable**: `apiKey`
-   - **Value**: `0cc505d7b917e0b1f25ccbea029dd43f4002edfea46b7f941f281911246768fe`
+   | Variable | Value |
+   |----------|-------|
+   | `baseUrl` | `http://localhost:8080/v1` |
+   | `apiKey` | `sk_local_flexprice_test_key` |
+
+Configure the collection to send `x-api-key: {{apiKey}}` as a header on every request.
 
 ## Troubleshooting
 
 If you encounter issues during setup or operation, try these troubleshooting steps:
 
-<Accordion title="Docker Issues">
-1. Ensure Docker is running properly:
-```bash
-docker info
-```
+<Accordion title="Port 8080 already in use">
+  Another process (e.g. a previously running local Flexprice binary) may be bound to port 8080
+  and intercepting requests before Docker's port mapping.
 
-2. Check the status of all containers:
-```bash
-docker compose ps
-```
+  ```bash
+  # Find and kill the conflicting process
+  lsof -ti :8080 | xargs kill -9
+  ```
 
-3. View logs for a specific service:
-```bash
-docker compose logs [service_name]
-```
+  Then restart the API container:
+  ```bash
+  docker compose restart flexprice-api
+  ```
 </Accordion>
 
-<Accordion title="Database Connection Issues">
-1. Check database logs:
-```bash
-docker compose logs postgres
-docker compose logs clickhouse
-```
+<Accordion title="401 Unauthorized on all API calls">
+  The API key in your request does not match the configured key. For local development use:
 
-2. Verify the database is running:
-```bash
-docker compose ps postgres
-docker compose ps clickhouse
-```
+  ```bash
+  curl -H "x-api-key: sk_local_flexprice_test_key" http://localhost:8080/v1/customers
+  ```
+
+  If you changed the key in `config.yaml`, remember the config stores the **SHA-256 hash** of the
+  raw key, not the key itself. The middleware hashes the incoming key before lookup.
+</Accordion>
+
+<Accordion title="Redis connection refused (log warning)">
+  You may see log lines like:
+
+  ```
+  Failed to create Redis client: dial tcp [::1]:6379: connect: connection refused
+  ```
+
+  This is **non-fatal** for local development. Redis is optional — it powers response caching,
+  which falls back gracefully when unavailable. The API continues to work normally.
+</Accordion>
+
+<Accordion title="Database schema errors on fresh start">
+  All entity tables (`customers`, `plans`, `subscriptions`, etc.) are managed exclusively by the
+  **Ent ORM** migration layer. The Postgres migration files (`migrations/postgres/`) only create:
+
+  - Schemas and the `uuid-ossp` extension (`V0__init.sql`)
+  - Stored functions for invoice/billing sequences (`V2_invoice_sequences.up.sql`)
+
+  If you see `relation does not exist` errors, ensure you ran `make migrate-ent` after starting
+  Postgres:
+
+  ```bash
+  make migrate-ent
+  make seed-db
+  ```
+</Accordion>
+
+<Accordion title="Docker Issues">
+  1. Ensure Docker is running properly:
+  ```bash
+  docker info
+  ```
+
+  2. Check the status of all containers:
+  ```bash
+  docker compose ps
+  ```
+
+  3. View logs for a specific service:
+  ```bash
+  docker compose logs -f flexprice-api
+  docker compose logs -f flexprice-consumer
+  ```
+
+  4. If containers are in a bad state, do a full clean restart:
+  ```bash
+  docker compose down -v
+  make dev-setup
+  ```
 </Accordion>
 
 <Accordion title="Kafka Issues">
-1. Verify Kafka is running:
-```bash
-docker compose logs kafka
-```
+  1. Verify Kafka is running:
+  ```bash
+  docker compose logs kafka
+  ```
 
-2. Check topic list:
-```bash
-docker compose exec kafka kafka-topics --bootstrap-server kafka:9092 --list
-```
+  2. Check that all required topics exist:
+  ```bash
+  docker compose exec kafka kafka-topics --bootstrap-server kafka:9092 --list
+  ```
 
-3. View Kafka UI at http://localhost:8084
+  3. Re-initialize topics if any are missing:
+  ```bash
+  make init-kafka
+  ```
+</Accordion>
+
+<Accordion title="ClickHouse migration errors">
+  ClickHouse migrations use standard `MergeTree` engine for local/single-node compatibility.
+  If you see engine-related errors, ensure you are running the open-source ClickHouse image
+  (not ClickHouse Cloud) as specified in `docker-compose.yml`.
+
+  To re-run ClickHouse migrations:
+  ```bash
+  make migrate-clickhouse
+  ```
 </Accordion>
 
 ## Need Help?
@@ -242,4 +342,4 @@ If you're still experiencing issues after trying the troubleshooting steps, plea
   <Card title="Flexprice Website" icon="globe" href="https://flexprice.io">
     Visit our official website
   </Card>
-</CardGroup> 
+</CardGroup>
