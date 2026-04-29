@@ -13,7 +13,7 @@ Common use cases: product-led growth, freemium-to-paid conversion, and enterpris
 
 Trial subscriptions move through three statuses:
 
-```
+```text
 trialing ──(trial_end reached)──► incomplete ──(invoice paid / zero amount)──► active
 ```
 
@@ -121,6 +121,24 @@ curl -X POST https://api.flexprice.io/v1/subscriptions \
 | `0` | Disables trial; subscription starts as `active` immediately |
 | `> 0` | Overrides plan-level value with this number of days |
 
+To shorten or lengthen the plan-level trial, pass a positive integer:
+
+```bash
+curl -X POST https://api.flexprice.io/v1/subscriptions \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_id": "cust_01xyz",
+    "plan_id": "plan_01abc",
+    "currency": "USD",
+    "billing_cadence": "RECURRING",
+    "billing_period": "MONTHLY",
+    "billing_period_count": 1,
+    "start_date": "2025-05-01T00:00:00Z",
+    "trial_period_days": 30
+  }'
+```
+
 ## What Happens at Trial End
 
 Trial end is detected automatically. When `trial_end <= now`:
@@ -131,12 +149,17 @@ Trial end is detected automatically. When `trial_end <= now`:
 4. If the invoice amount is **zero** — subscription immediately converts to `active`. No payment event needed.
 5. If the invoice amount is **non-zero** — subscription stays `incomplete` until the invoice is paid.
 
+<Note>
+An `incomplete` subscription does not auto-expire. It remains `incomplete` until the trial-end invoice is paid or the subscription is cancelled.
+</Note>
+
 **`payment_behavior` at trial end:**
 
 | Value | Behavior if payment fails |
 |---|---|
-| `allow_incomplete` (default) | Subscription stays `incomplete` |
-| `default_active` | Subscription activates regardless of payment result |
+| `default_active` (default) | Subscription activates regardless of payment result |
+| `allow_incomplete` | Subscription stays `incomplete` if payment fails |
+| `error_if_incomplete` | Subscription stays `incomplete` if payment fails |
 
 Credit grants held pending activation are applied automatically when the subscription becomes `active`.
 
@@ -153,6 +176,7 @@ Credit grants held pending activation are applied automatically when the subscri
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `trial_period_days` | integer | No | Override plan-level trial length in days. `0` disables trial. Omit to inherit from plan prices. Must be `>= 0`. |
+| `payment_behavior` | enum | No | How to handle payment failure at trial end. Options: `default_active`, `allow_incomplete`, `error_if_incomplete`, `default_incomplete`. Default: `default_active`. |
 
 ### Subscription response (trial-related fields)
 
@@ -193,6 +217,8 @@ The payload is the standard subscription object with `status: "active"`.
 }
 ```
 
+For information on configuring webhook endpoints, see [Webhooks](/docs/webhook/webhooks).
+
 ## Edge Cases
 
 | Scenario | Behavior |
@@ -209,7 +235,7 @@ The payload is the standard subscription object with `status: "active"`.
 
 **Collect a payment method before trial ends.** FlexPrice does not require a payment method to create a trialing subscription, but the trial-end invoice will fail without one on file. Prompt users to add payment details during the trial window.
 
-**Set `payment_behavior` explicitly.** The default is `allow_incomplete`, which leaves the subscription in `incomplete` if payment fails at trial end. Use `default_active` only if you want the subscription to activate regardless of payment result.
+**Set `payment_behavior` explicitly.** The default is `default_active`, which activates the subscription regardless of payment result. Use `allow_incomplete` if you want the subscription to stay `incomplete` if payment fails at trial end.
 
 **Use `subscription.activated` to gate access.** This event fires for both trial conversions and normal activations. Your webhook handler needs no special-casing — listen for `subscription.activated` and provision accordingly.
 
