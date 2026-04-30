@@ -1,0 +1,245 @@
+---
+title: "Trialing"
+description: "Offer free trial periods on subscriptions before billing begins"
+---
+
+## Overview
+
+A trial period lets customers use a plan for a defined number of days before their first invoice is generated. When a subscription enters `trialing` status, no invoice is created. Billing begins only after the trial ends and the subscription transitions to `active`.
+
+Common use cases: product-led growth, freemium-to-paid conversion, and enterprise evaluation periods.
+
+## How It Works
+
+Trial subscriptions move through three statuses:
+
+```text
+trialing ──(trial_end reached)──► incomplete ──(invoice paid / zero amount)──► active
+```
+
+| Status | What it means | Billing |
+|---|---|---|
+| `trialing` | Trial window is active | No invoice generated |
+| `incomplete` | Trial ended, invoice issued | Awaiting payment of trial-end invoice |
+| `active` | Trial converted, billing live | Normal billing cycle begins |
+
+While in `trialing`, `current_period_start` equals `trial_start` and `current_period_end` equals `trial_end`. When the trial ends, the billing anchor resets to `trial_end`. The first paid billing period runs from `trial_end` to `trial_end + billing_period`. There is no shortened first period.
+
+Trial-end detection is fully automated. No manual trigger is required.
+
+## Configuring a Trial Period
+
+Trial configuration is a two-step process: set the trial days on the price, then create a subscription.
+
+### Step 1: Set `trial_period_days` on the price
+
+`trial_period_days` is only valid on **recurring fixed prices** (`billing_cadence: RECURRING`, `price_type: FIXED`). It cannot be set on usage-based or tiered prices. If omitted, it defaults to `0` (no trial).
+
+```bash
+curl -X POST https://api.flexprice.io/v1/prices \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": 4900,
+    "currency": "USD",
+    "billing_cadence": "RECURRING",
+    "billing_period": "MONTHLY",
+    "billing_period_count": 1,
+    "price_type": "FIXED",
+    "trial_period_days": 14
+  }'
+```
+
+Response (abbreviated):
+
+```json
+{
+  "id": "price_01abc123",
+  "billing_cadence": "RECURRING",
+  "price_type": "FIXED",
+  "trial_period_days": 14
+}
+```
+
+### Step 2: Create a subscription (trial inherited automatically)
+
+When all recurring fixed prices on a plan share the same `trial_period_days`, that value is inherited by the subscription automatically. No trial fields are required in the subscription request.
+
+```bash
+curl -X POST https://api.flexprice.io/v1/subscriptions \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_id": "cust_01xyz",
+    "plan_id": "plan_01abc",
+    "currency": "USD",
+    "billing_cadence": "RECURRING",
+    "billing_period": "MONTHLY",
+    "billing_period_count": 1,
+    "start_date": "2025-05-01T00:00:00Z"
+  }'
+```
+
+Response:
+
+```json
+{
+  "id": "sub_01def456",
+  "status": "trialing",
+  "trial_start": "2025-05-01T00:00:00Z",
+  "trial_end": "2025-05-15T00:00:00Z",
+  "current_period_start": "2025-05-01T00:00:00Z",
+  "current_period_end": "2025-05-15T00:00:00Z"
+}
+```
+
+No invoice is created at subscription creation.
+
+### Overriding trial days at subscription creation
+
+Pass `trial_period_days` in the subscription request to override the plan-level value.
+
+```bash
+curl -X POST https://api.flexprice.io/v1/subscriptions \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_id": "cust_01xyz",
+    "plan_id": "plan_01abc",
+    "currency": "USD",
+    "billing_cadence": "RECURRING",
+    "billing_period": "MONTHLY",
+    "billing_period_count": 1,
+    "start_date": "2025-05-01T00:00:00Z",
+    "trial_period_days": 0
+  }'
+```
+
+| Value | Effect |
+|---|---|
+| Omitted | Inherits `trial_period_days` from plan prices |
+| `0` | Disables trial; subscription starts as `active` immediately |
+| `> 0` | Overrides plan-level value with this number of days |
+
+To shorten or lengthen the plan-level trial, pass a positive integer:
+
+```bash
+curl -X POST https://api.flexprice.io/v1/subscriptions \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_id": "cust_01xyz",
+    "plan_id": "plan_01abc",
+    "currency": "USD",
+    "billing_cadence": "RECURRING",
+    "billing_period": "MONTHLY",
+    "billing_period_count": 1,
+    "start_date": "2025-05-01T00:00:00Z",
+    "trial_period_days": 30
+  }'
+```
+
+## What Happens at Trial End
+
+Trial end is detected automatically. When `trial_end <= now`:
+
+1. Subscription status changes to `incomplete`.
+2. Billing anchor resets to `trial_end`.
+3. A `SUBSCRIPTION_TRIAL_END` invoice is created covering `[trial_end, trial_end + billing_period]`.
+4. If the invoice amount is **zero**: subscription immediately converts to `active`. No payment event needed.
+5. If the invoice amount is **non-zero**: subscription stays `incomplete` until the invoice is paid.
+
+<Note>
+An `incomplete` subscription does not auto-expire. It remains `incomplete` until the trial-end invoice is paid or the subscription is cancelled.
+</Note>
+
+**`payment_behavior` at trial end:**
+
+| Value | Behavior if payment fails |
+|---|---|
+| `default_active` (default) | Subscription activates regardless of payment result |
+| `allow_incomplete` | Subscription stays `incomplete` if payment fails |
+| `error_if_incomplete` | Subscription stays `incomplete` if payment fails; wallet fallback is not attempted |
+| `default_incomplete` | Subscription stays `incomplete`; only valid with `send_invoice` collection method |
+
+Credit grants held pending activation are applied automatically when the subscription becomes `active`.
+
+## API Reference
+
+### Price fields
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `trial_period_days` | integer | No | Days of free trial before first invoice. Default `0`. Only valid for `billing_cadence: RECURRING` + `price_type: FIXED`. Must be `>= 0`. |
+
+### Subscription create fields
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `trial_period_days` | integer | No | Override plan-level trial length in days. `0` disables trial. Omit to inherit from plan prices. Must be `>= 0`. |
+| `payment_behavior` | enum | No | How to handle payment failure at trial end. Options: `default_active`, `allow_incomplete`, `error_if_incomplete`, `default_incomplete`. Default: `default_active`. |
+
+### Subscription response (trial-related fields)
+
+| Field | Type | Description |
+|---|---|---|
+| `status` | string | `trialing` while trial is active |
+| `trial_start` | timestamp (ISO 8601) | When the trial began. Equals `start_date`. |
+| `trial_end` | timestamp (ISO 8601) | When the trial ends and billing begins. |
+| `current_period_start` | timestamp (ISO 8601) | Equals `trial_start` during the trial window. |
+| `current_period_end` | timestamp (ISO 8601) | Equals `trial_end` during the trial window. |
+
+## Webhooks & Events
+
+One event fires during the trial lifecycle:
+
+**`subscription.activated`** is fired when the subscription converts from `trialing` to `active`.
+
+This event fires in two scenarios:
+- The `SUBSCRIPTION_TRIAL_END` invoice is fully paid.
+- The trial-end invoice amount is zero (immediate auto-activation).
+
+<Note>
+There is no `subscription.trialing`, `subscription.trial_ended`, or `subscription.trial_ending` event. Use `subscription.activated` to detect trial conversion.
+</Note>
+
+The payload is the standard subscription object with `status: "active"`.
+
+```json
+{
+  "subscription": {
+    "id": "sub_01def456",
+    "status": "active",
+    "trial_start": "2025-05-01T00:00:00Z",
+    "trial_end": "2025-05-15T00:00:00Z",
+    "current_period_start": "2025-05-15T00:00:00Z",
+    "current_period_end": "2025-06-15T00:00:00Z"
+  }
+}
+```
+
+For information on configuring webhook endpoints, see [Webhooks](/docs/webhook/webhooks).
+
+## Edge Cases
+
+| Scenario | Behavior |
+|---|---|
+| `trial_period_days = 0` at subscription level | Trial disabled even if plan price has `trial_period_days > 0` |
+| Plan prices have mismatched `trial_period_days` | Subscription creation fails: `"all recurring fixed plan prices must have the same trial_period_days"` |
+| Cancellation during trial | Standard cancellation applies. Trial-end processing skips subscriptions not in `trialing` status. |
+| Paused subscription when `trial_end` is reached | Trial-end processing is skipped. Runs when the subscription is unpaused. |
+| Zero-amount trial-end invoice | Subscription auto-activates immediately without waiting for a payment event. |
+| Inherited (child) subscriptions | Trial status cascades from parent. Children are not processed independently. |
+| Re-trialing | Not supported. Each subscription has one trial window. To extend a trial, cancel and recreate the subscription. |
+
+## Best Practices
+
+**Collect a payment method before trial ends.** FlexPrice does not require a payment method to create a trialing subscription, but the trial-end invoice will fail without one on file. Prompt users to add payment details during the trial window.
+
+**Set `payment_behavior` explicitly.** The default is `default_active`, which activates the subscription regardless of payment result. Use `allow_incomplete` if you want the subscription to stay `incomplete` if payment fails at trial end.
+
+**Use `subscription.activated` to gate access.** This event fires for both trial conversions and normal activations. Your webhook handler needs no special-casing. Listen for `subscription.activated` and provision accordingly.
+
+**Test with zero-amount prices in staging.** Set your plan price to `$0` to fast-path through `trialing → active` without needing a real payment method or payment gateway.
+
+**Don't rely on re-trialing.** Each subscription supports one trial window. There is no API to restart a trial on an existing subscription.
