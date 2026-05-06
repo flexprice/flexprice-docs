@@ -229,13 +229,14 @@ mode: "center"
 
   <br />
 
-  ## AI-assisted pricing setup
+  ## AI-assisted pricing setup - Prompt to Plan
 
-  Paste a pricing page or document and Flexprice uses Gemini to extract structured prices — reducing manual entry when onboarding a new product catalog.
-
-  * **Gemini proxy endpoint**: `POST /v1/ai/pricing/parse` accepts raw pricing text and returns structured price objects ready for import, with retry logic for JSON parsing failures
-  * **Dashboard wizard**: The pricing setup flow includes an AI step — upload or paste pricing content and review the extracted prices before saving
-  * **Model configuration**: The Gemini model version is configurable; defaults to `gemini-2.5-flash-lite`
+  Prompt to Plan introduces a new way to set up billing in Flexprice. Instead of manually configuring plans, prices, meters, and entitlements, you can describe your pricing model in plain English and generate a working configuration.
+  
+  * **Chat-based setup**: Describe subscription, usage-based, or hybrid pricing models conversationally and get a complete configuration back
+  * **Full model support**: The workflow covers metered features with overages and limits, credit-based pricing with grants and expiration, add-ons, and entitlements
+  * **Preview before publishing**: Review the generated setup before pushing it live — nothing is saved until you confirm
+  * **Templates**: Pre-built templates based on real-world pricing models are available as starting points and can be customized and deployed directly
 
   <br />
 
@@ -277,7 +278,7 @@ mode: "center"
     </Accordion>
 
     <Accordion title="API">
-      * New `POST /v1/ai/pricing/parse` endpoint for Gemini-backed pricing extraction from raw text
+      * New `POST /v1/ai/pricing/parse` endpoint powers the Prompt to Plan chat workflow — accepts pricing descriptions and returns structured plan, price, meter, and entitlement configurations
       * New `POST /v1/subscriptions/{id}/modify/preview` endpoint returns a prorated invoice preview before applying a subscription modification
       * Environment clone endpoint added to trigger the `EnvironmentCloneWorkflow` for a source/target environment pair
     </Accordion>
