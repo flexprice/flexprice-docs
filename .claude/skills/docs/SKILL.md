@@ -204,29 +204,32 @@ cd /Users/tsage/Desktop/flexprice/flexprice-docs && mint broken-links
 - If it passes cleanly — proceed to the PR step.
 - If it reports broken links — fix every broken link in the changelog entry you just wrote, then re-run until clean. Do not open a PR with broken links.
 
-### 9. Open a PR Branched from Main
+### 9. Open a PR Branched from Upstream Main
 
-Create a branch off `main`, commit the changelog change, push, and open a PR:
+The flexprice-docs repo has two remotes:
+- `upstream` = the production repo (`flexprice/flexprice-docs`) — always branch from here
 
 ```bash
 cd /Users/tsage/Desktop/flexprice/flexprice-docs
 
-# Branch off main
-git checkout main
-git pull origin main
-git checkout -b changelog/YYYY-MM-DD   # use the Sunday end-date of the covered range
+# Fetch latest production main
+git fetch upstream
+git checkout upstream/main
+git checkout -b changelog/<LABEL>   # e.g. changelog/May-11th-2026
 
 # Stage and commit
 git add docs/changelog.mdx
 git commit -m "docs(changelog): add weekly entry for <LABEL>"
 
-# Push and open PR
-git push origin changelog/YYYY-MM-DD
+# Push to origin and open PR against upstream/main
+git push origin changelog/<LABEL>
 gh pr create \
   --title "docs(changelog): <LABEL>" \
   --base main \
   --body "Weekly changelog entry covering <SINCE> → <UNTIL>."
 ```
+
+The branch name is always `changelog/<LABEL>` where `<LABEL>` matches the `<Update>` label exactly — e.g. `changelog/May-11th-2026`.
 
 Return the PR URL to the user.
 
