@@ -18,22 +18,17 @@ Generate and **directly write** weekly changelog entries for Flexprice into `doc
 
 ## Repo Locations
 
-All repos live at `/Users/tsage/Desktop/flexpriceRepos/`:
+All repos live at `/Users/tsage/Desktop/flexprice/`:
 
 | Repo | Path | Purpose |
 |---|---|---|
-| Backend | `/Users/tsage/Desktop/flexpriceRepos/flexprice` | Go monolith — Gin, Ent ORM, Temporal, Kafka, ClickHouse |
-| Frontend | `/Users/tsage/Desktop/flexpriceRepos/flexprice-front` | React + Vite + TypeScript dashboard |
-| Docs | `/Users/tsage/Desktop/flexpriceRepos/flexprice-docs` | Mintlify MDX documentation site |
+| Backend | `/Users/tsage/Desktop/flexprice/flexprice` | Go monolith — Gin, Ent ORM, Temporal, Kafka, ClickHouse |
+| Frontend | `/Users/tsage/Desktop/flexprice/flexprice-front` | React + Vite + TypeScript dashboard |
+| Docs | `/Users/tsage/Desktop/flexprice/flexprice-docs` | Mintlify MDX documentation site |
 
 The changelog file is at:
 ```
-/Users/tsage/Desktop/flexpriceRepos/flexprice-docs/docs/changelog.mdx
-```
-
-If working in a worktree (branch `claude/*`), the file is at:
-```
-/Users/tsage/Desktop/flexpriceRepos/flexprice-docs/.claude/worktrees/<worktree-name>/docs/changelog.mdx
+/Users/tsage/Desktop/flexprice/flexprice-docs/docs/changelog.mdx
 ```
 
 ---
@@ -54,14 +49,14 @@ The changelog label date is the **end date** of the range (e.g., `April 6th 2026
 
 ```bash
 # Backend — use upstream/develop (the canonical source of truth, NOT origin/main which is the fork)
-git -C /Users/tsage/Desktop/flexpriceRepos/flexprice log \
+git -C /Users/tsage/Desktop/flexprice/flexprice log \
   remotes/upstream/develop \
   --format="%h %ad %s" --date=short \
   --since="YYYY-MM-DD" --until="YYYY-MM-DD" \
   --no-merges 2>&1 | head -100
 
 # Frontend — use origin (flexprice-front is not a fork, origin IS upstream)
-git -C /Users/tsage/Desktop/flexpriceRepos/flexprice-front log \
+git -C /Users/tsage/Desktop/flexprice/flexprice-front log \
   --format="%h %ad %s" --date=short \
   --since="YYYY-MM-DD" --until="YYYY-MM-DD" \
   --no-merges 2>&1 | head -100
@@ -74,7 +69,7 @@ git -C /Users/tsage/Desktop/flexpriceRepos/flexprice-front log \
 
 **If output is empty**, try `--all` to check all branches:
 ```bash
-git -C /Users/tsage/Desktop/flexpriceRepos/flexprice log --all \
+git -C /Users/tsage/Desktop/flexprice/flexprice log --all \
   --format="%h %ad %s" --date=short \
   --since="YYYY-MM-DD" --until="YYYY-MM-DD" 2>&1 | head -50
 ```
@@ -197,6 +192,43 @@ Use the `Edit` tool:
 - `new_string`: `---\n\n` + new `<Update>` block + `\n\n<Update label="March 30th 2026">`
 
 Verify by reading the first ~100 lines of the file after saving.
+
+### 8. Check for Broken Links
+
+**Before opening a PR**, run the Mintlify broken-links checker from the docs repo root:
+
+```bash
+cd /Users/tsage/Desktop/flexprice/flexprice-docs && mint broken-links
+```
+
+- If it passes cleanly — proceed to the PR step.
+- If it reports broken links — fix every broken link in the changelog entry you just wrote, then re-run until clean. Do not open a PR with broken links.
+
+### 9. Open a PR Branched from Main
+
+Create a branch off `main`, commit the changelog change, push, and open a PR:
+
+```bash
+cd /Users/tsage/Desktop/flexprice/flexprice-docs
+
+# Branch off main
+git checkout main
+git pull origin main
+git checkout -b changelog/YYYY-MM-DD   # use the Sunday end-date of the covered range
+
+# Stage and commit
+git add docs/changelog.mdx
+git commit -m "docs(changelog): add weekly entry for <LABEL>"
+
+# Push and open PR
+git push origin changelog/YYYY-MM-DD
+gh pr create \
+  --title "docs(changelog): <LABEL>" \
+  --base main \
+  --body "Weekly changelog entry covering <SINCE> → <UNTIL>."
+```
+
+Return the PR URL to the user.
 
 ---
 
