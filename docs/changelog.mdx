@@ -4,6 +4,79 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="May 10th 2026">
+  ## Grouped invoicing
+
+  A parent subscription can now generate a single consolidated invoice covering a group of child subscriptions — rather than each subscription billing independently.
+
+  * **New subscription types**: Two new types — `DELEGATED` (child that defers invoicing to a parent) and `GROUPED_INVOICING` (parent that owns invoice generation for the group) — extend the existing inheritance model
+  * **Invoicing behavior config**: `InvoicingBehavior` and `SubscriptionsIDsForGroupedInvoicing` fields on `SubscriptionInheritanceConfig` control which subscriptions are grouped and how invoicing is routed
+  * **Membership management**: New `SubscriptionModificationService` helpers let you add or remove subscriptions from a grouped invoicing set without recreating them — changes take effect on the next billing cycle
+  * **Clubbed preview**: The parent subscription preview endpoint now returns a merged line-item view combining charges across all grouped children, so you can verify the consolidated invoice before it's finalized
+  * **Unified billing path**: `processSubscriptionPeriod` now routes grouped subscriptions through a shared invoice preparation path, eliminating the need for a separate `CreateGroupedSubscriptionInvoice` codepath
+
+  <br />
+
+  ## Trial start invoice
+
+  When a trialing subscription is activated, Flexprice now creates a $0 invoice immediately — showing the customer exactly which charges apply at trial end, while keeping all amounts at zero during the trial window.
+
+  * **`SUBSCRIPTION_TRIAL_START` billing reason**: New billing reason scoped to the trial period (`CurrentPeriodStart → CurrentPeriodEnd`) — distinct from `SUBSCRIPTION_CREATE` and `SUBSCRIPTION_CYCLE` reasons
+  * **`ZeroOutAmounts()`**: Invoice request method that zeros all monetary amounts while preserving full line item structure (descriptions, quantities, price metadata) so the pricing skeleton remains visible
+  * **`SKIPPED` invoice status**: Zero-dollar invoices are finalized with a new `SKIPPED` status — no invoice number is assigned, no payment processing occurs, and no vendor sync is triggered
+  * **Payment status by collection method**: The trial start invoice payment status is set based on the subscription's configured collection method, keeping downstream integrations consistent
+  * **Subscription stays `TRIALING`**: The trial start invoice does not gate activation — the subscription remains in `TRIALING` status until the trial end workflow fires
+
+  <br />
+
+  ## Plan change proration credit on opening invoice
+
+  When a customer immediately switches plans, the unused credit from their cancelled subscription is now applied directly as a downward adjustment to the first invoice on the new subscription — instead of issuing a separate wallet credit.
+
+  * **`OpeningInvoiceAdjustmentAmount`**: New internal field on subscription create and change requests carries the proration credit amount into the new subscription's first billing calculation
+  * **`SkipProrationWalletCredit`**: Flag on the cancellation request prevents the proration amount from also being added to the wallet, avoiding double-counting when the credit settles on the new invoice instead
+  * **Dynamic adjustment in billing**: `CalculateFixedCharges` now incorporates the adjustment amount, and the billing service DTOs expose structured input/result types for all billing calculations
+
+  <br />
+
+  ## Paddle: $0 card-capture and address sync
+
+  Zero-dollar invoices through Paddle now use automatic collection mode so customers complete a $0 checkout to save their payment method — enabling card capture for trials without charging.
+
+  * **Automatic collection for $0**: Paddle transactions for zero-amount invoices are created with `collection_mode: automatic` and no `Status` field — Paddle assigns `ready` and returns a checkout URL immediately for card capture
+  * **`BillingDetails` omitted on $0**: Manual billing details (payment terms, checkout config) are only attached to non-zero transactions, keeping $0 card-capture flows clean
+  * **`syncPaddleAddress`**: Replaces `ensurePaddleAddressBackfilled` with a unified method that both creates and updates Paddle address records on every customer sync path — backed by a new `UpdateAddress` API call
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Bento event transformer now computes `billablePromptTokens = promptTokens - cachedPromptTokens` inline, matching backfill SQL semantics (`toInt64OrZero`) for consistency between live-ingested and backfilled events
+      * `AppPrefetcher` component added to the main layout — warms registered React Query caches in the background on app load, scoped to the active environment
+      * Webhook dashboard is now lazy-loaded, reducing initial bundle size and improving first-load performance
+      * Usage analytics export now includes `source` column and customer name field alongside existing meter and metadata columns
+      * Billing service refactored to use structured DTO inputs and result types throughout — replaces positional argument chains in `BillingService` methods
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Fixed precision loss in sum-with-multiplier when values exceed 6 significant digits
+      * Fixed `mergeAnalyticsData` to correctly aggregate `PriceResponses` from child accounts when computing parent subscription usage
+      * Fixed Paddle `CreateCustomerInPaddle` to call `syncPaddleAddress` on the correct branch — address sync was previously skipped in some customer creation paths
+      * Fixed Paddle `CreateTransaction` error logging to include full invoice context and detailed Paddle error information for easier debugging
+      * Fixed revenue dashboard to conditionally render voice metrics only when the relevant data is present
+    </Accordion>
+
+    <Accordion title="API">
+      * New `SUBSCRIPTION_TRIAL_START` billing reason added to the invoice billing reason taxonomy
+      * New `SKIPPED` invoice status — zero-dollar drafts that bypass finalization, payment, and vendor sync
+      * `InvoicingBehavior` and `SubscriptionsIDsForGroupedInvoicing` fields added to `SubscriptionInheritanceConfig` on the subscriptions API
+      * Subscription modification API extended with `grouped_invoicing_add` and `grouped_invoicing_remove` change types
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
 <Update label="May 4th 2026">
   ## Scheduled subscription cancellation
 
