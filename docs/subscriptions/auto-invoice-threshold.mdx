@@ -12,7 +12,7 @@ Auto Invoicing lets you set a usage amount threshold on a subscription. When the
 1. You set `auto_invoice_threshold` on a subscription (e.g. $500).
 2. FlexPrice evaluates usage every **5 minutes** against the current window (`current_period_start` → now).
 3. When usage ≥ threshold, a mid-period invoice is created and finalized immediately.
-4. The current period window advances to the moment the invoice was issued — usage resets and the threshold applies fresh for the next window.
+4. `current_period_start` advances to the moment the invoice was issued — `current_period_end` remains unchanged. Usage resets for the new sub-window and the threshold applies fresh.
 5. At period end, a normal invoice is issued for remaining usage.
 
 <Note>
@@ -66,7 +66,7 @@ Only **arrear usage charges** count toward the threshold. Fixed or advance charg
 </Tabs>
 
 <Note>
-`auto_invoice_threshold` is set at the subscription level, not the plan level. Each subscription can have its own threshold. The value cannot be changed after the subscription is created.
+`auto_invoice_threshold` is set at the subscription level, not the plan level. Each subscription can have its own threshold. The value cannot be changed after the subscription is created. To use a different threshold, cancel the subscription and create a new one.
 </Note>
 
 ## Invoicing Behavior
@@ -91,12 +91,23 @@ Only **arrear usage charges** count toward the threshold. Fixed or advance charg
 |---|---|---|
 | `auto_invoice_threshold` | string (decimal), nullable | The configured threshold for this subscription. `null` if not set. |
 
+## Webhooks & Events
+
+No new webhook event type is introduced for Auto Invoicing. Standard invoice events fire when a threshold invoice is created and finalized. Use the `billing_reason` field on the invoice object to identify threshold-triggered invoices:
+
+| Event | When it fires |
+|---|---|
+| `invoice.created` | When usage crosses the threshold and a mid-period invoice is generated |
+| `invoice.finalized` | When the threshold invoice is finalized and ready for payment |
+
+The `billing_reason` on threshold invoices is `AUTO_INVOICE_THRESHOLD`.
+
 ## Edge Cases
 
 | Scenario | Behavior |
 |---|---|
 | Threshold set to `0` or negative | Validation error — must be > 0 |
-| Inherited (child) subscriptions | Not supported — only standalone subscriptions |
+| Inherited (child) subscriptions | Validation error at creation — `auto_invoice_threshold` is only supported on standalone subscriptions |
 | Subscription paused when threshold is crossed | Evaluation skipped; resumes when subscription is active |
 | Multiple cron runs before threshold | Each run checks cumulatively; only the run that crosses the threshold triggers the invoice |
 
