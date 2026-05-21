@@ -1,0 +1,55 @@
+---
+title: "Subscription Billing Workflows"
+description: "Choose the billing workflow that matches your business model. Each workflow controls who owns the subscription, who receives the invoice, and how usage is tracked."
+---
+
+## Which workflow do I need?
+
+Every Flexprice subscription has a `subscription_type` that controls billing ownership. Use the table below to pick the right workflow before you start.
+
+| Workflow | Your situation | Who gets invoiced | `subscription_type` |
+| ---------- | -------------- | ----------------- | ------------------- |
+| [Standalone](/docs/subscriptions/billing-workflows/standalone) | Each customer is independent: their own plan, invoice, and wallet | Subscription owner | `standalone` |
+| [Consolidated Billing](/docs/subscriptions/billing-workflows/consolidated-billing) | One parent contract covers multiple child entities; one invoice to HQ | Parent customer | `parent` (HQ) + `inherited` (children, auto-created) |
+| [Delegated Invoicing](/docs/subscriptions/billing-workflows/delegated-invoicing) | Each customer has their own subscription, but a third party pays all the bills | Delegated payer | `standalone` with invoicing redirect |
+| [Grouped Invoicing](/docs/subscriptions/billing-workflows/grouped-invoicing) | Multiple separate subscriptions for the same company; Finance wants a single invoice | Parent subscription's customer | `grouped_invoicing` (children) + `parent` |
+
+<Tip>
+  If none of these match, start with **Standalone**. It is the default and works for the majority of direct B2B and B2C billing scenarios.
+</Tip>
+
+## Key concept: hierarchy lives on subscriptions, not customers
+
+Flexprice keeps customer records flat. There are no parent or child fields on a customer. All billing relationships are configured on the **subscription**. This means:
+
+- You can mix billing workflows per customer without restructuring your customer data
+- Switching a customer from standalone to grouped invoicing is a subscription operation, not a customer edit
+- Two customers can be related for billing purposes while remaining independent entities in your system
+
+## Workflows at a glance
+
+<CardGroup cols={2}>
+  <Card title="Standalone" icon="user" href="/docs/subscriptions/billing-workflows/standalone">
+    Default. One customer, one subscription, one invoice. No configuration needed.
+  </Card>
+  <Card title="Consolidated Billing" icon="building-columns" href="/docs/subscriptions/billing-workflows/consolidated-billing">
+    Enterprise HQ buys one plan. Subsidiaries generate usage. One consolidated invoice.
+  </Card>
+  <Card title="Delegated Invoicing" icon="arrow-right-arrow-left" href="/docs/subscriptions/billing-workflows/delegated-invoicing">
+    Reseller model. Each end customer has their own subscription. One party pays all invoices.
+  </Card>
+  <Card title="Grouped Invoicing" icon="layer-group" href="/docs/subscriptions/billing-workflows/grouped-invoicing">
+    Multi-product company. Three separate subscriptions. Finance wants one monthly invoice.
+  </Card>
+</CardGroup>
+
+## Mutual exclusion
+
+The four `inheritance` fields on Create Subscription are mutually exclusive. You can only specify one billing relationship per subscription:
+
+| Field | Cannot be combined with |
+| ----- | ------------------------ |
+| `external_customer_ids_to_inherit_subscription` | `invoicing_customer_external_id`, `subscriptions_ids_for_grouped_invoicing`, `parent_subscription_id` |
+| `invoicing_customer_external_id` | `external_customer_ids_to_inherit_subscription`, `subscriptions_ids_for_grouped_invoicing` |
+| `subscriptions_ids_for_grouped_invoicing` | `external_customer_ids_to_inherit_subscription`, `invoicing_customer_external_id`, `parent_subscription_id` |
+| `parent_subscription_id` | `external_customer_ids_to_inherit_subscription`, `subscriptions_ids_for_grouped_invoicing` |
