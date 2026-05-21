@@ -99,11 +99,7 @@ Flexprice generates invoice
 ```
 
 #### 3. Step 1: Create a Subscription
-Required subscription request params:
-- `collection_method: "charge_automatically"`
-- `payment_behavior: "allow_incomplete"`
-
-Optional:
+Optional subscription request params:
 - `trial_period_days: N` (integer, omit if no trial)
 
 Request JSON example + response example showing metadata with `paddle_checkout_url` and `paddle_transaction_id`.
