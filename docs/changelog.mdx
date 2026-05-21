@@ -90,6 +90,7 @@ mode: "center"
   Subscriptions can now be created with a trial period — pass `trial_period_days` on creation and Flexprice automatically sets the trial window, then transitions to paid billing when the trial ends.
 
   * **`trial_period_days` on create**: Pass a non-negative integer to set the trial length; if omitted, the value is inherited from the plan's recurring fixed prices (must be uniform across prices)
+  * **`SUBSCRIPTION_TRIAL_START`**: When a **`trialing`** subscription is finalized on create (non-draft), Flexprice emits a **`$0`** invoice with **`SUBSCRIPTION_TRIAL_START`** — preview line items for the trial window; real charges still begin with **`SUBSCRIPTION_TRIAL_END`**
   * **Temporal trial end workflow**: A Temporal workflow handles trial expiry — updates subscription status, computes the first invoice, and activates billing at the correct period boundary
   * **Inherited subscription cascading**: Trial end processing propagates to child subscriptions when the parent trial expires
   * **Validation**: `trial_period_days` and explicit `trial_start`/`trial_end` are mutually exclusive — the API returns a clear error if both are provided
