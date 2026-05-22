@@ -4,6 +4,287 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="May 4th 2026">
+  ## Scheduled subscription cancellation
+
+  Subscriptions can now be cancelled at a specific future date — set `cancel_at` on the cancel request and the subscription stays active until that date, then terminates automatically.
+
+  * **`cancel_at` parameter**: Pass a future timestamp to the cancel endpoint to schedule termination at a precise point in time
+  * **Validation**: The API enforces that `cancel_at` must be strictly in the future, returning a clear error if the date has already passed
+  * **Existing modes preserved**: Immediate and end-of-period cancellation continue to work unchanged alongside scheduled cancellation
+
+  <br />
+
+  ## Metadata filtering
+
+  Customers and plans can now be filtered by arbitrary metadata key-value pairs — useful for multi-tenant setups, account segmentation, and custom tagging.
+
+  * **JSONB GIN indexes**: Metadata columns are now indexed with PostgreSQL GIN indexes for performant key-value lookups at scale
+  * **Customer and plan APIs**: Both the customer list and plan list endpoints accept `metadata` key-value filters via a shared `MetadataFilter` struct
+  * **Dashboard query builder**: The filter popover now supports metadata key-value pair inputs with a dedicated UI component
+
+  <br />
+
+  ## Subscription line item search
+
+  A new search endpoint lets you query subscription line items across subscriptions with full filtering and pagination support.
+
+  * **Search endpoint**: `POST /v1/subscriptions/lineitems/search` accepts a `SubscriptionLineItemFilter` body with status, price, and date filters
+  * **Pagination**: Results are paginated and sortable — no need to fetch the entire subscription to inspect individual line items
+  * **Dashboard UI**: The subscription edit charges section now uses this endpoint for filtering and browsing line items directly
+
+  <br />
+
+  ## Usage analytics export
+
+  Usage analytics data can now be exported to CSV from both the API and the dashboard — covering per-customer, per-meter breakdowns for any billing period.
+
+  * **Export API**: New endpoint returns a CSV of usage analytics including external customer IDs, meter breakdowns, and metadata fields
+  * **Metadata columns**: Credit usage reports now include additional metadata fields configured on the export, with nil-safe handling for missing external IDs
+  * **Dashboard UI**: Usage analytics pages now expose a download button for CSV exports
+
+  <br />
+
+  ## Webhook retry job configuration
+
+  The Temporal-based stale webhook retry job is now fully configurable via server config — enabling per-deployment tuning without code changes.
+
+  * **Kill switch**: Set `enabled: false` to disable the retry job entirely for a deployment
+  * **Rate limiting**: `rate_limit` (default: 5/s) caps delivery throughput within each cron run using a token-bucket limiter
+  * **Tenant exclusions**: `excluded_tenants` skips specific tenant IDs from retry processing
+  * **Event-type allowlist**: `allowed_event_types` restricts retries to specific webhook event names — empty list retries all types
+  * **Max attempts**: `max_attempts` (default: 5) replaces the hardcoded failure-count threshold in the retry query
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Inherited subscription usage now includes child account events in the usage pipeline — parent subscriptions aggregate usage from all attached child customers
+      * Billing service methods refactored to accept structured DTO inputs with validation, replacing positional argument chains
+      * Subscription billing schedule decommissioned and replaced with the unified `SubscriptionBilling` Temporal schedule
+      * Environment name can now be updated from the settings page
+      * System event domain repository added for structured event querying in the webhook pipeline
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Analytics merge now correctly aggregates `PriceResponses` from child accounts when computing parent subscription usage
+      * Metadata filter nil-check corrected in in-memory store to use map lookup instead of index-0 access
+      * Customer ID filtering optimized in `GetUsage` and `matchesBaseFilters` for the in-memory event store
+      * Subscription future date restriction removed — subscriptions can now be created with a `start_date` in the future without a validation error
+    </Accordion>
+
+    <Accordion title="API">
+      * New `POST /v1/subscriptions/lineitems/search` endpoint for filtering and paginating subscription line items
+      * `cancel_at` parameter added to `CancelSubscriptionRequest` for scheduled future cancellation
+      * Customer list API now accepts `metadata` key-value filters via `MetadataFilter` in the request body
+      * Usage analytics export endpoint added with support for external customer ID resolution and partial-count logging
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
+<Update label="April 27th 2026">
+  ## Subscription trial periods
+
+  Subscriptions can now be created with a trial period — pass `trial_period_days` on creation and Flexprice automatically sets the trial window, then transitions to paid billing when the trial ends.
+
+  * **`trial_period_days` on create**: Pass a non-negative integer to set the trial length; if omitted, the value is inherited from the plan's recurring fixed prices (must be uniform across prices)
+  * **Temporal trial end workflow**: A Temporal workflow handles trial expiry — updates subscription status, computes the first invoice, and activates billing at the correct period boundary
+  * **Inherited subscription cascading**: Trial end processing propagates to child subscriptions when the parent trial expires
+  * **Validation**: `trial_period_days` and explicit `trial_start`/`trial_end` are mutually exclusive — the API returns a clear error if both are provided
+
+  <br />
+
+  ## Temporal-native scheduling
+
+  Cron jobs are now managed as Temporal schedules — replacing the legacy cron HTTP endpoints with durable, observable, and pauseable Temporal workflows.
+
+  * **Temporal schedules**: All recurring billing jobs are now registered as Temporal schedules at worker startup
+  * **Legacy endpoints removed**: The deprecated cron trigger HTTP endpoints have been removed from the API surface
+  * **Subscription billing schedule**: The `SubscriptionBillingPeriods` legacy schedule is replaced by the unified `SubscriptionBilling` Temporal schedule
+
+  <br />
+
+  ## Add-on lifecycle controls
+
+  Add-on subscriptions now support fine-grained lifecycle configuration — set a custom billing cadence, proration behavior, and effective end date when attaching an add-on to a subscription.
+
+  * **Billing cadence**: Choose the billing frequency for the add-on independently of the base subscription cadence
+  * **Proration behavior**: Select whether mid-cycle add-on changes are prorated or charged at full price
+  * **Effective end date**: Set an explicit termination date for the add-on without cancelling the base subscription
+  * **Dashboard UI**: The add-on dialog now exposes these controls under an advanced options section
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Future subscription start dates are now allowed — the restriction requiring `start_date` to be in the past or present has been removed
+      * Invoice pagination added to the customer invoice tab — large invoice lists no longer load all at once
+      * Add-on subscription query cache is invalidated on add or cancel, keeping the subscription detail page in sync
+      * Event names are now trimmed of leading/trailing whitespace at ingestion and query time for consistent matching
+      * Subscription pause and resume endpoints removed — use cancellation or trial periods instead
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Billing anchor adjusted for anniversary-cycle subscriptions to prevent unintended prorated charges on the first invoice
+      * Date handling corrected for add-on line items when the subscription entity type resolves effective dates
+      * Inherited subscription invoicing customer logic corrected — child subscriptions now invoice to the correct parent customer
+    </Accordion>
+
+    <Accordion title="API">
+      * `trial_period_days` parameter added to `POST /v1/subscriptions` — sets the trial window at subscription creation
+      * `proration_behavior` field added to subscription line item create and modify requests
+      * Pause and resume subscription endpoints removed from the API
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
+<Update label="April 20th 2026">
+  ## Billing anchor
+
+  Anniversary-cycle subscriptions now support a custom billing anchor date — override the default subscription start date to align billing renewals to a specific day of the month.
+
+  * **`billing_anchor` parameter**: Pass a timestamp on subscription creation when `billing_cycle` is `anniversary` to pin the billing renewal date to that day
+  * **Validation**: The API enforces that `billing_anchor` is only accepted for anniversary billing cycles — passing it with other cycle types returns a validation error
+  * **Next billing date**: The first billing period end is computed from the anchor date, so proration on the initial period reflects the actual anchor offset
+
+  <br />
+
+  ## Backdated credit grant catch-up
+
+  Credit grants now retroactively apply to subscriptions created after the grant's start date — a catch-up loop issues the missed credit grant applications for all elapsed billing periods.
+
+  * **Catch-up loop**: When a subscription is created and a credit grant already has elapsed periods, the system issues one `CreditGrantApplication` per missed period in sequence
+  * **Inherited subscriptions**: The catch-up logic mirrors across inherited child subscriptions, keeping credit entitlements consistent across the parent-child billing hierarchy
+  * **EE parity**: The enterprise edition credit grant service runs the same catch-up path, ensuring consistent behavior across deployment tiers
+
+  <br />
+
+  ## Invoice downloads
+
+  Invoices can now be downloaded as CSV or PDF directly from the customer portal and the customer invoice tab in the dashboard.
+
+  * **Format picker**: A dialog lets users choose between PDF and CSV before initiating the download
+  * **Customer portal**: The invoice download button in the customer-facing portal now surfaces both formats with distinct icons
+  * **Sorting**: Customer invoices can be sorted by billing period start date, making it easier to locate invoices for a specific period
+
+  <br />
+
+  ## Webhook manual retry
+
+  Failed webhook deliveries can now be retried manually via a new retry endpoint — useful for re-sending events after a destination outage without waiting for the automatic retry job.
+
+  * **Retry endpoint**: `POST /v1/webhooks/{id}/retry` re-queues a failed webhook event for immediate redelivery
+  * **Svix and native support**: The retry logic works across both the Svix-managed and native webhook delivery backends
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * OTel trace attributes now include a `region` field for region-aware observability in multi-region deployments
+      * Environment list API now returns only `PUBLISHED` environments by default
+      * Stale branch and stale PR GitHub Actions added to automate repository hygiene — branches older than 2 months and PRs idle for 15 days are flagged automatically
+      * Wallet top-up conversion rate display improved — conversion rates are now shown clearly in the wallet UI
+      * Credit grant tab on the plan detail page now filters to `PUBLISHED` grants only
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Stripe invoice `due_date` is now always set when using `send_invoice` collection mode — previously missing in some flows
+      * Webhook publisher nil-guard added for `systemEventRepo` to prevent panics on deployments without the system event store wired
+      * Coupon percentage type now correctly excludes currency from the payload — fixing validation errors on currency-agnostic percentage coupons
+      * Invoice nil pointer dereference in `IsFinalizationDue` resolved
+    </Accordion>
+
+    <Accordion title="API">
+      * `POST /v1/webhooks/{id}/retry` endpoint added for manual webhook redelivery
+      * `billing_anchor` parameter added to `POST /v1/subscriptions` for anniversary billing cycle anchor date override
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
+<Update label="April 13th 2026">
+  ## Environment cloning
+
+  Duplicate an entire environment — all published features and plans are cloned into a new target environment via a Temporal workflow, preserving entitlement relationships and configuration.
+
+  * **Temporal workflow**: `EnvironmentCloneWorkflow` runs two sequential activities — features are cloned first (so plan entitlements resolve correctly), then plans are cloned with ID remapping
+  * **Cross-env ID mapping**: Source entity IDs are mapped to their cloned counterparts in the target environment, keeping references intact
+  * **Dashboard support**: Environment cloning is accessible from the environment management UI — select a source and target environment to kick off the clone
+
+  <br />
+
+  ## One-time charges
+
+  Prices can now be configured as one-time charges using `billing_period: ONETIME` — a cleaner model that separates cadence from charge type and integrates directly into the subscription billing pipeline.
+
+  * **`BILLING_PERIOD_ONETIME`**: One-time charges are now identified by `billing_period` rather than `billing_cadence`, with the cadence defaulting to `RECURRING` — a data migration normalizes existing records
+  * **Auto-inclusion**: Subscriptions automatically include `ONETIME` prices during billing cycle evaluation — no explicit line item attachment required
+  * **Period ordering**: The period comparison utilities now handle `ONETIME` correctly for sorting and validation alongside standard billing periods
+  * **Validation**: The minimum billing period count check no longer applies to one-time prices
+
+  <br />
+
+  ## AI-assisted pricing setup - Prompt to Plan
+
+  Prompt to Plan introduces a new way to set up billing in Flexprice. Instead of manually configuring plans, prices, meters, and entitlements, you can describe your pricing model in plain English and generate a working configuration.
+  
+  * **Chat-based setup**: Describe subscription, usage-based, or hybrid pricing models conversationally and get a complete configuration back
+  * **Full model support**: The workflow covers metered features with overages and limits, credit-based pricing with grants and expiration, add-ons, and entitlements
+  * **Preview before publishing**: Review the generated setup before pushing it live — nothing is saved until you confirm
+  * **Templates**: Pre-built templates based on real-world pricing models are available as starting points and can be customized and deployed directly
+
+  <br />
+
+  ## Zoho Books integration
+
+  Connect Flexprice to Zoho Books for automated invoice synchronization — invoices finalized in Flexprice are pushed to Zoho Books via a Temporal workflow with OAuth-backed authentication.
+
+  * **OAuth connection**: Authenticate with Zoho Books via the integrations page — the OAuth flow stores connection metadata and tokens for the tenant
+  * **Invoice sync workflow**: `ZohoBooksInvoiceSyncWorkflow` runs on invoice finalization and pushes the invoice payload to Zoho Books
+  * **Connection management**: The integrations UI shows connection status and supports re-authentication
+
+  <br />
+
+  ## Mid-cycle subscription modification
+
+  Subscriptions can now be modified mid-cycle — change line item quantities with a full proration preview before committing.
+
+  * **Proration preview**: Call the modification preview endpoint to see the prorated credit and debit line items before applying the change
+  * **Quantity change dialog**: The dashboard surfaces a quantity modification dialog on subscription line items with a summary of the expected invoice impact
+  * **Proration moved outside transaction**: The proration calculation is now performed outside the database transaction to avoid long-held locks during wallet lookups
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Meter usage pipeline added — a dedicated pipeline processes feature usage events and maps them to meter usage records for downstream billing
+      * Feature lookup keys can now be auto-generated from the feature name — reducing manual input when creating features
+      * Customer invoice summary now includes invoices billed to parent customers, giving a complete view of charges for child accounts
+      * Invoice table in the customer view now shows a `Billing Entity` column and a `Subscription Customer` column for parent-child billing scenarios
+      * Usage benchmark service added with ClickHouse-backed storage for tracking event processing latency
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Subscription `BillingCadence` now defaults to `RECURRING` in `CreateSubscriptionRequest` validation — prevents misconfigured subscriptions when cadence is omitted
+      * Meter usage list lookup now cached in-process per event name — reduces ClickHouse round-trips for high-volume ingestion
+      * Unique hash generation in meter usage fixed to correctly deduplicate cache entries
+    </Accordion>
+
+    <Accordion title="API">
+      * New `POST /v1/ai/pricing/parse` endpoint powers the Prompt to Plan chat workflow — accepts pricing descriptions and returns structured plan, price, meter, and entitlement configurations
+      * New `POST /v1/subscriptions/{id}/modify/preview` endpoint returns a prorated invoice preview before applying a subscription modification
+      * Environment clone endpoint added to trigger the `EnvironmentCloneWorkflow` for a source/target environment pair
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
 <Update label="April 6th 2026">
   ## Inherited subscriptions
 
