@@ -1,0 +1,104 @@
+---
+title: 'Whop Connection Setup'
+description: 'Connect Flexprice to Whop to sync invoices and reconcile payments automatically'
+---
+
+## Overview
+
+A Whop connection in Flexprice lets you:
+
+- **Sync invoices** - push finalized Flexprice invoices to Whop
+- **Generate payment links** - every synced invoice gets a Whop-hosted payment URL
+- **Reconcile payments** - payment status is kept in sync between Whop and Flexprice automatically
+
+## Prerequisites
+
+Before you start, have:
+
+1. **Whop business account** - [whop.com](https://whop.com)
+2. **Flexprice account** - [flexprice.io](https://flexprice.io)
+
+## Keys you need
+
+| Key | Where to get it | What it's for |
+|-----|-----------------|----------------|
+| **API Key** | Whop Dashboard → **Developer** → **API Keys** → **Create** → select **Admin** role | Authenticating all Whop API calls from Flexprice |
+| **Company ID** | View your business profile on Whop → click the three-dot menu (**...**) → **Copy ID** | Your Whop business identifier (`biz_...`) |
+| **Product ID** *(optional)* | Whop Dashboard → **Products** | Which Whop product invoices are grouped under - leave blank and Flexprice creates one automatically |
+
+## How to connect your Whop account
+
+Go to **Flexprice Dashboard** → **Settings** → **Integrations** → **Whop** → **Add a connection**.
+
+<Steps>
+  <Step title="Name your connection">
+    Enter a name to identify this connection, e.g. `Whop Production`.
+  </Step>
+
+  <Step title="Enter API Key and Company ID">
+    - **API Key** - starts with `apik_`. Go to Whop Dashboard → **Developer** → **API Keys** → **Create**, enter a name, and select the **Admin** role.
+    - **Company ID** - starts with `biz_`. Open your business profile on Whop, click the three-dot (**...**) menu in the top right, and select **Copy ID**.
+  </Step>
+
+  <Step title="Product ID (optional)">
+    If you have an existing Whop product, enter its ID (`prod_...`).
+
+    Leave blank - Flexprice will automatically create a product called **Flexprice Billing Product** on the first invoice sync and reuse it for all future invoices.
+  </Step>
+
+  <Step title="Enable Invoice Sync">
+    Toggle **Invoice Sync** on to push finalized invoices to Whop. With this off, invoices stay only in Flexprice.
+  </Step>
+
+  <Step title="Copy your Webhook URL">
+    At the bottom of the drawer, copy your webhook URL. You will need it in the next step.
+
+    The URL format depends on your region:
+
+    | Region | Webhook URL |
+    |--------|-------------|
+    | US | `https://us.api.flexprice.io/v1/webhooks/whop/{tenant_id}/{environment_id}` |
+    | India | `https://api.cloud.flexprice.io/v1/webhooks/whop/{tenant_id}/{environment_id}` |
+  </Step>
+</Steps>
+
+## Configure Webhook in Whop
+
+For Flexprice to mark invoices as paid when payment is completed through Whop, register your webhook URL in Whop.
+
+<Steps>
+  <Step title="Open Whop Webhook Settings">
+    Go to your Whop Dashboard → **Settings** → **Webhooks** → **Add Endpoint**.
+  </Step>
+
+  <Step title="Paste the Webhook URL">
+    Paste the URL copied from the Flexprice connection drawer.
+  </Step>
+
+  <Step title="Subscribe to invoice.paid">
+    Select the `invoice.paid` event and save.
+  </Step>
+</Steps>
+
+<Warning>
+Without the webhook configured, invoices synced to Whop will not automatically mark as paid in Flexprice when payment is completed. You would need to reconcile payments manually.
+</Warning>
+
+## Troubleshooting
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| Invoice not syncing to Whop | Invoice sync toggle is off | Enable outbound sync in connection settings |
+| Sync fails - customer error | Customer has no email address | Add an email to the customer in Flexprice before finalizing the invoice |
+| `invoice.paid` not received | Wrong URL or event not subscribed | Re-copy the URL from the drawer and confirm `invoice.paid` is selected in Whop |
+
+## Next Steps
+
+1. Finalize a test invoice in Flexprice and verify it appears in your Whop dashboard
+2. Check the invoice in Flexprice for `whop_checkout_url` in the metadata
+3. Pay the Whop invoice and confirm the Flexprice invoice is marked paid
+
+## Related Documentation
+
+- [Invoice Sync](/integrations/whop/invoice-sync) - How invoices are synced to Whop
+- [Integration Workflow](/integrations/whop/integration-workflow) - End-to-end flow
