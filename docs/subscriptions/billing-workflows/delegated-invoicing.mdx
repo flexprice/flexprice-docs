@@ -1,0 +1,125 @@
+---
+title: "Delegated Invoicing"
+description: "The subscription belongs to one customer, but the invoice is sent to a different customer: the delegated payer. Entitlements, usage, and line items stay on the subscription owner."
+---
+
+## Overview
+
+Delegated invoicing lets you separate **who uses** a subscription from **who pays** for it. The subscription owner (child) keeps full ownership of their plan, line items, usage tracking, and entitlements. Every invoice is raised against a designated billing customer: the delegated payer.
+
+`subscription_type` result: **`standalone`** (with `invoicing_customer_id` set on the subscription record)
+
+<Note>
+  Delegated invoicing does not create a new subscription type. The subscription owner's subscription is still `standalone`. What changes is the **invoicing customer ID** stored on the subscription, which redirects invoice generation and wallet drawdown to the delegated payer.
+</Note>
+
+## How it works
+
+```mermaid
+flowchart LR
+  A[Subscription owner usage] --> B[Subscription standalone]
+  B --> C[Invoice generated]
+  C --> D[Sent to delegated payer]
+  D --> E[Payer wallet drawn down]
+```
+
+| Property | Where it lives |
+| -------- | -------------- |
+| Plan and line items | Subscription owner's subscription |
+| Usage tracking | Subscription owner |
+| Entitlements | Subscription owner's subscription |
+| Invoice | **Delegated payer** |
+| Wallet | **Delegated payer** |
+| Tax | Based on delegated payer's billing details |
+
+## When to use delegated invoicing
+
+- **Reseller model**: A reseller signs up 10 end customers. Each customer has their own starter plan and usage. The reseller receives and pays all invoices centrally.
+- **Central billing department**: A company's Finance team handles all vendor payments. Engineering, Marketing, and Sales each track their own usage, but invoices go to Finance.
+- **Managed service provider**: An MSP provisions software for their clients. Each client has their own subscription, but the MSP is billed for all of them.
+
+## Prerequisites
+
+- Subscription owner (child) customer created in Flexprice
+- Delegated payer customer created in Flexprice with a known `external_id`
+- Delegated payer customer must have `status: published` (active) at the time the subscription is created
+- A plan created in the product catalogue
+
+<Note>
+  On create, `invoicing_customer_external_id` cannot be combined with `external_customer_ids_to_inherit_subscription` or `subscriptions_ids_for_grouped_invoicing`.
+</Note>
+
+## Configure
+
+<Tabs>
+  <Tab title="Dashboard">
+    1. Navigate to **Subscriptions** and click **Create Subscription**
+    2. Select the **subscription owner** (end customer) as the customer
+    3. Choose a plan
+    4. In the **Invoice To** field, enter the delegated payer's external ID
+    5. Click **Create Subscription**
+  </Tab>
+  <Tab title="API">
+    ```bash
+    curl -X POST https://api.flexprice.io/v1/subscriptions \
+      -H "Authorization: Bearer YOUR_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "external_customer_id": "ext-end-customer",
+        "plan_id": "plan_starter_monthly",
+        "currency": "usd",
+        "billing_period": "month",
+        "billing_period_count": 1,
+        "start_date": "2026-06-01T00:00:00Z",
+        "inheritance": {
+          "invoicing_customer_external_id": "ext-reseller"
+        }
+      }'
+    ```
+
+    Response (abbreviated):
+
+    ```json
+    {
+      "id": "sub_01child",
+      "subscription_type": "standalone",
+      "customer_id": "cus_end_customer",
+      "invoicing_customer_id": "cus_reseller",
+      "status": "active"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Post-creation changes
+
+The delegated payer is **immutable** after subscription creation. To change the invoicing customer, cancel the existing subscription and create a new one with the correct `invoicing_customer_external_id`.
+
+## Analytics
+
+Analytics work the same as standalone. Query the subscription owner's `external_customer_id` directly. No special flags are needed. Usage events are ingested under the subscription owner, not the delegated payer.
+
+## Validations and constraints
+
+<Warning>
+  **Invoicing customer must be active.** The delegated payer must have `status: published` at creation time. Error: `"invoicing customer is not active"`. Resolve: activate the delegated payer customer before creating the subscription.
+</Warning>
+
+<Warning>
+  **Invoicing customer is immutable.** The `invoicing_customer_external_id` cannot be changed after the subscription is created. To reassign, cancel and recreate the subscription.
+</Warning>
+
+<Note>
+  **Subscription type.** The subscription owner's subscription will show `subscription_type: standalone`. This is correct. Delegated invoicing is not a separate type; it is a standalone subscription with an invoicing redirect.
+</Note>
+
+## Related workflows
+
+<CardGroup cols={2}>
+  <Card title="Consolidated Billing" icon="building-columns" href="/docs/subscriptions/billing-workflows/consolidated-billing">
+    When one parent contract should cover multiple customers with a single plan
+  </Card>
+  <Card title="Grouped Invoicing" icon="layer-group" href="/docs/subscriptions/billing-workflows/grouped-invoicing">
+    When separate subscriptions should merge into one invoice
+  </Card>
+</CardGroup>
