@@ -3,16 +3,18 @@ title: 'Whop Invoice Sync'
 description: 'How Flexprice pushes invoices to Whop and reconciles payment status automatically'
 ---
 
-The Flexprice–Whop integration is bidirectional and fully asynchronous — invoice creation and finalization in Flexprice are never blocked by Whop sync.
+The Flexprice–Whop integration is bidirectional and fully asynchronous. Invoice creation and finalization in Flexprice are never blocked by Whop sync.
 
-- **Whop → Flexprice** — When a customer pays through Whop, Flexprice is notified and marks the invoice paid automatically.
-- **Flexprice → Whop** — Finalized invoices are pushed to Whop. A hosted checkout link is generated for each invoice.
+- **Whop to Flexprice:** When a customer pays through Whop, Flexprice is notified and marks the invoice paid automatically.
+- **Flexprice to Whop:** Finalized invoices are pushed to Whop with one of two collection methods:
+  - **Send Invoice** (default): Customer receives a hosted checkout link and pays on their own timeline.
+  - **Charge Automatically:** After the first payment, subsequent invoices are charged automatically using the saved payment method.
 
 ---
 
 ## Pushing Invoices to Whop
 
-Every finalized Flexprice invoice is automatically pushed to Whop. This applies to all invoice types — subscription billing, one-off invoices, and credit topup invoices.
+Every finalized Flexprice invoice is automatically pushed to Whop. This applies to all invoice types: subscription billing, one-off invoices, and credit topup invoices.
 
 **Conditions for sync:**
 1. Invoice status transitions to **finalized**
@@ -26,17 +28,29 @@ Every finalized Flexprice invoice is automatically pushed to Whop. This applies 
 | Product | From connection config, or auto-created `Flexprice Billing Product` |
 | Plan type | `one_time` |
 | Amount | Invoice `amount_due`, rounded to 2 decimal places |
-| Collection method | `send_invoice` |
-| Due date | Invoice due date if in the future — otherwise 30 days from now |
+| Collection method | `send_invoice` or `charge_automatically` (see [Charge Automatically](#charge-automatically)) |
+| Payment method | Only set when using `charge_automatically`; omitted otherwise |
+| Due date | Invoice due date if in the future; defaults to 30 days from now |
 | Customer name | Customer name from Flexprice |
 | Email | Customer email from Flexprice |
-| Internal notes | Flexprice invoice ID (`inv_...`) |
 
 <Note>
 After the Whop invoice is created, Flexprice fetches the hosted checkout URL and stores it under `invoice.metadata["whop_checkout_url"]`. Share this link with your customer for payment.
 </Note>
 
-**Product handling:** If no product ID is configured on the connection, Flexprice auto-creates a `Flexprice Billing Product` (visibility: `quick_link`) — its ID is stored on the connection and reused for all future invoices.
+**Product handling:** If no product ID is configured on the connection, Flexprice auto-creates a `Flexprice Billing Product` (visibility: `quick_link`). Its ID is stored on the connection and reused for all future invoices.
+
+---
+
+## Charge Automatically
+
+For returning customers, Flexprice skips the checkout link and charges their saved payment method directly.
+
+**First invoice:** Customer receives a hosted checkout link and pays through Whop.
+
+**All subsequent invoices:** Whop charges the saved payment method automatically. No action required from the customer.
+
+If no saved payment method is found (e.g. customer has not paid through Whop before), the invoice falls back to a hosted checkout link.
 
 ---
 
@@ -47,14 +61,14 @@ On payment through Whop, an `invoice.paid` webhook is fired to Flexprice. Flexpr
 For credit topup invoices, the customer's wallet is credited immediately on reconciliation.
 
 <Warning>
-Without the webhook configured in Whop, payments will not automatically reconcile in Flexprice. See [Connection Setup](/integrations/whop/connection-setup) for instructions.
+Without the webhook configured in Whop, payments will not automatically reconcile in Flexprice and Charge Automatically will not activate. See [Connection Setup](/integrations/whop/connection-setup) for instructions.
 </Warning>
 
 ---
 
 ## Marking an Invoice Paid Offline
 
-When a Flexprice invoice is marked paid directly — via an admin action or an offline payment — Flexprice automatically calls Whop to mark the corresponding Whop invoice as `paid` too. If the Whop invoice is already paid, the call is skipped.
+When a Flexprice invoice is marked paid via an admin action or an offline payment, Flexprice automatically marks the corresponding Whop invoice as paid. If the Whop invoice is already paid, the call is skipped.
 
 ---
 
@@ -64,9 +78,12 @@ When a Flexprice invoice is marked paid directly — via an admin action or an o
 |----------|----------|
 | No Whop connection configured | Sync skipped silently |
 | Invoice sync toggle off | Sync skipped silently |
-| Customer has no email address | Sync fails immediately — non-retryable. Add an email to the customer and re-sync |
-| Invoice already synced to Whop | Skipped — idempotency check prevents duplicate creation |
-| Whop invoice already paid | Skipped — status check before mark paid prevents a duplicate call |
+| Customer has no email address | Sync fails immediately. Add an email to the customer and re-sync |
+| Invoice already synced to Whop | Skipped; duplicate creation is prevented |
+| Whop invoice already paid | Skipped; duplicate mark-paid call is prevented |
+| First-time customer with no Whop payment history | Falls back to hosted checkout link |
+| Customer has no saved payment methods | Falls back to hosted checkout link |
+| Payment method fetch fails | Falls back to hosted checkout link; Whop API errors are retried with backoff |
 | Whop API temporarily unavailable | Retried automatically with backoff |
 
 <Note>
@@ -77,4 +94,4 @@ Whop sync failures never block invoice creation or finalization in Flexprice. Al
 
 ## Related Documentation
 
-- [Connection Setup](/integrations/whop/connection-setup) — Set up your Whop connection and configure the webhook
+- [Connection Setup](/integrations/whop/connection-setup): Set up your Whop connection and configure the webhook

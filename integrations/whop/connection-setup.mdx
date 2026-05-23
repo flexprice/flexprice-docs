@@ -75,13 +75,18 @@ For Flexprice to mark invoices as paid when payment is completed through Whop, r
     Paste the URL copied from the Flexprice connection drawer.
   </Step>
 
-  <Step title="Subscribe to invoice.paid">
-    Select the `invoice.paid` event and save.
+  <Step title="Subscribe to events">
+    Select the following events and save:
+
+    | Event | Purpose |
+    |-------|---------|
+    | `invoice_paid` | Marks the Flexprice invoice as paid when payment completes |
+    | `payment_succeeded` | Enables Charge Automatically for future invoices |
   </Step>
 </Steps>
 
 <Warning>
-Without the webhook configured, invoices synced to Whop will not automatically mark as paid in Flexprice when payment is completed. You would need to reconcile payments manually.
+Without the webhook configured, invoices synced to Whop will not automatically mark as paid in Flexprice and Charge Automatically will not activate.
 </Warning>
 
 ## Troubleshooting
@@ -90,7 +95,7 @@ Without the webhook configured, invoices synced to Whop will not automatically m
 |-------|-------|----------|
 | Invoice not syncing to Whop | Invoice sync toggle is off | Enable outbound sync in connection settings |
 | Sync fails - customer error | Customer has no email address | Add an email to the customer in Flexprice before finalizing the invoice |
-| `invoice.paid` not received | Wrong URL or event not subscribed | Re-copy the URL from the drawer and confirm `invoice.paid` is selected in Whop |
+| Webhook events not received | Wrong URL or events not subscribed | Re-copy the URL from the drawer and confirm both `invoice_paid` and `payment_succeeded` are selected in Whop |
 
 ## Next Steps
 
