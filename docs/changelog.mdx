@@ -4,6 +4,194 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="May 25th 2026">
+  ## Whop integration
+
+  Flexprice invoices can now be synced to Whop — creating hosted invoices or automatically charging customers with a saved payment method, with two-way reconciliation via Whop webhooks.
+
+  * **Invoice sync**: Finalized Flexprice invoices are pushed to Whop as one-time invoices, with checkout URLs stored back on the invoice metadata for customer-facing payment links
+  * **Automatic charge collection**: When a customer has a saved Whop payment method, invoices are charged automatically instead of sending a hosted checkout link
+  * **Two-way payment reconciliation**: The `invoice.paid` webhook marks the corresponding Flexprice invoice as paid; the `payment.succeeded` webhook creates a customer→member mapping that enables automatic charging on future invoices
+  * **Product auto-provisioning**: A Whop product is created automatically if one isn't already configured on the connection, with the product ID persisted back to the connection config
+  * **Dashboard UI**: Connect and configure Whop from the integrations page — set API key, company ID, and enable invoice sync; copy your unique webhook URL directly from the drawer
+
+  <br />
+
+  ## Paddle subscription sync
+
+  Paddle-connected subscriptions now trigger a Temporal sync workflow that bootstraps a Paddle subscription for card capture — enabling the checkout URL flow without requiring a paid transaction.
+
+  * **Bootstrap workflow**: `PaddleSubscriptionSyncWorkflow` creates a $0 Paddle transaction at subscription creation, stores the checkout URL in subscription metadata, and syncs all line item prices to Paddle catalog products
+  * **`subscription.activated` webhook**: Paddle's activation webhook is now handled — Flexprice activates subscriptions in an incomplete state when Paddle signals the subscription as active
+  * **Customer metadata sync**: `paddle_customer_id` is written to the Flexprice customer metadata record on first sync, enabling lookup without an additional API call
+  * **Pending invoice resync**: After a `subscription.activated` event, any pending Flexprice invoices are resynced via `PaddleInvoiceSyncWorkflow` to ensure payment status is up to date
+
+  <br />
+
+  ## Wallet auto-topup invoice deduplication
+
+  Auto-topup now guards against duplicate invoices — a pending unpaid topup invoice blocks a new topup from being triggered, and the alert re-fires automatically once the existing invoice is resolved.
+
+  * **`WALLET_AUTO_TOPUP` billing reason**: Invoices created by auto-topup are now tagged with a dedicated billing reason, enabling accurate filtering and deduplication
+  * **Pending invoice guard**: Before triggering a new topup in invoiced mode, `hasPendingAutoTopupInvoice` checks for an existing finalized, unpaid auto-topup invoice — and skips if one is found
+  * **Re-trigger on payment**: When a purchased credit payment completes, the wallet balance alert is re-published so `triggerAutoTopup` can fire a fresh invoice for the next topup cycle
+
+  <br />
+
+  ## Subscription plan price out-of-sync flag
+
+  The subscription v2 API response now includes a `plan_prices_out_of_sync` flag indicating whether the subscription's line items are behind the plan's current price configuration.
+
+  * **Out-of-sync detection**: Compares the subscription's `synced_price_sequence` against the plan's current max sequence — returns `true` when plan-price changes have not yet been reconciled into the subscription's line items
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Zoho line item descriptions now include the child customer name for clearer invoice attribution in multi-tenant setups
+      * Zoho customer fetch logic moved from billing service to Zoho service for better separation of concerns
+      * Zoho customer lookup now filters by `PUBLISHED` status to exclude inactive records
+      * Price sync creates new subscriptions using the latest price sequence, avoiding stale sequence issues after plan updates
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Paddle webhook signature verification hardened to handle both snake_case and camelCase event payload formats
+      * Paddle invoice resync after `subscription.activated` replaced goroutine+sleep with `PaddleInvoiceSyncWorkflow` for reliable, retryable execution
+      * Paddle checkout URL now falls back to connection config when Paddle omits it from the transaction response
+      * Paddle `ListTransactions` filtered by `origin=subscription_charge` to exclude unrelated transactions
+      * Entity integration mapping update now merges metadata instead of replacing it, preserving existing fields on update
+      * Wallet auto-topup invoice guard payment status filter corrected to include failed and initiated statuses alongside processing
+      * Meter usage window size points aggregation corrected
+      * Meter usage zero-events line item commitment now handled correctly without producing incorrect charges
+    </Accordion>
+
+    <Accordion title="API">
+      * New `POST /webhooks/whop/{tenant_id}/{env_id}` endpoint for inbound Whop webhook events — handles `invoice.paid` and `payment.succeeded` event types
+      * `plan_prices_out_of_sync` boolean field added to the subscription v2 response
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
+<Update label="May 18th 2026">
+  ## Auto invoice threshold billing
+
+  Set `auto_invoice_threshold` on any usage-based subscription and Flexprice will automatically generate a mid-period invoice whenever accumulated usage charges cross that amount — no manual intervention required.
+
+  * **`auto_invoice_threshold` field**: Currency-denominated decimal on subscription creation and modification; must be zero or greater; rejected for inherited subscriptions
+  * **Threshold billing workflow**: `AutoInvoiceThresholdBillingWorkflow` runs on a 5-minute Temporal schedule, scans qualifying subscriptions, and fires mid-period invoices tagged with the `THRESHOLD_BILLING` billing reason
+  * **Validation guards**: Only valid for standalone subscriptions attached to usage-based plans; the API rejects threshold configuration on inherited or delegated-invoicing subscriptions
+  * **Dashboard support**: Set `auto_invoice_threshold` during subscription creation; the current threshold value is shown on the subscription detail page
+
+  <br />
+
+  ## White-label dashboard & internationalization
+
+  The Flexprice frontend now ships with full white-label support and a first-class RTL internationalization layer, including Arabic locale strings across all dashboard namespaces.
+
+  * **Brand & auth config**: `BrandConfig`, `AuthPageConfig`, and `I18nConfig` in `config.ts` drive per-deployment branding — logo, tagline, landing colors, allowed locales — without code changes
+  * **Auth templates**: `Template2` provides a custom-deployment auth page with configurable logo, tagline, and landing panel colors; `FlexpriceDefault` (Template1) remains the default
+  * **RTL layout**: Sidebar, drawers, breadcrumbs, table alignment, and all directional CSS classes are locale-direction-aware using logical CSS properties
+  * **Locale store**: `useLocaleStore` (Zustand + persist) persists locale selection across sessions, updates `document.dir`, and calls `i18next.changeLanguage` at runtime
+  * **Arabic locale**: Full Arabic locale strings added across all dashboard namespaces; automated `extract-i18n.mjs` script and an ESLint guard blocks new hardcoded user-visible strings
+
+  <br />
+
+  ## Zoho Books item price sync
+
+  Flexprice prices are now synced to Zoho Books as catalog items and item prices before invoice sync, ensuring Zoho always reflects the correct pricing for every line item.
+
+  * **`ItemSyncService`**: Normalizes and upserts item prices in Zoho Books' format before attaching them to invoice lines — eliminates mismatches between Flexprice prices and Zoho catalog entries
+  * **`TaxService`**: Dedicated Zoho tax service injected into the invoice sync pipeline for structured tax handling
+  * **OAuth scopes**: Zoho OAuth scopes expanded with `ZohoBooks.settings.READ` and item management permissions for full catalog access
+
+  <br />
+
+  ## Helm chart v1.0.0 GA
+
+  The Flexprice Kubernetes Helm chart reaches v1.0.0 GA with production defaults for high availability, data protection, and frontend scalability, and is now published to GHCR.
+
+  * **Frontend as first-class workload**: HPA and PDB added for the frontend deployment; multi-AZ topology spread constraints enabled by default for all workloads
+  * **Data protection**: In-cluster Postgres, Redis, Kafka, and ClickHouse StatefulSets ship with keep annotations on by default — data survives chart uninstall
+  * **Redis authentication**: Readiness probe now authenticates via `REDISCLI_AUTH` for clusters with password auth enabled
+  * **GHCR publishing**: Chart published to GitHub Container Registry on `chart-v*` tags and manual workflow dispatch
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Redis client updated to use `ClusterClient` for improved connection management and topology awareness
+      * Price sync now initializes with the latest price sequence to prevent stale sequence issues after plan updates
+      * Invoice `issue_date` now takes priority over `finalized_at` when computing the PDF issuance date
+      * Error codes throughout the codebase replaced with typed `ErrorCode` constants for improved type safety
+      * Commitment true-up: new `GetDistinctCustomerIDsWithCommitmentTrueUp` query for targeted true-up processing
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * `monthsBetween` now correctly handles end-of-month boundary dates (e.g., Jan 31 → Feb 28)
+      * Nil check added for `ExportMetadataFields` in scheduled task validation to prevent panics
+      * Voided and deleted invoices excluded from invoice idempotency checks
+    </Accordion>
+
+    <Accordion title="API">
+      * `auto_invoice_threshold` field added to subscription create and modify DTOs
+      * `issue_date` field added to invoice create and update requests — overrides the user-facing invoice date
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
+<Update label="May 11th 2026">
+  ## Grouped invoicing
+
+  A new `grouped_invoicing` subscription type lets a parent subscription collect usage from multiple child subscriptions and consolidate them into a single clubbed invoice on the parent's billing cycle.
+
+  * **`grouped_invoicing` type**: New subscription type alongside `STANDALONE`, `PARENT`, `INHERITED`, and `DELEGATED_INVOICING` — the parent owns billing and the children contribute usage
+  * **Bulk conversion at creation**: Pass `subscriptions_ids_for_grouped_invoicing` in `SubscriptionInheritanceConfig` to convert existing standalone subscriptions to `grouped_invoicing` children under a new parent in a single API call
+  * **Runtime membership management**: Add or remove grouped invoicing members via the subscription modification API using `grouped_invoicing_add` and `grouped_invoicing_remove` change types
+  * **Clubbed invoice preview**: The parent subscription invoice preview endpoint returns a merged view of all child line items, letting you inspect consolidated charges before finalization
+  * **Standalone promotion**: An existing standalone subscription can be promoted to a grouped invoicing parent without data loss
+
+  <br />
+
+  ## Trial start invoice
+
+  When a subscription activates into a trial, Flexprice now automatically creates a $0 invoice — enabling card capture via the payment processor's checkout flow without charging the customer.
+
+  * **`SUBSCRIPTION_TRIAL_START` billing reason**: New billing reason triggers a $0 invoice at trial activation; billing period spans `trial_start` → `trial_end`
+  * **`ZeroOutAmounts()`**: Zeros all monetary amounts on the invoice request while preserving line item structure — used exclusively for trial-start invoices
+  * **Collection-method-aware payment status**: Manual collection marks the trial invoice as PAID immediately; automatic collection generates a checkout URL for card capture
+  * **`SKIPPED` invoice status**: Zero-dollar invoices that require no payment action are marked `SKIPPED` — no invoice number assigned, no finalization, no vendor sync
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Usage analytics export now includes customer name alongside external customer ID in report output
+      * `AppPrefetcher` component prefetches queries on active environment load; `WebhookDashboard` now lazy-loaded for faster initial render
+      * Export drawer supports dynamic metadata field columns with per-field validation
+      * Environment display name can now be updated from the dashboard settings
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Invoice line item table: null amounts handled gracefully; filtered data sorted correctly
+      * `mergeAnalyticsData`: fixed nil-check base selection and `PriceResponses` merge from child accounts
+      * Sum-with-multiplier precision corrected for event values with more than 6 decimal digits
+      * Inherited subscription guard restored on nil-inheritance create path to prevent invalid subscription states
+    </Accordion>
+
+    <Accordion title="API">
+      * `grouped_invoicing_add` and `grouped_invoicing_remove` change types added to the subscription modification API
+      * `subscriptions_ids_for_grouped_invoicing` added to subscription creation DTO under `SubscriptionInheritanceConfig`
+      * `SUBSCRIPTION_TRIAL_START` billing reason added to the invoice billing reason taxonomy
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
 <Update label="May 4th 2026">
   ## Scheduled subscription cancellation
 
@@ -590,7 +778,7 @@ mode: "center"
     </Accordion>
   </AccordionGroup>
 </Update>
- 
+
 <Update label="March 9th 2026">
 
  
@@ -621,7 +809,7 @@ mode: "center"
     </Accordion>
   </AccordionGroup>
 </Update>
- 
+
 <Update label="March 2nd 2026">
   ## Plan cloning
  
@@ -673,7 +861,7 @@ mode: "center"
  
   <br />
 </Update>
- 
+
 <Update label="February 23rd 2026">
   ## Wallet alerts
  
@@ -715,7 +903,7 @@ mode: "center"
     </Accordion>
   </AccordionGroup>
 </Update>
- 
+
 <Update label="February 16th 2026">
   ## Parent subscriptions
  
@@ -782,7 +970,7 @@ mode: "center"
     </Accordion>
   </AccordionGroup>
 </Update>
- 
+
 <Update label="February 9th 2026">
   ## Credit grant editing
  
@@ -817,7 +1005,7 @@ mode: "center"
  
   <br />
 </Update>
- 
+
 <Update label="February 2nd 2026">
   ## Sentry and observability improvements
 
