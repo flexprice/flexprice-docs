@@ -1,261 +1,206 @@
 ---
-title: "Architecture"
-description: "This document outlines the core architecture components of the Flexprice platform, how they interact, and their respective responsibilities."
+title: "Architecture & Trust"
+description: "How Flexprice Cloud is engineered to be secure, reliable, scalable, and easy to operate — a transparent look at the platform that runs your billing."
 ---
 
-## Building Blocks
+Flexprice sits in the critical path of your revenue. Every usage event you send, every invoice we generate, and every entitlement check your product makes depends on this platform being correct and available. This page is a transparent, engineering-level overview of how **Flexprice Cloud** is built and operated, written for the technical leaders evaluating whether to trust us with their monetization stack.
 
-### Core Services
+We've deliberately kept this honest and concrete rather than aspirational. If you need deeper detail for a security review or vendor assessment, reach out to [support@flexprice.io](mailto:support@flexprice.io) and we'll walk your team through it.
 
-#### API Service
+## Design Principles
 
-The API service is the primary entry point for client applications interacting with Flexprice. It handles all HTTP requests, processes them through appropriate business logic, and returns responses. The API service:
+Every architectural decision in Flexprice Cloud is measured against four goals.
 
-- Exposes RESTful endpoints for various Flexprice functionalities
-- Handles authentication and authorization
-- Writes data to PostgreSQL for persistent storage
-- Publishes events to Kafka for asynchronous processing
-- Initiates Temporal workflows for complex or scheduled processes
+<CardGroup cols={2}>
+  <Card title="Safe" icon="shield-check">
+    Strict tenant isolation, encryption in transit and at rest, private-by-default networking, least-privilege access, and automated backups. Your data is never exposed to the public internet at the database layer.
+  </Card>
+  <Card title="Robust" icon="heart-pulse">
+    Durable workflow orchestration, automatic retries, multi-AZ redundancy, and zero-downtime deployments with automatic rollback. The system is designed to keep running through node failures and traffic spikes.
+  </Card>
+  <Card title="Scalable" icon="arrows-up-down-left-right">
+    A decoupled, event-driven design where each service scales independently and horizontally. Usage ingestion, billing, and analytics grow without re-architecting.
+  </Card>
+  <Card title="Maintainable" icon="wrench">
+    Everything is defined as code and deployed through GitOps. Infrastructure is reproducible, auditable, and recoverable — no snowflake servers, no manual configuration drift.
+  </Card>
+</CardGroup>
+
+## Platform at a Glance
+
+Flexprice Cloud runs entirely on **Amazon Web Services**, using managed and battle-tested building blocks rather than bespoke infrastructure. The platform is containerized, runs across multiple Availability Zones, and is provisioned end-to-end through infrastructure-as-code.
+
+| Concern | What we use | Why it matters to you |
+|---|---|---|
+| **Cloud provider** | AWS (multiple regions) | Mature security, compliance, and durability guarantees from the underlying platform |
+| **Compute** | Containerized services on AWS ECS, ARM/Graviton instances across multiple AZs | Resilient to single-node and single-AZ failures; cost-efficient and energy-efficient |
+| **Transactional data** | PostgreSQL | ACID-compliant store for customers, plans, subscriptions, and invoices |
+| **Usage analytics** | ClickHouse | Column-store built for billions of usage events and real-time aggregation |
+| **Event streaming** | Kafka | Decouples ingestion from processing and absorbs traffic spikes |
+| **Workflow orchestration** | Temporal | Durable, retryable execution for billing cycles and long-running jobs |
+| **Delivery** | GitOps (Argo CD) + Terraform/Terragrunt | Every change is version-controlled, reviewed, and reproducible |
+| **Backups** | Automated AWS Backup snapshots, hourly | Point-in-time recovery of analytical data |
+
+## Request Lifecycle
+
+The platform is split into independently deployable services, each with a single responsibility. A request never blocks on slow downstream work — anything that can be asynchronous is handed off to Kafka or Temporal.
 
 ```mermaid
 graph LR
+    classDef client fill:#f5f5f5,stroke:#888888
     classDef services fill:#e6e6fa,stroke:#9370db
     classDef infrastructure fill:#fffacd,stroke:#daa520
-    classDef client fill:#f5f5f5,stroke:#888888
 
-    client["Client"]:::client
-    api["API Service"]:::services
-    postgres[(PostgreSQL)]:::infrastructure
+    client["Your Application"]:::client
+    api["API Service<br/>(multi-AZ, auto-scaled)"]:::services
     kafka[Kafka]:::infrastructure
+    consumer["Consumer Service"]:::services
+    worker["Temporal Worker"]:::services
+    postgres[(PostgreSQL)]:::infrastructure
+    clickhouse[(ClickHouse)]:::infrastructure
     temporal[Temporal]:::infrastructure
 
-    client -- "HTTP Request" --> api
+    client -- "HTTPS (API key auth)" --> api
     api -- "Read/Write" --> postgres
-    api -- "Publish Events" --> kafka
-    api -- "Start Workflow" --> temporal
+    api -- "Publish usage events" --> kafka
+    api -- "Start workflow" --> temporal
+    kafka -- "Consume" --> consumer
+    consumer -- "Store events" --> clickhouse
+    consumer -- "Update state" --> postgres
+    temporal -- "Execute" --> worker
+    worker -- "Read/Write" --> postgres
+    worker -- "Publish events" --> kafka
     api -- "Response" --> client
 ```
 
-#### Worker Service
+- **API Service** — the only internet-facing tier. It authenticates requests, validates input, persists transactional state to PostgreSQL, and hands heavy or asynchronous work to Kafka and Temporal so client latency stays low.
+- **Consumer Service** — drains usage events from Kafka, writes them to ClickHouse for analytics, and updates derived state. Because it is decoupled, a burst of usage traffic queues safely instead of overwhelming the system.
+- **Temporal Worker** — executes durable workflows such as billing cycles, invoice generation, and scheduled jobs. Temporal guarantees these run to completion with automatic retries, even across deploys or node restarts.
 
-The Worker service consumes messages from Kafka and processes them asynchronously:
+This separation means each tier scales on its own signal: the API tier on request rate, the consumer on event backlog, and the worker on workflow load.
 
-- Subscribes to configured Kafka topics
-- Processes incoming events (usage data, system events, etc.)
-- Writes aggregated data to ClickHouse for analytics
-- Updates PostgreSQL when necessary based on event processing
-- Handles event-driven business logic that doesn't need immediate response
+## Where Your Data Lives
+
+Flexprice Cloud is deployed as **fully isolated stacks in multiple AWS regions**, today including the **United States (Oregon)** and **India (Mumbai)**, with additional regions provisioned on request. Each region is a self-contained deployment with its own compute, databases, and networking — data does not cross regional boundaries, which helps you meet data-residency requirements.
+
+<Card title="Data residency" icon="earth-americas">
+  Choose the region your customer and usage data is stored and processed in. Each region runs an independent copy of the full Flexprice stack inside its own isolated network (VPC).
+</Card>
+
+Within a region, every Flexprice entity is scoped to a **tenant** and an **environment** (for example, production vs. sandbox). This tenancy boundary is enforced at the application layer on every query, so one customer can never read or write another customer's data.
+
+## Compute & Deployments
+
+Flexprice services run as containers on AWS ECS, spread across multiple Availability Zones using a mix of on-demand and spot capacity for resilience and cost efficiency.
+
+- **Multi-AZ by design** — services are distributed across Availability Zones, so the loss of any single zone does not take the platform down.
+- **Horizontal auto-scaling** — each service runs multiple replicas and scales out under load. Stateless services can be added or removed without disruption.
+- **Zero-downtime deployments** — releases roll out gradually with health checks. A built-in **deployment circuit breaker automatically rolls back** any release that fails to come up healthy, so a bad deploy never reaches your customers.
+- **Self-healing** — unhealthy or terminated tasks are automatically rescheduled onto healthy capacity.
 
 ```mermaid
-graph LR
+graph TB
     classDef services fill:#e6e6fa,stroke:#9370db
     classDef infrastructure fill:#fffacd,stroke:#daa520
 
-    kafka[Kafka]:::infrastructure
-    worker["Worker Service"]:::services
-    clickhouse[(ClickHouse)]:::infrastructure
-    postgres[(PostgreSQL)]:::infrastructure
+    lb["Load Balancer"]:::infrastructure
+    az1["AZ-a<br/>API replicas"]:::services
+    az2["AZ-b<br/>API replicas"]:::services
+    az3["AZ-c<br/>Worker / Consumer replicas"]:::services
 
-    kafka -- "Message Consumption" --> worker
-    worker -- "Store Events" --> clickhouse
-    worker -- "Update State" --> postgres
+    lb --> az1
+    lb --> az2
+    lb --> az3
 ```
 
-#### Temporal Worker
+## Data Layer
 
-The Temporal Worker executes scheduled and long-running workflows:
+Flexprice uses the right datastore for each job and protects both.
 
-- Runs background job workflows such as billing cycles
-- Processes multi-step operations that require state management
-- Handles cron jobs for scheduled tasks
-- Will eventually manage webhook delivery and related workflows
-- Interacts with PostgreSQL and can trigger Kafka events
+#### PostgreSQL — system of record
 
-```mermaid
-graph LR
-    classDef services fill:#e6e6fa,stroke:#9370db
-    classDef infrastructure fill:#fffacd,stroke:#daa520
+The transactional store for customers, plans, subscriptions, entitlements, invoices, and payments. PostgreSQL gives us ACID guarantees, so financial state transitions are consistent and correct. It is reached only from inside the private network.
 
-    temporal[Temporal]:::infrastructure
-    temporal_worker["Temporal Worker"]:::services
-    postgres[(PostgreSQL)]:::infrastructure
-    kafka[Kafka]:::infrastructure
+#### ClickHouse — usage at scale
 
-    temporal -- "Execute Workflow" --> temporal_worker
-    temporal_worker -- "Read/Write Data" --> postgres
-    temporal_worker -- "Publish Events" --> kafka
-```
+A purpose-built column store for high-volume usage events. ClickHouse lets Flexprice ingest and aggregate billions of events and answer real-time usage and billing queries that a traditional database could not.
 
-### Infrastructure Components
+Both databases are:
 
-#### PostgreSQL
+- **Private by default** — reachable only through internal load balancers inside the VPC, in private subnets. There is **no public internet path to your data at the database layer**.
+- **Encrypted at rest** — backed by encrypted storage volumes.
+- **Backed up automatically** — analytical storage is snapshotted hourly via AWS Backup with retained recovery points, and storage volumes use a *retain* policy so data survives infrastructure changes.
 
-PostgreSQL serves as the primary transactional database storing all core business data:
+## Reliability & Resilience
 
-- Customer data
-- Subscription information
-- Plan configurations
-- Feature entitlements
-- User accounts and authorization data
+We assume failure will happen and design so that it is survivable and recoverable.
 
-#### ClickHouse
+<CardGroup cols={2}>
+  <Card title="Durable workflows" icon="rotate">
+    Billing runs and invoice generation execute on Temporal, which persists every step. Interruptions resume exactly where they left off — no lost or double-billed cycles.
+  </Card>
+  <Card title="Buffered ingestion" icon="layer-group">
+    Usage events flow through Kafka, so a downstream slowdown or spike is absorbed by the queue instead of dropping data or rejecting requests.
+  </Card>
+  <Card title="Automated backups" icon="floppy-disk">
+    Hourly snapshots of analytical data with documented restore runbooks. Storage volumes retain data through node replacement and upgrades.
+  </Card>
+  <Card title="Redundant compute" icon="server">
+    Multiple replicas of every service across Availability Zones, with automatic rescheduling and rollback on failure.
+  </Card>
+</CardGroup>
 
-ClickHouse is an OLAP database optimized for high-performance analytics:
+We are actively rolling out **real-time database replication** for the analytics tier to add automatic failover on top of today's snapshot-based recovery — part of a continuously hardening reliability roadmap.
 
-- Stores usage metrics and events
-- Supports real-time analytics queries
-- Enables fast aggregation for billing calculations
-- Provides data for usage dashboards and reporting
+## Scalability
 
-#### Kafka
+The architecture scales by adding capacity, not by rewriting code.
 
-Kafka serves as the message broker and event streaming platform:
+- **Decoupled services** — ingestion, processing, billing, and analytics are separate tiers connected by Kafka and Temporal. Each scales independently against its own workload.
+- **Stateless application tier** — API and worker services hold no local state, so scaling out is as simple as adding replicas.
+- **Stream-based ingestion** — Kafka smooths spikes and lets the consumer tier process at a sustainable rate without backpressure on your application.
+- **Analytics built for volume** — ClickHouse is engineered for high-cardinality, high-throughput usage data, so metering performance holds as your event volume grows.
 
-- Decouples services for async processing
-- Enables event-driven architecture
-- Ensures reliable delivery of events between services
-- Provides buffering during traffic spikes
+## Security
 
-#### Temporal
+Security is layered from the network edge down to individual queries.
 
-Temporal is a workflow orchestration platform that manages complex, stateful processes:
+| Layer | Control |
+|---|---|
+| **Network** | Isolated VPC per region; databases in private subnets with no public route; internal-only load balancers for data services |
+| **Transport** | TLS/HTTPS for all client traffic |
+| **Storage** | Encryption at rest for databases and backups |
+| **Authentication** | API-key authentication on every request; keys are scoped and revocable |
+| **Tenant isolation** | Every entity is scoped to tenant + environment, enforced on every read and write |
+| **Access control** | Least-privilege IAM roles; protected/guarded critical infrastructure resources |
+| **Auditability** | Infrastructure and application changes are version-controlled and reviewed before they ship |
 
-- Coordinates long-running business processes
-- Provides durability and reliability for mission-critical workflows
-- Manages scheduled jobs via cron-like functionality
-- Handles retries and error recovery automatically
+<Warning>
+  Treat your Flexprice API keys like passwords. Use server-side keys, never expose them in client-side code or public repositories, and rotate them if you suspect exposure.
+</Warning>
 
-## Functional Building Blocks
+## Operations & Observability
 
-Flexprice is architected as a set of composable building blocks, each handling specific aspects of usage-based billing and subscription management. These blocks can be used independently or together, providing flexibility in how the platform is deployed and utilized.
+A mature platform is one you can reason about and recover.
 
-#### Usage Metering Layer
+- **Infrastructure as code** — the entire platform is defined in Terraform/Terragrunt and Kubernetes manifests. Environments are reproducible and there are no undocumented, hand-built servers.
+- **GitOps delivery** — changes are applied through Argo CD from version control, giving a complete, auditable history of what is running and why.
+- **Monitoring** — services are instrumented and observed through Grafana and error-tracking tooling, so we detect and respond to issues quickly.
+- **Documented runbooks** — recovery procedures (restore from snapshot, scaling, upgrades) are written down and rehearsed, not improvised during an incident.
 
-**Core Functionality:**
+## Want Full Control? Self-Host.
 
-- Collection and processing of usage events
-- Real-time event ingestion
-- Usage analytics and reporting
+Flexprice is open source. If your requirements call for running the platform inside your own cloud account or on-premises, you can deploy the exact same architecture yourself.
 
-**Interactions:**
+<CardGroup cols={2}>
+  <Card title="Self-Hosting Guide" icon="book" href="/docs/getting-started/self-hosting-guide">
+    Run the full Flexprice stack with Docker Compose.
+  </Card>
+  <Card title="Self-Hosting on AWS" icon="aws" href="/docs/getting-started/self-hosting-aws">
+    A production reference deployment on AWS.
+  </Card>
+</CardGroup>
 
-- Provides usage data to the Pricing Layer for cost calculations
-- Feeds data to the Subscription Layer for usage-based billing
-- Supports the Entitlement Layer with metering for feature limits
+## Talk to Us
 
-```mermaid
-graph TB
-    classDef functional fill:#f0e68c,stroke:#8b8b00
-    classDef infrastructure fill:#fffacd,stroke:#daa520
-    classDef external fill:#f5f5f5,stroke:#888888
-
-    client["Client App"]:::external
-    metrics["Usage Metering Layer"]:::functional
-    clickhouse[(ClickHouse)]:::infrastructure
-    pricing["Pricing Layer"]:::functional
-    subscription["Subscription Layer"]:::functional
-
-    client -- "Send Events" --> metrics
-    metrics -- "Store Data" --> clickhouse
-    metrics -- "Usage Data" --> pricing
-    metrics -- "Usage Data" --> subscription
-```
-
-#### Pricing Layer
-
-**Core Functionality:**
-
-- Defines flexible pricing models
-- Supports various pricing strategies (tiered, volume, graduated, etc.)
-- Handles price calculations based on usage
-
-**Interactions:**
-
-- Works with Usage Metrics to calculate costs
-- Feeds into Subscription & Billing for invoice generation
-- Can be configured differently per subscription
-
-```mermaid
-graph TB
-    classDef functional fill:#f0e68c,stroke:#8b8b00
-    classDef infrastructure fill:#fffacd,stroke:#daa520
-
-    metrics["Usage Metering Layer"]:::functional
-    pricing["Pricing Layer"]:::functional
-    subscription["Subscription & Billing"]:::functional
-    postgres[(PostgreSQL)]:::infrastructure
-
-    metrics -- "Usage Data" --> pricing
-    pricing -- "Store Models" --> postgres
-    pricing -- "Cost Calculation" --> subscription
-```
-
-#### Subscription & Billing Layer
-
-**Core Functionality:**
-
-- Manages subscription lifecycle
-- Handles recurring and usage-based billing
-- Processes invoices and payments
-- Manages customer accounts and balances
-
-**Interactions:**
-
-- Uses Pricing Layer to determine charges
-- Leverages Entitlement Layer to provision appropriate access
-- Coordinates with Usage Metrics for consumption-based billing
-- Utilizes Temporal for scheduled operations like billing cycles
-
-```mermaid
-graph TB
-    classDef functional fill:#f0e68c,stroke:#8b8b00
-    classDef services fill:#e6e6fa,stroke:#9370db
-    classDef infrastructure fill:#fffacd,stroke:#daa520
-
-    subscription["Subscription & Billing"]:::functional
-    pricing["Pricing Layer"]:::functional
-    entitlement["Entitlement Layer"]:::functional
-    metrics["Usage Metrics"]:::functional
-    temporal[Temporal]:::infrastructure
-    postgres[(PostgreSQL)]:::infrastructure
-
-    pricing -- "Pricing Data" --> subscription
-    metrics -- "Usage Data" --> subscription
-    subscription -- "Store Data" --> postgres
-    subscription -- "Provision Access" --> entitlement
-    temporal -- "Scheduled Billing" --> subscription
-```
-
-#### Feature & Entitlement Layer
-
-**Core Functionality:**
-
-- Controls access to features
-- Enforces usage limits and quotas
-- Provides feature flagging capabilities
-- Manages customer entitlements
-
-**Interactions:**
-
-- References Subscription data to determine entitlements
-- Uses Usage Metrics to enforce limits
-- Can be queried by client applications for access control
-
-```mermaid
-graph TB
-    classDef functional fill:#f0e68c,stroke:#8b8b00
-    classDef infrastructure fill:#fffacd,stroke:#daa520
-    classDef external fill:#f5f5f5,stroke:#888888
-
-    client["Client App"]:::external
-    entitlement["Feature & Entitlement Layer"]:::functional
-    subscription["Subscription Layer"]:::functional
-    metrics["Usage Metrics"]:::functional
-    postgres[(PostgreSQL)]:::infrastructure
-
-    client -- "Access Check" --> entitlement
-    subscription -- "Entitlement Data" --> entitlement
-    metrics -- "Usage Limits" --> entitlement
-    entitlement -- "Store Configuration" --> postgres
-    entitlement -- "Access Control" --> client
-```
+We're happy to go deeper — network diagrams, data handling, incident process, or a vendor security questionnaire. Reach the team at [support@flexprice.io](mailto:support@flexprice.io).
