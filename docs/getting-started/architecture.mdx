@@ -48,7 +48,7 @@ All three services are the same image, started in different roles. This keeps de
 
 ### Data stores
 
-Each store is chosen for one job and isolated to it. Nothing in the list depends on a managed-cloud-only feature — every component has an open-source equivalent that ships in the self-hosted charts.
+Each store is chosen for one job and isolated to it. Every required component has an open-source equivalent that ships in the self-hosted charts. The one managed-cloud service below — DynamoDB — is optional and used only in Flexprice Cloud.
 
 | Store | Role | Why this choice |
 | --- | --- | --- |
@@ -56,8 +56,12 @@ Each store is chosen for one job and isolated to it. Nothing in the list depends
 | **ClickHouse** | Event store and analytics engine: raw events, enriched events, aggregations. | Column-oriented OLAP built for high-volume ingestion and sub-second aggregation over billions of rows. |
 | **Kafka** (MSK) | Event backbone between API and Consumer. Multi-broker, multi-AZ. | Decouples ingestion from processing, buffers traffic spikes, and guarantees ordered, replayable delivery. |
 | **Redis** (ElastiCache) | Hot-path cache for balances and frequently read configuration. | Sub-millisecond reads that keep latency-sensitive checks off the primary databases. |
-| **DynamoDB** | Durable ingestion buffer for replay and recovery. | A simple, always-available key-value sink that survives even when the rest of the pipeline is degraded. |
+| **DynamoDB** *(Flexprice Cloud only — optional)* | An additional ingestion-redundancy buffer for replay and recovery. | The most resilient redundancy layer in Flexprice Cloud: a fully managed, always-available key-value sink that survives even when the rest of the pipeline is degraded. It is not part of the core architecture — self-hosted and dedicated deployments run without it. |
 | **S3** | Invoice PDFs, generated reports, scheduled exports, and long-term event archival. | Cheap, durable object storage for artifacts and cold data. |
+
+<Note>
+DynamoDB is the only managed-cloud component in the architecture, and it is entirely optional. Flexprice uses it in Flexprice Cloud as the most resilient form of data-redundancy store. Self-hosted and dedicated deployments do not include it and require no cloud-specific component — durability is already guaranteed by Kafka's replayable log, the SDK's retries, and the S3 degraded-mode fallback.
+</Note>
 
 ## Event ingestion pipeline
 
@@ -81,7 +85,7 @@ You choose how events reach Flexprice based on how your systems are already buil
 
 ### Ingestion flow
 
-The receive path is deliberately lightweight. The API performs only static validation — a well-formed payload on an authenticated endpoint — then **dual-writes** the event to DynamoDB and Kafka before acknowledging. Heavier work (enrichment, aggregation, ClickHouse writes) happens asynchronously off the Kafka stream, so a spike in volume never slows the acknowledgement path.
+The receive path is deliberately lightweight. The API performs only static validation — a well-formed payload on an authenticated endpoint — then writes the event to Kafka, the durable backbone, before acknowledging. In Flexprice Cloud the API additionally writes to DynamoDB as an optional redundancy buffer; self-hosted deployments rely on Kafka's replayable log alone. Heavier work (enrichment, aggregation, ClickHouse writes) happens asynchronously off the Kafka stream, so a spike in volume never slows the acknowledgement path.
 
 <Frame>
   ![Flexprice event ingestion pipeline: the SDK or collector posts to /events async with retries; on success the request passes the WAF to the API service, which dual-writes each event to DynamoDB and to MSK before the Consumer enriches and writes to ClickHouse. When retries are exhausted, events are written to an S3 bucket and replayed by a retry job.](/images/docs/getting-started/architecture/event-ingestion.png)
@@ -95,7 +99,7 @@ The pipeline is designed so that the failure of any one component degrades grace
 
 | Scenario | Behavior | Recovery |
 | --- | --- | --- |
-| **Kafka unavailable** | The event is still durably persisted to DynamoDB. The API surfaces the failure honestly rather than silently dropping. | Replay jobs drain DynamoDB back into the pipeline once Kafka recovers. |
+| **Kafka unavailable** | The SDK's retries and the S3 degraded-mode fallback hold the events; in Flexprice Cloud they are also persisted to DynamoDB. The API surfaces the failure rather than dropping it silently. | Once Kafka recovers, replay jobs drain the buffered events — the S3 fallback in any deployment, plus DynamoDB in Flexprice Cloud — back into the pipeline. |
 | **ClickHouse unavailable** | Events accumulate in Kafka; the consumer pauses. | The consumer resumes and replays the backlog from Kafka when ClickHouse returns. |
 | **Flexprice fully unreachable** | After SDK retries are exhausted, an optional degraded mode writes each event to a customer-owned S3 bucket, keyed by event ID with the exact payload. | Server-to-server retry jobs read the bucket and re-ingest every event, then clear it. |
 | **Duplicate delivery** | Events are idempotent on event ID, so retries and replays converge to the same state. | No manual intervention — deduplication is intrinsic. |
@@ -103,7 +107,7 @@ The pipeline is designed so that the failure of any one component degrades grace
 
 ### Data recovery and replay
 
-Because events are the currency of the system, they are retained well beyond their processing lifetime. Events held in DynamoDB are retained for up to one year and then archived to S3, giving **point-in-time replay** across the entire window. If any downstream store is lost or corrupted, it can be rebuilt by replaying the retained events — no derived state is ever the only copy of anything.
+Because events are the currency of the system, they are retained well beyond their processing lifetime. In Flexprice Cloud, events held in DynamoDB are retained for up to one year and then archived to S3, giving **point-in-time replay** across the entire window; self-hosted deployments achieve the same replay from Kafka's retained log and S3 archival. If any downstream store is lost or corrupted, it can be rebuilt by replaying the retained events — no derived state is ever the only copy of anything.
 
 <Note>
 The degraded-mode S3 fallback and its retry jobs are an opt-in, per-customer configuration deployed for enterprise workloads. It requires granting Flexprice server-to-server read access to the bucket.
