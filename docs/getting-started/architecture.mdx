@@ -32,60 +32,9 @@ The platform is fully containerized. A single codebase runs in three modes — *
 
 Only the API service is exposed to the internet. It sits behind an Application Load Balancer and a WAF in public subnets; every database, broker, and cache lives in private subnets, across multiple availability zones, with no inbound internet route.
 
-```mermaid
-graph LR
-    classDef client fill:#f5f5f5,stroke:#888888
-    classDef edge fill:#ffe4e1,stroke:#cd5c5c
-    classDef services fill:#e6e6fa,stroke:#9370db
-    classDef infrastructure fill:#fffacd,stroke:#daa520
-    classDef external fill:#e0f7fa,stroke:#00838f
-
-    subgraph customer["Customer Infrastructure"]
-        backend["Backend Servers"]:::client
-        kbus["Event Bus<br/>(Kafka)"]:::client
-        collector["Flexprice Collector<br/>(sidecar)"]:::client
-        abus["Event Bus<br/>(Kafka / SNS / APIs)"]:::client
-    end
-
-    subgraph cloud["Flexprice (region-isolated)"]
-        alb["Application Load Balancer + WAF<br/>(public subnets)"]:::edge
-        subgraph private["Private Subnets (multi-AZ)"]
-            api["Flexprice API Service"]:::services
-            consumer["Flexprice Consumer"]:::services
-            worker["Flexprice Background Worker"]:::services
-            msk["AWS MSK<br/>(Kafka — multi-broker, multi-AZ)"]:::infrastructure
-            rds["AWS RDS<br/>(PostgreSQL)"]:::infrastructure
-            redis["Amazon ElastiCache<br/>(Redis)"]:::infrastructure
-            dynamo["DynamoDB"]:::infrastructure
-            s3["S3 Bucket"]:::infrastructure
-        end
-    end
-
-    subgraph ext["External Components"]
-        ch["ClickHouse"]:::external
-        temporal["Temporal"]:::external
-        svix["Svix<br/>(webhooks)"]:::external
-    end
-
-    backend -- "send events via SDK" --> alb
-    backend --> kbus
-    kbus --> collector
-    collector -- "sidecar sends events" --> alb
-    alb --> api
-    api --> rds
-    api --> redis
-    api -- "dual write" --> msk
-    api -- "dual write" --> dynamo
-    api -- "start workflow" --> temporal
-    msk --> consumer
-    consumer --> ch
-    consumer --> rds
-    worker --> rds
-    worker --> s3
-    worker --> svix
-    svix -- "Webhooks / Alerts" --> abus
-    abus --> backend
-```
+<Frame>
+  ![Flexprice system architecture: customer infrastructure sends events via SDK or the Flexprice collector through an Application Load Balancer and WAF into multi-AZ private subnets running the API, Consumer, and Background Worker services alongside MSK, RDS, ElastiCache, DynamoDB, and S3, with ClickHouse, Temporal, and Svix as external components.](/images/docs/getting-started/architecture/system-architecture.png)
+</Frame>
 
 ### Runtime services
 
@@ -134,41 +83,9 @@ You choose how events reach Flexprice based on how your systems are already buil
 
 The receive path is deliberately lightweight. The API performs only static validation — a well-formed payload on an authenticated endpoint — then **dual-writes** the event to DynamoDB and Kafka before acknowledging. Heavier work (enrichment, aggregation, ClickHouse writes) happens asynchronously off the Kafka stream, so a spike in volume never slows the acknowledgement path.
 
-```mermaid
-graph LR
-    classDef client fill:#f5f5f5,stroke:#888888
-    classDef edge fill:#ffe4e1,stroke:#cd5c5c
-    classDef services fill:#e6e6fa,stroke:#9370db
-    classDef infrastructure fill:#fffacd,stroke:#daa520
-    classDef external fill:#e0f7fa,stroke:#00838f
-    classDef job fill:#f0fff0,stroke:#2e8b57
-
-    sdk["Flexprice SDK /<br/>Collector"]:::client
-    retry{"4 retries"}:::client
-    waf["Flexprice<br/>(WAF)"]:::edge
-    api["Flexprice API Service"]:::services
-    s3["S3 Bucket"]:::infrastructure
-    s3job["Retry Job<br/>(configure S3 access)"]:::job
-    dynamo["DynamoDB"]:::infrastructure
-    dynjob["Retry Job"]:::job
-    msk["AWS MSK<br/>(Kafka — multi-broker, multi-AZ)"]:::infrastructure
-    consumer["Flexprice Consumer"]:::services
-    ch["ClickHouse"]:::external
-
-    sdk -- "/events async" --> retry
-    retry -- "2XX" --> waf
-    waf --> api
-    retry -- "non-2xx /<br/>retries exhausted" --> s3
-    s3 --> s3job
-    s3job -- "periodic job to<br/>retry and clear S3" --> s3
-    s3job -- "re-ingest" --> waf
-    api -- "event dump" --> dynamo
-    api -- "event dump" --> msk
-    dynamo --> dynjob
-    dynjob -- "replay" --> consumer
-    msk --> consumer
-    consumer -- "enrich + aggregate" --> ch
-```
+<Frame>
+  ![Flexprice event ingestion pipeline: the SDK or collector posts to /events async with retries; on success the request passes the WAF to the API service, which dual-writes each event to DynamoDB and to MSK before the Consumer enriches and writes to ClickHouse. When retries are exhausted, events are written to an S3 bucket and replayed by a retry job.](/images/docs/getting-started/architecture/event-ingestion.png)
+</Frame>
 
 On the consumer side, events land in ClickHouse twice: a **raw events** table that is the immutable base for replay and reconciliation, and a **processed events** table where each event is enriched with the customer, subscription, feature, meter, price, and line item it maps to. Every event is traceable end to end, down to the exact entities it was billed against.
 
