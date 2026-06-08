@@ -1,0 +1,502 @@
+---
+title: "Alerts and Notifications"
+description: "Configure proactive threshold-based alerts for wallet balances and usage — at the customer level or individual feature level — with real-time webhook delivery on every state change."
+---
+
+Flexprice provides four types of threshold alerts so you can stay ahead of credit exhaustion, budget overruns, and usage limits. Alerts can monitor wallet balances (how much prepaid credit remains) or usage (how much has been consumed during a billing cycle) — and both can be scoped either to the overall customer or to a specific feature.
+
+All four alert types share the same three-level model (`info` → `warning` → `critical`) and deliver webhook notifications on every state transition, giving you a single consistent pattern to build on.
+
+## Alert Types at a Glance
+
+| Alert Type | What is Monitored | Scope | Webhook Event |
+|---|---|---|---|
+| [Low Wallet Balance](#1-low-wallet-balance-alert) | Customer prepaid wallet balance | Customer | `wallet.alert` |
+| [Low Feature Wallet Balance](#2-low-feature-wallet-balance-alert) | Feature-specific prepaid balance | Feature | `feature.wallet_balance.alert` |
+| [Total Usage](#3-total-usage-alert) | Cumulative spend in a billing cycle | Customer | `customer.usage.alert` |
+| [Feature-Level Usage](#4-feature-level-usage-alert) | Usage of a specific feature in a billing cycle | Feature | `feature.usage.alert` |
+
+---
+
+## Alert Levels and States
+
+Every alert configuration supports up to three independent threshold levels:
+
+| Level | API State | Purpose |
+|-------|-----------|---------|
+| **Info** | `info` | Early milestone — balance or usage is approaching a limit |
+| **Warning** | `warning` | Action needed — balance or usage is significantly low or high |
+| **Critical** | `in_alarm` | Immediate action required — service continuity may be at risk |
+| **OK** | `ok` | Healthy — no thresholds breached |
+
+### Conditions
+
+Each threshold is paired with a **condition** that controls which direction triggers the alert:
+
+| Condition | Triggers when | Typical use case |
+|-----------|--------------|-----------------|
+| `below` | value ≤ threshold | Wallet depletion, prepaid credit exhaustion |
+| `above` | value ≥ threshold | Budget cap, billing cycle spend limits |
+
+### Threshold Ordering Rules
+
+**For `below` conditions** (monitoring depletion):
+```
+Critical < Warning < Info
+```
+
+**For `above` conditions** (monitoring accumulation):
+```
+Critical > Warning > Info
+```
+
+<Warning>
+A Warning threshold requires a Critical threshold. You cannot configure Warning without Critical. Info can be set independently.
+</Warning>
+
+### State Transitions
+
+Alerts transition automatically as values change. Webhooks fire on **every state change** — including recovery back to `ok`.
+
+```
+ok ──► info ──► warning ──► in_alarm
+ ◄──────────────────────────────────
+              (recovery)
+```
+
+<Note>
+State transitions can skip levels. For example, a sudden large debit may move a wallet directly from `ok` to `in_alarm`, bypassing `info` and `warning`.
+</Note>
+
+---
+
+## 1. Low Wallet Balance Alert
+
+Monitor the **prepaid wallet balance** of a customer. This alert fires when the overall credit balance crosses a configured threshold — ideal for preventing service interruptions caused by depleted prepaid credits.
+
+### When to Use
+
+- Customer has a prepaid wallet shared across all their features
+- You want to notify customers (or trigger auto top-up) before credits run out
+- You need to monitor overall credit health across a billing cycle
+
+### Configuration
+
+Configure thresholds when creating or updating a wallet via the API:
+
+```json
+{
+  "alert_enabled": true,
+  "alert_threshold_name": "info",
+  "alert_thresholds": [
+    { "name": "info",     "threshold": "200.00", "condition": "below" },
+    { "name": "warning",  "threshold": "100.00", "condition": "below" },
+    { "name": "critical", "threshold": "0.00",   "condition": "below" }
+  ]
+}
+```
+
+**Example scenario:** A customer starts with $1,000 in prepaid credits.
+
+| Balance | Alert state | Recommended action |
+|---------|------------|-------------------|
+| ≤ $200 | `info` | Notify customer to review credit balance |
+| ≤ $100 | `warning` | Prompt top-up or trigger auto top-up |
+| ≤ $0 | `in_alarm` | Block new usage or notify on-call immediately |
+
+### Webhook Payload
+
+**Event type:** `wallet.alert`
+
+```json
+{
+  "event_type": "wallet.alert",
+  "alert_type": "wallet_balance",
+  "alert_status": "warning",
+  "wallet": {
+    "id": "wallet_01K8DC3ZAH6R55GTPFTWSR2EHF",
+    "customer_id": "cust_01K8DBYJ0ST5GD57EB6EATEACE",
+    "name": "Prepaid Wallet",
+    "wallet_type": "PRE_PAID",
+    "balance": "85.00",
+    "credit_balance": "85.00",
+    "currency": "usd",
+    "alert_enabled": true,
+    "alert_state": "warning",
+    "alert_thresholds": [
+      { "name": "info",     "threshold": "200.00", "condition": "below" },
+      { "name": "warning",  "threshold": "100.00", "condition": "below" },
+      { "name": "critical", "threshold": "0.00",   "condition": "below" }
+    ],
+    "wallet_status": "active",
+    "created_at": "2025-10-25T09:45:12.273046Z",
+    "updated_at": "2025-10-25T11:14:15.925198Z"
+  }
+}
+```
+
+### Webhook Fields
+
+| Field | Description |
+|-------|-------------|
+| `alert_status` | Current alert state: `ok`, `info`, `warning`, or `in_alarm` |
+| `alert_type` | `wallet_balance` |
+| `wallet.balance` | Current total wallet balance |
+| `wallet.credit_balance` | Current credit balance |
+| `wallet.alert_state` | Same as `alert_status` — reflects state on the wallet object |
+| `wallet.alert_thresholds` | Full threshold configuration at time of event |
+
+### Use Cases
+
+- **Prepaid SaaS** — alert at $200, $100, $0 so customers can top up before service is affected
+- **API credit products** — send in-app notification at `info`, email at `warning`, pause at `in_alarm`
+- **Combined with auto top-up** — use `warning` as the trigger for automated wallet recharge
+
+---
+
+## 2. Low Feature Wallet Balance Alert
+
+Monitor the **balance of a feature-specific wallet**. Each feature can have its own prepaid allocation; this alert fires when that feature's balance crosses a threshold — independently of the customer's overall wallet.
+
+### When to Use
+
+- Different features have separate credit allocations
+- You want independent spend monitoring per service (e.g. "Compute Credits" separate from "Storage Credits")
+- You need to notify on a per-feature basis rather than at the aggregate customer level
+
+### Configuration
+
+Configure thresholds on the feature's alert settings:
+
+```json
+{
+  "alert_enabled": true,
+  "critical": { "threshold": "0.00",   "condition": "below" },
+  "warning":  { "threshold": "10.00",  "condition": "below" },
+  "info":     { "threshold": "20.00",  "condition": "below" }
+}
+```
+
+**Example scenario:** A feature wallet for "Compute Credits" is loaded with $500.
+
+| Feature Balance | Alert state | Recommended action |
+|-----------------|------------|-------------------|
+| ≤ $20 | `info` | Log and monitor — getting low |
+| ≤ $10 | `warning` | Notify team, consider topping up |
+| ≤ $0 | `in_alarm` | Throttle or block feature access |
+
+### Webhook Payload
+
+**Event type:** `feature.wallet_balance.alert`
+
+```json
+{
+  "alert_status": "in_alarm",
+  "alert_type": "feature_wallet_balance",
+  "event_type": "feature.wallet_balance.alert",
+  "feature": {
+    "id": "feat_01K8DBMBN87CY36DEFY62PEXBT",
+    "name": "Compute Credits",
+    "type": "metered",
+    "alert_settings": {
+      "alert_enabled": true,
+      "critical": { "condition": "below", "threshold": "0.00"  },
+      "warning":  { "condition": "below", "threshold": "10.00" },
+      "info":     { "condition": "below", "threshold": "20.00" }
+    },
+    "status": "published",
+    "meter_id": "meter_01K8DBMBN5NRFNYBMXN1G3WDWY",
+    "created_at": "2025-10-25T09:36:40.616655Z",
+    "updated_at": "2025-10-25T11:14:15.925198Z"
+  },
+  "wallet": {
+    "id": "wallet_01K8DC3ZAH6R55GTPFTWSR2EHF",
+    "name": "Compute Credits Wallet",
+    "wallet_type": "PRE_PAID",
+    "balance": "-2.50",
+    "credit_balance": "-2.50",
+    "currency": "usd",
+    "alert_enabled": true,
+    "alert_state": "in_alarm",
+    "wallet_status": "active",
+    "customer_id": "cust_01K8DBYJ0ST5GD57EB6EATEACE",
+    "created_at": "2025-10-25T09:45:12.273046Z",
+    "updated_at": "2025-10-25T09:58:22.259833Z"
+  }
+}
+```
+
+### Webhook Fields
+
+| Field | Description |
+|-------|-------------|
+| `alert_status` | Current alert state: `ok`, `info`, `warning`, or `in_alarm` |
+| `alert_type` | `feature_wallet_balance` |
+| `feature.id` | Unique identifier of the feature |
+| `feature.name` | Name of the feature being monitored |
+| `feature.alert_settings` | Full alert configuration including all thresholds |
+| `wallet.balance` | Current feature wallet balance (may be negative) |
+| `wallet.alert_state` | Current alert state reflected on the wallet object |
+
+### Use Cases
+
+- **Per-feature credit allocations** — independently monitor separate feature budgets without cross-contamination
+- **Storage vs compute** — alert on compute credits independently from storage credits
+- **Tenant isolation** — set different depletion thresholds per feature based on criticality
+
+---
+
+## 3. Total Usage Alert
+
+Monitor **cumulative usage spend** for a customer across their active billing cycle. Unlike wallet balance alerts (which track remaining credits), usage alerts track how much has been consumed — making them ideal for enforcing soft spend caps or budget limits.
+
+### When to Use
+
+- Customer has a monthly or annual spend budget
+- You want to warn customers before they exceed a contracted usage limit
+- You need to enforce soft or hard caps on total billing cycle spend
+
+### Configuration
+
+Configure thresholds on the customer's usage alert settings:
+
+```json
+{
+  "alert_enabled": true,
+  "alert_thresholds": [
+    { "name": "info",     "threshold": "1000.00", "condition": "above" },
+    { "name": "warning",  "threshold": "4000.00", "condition": "above" },
+    { "name": "critical", "threshold": "5000.00", "condition": "above" }
+  ]
+}
+```
+
+**Example scenario:** A customer has a $5,000 monthly spend budget.
+
+| Cumulative Spend | Alert state | Recommended action |
+|------------------|------------|-------------------|
+| ≥ $1,000 | `info` | Log spend milestone — 20% of budget reached |
+| ≥ $4,000 | `warning` | Notify account team — 80% of budget consumed |
+| ≥ $5,000 | `in_alarm` | Enforce cap or escalate to customer |
+
+### Webhook Payload
+
+**Event type:** `customer.usage.alert`
+
+```json
+{
+  "event_type": "customer.usage.alert",
+  "alert_type": "customer_usage",
+  "alert_status": "warning",
+  "customer": {
+    "id": "cust_01K8DBYJ0ST5GD57EB6EATEACE",
+    "external_id": "acme-corp",
+    "name": "Acme Corp"
+  },
+  "subscription": {
+    "id": "sub_01K8DBMBN87CY36DEFY62PEXBT",
+    "plan_id": "plan_01K8DBMBN5NRFNYBMXN1G3WDWY",
+    "billing_period_start": "2025-11-01T00:00:00Z",
+    "billing_period_end": "2025-11-30T23:59:59Z"
+  },
+  "usage": {
+    "current_usage_amount": "4250.00",
+    "currency": "usd",
+    "billing_period_start": "2025-11-01T00:00:00Z",
+    "billing_period_end": "2025-11-30T23:59:59Z"
+  },
+  "alert_settings": {
+    "alert_enabled": true,
+    "alert_state": "warning",
+    "alert_thresholds": [
+      { "name": "info",     "threshold": "1000.00", "condition": "above" },
+      { "name": "warning",  "threshold": "4000.00", "condition": "above" },
+      { "name": "critical", "threshold": "5000.00", "condition": "above" }
+    ]
+  }
+}
+```
+
+### Webhook Fields
+
+| Field | Description |
+|-------|-------------|
+| `alert_status` | Current alert state: `ok`, `info`, `warning`, or `in_alarm` |
+| `alert_type` | `customer_usage` |
+| `customer.id` | Unique identifier of the customer |
+| `customer.external_id` | Your system's customer identifier |
+| `subscription.billing_period_start` | Start of the billing cycle being monitored |
+| `subscription.billing_period_end` | End of the billing cycle being monitored |
+| `usage.current_usage_amount` | Cumulative spend amount in this billing cycle |
+| `usage.currency` | Currency of the usage amount |
+| `alert_settings.alert_state` | Current alert state |
+
+### Use Cases
+
+- **Spend caps for enterprise customers** — alert at 50%, 80%, and 100% of a contracted spend limit
+- **Proactive customer communication** — send automated emails at `info`, outreach at `warning`, and sales escalation at `in_alarm`
+- **Soft vs hard limits** — use `warning` to notify and `in_alarm` to enforce a hard stop via the API
+
+---
+
+## 4. Feature-Level Usage Alert
+
+Monitor **cumulative usage of a specific feature** within a billing cycle. This gives you granular visibility into per-feature consumption — independent of the customer's overall usage — so you can track individual API endpoints, compute resources, or storage usage separately.
+
+### When to Use
+
+- Different features have separate usage budgets or rate limits
+- You want feature-specific alerts without noise from unrelated usage
+- You need to alert on physical units (e.g. API calls, GB, minutes) rather than monetary amounts
+
+### Configuration
+
+Configure thresholds on the feature's usage alert settings:
+
+```json
+{
+  "alert_enabled": true,
+  "alert_thresholds": [
+    { "name": "info",     "threshold": "250000", "condition": "above" },
+    { "name": "warning",  "threshold": "750000", "condition": "above" },
+    { "name": "critical", "threshold": "1000000","condition": "above" }
+  ]
+}
+```
+
+**Example scenario:** A customer has a contract for up to 1,000,000 API calls per month.
+
+| API Calls Used | Alert state | Recommended action |
+|----------------|------------|-------------------|
+| ≥ 250,000 | `info` | 25% consumed — normal tracking |
+| ≥ 750,000 | `warning` | 75% consumed — notify customer |
+| ≥ 1,000,000 | `in_alarm` | Limit reached — enforce rate cap or upsell |
+
+### Webhook Payload
+
+**Event type:** `feature.usage.alert`
+
+```json
+{
+  "event_type": "feature.usage.alert",
+  "alert_type": "feature_usage",
+  "alert_status": "warning",
+  "feature": {
+    "id": "feat_01K8DBMBN87CY36DEFY62PEXBT",
+    "name": "API Calls",
+    "type": "metered",
+    "meter_id": "meter_01K8DBMBN5NRFNYBMXN1G3WDWY",
+    "alert_settings": {
+      "alert_enabled": true,
+      "alert_state": "warning",
+      "alert_thresholds": [
+        { "name": "info",     "threshold": "250000",  "condition": "above" },
+        { "name": "warning",  "threshold": "750000",  "condition": "above" },
+        { "name": "critical", "threshold": "1000000", "condition": "above" }
+      ]
+    },
+    "status": "published",
+    "created_at": "2025-10-25T09:36:40.616655Z",
+    "updated_at": "2025-10-25T11:14:15.925198Z"
+  },
+  "customer": {
+    "id": "cust_01K8DBYJ0ST5GD57EB6EATEACE",
+    "external_id": "acme-corp"
+  },
+  "subscription": {
+    "id": "sub_01K8DBMBN87CY36DEFY62PEXBT",
+    "billing_period_start": "2025-11-01T00:00:00Z",
+    "billing_period_end": "2025-11-30T23:59:59Z"
+  },
+  "usage": {
+    "current_usage": "762450",
+    "unit": "calls",
+    "billing_period_start": "2025-11-01T00:00:00Z",
+    "billing_period_end": "2025-11-30T23:59:59Z"
+  }
+}
+```
+
+### Webhook Fields
+
+| Field | Description |
+|-------|-------------|
+| `alert_status` | Current alert state: `ok`, `info`, `warning`, or `in_alarm` |
+| `alert_type` | `feature_usage` |
+| `feature.id` | Unique identifier of the feature |
+| `feature.name` | Name of the feature being monitored |
+| `feature.meter_id` | The meter tracking this feature's usage |
+| `feature.alert_settings.alert_state` | Current alert state |
+| `customer.external_id` | Your system's customer identifier |
+| `usage.current_usage` | Cumulative feature usage in this billing cycle |
+| `usage.unit` | Unit of measurement (e.g. `calls`, `gb`, `minutes`) |
+
+### Use Cases
+
+- **API rate limits** — alert at 25%, 75%, and 100% of a contracted call volume; enforce hard cap at `in_alarm`
+- **Compute or storage quotas** — independent thresholds per resource type without aggregate noise
+- **Tiered upsell** — route `warning` webhooks to your CRM to trigger upsell outreach before the customer hits their limit
+
+---
+
+## Webhook Delivery
+
+All four alert types are delivered as webhooks. Flexprice supports two delivery modes:
+
+| Mode | Best for | Retry behavior |
+|------|----------|----------------|
+| **Native** | Lightweight or internal integrations | Up to 3 retries, exponential backoff (1s → 10s, 2-minute window) |
+| **Svix** (Flexprice Cloud) | Production, customer-facing integrations | At-least-once delivery, dead-letter queues, HMAC-SHA256 signatures, full delivery history |
+
+Webhooks fire on **every state transition** — both when crossing a threshold and when recovering to `ok`. You will not receive repeated webhooks if the alert state does not change.
+
+See [Webhooks](/docs/webhook/webhooks) for endpoint setup, signature verification, and retry configuration.
+
+---
+
+## Choosing the Right Alert Type
+
+| If you want to… | Use |
+|-----------------|-----|
+| Know when a customer's overall prepaid credits are running low | [Low Wallet Balance Alert](#1-low-wallet-balance-alert) |
+| Know when credits for a specific feature are depleted | [Low Feature Wallet Balance Alert](#2-low-feature-wallet-balance-alert) |
+| Enforce a spend cap across an entire billing cycle | [Total Usage Alert](#3-total-usage-alert) |
+| Track usage quota for a specific feature independently | [Feature-Level Usage Alert](#4-feature-level-usage-alert) |
+| Both prepaid balance and spend monitoring | Combine wallet + usage alerts — they are independent and complementary |
+
+---
+
+## Best Practices
+
+<Check>
+**Set thresholds that allow time to react** — for `below` conditions, set `warning` at 2–5× the `critical` value. For `above` conditions, set `warning` at 80% and `critical` at 100% of the limit.
+</Check>
+
+<Check>
+**Handle recovery webhooks** — when a value recovers (e.g. after a top-up or billing cycle reset), Flexprice sends `alert_status: ok`. Use this to automatically re-enable services or dismiss in-app banners.
+</Check>
+
+<Check>
+**Make webhook handlers idempotent** — under retry scenarios, the same state transition may be delivered more than once. Use the combination of the entity ID (wallet or feature) + `alert_status` as an idempotency key.
+</Check>
+
+<Check>
+**Combine wallet and usage alerts** — wallet alerts track remaining prepaid credit; usage alerts track what has been spent. Using both gives you complete visibility from both directions.
+</Check>
+
+<Check>
+**Use feature-level alerts for independent budgets** — if a customer's features have separate allocations, feature-scoped alerts avoid false alarms from unrelated activity.
+</Check>
+
+<Check>
+**Test in staging first** — configure alert thresholds in a staging environment with test events before enabling in production to verify your webhook handler responds correctly at each level.
+</Check>
+
+---
+
+## Related
+
+- [Low Balance Alert (Wallet)](/docs/wallet/low-balance-alert) — detailed configuration guide for customer wallet alerts
+- [Feature Wallet Balance Alert](/docs/product-catalogue/features/wallet-balance-alert) — detailed configuration guide for feature-level wallet alerts
+- [Auto Top-Up](/docs/wallet/auto-top-up) — automatically recharge wallets when balance drops below a threshold
+- [Webhooks](/docs/webhook/webhooks) — endpoint setup, payload signatures, and retry behavior
