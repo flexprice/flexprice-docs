@@ -140,6 +140,28 @@ These are pushed back to your event bus — API, Kafka, SNS, or SMS — as they 
 | **Standard** | Balances reconciled within 5 minutes | A fallback cron sweeps the trailing 5-minute window and triggers alerts. |
 | **Enterprise (dedicated)** | Sub-minute SLA, tuned to requirement | Achieved by scaling ingestion parallelism and ClickHouse compute — the two levers that set end-to-end latency. |
 
+## Service-level agreements
+
+Flexprice publishes explicit availability and latency targets for the API service — the only internet-facing component — measured continuously and reported per region. Two operations carry their own latency objectives because they sit in the customer's hot path: checking entitlement and wallet balance, and reporting usage measurements.
+
+### Availability
+
+| Plan | Uptime SLA | Maximum downtime / month |
+| --- | --- | --- |
+| Standard and Premium | 99.95% | ≈ 21.9 minutes |
+| Enterprise (dedicated) | 99.99% | ≈ 4.4 minutes |
+
+Availability is measured per region in five-minute intervals as `1 − (failed requests ÷ total requests)` against the API service, aggregated over a calendar month. Failed requests are server-side `5xx` responses originating from Flexprice. The calculation excludes scheduled maintenance announced in advance, errors caused by client misuse (`4xx`, invalid payloads, throttling), and disruption outside Flexprice's control. The contractual SLA and any associated service credits are defined in your agreement.
+
+### Latency targets
+
+| Operation | Objective | Measured at |
+| --- | --- | --- |
+| Entitlement / balance check | **P95 < 500 ms** | API edge, per region, excluding client network time |
+| Usage measurement reporting (event ingestion) | **P95 ≈ 200 ms** | API edge, per region, excluding client network time |
+
+The balance check is the path most customers gate actions on. The ingestion target reflects the lightweight receive path described above: the API acknowledges after the durable write and defers enrichment off the Kafka stream. Response latency is distinct from balance freshness — how recently usage is reflected in the returned number — which is governed by the [freshness tiers](#freshness-guarantees) above, and can be tightened to sub-minute on enterprise dedicated deployments.
+
 ## Multi-region and data residency
 
 The architecture is multi-region by default, with stacks in **US, India, and EU**. Every component in a region is restricted to that region, and the managed dependencies are configured against the matching regional cloud. Data for a region is processed and stored only within it, which lets enterprise deployments satisfy residency requirements without bespoke engineering.
