@@ -157,8 +157,8 @@ Availability is measured per region in five-minute intervals as `1 − (failed r
 
 | Operation | Objective | Measured at |
 | --- | --- | --- |
-| Entitlement / balance check | **P95 < 500 ms** | API edge, per region, excluding client network time |
-| Usage measurement reporting (event ingestion) | **P95 ≈ 200 ms** | API edge, per region, excluding client network time |
+| Entitlement / balance check | **P95 < 500 ms** | API service (server-side), per region, excluding client network time |
+| Usage measurement reporting (event ingestion) | **P95 ≈ 200 ms** | API service (server-side), per region, excluding client network time |
 
 The balance check is the path most customers gate actions on. The ingestion target reflects the lightweight receive path described above: the API acknowledges after the durable write and defers enrichment off the Kafka stream. Response latency is distinct from balance freshness — how recently usage is reflected in the returned number — which is governed by the [freshness tiers](#freshness-guarantees) above, and can be tightened to sub-minute on enterprise dedicated deployments.
 
