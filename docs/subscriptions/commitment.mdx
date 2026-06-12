@@ -52,4 +52,86 @@ You can enable true-up for a subscription during the subscription creation proce
    ![Enabling True-Up](/public/images/docs/Subscriptions/Commitment/true-up-enabled.png)
 </Frame>
 
+## Time-of-day commitment buckets
+
+Time-of-day buckets split a windowed commitment into multiple ranges within a UTC day, each with its own commitment value, price, and overage factor. Use them when a single line item needs different rates for peak versus off-peak hours — for example, GPU compute that costs more between 09:00 and 17:00 UTC.
+
+Buckets are configured per subscription line item and require `commitment_windowed: true`. Each bucket covers a half-open `[start, end)` range, and the engine charges the bucket whose window contains the usage timestamp.
+
+**When to use buckets:**
+
+- **Peak/off-peak pricing** — Higher commitment and rate during business hours, lower outside
+- **Tiered SLAs** — Different minimum spends for production hours versus maintenance windows
+- **Burst capacity** — Reserved capacity at a guaranteed rate during a defined window, overage rate elsewhere
+
+### Bucket fields
+
+| Field | Description |
+|-------|-------------|
+| `start` | `{ "hour": 0-24, "minute": 0-59 }`. The first minute the bucket applies. |
+| `end` | `{ "hour": 0-24, "minute": 0-59 }`. The first minute the bucket no longer applies. `24:00` is the only allowed end-of-day value. |
+| `price` | Inline subscription-scoped price. Required when creating a new bucket; omit on updates when keeping the existing price. |
+| `id` | Server-assigned bucket ID. Provide it on updates to keep the existing bucket and its price. |
+| `commitment_type` | `amount` or `quantity` — matches the line item commitment type. |
+| `commitment_value` | Minimum spend or quantity for the bucket window. |
+| `overage_factor` | Multiplier applied to usage beyond the bucket commitment. Optional. |
+| `true_up_enabled` | Charges the shortfall when usage in the bucket window falls below `commitment_value`. |
+
+Buckets must not overlap, and ranges can wrap midnight (for example `{22:00, 06:00}` covers `22:00–05:59`). All times are UTC.
+
+### Example: peak and off-peak commitment
+
+```json
+{
+  "commitment_type": "amount",
+  "commitment_windowed": true,
+  "commitment_duration": "DAY",
+  "commitment_time_buckets": [
+    {
+      "start": { "hour": 9, "minute": 0 },
+      "end":   { "hour": 17, "minute": 0 },
+      "commitment_type": "amount",
+      "commitment_value": "500.00",
+      "overage_factor": "1.5",
+      "true_up_enabled": true,
+      "price": {
+        "type": "USAGE",
+        "billing_model": "FLAT_FEE",
+        "billing_period": "DAY",
+        "billing_period_count": 1,
+        "invoice_cadence": "ARREAR",
+        "amount": "0.10"
+      }
+    },
+    {
+      "start": { "hour": 17, "minute": 0 },
+      "end":   { "hour": 9,  "minute": 0 },
+      "commitment_type": "amount",
+      "commitment_value": "100.00",
+      "overage_factor": "1.2",
+      "price": {
+        "type": "USAGE",
+        "billing_model": "FLAT_FEE",
+        "billing_period": "DAY",
+        "billing_period_count": 1,
+        "invoice_cadence": "ARREAR",
+        "amount": "0.04"
+      }
+    }
+  ]
+}
+```
+
+### Updating buckets
+
+On `PATCH` of a subscription line item, the bucket array replaces the existing buckets:
+
+- **Keep an existing bucket** — include its `id` and omit `price`. Commitment fields are read from the request, so you can change `commitment_value`, `overage_factor`, or `true_up_enabled` while keeping the original price.
+- **Add a new bucket** — omit `id` and include an inline `price`. The server creates a subscription-scoped price and assigns a bucket ID.
+- **Remove all buckets** — send `"commitment_time_buckets": []` (an empty array). Omitting the field keeps the existing buckets unchanged.
+
+<Warning>
+`commitment_time_buckets` requires `commitment_windowed: true`. Sending buckets on a non-windowed line item returns a validation error.
+</Warning>
+
 ---

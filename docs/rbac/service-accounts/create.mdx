@@ -24,6 +24,7 @@ Flexprice currently supports following custom roles:
 
 | Role | Use When |
 |------|----------|
+| `super_admin` | Your service needs full, unrestricted access (treat the key as a root credential) |
 | `event_ingestor` | Your service needs to send events to Flexprice |
 | `event_reader` | Your service needs to read event data |
 
@@ -50,10 +51,9 @@ curl --request POST \
   --header 'Content-Type: application/json' \
   --header 'x-api-key: <api-key>' \
   --data '{
-  "roles": [
-    "<string>"
-  ],
-  "type": "user"
+  "type": "service_account",
+  "name": "Event Ingestion Worker",
+  "roles": ["event_ingestor"]
 }'
 ```
 
@@ -65,7 +65,8 @@ const response = await fetch('https://api.cloud.flexprice.io/v1/users', {
     'x-api-key': '<api-key>'
   },
   body: JSON.stringify({
-    type: 'user',
+    type: 'service_account',
+    name: 'Event Ingestion Worker',
     roles: ['event_ingestor']
   })
 });
@@ -81,7 +82,8 @@ response = requests.post(
         'x-api-key': '<api-key>'
     },
     json={
-        'type': 'user',
+        'type': 'service_account',
+        'name': 'Event Ingestion Worker',
         'roles': ['event_ingestor']
     }
 )
@@ -103,7 +105,7 @@ response = requests.post(
 Save the `id` from the response. You'll need it when creating API keys.
 </Tip>
 
-## Required Fields
+## Request Fields
 
 <ParamField path="type" type="string" required>
   Must be set to `"service_account"`.
@@ -111,10 +113,16 @@ Save the `id` from the response. You'll need it when creating API keys.
 
 <ParamField path="roles" type="array" required>
   List of roles to assign. Must include at least one role.
-  
+
   Available roles:
+  - `super_admin` - Full access to every resource
   - `event_ingestor` - Can send events
   - `event_reader` - Can read events
+</ParamField>
+
+<ParamField path="name" type="string">
+  Display name shown in the dashboard and audit logs. Helps you identify the
+  service account later when listing or updating it.
 </ParamField>
 
 ## Validation Rules
@@ -177,6 +185,34 @@ You can assign both roles to give combined permissions:
 **What happens**:
 - ✅ Can send events (from `event_ingestor`)
 - ✅ Can read events (from `event_reader`)
+
+## Updating a Service Account
+
+Rename a service account at any time. Only the display `name` can be changed; roles and type are immutable.
+
+```bash
+curl --request PUT \
+  --url https://api.cloud.flexprice.io/v1/users/{id} \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: <api-key>' \
+  --data '{
+  "name": "Event Ingestion Worker (prod)"
+}'
+```
+
+To rotate which roles a service account has, create a new service account with the new role set and migrate the API key over.
+
+## Deleting a Service Account
+
+Archive a service account when it is no longer in use. Existing API keys for that account stop working immediately.
+
+```bash
+curl --request DELETE \
+  --url https://api.cloud.flexprice.io/v1/users/{id} \
+  --header 'x-api-key: <api-key>'
+```
+
+The endpoint returns `204 No Content` on success. The account is soft-deleted, so its history remains in audit logs.
 
 ## Best Practices
 
