@@ -4,6 +4,150 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="June 8th 2026">
+  ## Commitment time buckets
+
+  Windowed commitments can now specify time-of-day billing windows — define multiple time buckets with start and end times to apply different commitment rates during peak and off-peak hours.
+
+  * **Time bucket editor**: `CommitmentTimeBucketsEditor` component lets you add, configure, and reorder time buckets directly from the `CommitmentConfigDialog`
+  * **Hour and minute precision**: Bucket granularity adapts to the meter's bucket size — hour-only for coarse meters, hour+minute for fine-grained meters
+  * **Validation and normalization**: Buckets are validated for completeness and overlap before saving; normalization strips the minute component when the meter doesn't support it
+  * **Price override storage**: Time bucket configuration is stored on the price override, not as separate line items
+
+  <br />
+
+  ## Wallet enhancements
+
+  Wallets gain two new capabilities: prepaid wallets can be converted to postpaid mode via API, and debit transactions now record which credit transactions were consumed.
+
+  * **Wallet modification**: New `POST /v1/wallets/{id}/modify` endpoint accepts `modification_type: "prepaid_to_postpaid"` to convert a prepaid wallet to postpaid — original and new wallet state are returned in the response
+  * **Consumed credits tracking**: Debit transactions now store the IDs of all credit transactions consumed during the debit in `metadata.consumed_credit_tx_ids` — enabling full credit audit trails
+  * **Conversion rate applied**: Wallet debit operations now apply the configured conversion rate when calculating the credit amount
+
+  <br />
+
+  ## Backdated subscription cancellation
+
+  Immediate cancellations now accept a `cancel_at` timestamp in the past to record a backdated effective date — useful for correcting cancellation records after the fact.
+
+  * **Past `cancel_at` on immediate cancellation**: Pass a past timestamp with `cancellation_type: immediate` to set a backdated effective cancellation date
+  * **Future timestamps rejected**: Passing a future `cancel_at` with immediate cancellation returns a validation error directing you to use `scheduled_date` cancellation instead
+  * **Scheduled date unchanged**: Forward-dated cancellations continue to require `cancellation_type: scheduled_date` and reject past timestamps
+
+  <br />
+
+  ## `subscription.cancelled` event
+
+  The `subscription.cancelled` system event is now published whenever a subscription ends — covering immediate cancellation, scheduled-date cancellation, and period-end termination.
+
+  * **Cascade propagation**: When a parent subscription is cancelled, the event is also published for each inherited child subscription
+  * **Temporal activity support**: `PublishSubscriptionEvent` is exposed on the subscription service interface so Temporal billing-period activities can fire lifecycle events
+
+  <br />
+
+  ## Paddle inbound invoice sync
+
+  Paddle webhook processing now handles inbound invoice state changes — invoice updates arriving from Paddle are reflected back into Flexprice without waiting for the next outbound sync cycle.
+
+  * **Inbound update handling**: `PullAndUpdateInvoice` is wired as the inbound path in Paddle's sync service; the sync type toggle enables or disables inbound processing per connection
+  * **Child subscription guard**: Paddle subscription sync workflow no longer fires on child subscriptions to prevent duplicate checkout URL generation
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Go runtime upgraded to 1.25.0
+      * Meter usage consumer is now lazy — initialized on first use rather than at startup, reducing cold-start pressure
+      * Subscription billing scheduler interval reduced from 15 minutes to 2 minutes; stale webhook scheduler avoids system events older than 48 hours and prioritizes newly scheduled events
+      * Environment management: new `add-environment` script creates an environment for an existing tenant and wires in-memory cache
+      * Invoice pull sync cron configured; $0 invoices are skipped from outbound sync
+      * Meter usage queries now support `group_by` on properties
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Helm chart: `onboarding_events` config block now rendered so the Kafka topic value is non-empty
+      * Paddle webhook handler now returns an error response on processing failure so Paddle retries the delivery
+      * Tax rate filter in subscription creation now excludes archived rates — only published rates are shown (frontend)
+      * Cancelled subscription meter usage benchmark fixed to exclude post-cancellation usage windows
+      * Meter usage `group_by feature_id` aggregation corrected
+    </Accordion>
+
+    <Accordion title="API">
+      * `POST /v1/wallets/{id}/modify` endpoint added — accepts `modification_type` for wallet mode conversion
+      * Swagger documentation updated with new integration sync endpoints
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
+<Update label="June 1st 2026">
+  ## OTel tracing migration
+
+  Tracing is now OpenTelemetry-native across the entire backend — all span helpers (`StartDBSpan`, `StartClickHouseSpan`, `StartRepositorySpan`, `StartMonitoringSpan`) keep their call-site API but are backed by `go.opentelemetry.io/otel`. Traces route to SigNoz or any OTLP backend; Sentry is retained only for error capture.
+
+  * **OTel spans**: All existing span helpers now emit OTel spans — no call-site changes required
+  * **SigNoz routing**: The unified `otel:` config block exposes per-signal endpoints and headers so traces and logs can target different backends independently
+  * **Trace-log correlation**: `logger.WithContext` injects `trace_id` and `span_id` into every log line for cross-signal correlation
+  * **Temporal interceptor**: Rewritten to use the OTel tracer for activity spans; Sentry scope binding preserved for error attribution
+  * **Config migration**: Legacy `logging.otel_*` keys remain valid with a deprecation warning; the new `otel:` block is the canonical path
+
+  <br />
+
+  ## White-label SDK pipeline
+
+  A new CI pipeline automates generation and publication of white-label SDKs for partner deployments — covering Go, TypeScript, Python, and MCP with per-partner branding applied at build time.
+
+  * **`generate-wl-sdks.yml`**: GitHub Actions workflow triggers on `sdk-v*` tags and manual dispatch; builds all four SDK flavors and publishes to partner repositories
+  * **Config templates**: Per-partner `gen-config` files parameterized with `WL_*` environment variables for name, module path, and author metadata
+  * **Branding scripts**: `apply-wl-custom-branding.sh` replaces all Flexprice identifiers in source and docs; `verify-sdk-builds.sh` confirms each SDK compiles after substitution
+  * **Template drift detection**: `check-wl-templates` Makefile target and a CI check fail if the canonical SDK drifts from the white-label template baseline
+
+  <br />
+
+  ## GCP Managed Kafka
+
+  Kafka now supports SASL/OAUTHBEARER authentication for GCP Managed Kafka — no username or password required. Workload Identity handles token acquisition on GKE; Application Default Credentials are used locally.
+
+  * **OAUTHBEARER mechanism**: Set `saslMechanism: OAUTHBEARER` in the Kafka config; tokens are sourced via `google.DefaultTokenSource` and cached with `oauth2.ReuseTokenSource` to avoid metadata server round-trips on each broker connect
+  * **Existing SCRAM/PLAIN unchanged**: Sarama config output is byte-identical for existing configurations — no migration required
+
+  <br />
+
+  ## Invoice pull sync
+
+  Integrations now support a `pull` sync method — trigger a sync with `method: "pull"` to fetch and update an invoice's current status directly from the payment provider.
+
+  * **`PullAndUpdateInvoice`**: Paddle fetches the latest invoice state and applies it back to Flexprice; all other integrations return a clear unsupported error
+  * **Factory wiring**: `IntegrationFactory.SetServices` injects `PaymentService` and `InvoiceService` post-construction to break the service dependency cycle
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Meter usage pipeline: wallet balance, cost analytics, and usage export now query the meter usage store — reducing direct ClickHouse event queries in these paths
+      * User model gains a JSONB `metadata` field with full CRUD support via the user update API
+      * Subscription metadata is now persisted on subscription create and update
+      * JWT middleware now extracts `environment_id` from JWT claims before falling back to the request header
+      * Trial subscription end dates can now be modified, and trialing subscriptions can be cancelled with a backdated `cancel_at` effective date
+      * Revenue dashboard now shows a currency filter populated from available invoice summaries (frontend)
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Price sync: parent price ID now sends empty string instead of nil, preventing null dereference during plan-change price linking
+      * White-label branding scripts hardened — `sed` substitutions properly quoted; standard builds guarded against accidental branding replacement
+    </Accordion>
+
+    <Accordion title="API">
+      * New integration sync service exposes `method: "pull"` and `method: "push"` for on-demand provider sync
+      * Subscription create and response DTOs now include the `metadata` field
+      * User update API now accepts and returns `metadata` key-value pairs
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
 <Update label="May 25th 2026">
   ## Whop integration
 
