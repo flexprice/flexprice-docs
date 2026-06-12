@@ -4,6 +4,125 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="June 8th 2026">
+  ## Time-of-day commitment buckets
+
+  Commitments on a [subscription line item](/docs/subscriptions/commitment) can now be limited to specific UTC time-of-day windows — bill peak-hours and off-hours usage against different commitments on the same meter.
+
+  * **`commitment_time_buckets` field**: Add one or more `{start_hour, end_hour}` UTC windows to a line item; commitment, true-up, and overage logic only applies when usage falls inside a configured window
+  * **Per-bucket pricing override**: Configure a different unit price per time-of-day bucket directly from the dashboard price override flow — no extra line item required
+  * **Wrapping ranges**: Buckets that cross midnight (e.g. `22:00` → `06:00`) are supported and metered correctly
+  * **Validation**: Requires `commitment_windowed=true` on the line item; rejected otherwise with a clear error
+
+  <br />
+
+  ## Backdated subscription cancellations
+
+  `cancel_at` on the cancel-subscription API now accepts past timestamps for `cancellation_type=scheduled_date` — let you record a cancellation that happened before the request reached Flexprice.
+
+  * **Past `cancel_at` accepted**: Backdated cancellation dates are persisted as the effective cancellation date instead of being rejected by validation
+  * **Active until cancellation fires**: The subscription remains active in the API response until the recorded cancellation date is processed
+  * **Clearer error hints**: Validation messages now spell out exactly when `cancel_at` is required versus optional per cancellation type
+
+  <br />
+
+  ## `subscription.cancelled` webhook
+
+  Flexprice now fires a `subscription.cancelled` system event so downstream systems can react to cancellations in real time — see the [webhooks reference](/docs/webhook/webhooks).
+
+  * **Immediate cancellations only**: The event fires for `cancellation_type=immediate`; end-of-period and scheduled-date cancellations are excluded to avoid premature notifications
+  * **Post-commit delivery**: The webhook is dispatched only after the cancellation transaction commits, so subscribers never receive an event for a rolled-back change
+  * **Parent + cascade**: Parent cancellations cascade to inherited subscriptions inside the same transaction; the parent event is published once the transaction settles
+
+  <br />
+
+  ## Wallet modification: prepaid → postpaid
+
+  A new `POST /v1/wallets/{id}/modify` endpoint converts a prepaid [wallet](/docs/wallet/create) into a postpaid wallet in a single atomic operation, transferring the remaining balance to the new wallet.
+
+  * **Atomic conversion**: Acquires an advisory lock, debits the remaining prepaid balance, closes the original wallet, and creates the new postpaid wallet inside one transaction
+  * **Currency-aware transfer**: The remaining credit balance is converted using the wallet's conversion rate before being credited to the new postpaid wallet
+  * **Guardrails**: Rejects the conversion if the wallet is not active, not prepaid, or if a postpaid wallet in the same currency already exists for the customer
+  * **Lifecycle events**: Emits `wallet.terminated` for the original wallet and `wallet.created` for the new postpaid wallet so downstream systems stay in sync
+
+  <br />
+
+  ## Paddle inbound invoice sync
+
+  Paddle-connected tenants now pull invoice and payment updates from Paddle back into Flexprice — both via webhook and via a recurring sync cron — keeping invoice status accurate even when payment happens outside Flexprice.
+
+  * **Inbound invoice updates**: Paddle webhook handlers now apply transaction and invoice updates to the matching Flexprice invoice
+  * **Cron sync for unpaid finalized invoices**: A scheduled workflow periodically reconciles finalized but unpaid Flexprice invoices against Paddle and marks them paid when Paddle reports payment
+  * **Dashboard support**: The Paddle integration UI now exposes inbound invoice sync alongside the existing outbound flows — see the [Paddle integration guide](/integrations/paddle/connection-setup)
+  * **Reliability**: Paddle workflow errors no longer trigger retries that compound failures; activation no longer auto-fires for subscriptions still in an incomplete state
+
+  <br />
+
+  ## GCP Managed Service for Apache Kafka
+
+  Flexprice can now connect to GCP Managed Service for Apache Kafka (GMK) using SASL/OAUTHBEARER, in addition to the existing Kafka transport options.
+
+  * **SASL/OAUTHBEARER**: Authenticates with GMK using short-lived OAuth tokens — no static credentials to rotate
+  * **Helm + config support**: New Helm values and runtime config flags enable GMK in one place; rendered config now guarantees the onboarding-events topic is always set
+
+  <br />
+
+  ## Currency symbol overrides
+
+  The dashboard now lets you override the symbol used to display a currency — useful for white-labelled deployments and regions where the default symbol doesn't match local convention.
+
+  * **Per-currency override**: Configure a custom symbol for any currency; the override flows through every dashboard table, drawer, invoice preview, and customer portal surface
+  * **Formatting consistency**: All currency formatting helpers honor the override so amounts render identically across the product
+
+  <br />
+
+  ## Customer signup metadata & temporary tokens
+
+  Auth now supports arbitrary metadata on user signup and short-lived JWT tokens for embedded flows.
+
+  * **Signup metadata**: Pass a `metadata` object on the signup API; the fields are persisted on the user record for use in segmentation and onboarding
+  * **Temporary JWT tokens**: A new endpoint mints short-lived JWTs scoped to a tenant/environment — useful for issuing embedded dashboard or portal sessions without exposing long-lived API keys
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * **Pricing**: List endpoints accept a `billing_periods` filter to fetch only prices for selected billing cadences
+      * **Tax**: Tax rates with active customer or entity associations can no longer be deleted — the API now returns a clear error instead of orphaning associations
+      * **Tax**: A new unique index prevents duplicate published tax associations on the same entity
+      * **Wallet transactions**: Debit transactions now store the actual credits consumed, making it easy to reconcile usage against transaction history
+      * **Wallet auto-topup**: Auto-topup invoices now carry a populated idempotency key so retries can't double-bill
+      * **Scheduler**: Subscription renewal lookups use a tighter window and the webhook retrigger scheduler now picks the newest webhooks first, reducing lag during catch-ups
+      * **Subscription cancel dialog**: Refreshed copy and confirmation flow on the dashboard cancel-subscription dialog
+      * **Plan price table**: Charge type and billing timing are now displayed inline on the plan price table for at-a-glance review
+      * **Localization**: Coupon modal copy fully localized; broader i18n codemod applied across the dashboard for new strings
+      * **Empty states**: Customers page empty state copy updated to be more actionable
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * **Wallet idempotency**: Duplicate wallet idempotency keys now return `409 Conflict` instead of `500 Internal Server Error`
+      * **Wallet transactions**: End time is preserved on wallet transactions when recalculating balances
+      * **Analytics**: Window-size handling and `group_by feature_id` aggregations corrected in usage analytics
+      * **Meter usage**: Property and source filters now compose correctly with windowed commitments
+      * **Stripe**: Integration mapping lookup now filters by `PUBLISHED` status to avoid matching archived records
+      * **Tax**: Customer tax association tab filters out archived rates; the create-subscription page also hides archived tax rates
+      * **Members**: Members section page size reduced to 10 for snappier loads
+      * **URL state**: Dashboard URL search params are now replaced (not appended) when filter state changes, preventing stale parameters
+    </Accordion>
+
+    <Accordion title="API">
+      * New `POST /v1/wallets/{id}/modify` endpoint for prepaid-to-postpaid wallet conversion
+      * `commitment_time_buckets` field added to subscription line item create and update requests
+      * `billing_periods` filter added to price list endpoints
+      * `metadata` field accepted on user signup
+      * New endpoint for minting temporary JWT tokens scoped to a tenant/environment
+      * `subscription.cancelled` webhook event published for immediate cancellations
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
 <Update label="May 25th 2026">
   ## Whop integration
 
