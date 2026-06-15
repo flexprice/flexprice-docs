@@ -4,6 +4,72 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="June 15th 2026">
+  ## Service accounts
+
+  Service accounts are now first-class users — create them, give them a display name, update them, and archive them through dedicated endpoints, with API keys scoped to the owning service account for clean audit trails.
+
+  * **Update endpoint**: New `PUT /v1/users/{id}` lets you rename a service account without touching its API keys
+  * **Soft-delete endpoint**: New `DELETE /v1/users/{id}` archives a service account — blocked while it still has active API keys to prevent orphaned credentials
+  * **User association on secrets**: API keys now record the `user_id` of the service account that owns them and can be filtered by user and expiry
+  * **`super_admin` role**: New built-in RBAC role with wildcard permissions for tenant-wide administrative access
+  * **Dashboard support**: Manage service accounts end-to-end from the dashboard — create, edit, and revoke from the settings area
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/rbac/service-accounts/create" title="Service accounts - Documentation" />
+
+  <br />
+
+  ## Customer hierarchy safeguards
+
+  Subscription inheritance now enforces a strict one-parent-per-child rule across both create and modify flows — preventing the same customer from being inherited under two different parents.
+
+  * **Standalone child rejected**: Attempting to inherit a customer that already has a standalone subscription returns a validation error instead of silently creating conflicting hierarchies
+  * **Different-parent inheritance blocked**: A child already inherited under one parent cannot be re-inherited under a different parent
+  * **Same-parent re-inheritance allowed**: Re-running inheritance for an existing parent–child pair continues to work for adding new subscriptions to the relationship
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/subscriptions/customer-hierarchy" title="Customer hierarchy - Documentation" />
+
+  <br />
+
+  ## Signup metadata
+
+  User signup now accepts a `metadata` object — attach attribution, referral source, or any custom signup context at account creation time and access it later through the user profile.
+
+  * **Signup form**: The dashboard signup flow captures structured metadata and forwards it to the auth API
+  * **API field**: The signup request accepts a `metadata` map alongside the existing identity fields
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Event debugger now surfaces an `attributed-to-customer` step in the `meter_usage` pipeline view — making it easier to see which customer an event was attributed to and why
+      * Commitment time bucket editor adds validation and refined configuration controls for setting up multi-window commitments from the dashboard
+      * Subscription status filter expanded to include `DRAFT` and `TRIALING` states alongside published and active filters
+      * Optional display `name` field added to users — set it on create, edit it later, and see it returned in user responses
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Wallet credit operations now return `409 Conflict` on duplicate idempotency keys instead of `500 Internal Server Error`
+      * Subscription inheritance no longer admits child customers with parent-type subscriptions, preventing nested parent relationships
+    </Accordion>
+
+    <Accordion title="API">
+      * New `PUT /v1/users/{id}` endpoint to update a service account's name
+      * New `DELETE /v1/users/{id}` endpoint to soft-delete a service account; blocked while active API keys exist
+      * `metadata` field accepted on the user signup request
+      * `breakdown_bucket` flag added to the meter usage detailed analytics request to opt into per-bucket breakdowns in the response
+      * Secret list filters now support `user_id` and `not_expired_at` for scoping API key queries to a specific service account or expiry window
+      * `name` field added to the user create, update, and response payloads
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
 <Update label="June 8th 2026">
   ## Commitment time buckets
 
