@@ -46,6 +46,22 @@ Automated accounts for your services and integrations. These accounts:
 
 ## Available Roles
 
+### super_admin
+
+For services that need unrestricted access to every Flexprice resource.
+
+**Can do:**
+- Perform any action on any resource (read, write, delete)
+
+**Cannot do:**
+- Nothing — this role grants `*` permissions on `*` resources
+
+**Use for:** Internal automation, migrations, or admin tooling that needs the same access as a user account. Treat the API key like a root credential.
+
+<Warning>
+Only assign `super_admin` when no narrower role works. Rotate keys frequently and store them in a secret manager.
+</Warning>
+
 ### event_ingestor
 
 For services that send events to Flexprice.
