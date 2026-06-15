@@ -24,6 +24,15 @@ The create coupon side drawer provides a comprehensive form with all the necessa
 - **Field**: Enter a descriptive name for the coupon (e.g., "Summer Sale", "New Customer Discount")
 - **Description**: A descriptive name for this coupon that will be visible to customers and in your dashboard
 
+### Coupon Code (Optional)
+
+- **Field**: A short, human-readable code customers and integrations use to redeem the coupon (e.g., `WELCOME20`, `LOYALTY10`)
+- **Description**: Unique per tenant and environment. Case-insensitive at redemption. Use this code in the API to attach the coupon to a subscription with `subscription_coupons[].coupon_code` or with the [subscription modify API](/docs/product-catalogue/coupons/apply-discount-on-subscription#add-or-remove-a-coupon-mid-cycle).
+
+<Note>
+  If you omit `coupon_code`, the coupon can still be attached programmatically using its `coupon_id`, but `coupon_id` on attach requests is deprecated. Set a `coupon_code` for any coupon you plan to expose through the API.
+</Note>
+
 ### Coupon Type
 
 - **Field**: Choose between two discount types:

@@ -1,164 +1,201 @@
 ---
 title: "Apply Discount on Subscription"
-description: "Learn how to apply discount coupons to customer subscriptions to provide flexible pricing options."
+description: "Attach a coupon to a customer subscription from the dashboard or the API, including line-level targeting and mid-cycle changes."
 ---
 
-Follow the steps below to apply a discount coupon to a customer subscription:
+You can attach a coupon to a subscription from the dashboard when you create or edit the subscription, or programmatically through the API. The API supports attaching coupons at subscription creation, adding or removing them mid-cycle, and targeting an individual line item instead of the whole subscription.
 
 ## Prerequisites
 
-Before applying a discount, ensure you have:
+Before applying a discount, make sure:
 
-1. [Created a coupon](/docs/product-catalogue/coupons/create) that is active and within its validity period
-2. A customer with an existing subscription or ready to create a new subscription
+1. The coupon is [created](/docs/product-catalogue/coupons/create), `published`, and inside its `redeem_after` / `redeem_before` window.
+2. The coupon currency matches the subscription currency.
+3. The coupon has not exhausted its `max_redemptions`.
 
-## Applying Coupon During Subscription Creation
+## Apply a coupon during subscription creation
 
-### Step 1: Navigate to Customer
+### From the dashboard
 
-1. In the main navigation menu, select **Billing**.
-2. Select **Customers**.
-3. Find and select the customer you want to apply the discount to.
+<Steps>
+  <Step title="Open the customer">
+    In the main navigation, select **Billing** → **Customers**, then select the customer.
+  </Step>
 
-### Step 2: Create or Edit Subscription
+  <Step title="Start a new subscription">
+    Click **Create Subscription** and fill in plan, billing period, and currency.
+  </Step>
 
-1. Click **Create Subscription** for a new subscription, or select an existing subscription to edit.
-2. Fill in the subscription details (plan, billing period, etc.).
+  <Step title="Link a coupon">
+    In the **Coupon** section, click **Add Coupon**, pick the coupon from the dropdown, and confirm.
 
-### Step 3: Apply Coupon
+    <Frame>
+      ![Link Coupon Dialog](/public/images/docs/Product%20catalogue/Coupons/link_coupon_dialog.png)
+    </Frame>
+  </Step>
 
-1. In the subscription form, look for the **Coupon** or **Discount** section.
-2. Click **Add Coupon** or **Link Coupon** to open the coupon selection dialog.
+  <Step title="Verify and save">
+    Review the pricing breakdown, then click **Create Subscription**.
+  </Step>
+</Steps>
 
-<Frame>
-  ![Link Coupon Dialog](/public/images/docs/Product%20catalogue/Coupons/link_coupon_dialog.png)
-</Frame>
+### From the API
 
-This dialog shows the coupon selection interface. The dropdown field displays "Choose a coupon to link" as placeholder text, and the action buttons "Cancel" and "Add Coupon" are positioned at the bottom right for easy access.
+Pass one or more coupons under `subscription_coupons` when creating the subscription. Each entry references the coupon by its `coupon_code` (case-insensitive) and can optionally target a specific line item with `price_id`.
 
-3. From the dropdown menu, select the coupon you want to apply.
-4. Click **Add Coupon** to confirm the selection.
+```bash cURL
+curl -X POST https://api.flexprice.io/v1/subscriptions \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "external_customer_id": "ext-acme-corp",
+    "plan_id": "plan_pro_monthly",
+    "currency": "usd",
+    "billing_period": "month",
+    "billing_period_count": 1,
+    "subscription_coupons": [
+      {
+        "coupon_code": "WELCOME20",
+        "start_date": "2026-06-15T00:00:00Z"
+      },
+      {
+        "coupon_code": "API_ONLY_50_OFF",
+        "price_id": "price_api_calls"
+      }
+    ]
+  }'
+```
 
-### Step 4: Verify Discount Application
+| Field | Description |
+|-------|-------------|
+| **`coupon_code`** | Human-readable code, unique per tenant and environment. Case-insensitive. |
+| **`price_id`** | Optional. Restricts the discount to the line item that uses this price. Omit for a subscription-level discount. |
+| **`start_date`** | Optional. Defaults to the subscription start date. |
+| **`end_date`** | Optional. Overrides the coupon's `duration_in_periods` calculation. |
 
-1. Review the subscription summary to ensure the discount has been applied correctly.
-2. The discount amount should be visible in the pricing breakdown.
-3. Click **Save** or **Create Subscription** to finalize.
+<Note>
+  `subscription_coupons` is the preferred way to attach coupons at creation. The older `coupons` array that takes `coupon_id` is deprecated.
+</Note>
 
-## Coupon Validation
+## Add or remove a coupon mid-cycle
 
-When applying a coupon, Flexprice automatically validates:
+Use the subscription modify API to attach or detach a coupon on an existing subscription. The same endpoint supports a preview that returns the proration impact without writing anything.
 
-- **Coupon Status**: The coupon must be active
-- **Validity Period**: The coupon must be within its redeem after/before dates
-- **Usage Limits**: The coupon must not have exceeded its maximum redemptions
-- **Customer Eligibility**: The customer must meet any coupon rules or filters
-- **Plan Compatibility**: The coupon must be compatible with the selected plan
+### Add a coupon
 
-💡 **Tip**: If a coupon doesn't apply, check the validation messages for specific reasons why the coupon is not eligible.
+```bash cURL
+curl -X POST https://api.flexprice.io/v1/subscriptions/{subscription_id}/modify/execute \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "coupon",
+    "coupon_params": {
+      "action": "add",
+      "coupon_code": "LOYALTY10",
+      "effective_date": "2026-07-01T00:00:00Z",
+      "price_id": "price_seats"
+    }
+  }'
+```
 
-## Coupon Details View
+| Field | Required | Description |
+|-------|----------|-------------|
+| **`action`** | Yes | `add` to attach a coupon. |
+| **`coupon_code`** | Yes for `add` | Code of the coupon to attach. `coupon_id` is also accepted but deprecated. |
+| **`effective_date`** | No | When the change applies. Defaults to now. |
+| **`start_date`** | No | When the coupon association starts. Defaults to `effective_date`. |
+| **`end_date`** | No | When the association ends. Overrides `duration_in_periods`. |
+| **`price_id`** | No | Target a specific line item by its price ID. Omit for a subscription-level discount. |
 
-When you select a coupon, you can view its detailed information to ensure it's the right one for your customer:
+To dry-run the change, call `/modify/preview` with the same body. The response includes the resulting `subscription`, any new `coupon_associations`, and the changed line items and invoices.
 
-<Frame>
-  ![Coupon Details View](/public/images/docs/Product%20catalogue/Coupons/coupon_details.png)
-</Frame>
+### Remove a coupon
 
-This detailed view shows all the important coupon information including the discount type, amount, cadence, validity period, and current usage statistics. This helps you verify that the coupon is appropriate for the customer and subscription.
+To detach a coupon, send the `association_id` of the coupon association you want to soft-delete. You can find association IDs on the subscription response under `coupon_associations`, or list them with the [coupon associations API](#list-coupon-associations).
 
-## Understanding Coupon Cadence
+```bash cURL
+curl -X POST https://api.flexprice.io/v1/subscriptions/{subscription_id}/modify/execute \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "coupon",
+    "coupon_params": {
+      "action": "remove",
+      "association_id": "ca_01h...",
+      "effective_date": "2026-07-01T00:00:00Z"
+    }
+  }'
+```
 
-The way the discount applies depends on the coupon's cadence setting:
+<Warning>
+  Removing a coupon affects invoices generated on or after `effective_date`. It does not change invoices that have already been finalized.
+</Warning>
 
-### Once
+## List coupon associations
 
-- The discount applies only to the first billing period
-- After the first period, the subscription continues at full price
-- Ideal for new customer promotions or one-time offers
+Use these endpoints to read the coupons currently attached to one or more subscriptions.
 
-### Repeated
+```bash List associations
+curl -G https://api.flexprice.io/v1/coupons/associations \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  --data-urlencode "subscription_ids=sub_01h..." \
+  --data-urlencode "active_only=true"
+```
 
-- The discount applies for the specified number of billing periods
-- For example, if set to 3 periods with monthly billing, the discount applies for 3 months
-- Perfect for trial periods or limited-time promotions
+```bash Get one association
+curl https://api.flexprice.io/v1/coupons/associations/{id} \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
 
-### Forever
+| Query parameter | Description |
+|-----------------|-------------|
+| **`subscription_ids`** | Filter by subscription IDs. Up to 100. |
+| **`coupon_ids`** | Filter by coupon IDs. Up to 100. |
+| **`active_only`** | Return only associations whose `start_date`/`end_date` window covers now. |
+| **`limit`**, **`offset`** | Standard pagination. |
 
-- The discount applies indefinitely for the lifetime of the subscription
-- The discount continues even if the subscription is renewed
-- Best for long-term customer retention strategies
+<Note>
+  Coupon associations are created and removed exclusively through the subscription modify API or at subscription creation. There is no `POST /coupons/associations` endpoint.
+</Note>
 
-## Example Scenarios
+## How cadence applies
 
-### Scenario 1: New Customer Welcome Discount
+The discount duration on the association follows the coupon's `cadence`:
 
-- **Coupon**: "Welcome2024" - 20% off, Once cadence
-- **Result**: Customer gets 20% off their first month, then pays full price
+| Cadence | Behavior |
+|---------|----------|
+| **`once`** | Discount applies to the first qualifying billing period only. |
+| **`repeated`** | Discount applies for `duration_in_periods` billing periods. An `end_date` on the association overrides this. |
+| **`forever`** | Discount applies for the lifetime of the subscription, unless you remove the association. |
 
-### Scenario 2: Quarterly Promotion
+## Validation
 
-- **Coupon**: "Q1Promo" - $50 off, Repeated cadence, 3 periods
-- **Result**: Customer gets $50 off for 3 consecutive billing periods
+Flexprice validates the following before attaching a coupon:
 
-### Scenario 3: Loyalty Discount
+- The coupon exists, is `published`, and is within `redeem_after` / `redeem_before`.
+- The coupon currency matches the subscription currency.
+- `max_redemptions` has not been reached.
+- Any custom rules on the coupon (for example, `customer_id`, `plan_id`, `amount`) match the target subscription.
 
-- **Coupon**: "Loyalty" - 10% off, Forever cadence
-- **Result**: Customer gets 10% off for the entire subscription duration
-
-## Managing Applied Coupons
-
-### View Applied Coupons
-
-1. Navigate to the customer's subscription details
-2. Look for the **Discounts** or **Applied Coupons** section
-3. View the active coupons and their remaining periods
-
-### Remove Applied Coupons
-
-1. In the subscription details, find the applied coupon
-2. Click **Remove** or **Unlink** next to the coupon
-3. Confirm the removal
-
-💡 **Note**: Removing a coupon will affect future billing periods but won't retroactively change past invoices.
-
-## Coupon Analytics
-
-Monitor your coupon performance through:
-
-- **Redemption Count**: Track how many times each coupon has been used
-- **Revenue Impact**: Analyze the total discount value applied
-- **Customer Acquisition**: Measure how coupons affect new customer signups
-- **Retention Impact**: Evaluate how coupons influence subscription renewals
-
-## Best Practices
-
-1. **Test Before Launch**: Always test coupons with a small group before wide deployment
-2. **Clear Naming**: Use descriptive coupon names that indicate the purpose
-3. **Set Expiry Dates**: Always set expiration dates to prevent unintended long-term discounts
-4. **Monitor Usage**: Regularly check coupon redemption statistics
-5. **Plan for Renewals**: Consider how coupons affect subscription renewals and pricing
+If validation fails, the response includes a `hint` field that names the failing constraint.
 
 ## Troubleshooting
 
-### Common Issues
+**Coupon not applying**
 
-**Coupon Not Applying**
+- Confirm the coupon `status` is `published` and inside its redeem window.
+- Confirm the currency matches the subscription currency.
+- Confirm `max_redemptions` has not been reached.
 
-- Check if the coupon is active and within its validity period
-- Verify the customer meets any coupon rules or filters
-- Ensure the coupon hasn't reached its maximum redemption limit
+**`coupon_code` not found**
 
-**Discount Amount Incorrect**
+- Codes are case-insensitive but must match exactly otherwise. Check for trailing whitespace.
+- Coupons are scoped per tenant and environment. A code in `production` is not visible from `sandbox`.
 
-- Verify the coupon type (fixed amount vs percentage)
-- Check the currency matches the subscription currency
-- Confirm the discount calculation logic
+**Discount missing from a specific line item**
 
-**Coupon Expired Unexpectedly**
+- If you passed `price_id`, confirm that the price belongs to a line item on the subscription.
+- Subscription-level discounts apply to all eligible line items; line-level discounts apply only to the targeted line.
 
-- Review the "Redeem Before" date setting
-- Check if the coupon was manually deactivated
-- Verify the coupon hasn't exceeded usage limits
-
-💡 **Need Help?**: If you encounter issues with coupon application, check the system logs or contact support with the specific coupon ID and customer details.
+<Card icon="book-open" horizontal={true} href="/docs/product-catalogue/coupons/create" title="Create a coupon" />
+<Card icon="book-open" horizontal={true} href="/docs/product-catalogue/coupons/overview" title="Coupons overview" />
