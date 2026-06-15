@@ -4,6 +4,55 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="June 15th 2026">
+  ## Remove inherited child subscriptions
+
+  The subscription modify API now supports removing inherited child subscriptions from a parent. Use `action: "remove"` with `external_customer_ids_to_remove` to schedule the matching inherited subscriptions for cancellation at the end of the current billing period.
+
+  * **Explicit `action` field**: `inheritance_params.action` accepts `add` (existing behavior) or `remove`; omitting the field defaults to `add` so existing integrations stay compatible
+  * **`external_customer_ids_to_remove`**: New field used only by `action: "remove"` — lists the external customer IDs whose inherited subscriptions should be cancelled
+  * **Preview supported**: `POST /subscriptions/{id}/modify/preview` returns the planned effect of an inheritance removal before commit
+  * **Validation**: At least one non-empty external customer ID is required; remove requests must use `external_customer_ids_to_remove`, add requests must use `external_customer_ids_to_inherit_subscription`
+
+  See [Consolidated subscription billing](/docs/subscriptions/billing-workflows/consolidated-billing) for examples.
+
+  <br />
+
+  ## Delink integration mappings
+
+  Integration mappings between a Flexprice entity and an external provider entity can now be archived via API. Use `DELETE /v1/integrations/link` to soft-delete one or more active mappings for a given entity and provider — for example when a customer record is recreated in the provider and needs to be remapped.
+
+  * **Request body**: `{ "entity_type": "customer", "entity_id": "cus_...", "provider_type": "stripe" }`
+  * **All matching active mappings** are archived in a single transaction; the response returns a success message
+  * **404 if none exist**: The endpoint returns a not-found error when no active mapping matches the entity and provider
+
+  <br />
+
+  ## Coupon modify targeting
+
+  Subscription coupon modifications now target the subscription or a specific line item explicitly. `coupon_params` accepts `subscription_id` to attach the coupon at the subscription level, or `subscription_line_item_id` to attach it to a single line item. The two fields are mutually exclusive.
+
+  * **`action: "add"`**: Provide `coupon_code` plus exactly one of `subscription_id` or `subscription_line_item_id`
+  * **`action: "remove"`**: Provide `association_id` for the existing coupon association to detach
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Fixes">
+      * Wallet real-time balance cache is invalidated when an invoiced transaction is auto-completed against a credited wallet, so subsequent balance reads reflect the new state immediately
+      * Analytics `window_size` for bucketed meters now reflects the point granularity returned in the response
+    </Accordion>
+
+    <Accordion title="API">
+      * New `DELETE /v1/integrations/link` endpoint archives entity-to-provider integration mappings
+      * `POST /v1/subscriptions/{id}/modify/execute` and `/modify/preview` accept `inheritance_params.action` (`add` or `remove`) and the new `external_customer_ids_to_remove` field
+      * `coupon_params` on subscription modify now uses `subscription_id` and `subscription_line_item_id` for targeting
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
 <Update label="June 8th 2026">
   ## Commitment time buckets
 
