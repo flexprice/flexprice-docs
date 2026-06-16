@@ -1282,6 +1282,75 @@
           "x-codegen-request-body-name": "coupon"
         }
       },
+      "/coupons/code/{code}": {
+        "get": {
+          "tags": [
+            "Coupons"
+          ],
+          "summary": "Get coupon by code",
+          "description": "Use when resolving a coupon by promo code (e.g. checkout or validation).",
+          "operationId": "getCouponByCode",
+          "parameters": [
+            {
+              "name": "code",
+              "in": "path",
+              "description": "Coupon code",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "OK",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/CouponResponse"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Invalid request",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                  }
+                }
+              }
+            },
+            "404": {
+              "description": "Resource not found",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "Server error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/errors.ErrorResponse"
+                  }
+                }
+              }
+            }
+          },
+          "security": [
+            {
+              "ApiKeyAuth": []
+            }
+          ],
+          "x-scope": "read"
+        }
+      },
       "/coupons/search": {
         "post": {
           "tags": [
