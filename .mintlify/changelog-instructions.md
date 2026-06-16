@@ -1,11 +1,11 @@
-<!--
+{/*
   MINTLIFY WORKFLOW INSTRUCTIONS — CHANGELOGS AGENT
   =================================================
   This file is read by the Mintlify "Draft Changelog" workflow agent on every run.
   It is the single source of truth for how to produce Flexprice changelog entries.
   Edit this file to change patterns; the next scheduled run picks up the changes automatically.
   Do not modify the Mintlify workflow configuration, update this file instead.
--->
+*/}
 
 # Flexprice Changelog — Agent Instructions
 
