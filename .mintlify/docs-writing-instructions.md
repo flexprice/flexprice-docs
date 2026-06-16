@@ -1,11 +1,11 @@
-<!--
+{/*
   MINTLIFY DOCS WRITING INSTRUCTIONS — WORKFLOW AGENT
   ====================================================
   This file is read by Mintlify workflow agents when generating or updating documentation.
   It is the single source of truth for how to write Flexprice docs.
   Edit this file to update patterns; the next workflow run picks up changes automatically.
   Do not modify the Mintlify workflow configuration — update this file instead.
--->
+*/}
 
 # Flexprice Docs — Writing and Validation Skill
 
