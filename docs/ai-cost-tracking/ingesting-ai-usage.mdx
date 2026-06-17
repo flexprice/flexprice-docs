@@ -90,6 +90,152 @@ flowchart TB
 
 You provide read-only credentials once; Flexprice stores them securely and runs the schedule. A per-source **watermark** plus `request_id` **dedupe** guarantees no double counting across overlapping pulls.
 
+## Integrating LiteLLM
+
+LiteLLM is a real-time **push** source: it fires a logging callback on every completion, already carrying token counts, USD cost, model, and identity. There are three ways to wire it into Flexprice — from drop-in to fully custom — and **all three emit the same standardised `ai.usage` event**. You never define meters, features, or prices for this; enabling the LiteLLM connector with a [template](#auto-provisioning-metering) provisions them.
+
+### Option 1 — Flexprice SDK callback (recommended)
+
+Register the Flexprice callback and you're done — no payload mapping, no transform to maintain. Every `completion()` call you already make is metered.
+
+```python
+import litellm
+from flexprice.litellm import FlexpriceLogger
+
+litellm.callbacks = [
+    FlexpriceLogger(
+        api_key="<FLEXPRICE_API_KEY>",
+        # which LiteLLM identity becomes the Flexprice billing entity
+        entity_from="metadata.user_api_key_team_id",
+    )
+]
+
+# nothing else changes — usage now flows to Flexprice on every call
+litellm.completion(
+    model="anthropic/claude-opus-4-8",
+    messages=[{"role": "user", "content": "Summarise this ticket"}],
+    metadata={"user_api_key_team_id": "team_platform", "user_api_key_user_id": "u_91"},
+)
+```
+
+The callback reads LiteLLM's per-request record, maps it to `ai.usage`, and ships it — one event per request, attributed to the team (with the user kept as a child for per-user and per-agent visibility).
+
+### Option 2 — LiteLLM Proxy (no code)
+
+If you run the LiteLLM **Proxy**, enable the Flexprice callback in `config.yaml`. Every request routed through the proxy — from any app, agent, or MCP server — is metered and attributed to the virtual key's team/user, with nothing to deploy in your services.
+
+```yaml
+litellm_settings:
+  callbacks: ["flexprice"]
+
+environment_variables:
+  FLEXPRICE_API_KEY: "<FLEXPRICE_API_KEY>"
+  # map a LiteLLM virtual-key dimension to the billing entity
+  FLEXPRICE_ENTITY_FROM: "metadata.user_api_key_team_id"
+```
+
+<Tip>
+When usage must stay inside your network, point LiteLLM's logging webhook at your in-infra [Flexprice Collector](/docs/collectors/overview) instead — the collector applies the same transform before anything leaves your VPC.
+</Tip>
+
+### Option 3 — Custom callback (full control)
+
+When you want to shape the event yourself — add tags, override the entity, or filter calls — implement a LiteLLM `CustomLogger` and send the event with the Flexprice SDK. This is exactly what Option 1 does under the hood, exposed for you to customise.
+
+```python
+from litellm.integrations.custom_logger import CustomLogger
+import litellm
+from flexprice import Flexprice
+
+fp = Flexprice(api_key="<FLEXPRICE_API_KEY>")
+
+class FlexpriceLogger(CustomLogger):
+    async def async_log_success_event(self, kwargs, response_obj, start_time, end_time):
+        # LiteLLM's normalised, per-request usage + cost record
+        slp = kwargs["standard_logging_object"]
+        meta = slp.get("metadata", {})
+
+        fp.events.ingest(
+            event_name="ai.usage",
+            external_customer_id=meta.get("user_api_key_team_id", "unknown"),
+            source="litellm",
+            properties={
+                "provider": slp["custom_llm_provider"],
+                "model": slp["model"],
+                "operation": "chat",
+                "input_tokens": slp["prompt_tokens"],
+                "output_tokens": slp["completion_tokens"],
+                "reported_cost": slp["response_cost"],   # USD, computed by LiteLLM
+                "request_id": slp["id"],
+                "raw_user": meta.get("user_api_key_user_id"),
+                "raw_team": meta.get("user_api_key_team_id"),
+            },
+        )
+
+litellm.callbacks = [FlexpriceLogger()]
+```
+
+### The event Flexprice receives
+
+Whichever option you pick, the same canonical event lands — already mapped, ready to be priced and attributed:
+
+```json
+{
+  "event_name": "ai.usage",
+  "external_customer_id": "team_platform",
+  "source": "litellm",
+  "properties": {
+    "provider": "anthropic",
+    "model": "claude-opus-4-8",
+    "operation": "chat",
+    "input_tokens": "1840",
+    "output_tokens": "320",
+    "reported_cost": "0.041",
+    "request_id": "req_abc123",
+    "raw_user": "u_91",
+    "raw_team": "team_platform"
+  }
+}
+```
+
+If you'd rather not use an SDK at all, the same event can be posted directly to the [events API](/docs/event-ingestion/sending-events):
+
+```bash
+curl -X POST https://api.cloud.flexprice.io/v1/events \
+  -H 'x-api-key: <FLEXPRICE_API_KEY>' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "event_name": "ai.usage",
+    "external_customer_id": "team_platform",
+    "source": "litellm",
+    "properties": {
+      "provider": "anthropic", "model": "claude-opus-4-8",
+      "input_tokens": "1840", "output_tokens": "320",
+      "reported_cost": "0.041", "request_id": "req_abc123"
+    }
+  }'
+```
+
+### Closing the loop — enforcement
+
+Because Flexprice now holds the source of truth for spend, a budget breach can act **back** on LiteLLM (the dashed return path in the push-flow diagram). On a `warning`/`critical` [alert](/docs/customers/threshold-notifications), Flexprice calls LiteLLM's management API with your master key to throttle the offending key or team:
+
+```bash
+# soft: zero out the remaining budget on a key
+curl -X POST https://<litellm-proxy>/key/update \
+  -H 'Authorization: Bearer <LITELLM_MASTER_KEY>' \
+  -H 'Content-Type: application/json' \
+  -d '{ "key": "<virtual-key>", "max_budget": 0 }'
+
+# hard: block the key outright
+curl -X POST https://<litellm-proxy>/key/block \
+  -H 'Authorization: Bearer <LITELLM_MASTER_KEY>' \
+  -H 'Content-Type: application/json' \
+  -d '{ "key": "<virtual-key>" }'
+```
+
+Start with soft alerts (webhooks/notifications) and graduate to hard enforcement once you trust the numbers.
+
 ## How cost is attached
 
 Most modern gateways compute USD cost themselves, so Flexprice uses that by default and re-prices only when it needs to.
