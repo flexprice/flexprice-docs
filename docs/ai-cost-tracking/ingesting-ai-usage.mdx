@@ -61,32 +61,17 @@ Sources differ in whether they can push in real time, must be polled, or only ex
 
 ### Push flow (e.g. LiteLLM)
 
-```mermaid
-flowchart TB
-  A["LiteLLM proxy"] -->|"success webhook per request"| B["Flexprice Collector (in your infra)"]
-  B -->|"transform to ai.usage"| C["Flexprice ingestion"]
-  C --> D["Metering and pricing"]
-  D --> E["Wallets, alerts, analytics"]
-  E -. "threshold breach: block / lower budget via management API" .-> A
-```
+<Frame>
+  ![Push flow — LiteLLM pushes a per-request webhook to the Flexprice Collector, which transforms it to ai.usage and forwards it through metering and pricing to wallets, alerts, and analytics; a budget breach calls back to LiteLLM via the management API.](/public/images/docs/AICostTracking/push-flow.png)
+</Frame>
 
 The collector is the existing [Bento-based](/docs/collectors/how-it-works) pipeline — inputs → processors → outputs — with a ready-made transform for the source, so you are not writing Bloblang by hand.
 
 ### Managed pull flow (e.g. Langfuse, Databricks, Bedrock)
 
-```mermaid
-flowchart TB
-  A["Scheduled trigger"] --> B["Read since last watermark"]
-  B --> C{"Source type"}
-  C -->|"API"| D["Langfuse observations / Portkey / OpenRouter"]
-  C -->|"SQL"| E["Databricks system tables / Snowflake views"]
-  C -->|"object store"| F["Bedrock invocation logs / CUR in S3"]
-  D --> G["Transform to ai.usage (server-side)"]
-  E --> G
-  F --> G
-  G --> H["Dedupe by request_id"]
-  H --> I["Flexprice ingestion"]
-```
+<Frame>
+  ![Managed pull flow — a scheduled trigger reads each source since the last watermark via API, SQL, or object-store readers, transforms the result to ai.usage server-side, dedupes by request_id, and ingests into Flexprice.](/public/images/docs/AICostTracking/managed-pull-flow.png)
+</Frame>
 
 You provide read-only credentials once; Flexprice stores them securely and runs the schedule. A per-source **watermark** plus `request_id` **dedupe** guarantees no double counting across overlapping pulls.
 
@@ -245,15 +230,9 @@ Most modern gateways compute USD cost themselves, so Flexprice uses that by defa
 
 The **public model pricing repository is refreshed daily**, so popular provider/model rates are available out of the box. Override any rate per provider, model, or customer for committed pricing, and apply a markup factor when reselling.
 
-```mermaid
-flowchart TB
-  A["ai.usage event"] --> B{"reported_cost present?"}
-  B -->|"yes, and no markup needed"| C["Use source cost"]
-  B -->|"no, or markup / normalised pricing"| D["Price from model repository"]
-  D --> E["Apply overrides and markup"]
-  C --> F["Charged cost on usage"]
-  E --> F
-```
+<Frame>
+  ![How cost is attached — if the ai.usage event already carries reported_cost, Flexprice uses the source cost; otherwise (or when markup or normalised pricing is needed) it prices from the model pricing repository and applies overrides and markup, producing the charged cost on usage.](/public/images/docs/AICostTracking/cost-attachment.png)
+</Frame>
 
 ## Auto-provisioning metering
 
