@@ -41,38 +41,9 @@ AI Cost Tracking builds directly on Flexprice's core metering primitives. Usage 
 
 At a high level, third-party sources send usage into Flexprice through one of two ingestion paths, and Flexprice turns that usage into cost, governance, and analytics.
 
-```mermaid
-flowchart TB
-  subgraph sources ["AI sources"]
-    G["Gateways: LiteLLM, OpenRouter, Portkey"]
-    O["Observability: Langfuse, Helicone"]
-    C["Clouds: AWS Bedrock, Databricks, Snowflake"]
-    S["SaaS AI: Agentforce, SAP Joule"]
-  end
-
-  subgraph ingest ["Ingestion"]
-    COL["Flexprice Collector (push / in-infra)"]
-    PULL["Managed pull (Flexprice-hosted, scheduled)"]
-  end
-
-  subgraph fp ["Flexprice"]
-    EV["Standardised AI usage events"]
-    METER["Metering and model pricing"]
-    GOV["Wallets, credits, alerts and limits"]
-    AN["Cost, token and margin analytics"]
-    EV --> METER --> GOV --> AN
-  end
-
-  G --> COL
-  O --> PULL
-  C --> PULL
-  S --> PULL
-  G -. "real-time push" .-> PULL
-  COL --> EV
-  PULL --> EV
-
-  GOV -. "alerts and enforcement" .-> sources
-```
+<Frame caption="AI sources flow into Flexprice through the Flexprice Collector (push / in-infra) or managed pull, are normalised to standardised AI usage events, and are metered, priced, and governed — with alerts and limit enforcement flowing back to the source systems.">
+  ![Flexprice AI Cost Tracking architecture](/public/images/docs/AICostTracking/architecture.png)
+</Frame>
 
 Two ingestion paths cover every source:
 
