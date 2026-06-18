@@ -133,6 +133,12 @@ Save the `id` from the response. You'll need it when creating API keys.
 You must assign at least one role when creating a service account. Empty roles will return an error.
 </Warning>
 
+<Warning>
+**`super_admin` Cannot Be Combined**
+
+`super_admin` already grants unrestricted access. If you include `super_admin` in `roles`, it must be the only role in the list — combining it with any other role returns a validation error.
+</Warning>
+
 ### Common Errors
 
 **No Roles Provided**
@@ -146,6 +152,13 @@ You must assign at least one role when creating a service account. Empty roles w
 ```json
 {
   "error": "Invalid role: custom_role"
+}
+```
+
+**`super_admin` Combined With Other Roles**
+```json
+{
+  "error": "super admin role need not be combined with other roles"
 }
 ```
 
