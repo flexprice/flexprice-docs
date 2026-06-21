@@ -1,0 +1,110 @@
+---
+title: "Billing Calculation Order"
+description: "The exact sequence flexprice uses to calculate invoice totals: line items, discounts, wallet credits, tax, and final amount."
+---
+
+Every invoice flexprice generates follows the same deterministic sequence. Getting this order right matters when you combine coupons at multiple levels, wallet credits, and tax rates.
+
+## The sequence
+
+```
+1. Subtotal
+   = sum of all line item amounts (usage charges + flat fees)
+
+2. Line-item coupon discounts
+   Each targeted line item's amount is reduced individually.
+
+3. Invoice-level (subscription) coupon discounts
+   Applied to the running subtotal in association order.
+   Each coupon sees the total left after the previous coupon.
+
+4. Prepaid wallet credits
+   Deducted after all coupon discounts.
+
+5. Taxable amount
+   = MAX(subtotal - all_coupon_discounts, 0)
+   Floored at zero. Coupons cannot create a negative taxable base.
+
+6. Tax
+   = sum of all applicable tax rates x taxable_amount
+   Each rate is applied independently to the same taxable amount.
+
+7. Invoice total
+   = subtotal - total_coupon_discounts - wallet_credits_applied + tax
+```
+
+## Worked example
+
+| Line item | Amount |
+|-----------|--------|
+| Usage charge (API calls) | $80.00 |
+| Flat monthly fee | $20.00 |
+| **Subtotal** | **$100.00** |
+
+| Discount step | Change | Running total |
+|---------------|--------|---------------|
+| Line-item coupon: 25% off API calls | -$20.00 | $80.00 |
+| Subscription coupon: $10 off | -$10.00 | $70.00 |
+| Prepaid wallet credits | -$5.00 | $65.00 owed |
+
+| Tax step | Amount |
+|----------|--------|
+| Taxable amount (subtotal - coupon discounts only) | $70.00 |
+| Tax at 8.25% | +$5.78 |
+| **Invoice total** | **$70.78** |
+
+<Info>
+Wallet credits reduce the amount owed but do **not** reduce the taxable base. Tax is calculated on `subtotal - coupon_discounts`, not on `subtotal - coupon_discounts - wallet_credits`.
+</Info>
+
+## Coupon chaining
+
+Multiple subscription-level coupons apply sequentially. Each coupon sees the amount remaining after the previous one, not the original subtotal.
+
+```
+Subtotal:        $100.00
+Coupon A (10%):  - $10.00  -->  running total: $90.00
+Coupon B (10%):  -  $9.00  -->  running total: $81.00
+                               (applies to $90, not $100)
+```
+
+Two 10% coupons produce a 19% effective discount, not 20%.
+
+## Line-item vs subscription-level coupons
+
+| Coupon type | What it targets | When it runs |
+|-------------|-----------------|--------------|
+| Line-item coupon | One specific charge within the invoice | Step 2, before any subscription-level math |
+| Subscription-level coupon | The invoice subtotal | Step 3, after all line-item discounts |
+
+A subscription-level coupon sees a subtotal that has already been reduced by any line-item coupons.
+
+## Multiple tax rates
+
+When multiple tax associations apply to the same invoice, each rate is applied to the same taxable amount independently. They do not compound.
+
+```
+Taxable amount:   $100.00
+State tax (6%):   +  $6.00
+Federal tax (2%): +  $2.00
+Total tax:           $8.00   (not $8.12 from compounding)
+```
+
+## Zero-floor rule
+
+If coupons collectively exceed the subtotal, the taxable amount is clamped to zero. Excess discount is not carried forward to the next invoice period.
+
+```
+Subtotal:      $50.00
+Coupon A:     -$30.00
+Coupon B:     -$30.00
+              -------
+Taxable:        $0.00   (clamped, not -$10.00)
+Tax:            $0.00
+```
+
+## See also
+
+- [Coupons](/docs/product-catalogue/coupons/overview)
+- [Taxes](/docs/product-catalogue/taxes/overview)
+- [Wallets](/docs/wallet/create)
