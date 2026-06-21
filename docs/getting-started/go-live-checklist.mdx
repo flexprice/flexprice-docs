@@ -1,111 +1,62 @@
 ---
 title: "Go-Live Checklist"
-description: "Steps to validate your Flexprice integration before switching live customer traffic to Production."
+description: "Complete this before switching to Production."
 ---
-
-Work through this checklist before switching to Production. Event ingestion comes first; a misconfigured meter corrupts every invoice downstream.
 
 ## 1. Environment & API Access
 
-- **Switch to the Production environment** using the environment selector in the Flexprice dashboard.
-- **Generate a Production API key** under Developers. Assign Read & Write permissions and copy it immediately: it will not be shown again.
-- **Confirm the auth header** in all API requests is `x-api-key: <YOUR_KEY>` and the base URL is `https://api.cloud.flexprice.io`.
-- **Create service accounts** with the minimum required role: `event_ingestor` for event pipelines, `super_admin` only for provisioning scripts.
-- **Revoke Sandbox API keys** for any system now pointing to Production.
+- Switch to the Production environment in the Flexprice dashboard.
+- Generate a Production API key (Read & Write) and copy it immediately.
+- Confirm auth header is `x-api-key: <YOUR_KEY>` and base URL matches your region: `https://us.api.flexprice.io` (US) or `https://api.cloud.flexprice.io` (India).
+- Revoke Sandbox API keys for any system now pointing to Production.
 
 ## 2. Product Catalog
 
-Use the clone feature in the Plans dashboard to copy your Sandbox catalog to Production.
+- Clone your catalog from Sandbox via the Plans dashboard and verify it transferred correctly.
+- Confirm all metered feature Event Names are active in Production and match exactly what your app sends. They are immutable after creation.
 
-- **Clone your catalog from Sandbox** and verify plans, charges, and billing periods transferred correctly.
-- **Confirm all metered features are active** in Production. Each feature's Event Name must exactly match what your application sends. It is immutable after creation.
+## 3. Event Ingestion
 
-<Note>
-  After cloning, make one small test change in Production (e.g., add a $0 charge and remove it) to confirm your API key has write access before real traffic lands.
-</Note>
-
-## 3. Event Ingestion & Metering
-
-A misconfigured event pipeline makes every downstream invoice wrong.
-
-- **Verify required fields** on every event:
-  - `event_name`: must match the Feature's Event Name exactly (case-sensitive)
-  - `external_customer_id`: must match the customer's external ID in Flexprice
-  - `timestamp`: ISO 8601 UTC
-  - `event_id`: unique per event; prevents double-counting on retries
-- **Send test events** to a Production test customer and confirm they appear in the Event Debugger with correct field values and aggregation results.
+- Verify required fields on every event: `event_name` (case-sensitive), `external_customer_id`, `timestamp` (ISO 8601 UTC), `event_id` (unique).
+- Send test events and confirm they appear in the Event Debugger.
 
 <Warning>
-  An `event_name` mismatch returns HTTP 202 but the event is never counted toward billing. There is no error. Verify every active feature's Event Name before switching live traffic.
+  An `event_name` mismatch returns HTTP 202 but is never counted toward billing. No error is thrown.
 </Warning>
 
 ## 4. Customers & Subscriptions
 
-`external_customer_id` is the join key between your application and Flexprice. An error here means events land on the wrong customer or disappear silently.
+- Create Production customers and confirm `external_customer_id` matches what your event pipeline sends.
+- Create subscriptions on the correct Production plans.
 
-- **Create Production customers** and confirm each `external_customer_id` exactly matches what your event pipeline sends.
-- **Create subscriptions** on the correct Production plans with the correct start dates.
+## 5. Invoicing
 
-## 5. Invoicing & Billing Configuration
-
-Misconfigured billing settings don't surface until your first invoice cycle runs.
-
-- **Review grace period behavior** in `subscription_config.grace_period_days`. Know when Flexprice auto-cancels vs. leaves a subscription active past the period end.
-- **Decide auto-collect vs. manual invoicing** per customer or globally before your first billing cycle runs.
-- **Generate a test invoice** for a Production test customer and confirm line items match expected usage.
-
-<Note>
-  If you use prepaid credits, confirm wallets are created in Production with correct credit grants, auto top-up thresholds, and low-balance alerts configured. See [Wallets](/docs/wallet/prepaid-promotional).
-</Note>
+- Review `subscription_config.grace_period_days` and confirm the auto-cancel behavior is correct.
+- Decide auto-collect vs. manual invoicing before your first billing cycle runs.
+- Generate a test invoice and verify line items match expected usage.
 
 ## 6. Webhooks
 
-A missed webhook is a missed billing event.
+- Register Production webhook endpoints and implement signature verification.
+- Subscribe to: `invoice.update.finalized`, `invoice.update.payment`, `subscription.created`, `subscription.cancelled`.
+- Return 2xx for all received events. A 4xx permanently stops retries for that event.
 
-- **Register Production webhook endpoints** in the Webhooks dashboard. Do not reuse Sandbox endpoints.
-- **Implement webhook signature verification.**
-- **Subscribe to the event types your application consumes:**
-  - `invoice.update.finalized`, `invoice.update.payment`
-  - `subscription.created`, `subscription.cancelled`
-  - `wallet.transaction.created`
-- **Make webhook processing idempotent.** Flexprice retries on non-2xx. Return 2xx for all received events, including types you don't act on.
+## 7. Smoke Test
 
-<Warning>
-  A 4xx response permanently stops Flexprice from retrying that event. Confirm your handler never returns 4xx for registered event types.
-</Warning>
+1. Send test events for a Production test customer.
+2. Confirm meter aggregation matches what you sent.
+3. Finalize the draft invoice and verify line items.
+4. Confirm `invoice.update.finalized` fires and your handler processes it.
 
-## 7. Monitoring
+## 8. Post-Launch
 
-- **Configure spend alerts** for customers with committed limits before live traffic starts.
-- **Monitor webhook delivery** in the Webhooks dashboard for sustained failure rates.
-
-## 8. End-to-End Smoke Test
-
-Run this against a dedicated Production test customer before going live.
-
-1. **Send test events** using realistic `event_name` values and property payloads.
-2. **Confirm meter aggregation** in the Features dashboard matches what you sent.
-3. **Finalize the draft invoice** and confirm every line item reflects the expected usage.
-4. **Confirm `invoice.update.finalized` fires** and your handler processes it correctly.
-5. **Record a payment** and confirm `invoice.update.payment` fires.
-
-## 9. Post-Launch
-
-- Subscribe to the **[Flexprice changelog](/changelog)** for API changes.
-- Subscribe to the **[status page](https://status.flexprice.io)** for incident notifications.
-- Join the **[Slack community](https://join.slack.com/t/flexpricecommunity/shared_invite/zt-39uat51l0-n8JmSikHZP~bHJNXladeaQ)** for support.
+- Subscribe to the [Flexprice changelog](/changelog) for API changes.
+- Subscribe to the [status page](https://status.flexprice.io) for incident notifications.
+- Join the [Slack community](https://join.slack.com/t/flexpricecommunity/shared_invite/zt-39uat51l0-n8JmSikHZP~bHJNXladeaQ) for support.
 
 <CardGroup cols={2}>
-  <Card icon="cloud" href="/docs/getting-started/cloud" title="Environments & API Keys">
-    Create and manage API keys for Sandbox and Production.
-  </Card>
-  <Card icon="bolt" href="/docs/event-ingestion/overview" title="Event Ingestion">
-    Required fields, rate limits, and event validation.
-  </Card>
-  <Card icon="webhook" href="/docs/webhook/webhooks" title="Webhooks">
-    Event types, signature verification, and retry behavior.
-  </Card>
-  <Card icon="file-invoice" href="/docs/invoices/overview" title="Invoices">
-    Invoice lifecycle and billing configuration.
-  </Card>
+  <Card icon="cloud" href="/docs/getting-started/cloud" title="Environments & API Keys" />
+  <Card icon="bolt" href="/docs/event-ingestion/overview" title="Event Ingestion" />
+  <Card icon="webhook" href="/docs/webhook/webhooks" title="Webhooks" />
+  <Card icon="file-invoice" href="/docs/invoices/overview" title="Invoices" />
 </CardGroup>
