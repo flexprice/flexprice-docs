@@ -1,0 +1,62 @@
+---
+title: "Go-Live Checklist"
+description: "Complete this before switching to Production."
+---
+
+## 1. Environment & API Access
+
+- Switch to the Production environment in the Flexprice dashboard.
+- Generate a Production API key (Read & Write) and copy it immediately.
+- Confirm auth header is `x-api-key: <YOUR_KEY>` and base URL matches your region: `https://us.api.flexprice.io` (US) or `https://api.cloud.flexprice.io` (India).
+- Revoke Sandbox API keys for any system now pointing to Production.
+
+## 2. Product Catalog
+
+- Clone your catalog from Sandbox via the Plans dashboard and verify it transferred correctly.
+- Confirm all metered feature Event Names are active in Production and match exactly what your app sends. They are immutable after creation.
+
+## 3. Event Ingestion
+
+- Verify required fields on every event: `event_name` (case-sensitive), `external_customer_id`, `timestamp` (ISO 8601 UTC), `event_id` (unique).
+- Send test events and confirm they appear in the Event Debugger.
+
+<Warning>
+  An `event_name` mismatch returns HTTP 202 but is never counted toward billing. No error is thrown.
+</Warning>
+
+## 4. Customers & Subscriptions
+
+- Create Production customers and confirm `external_customer_id` matches what your event pipeline sends.
+- Create subscriptions on the correct Production plans.
+
+## 5. Invoicing
+
+- Review `subscription_config.grace_period_days` and confirm the auto-cancel behavior is correct.
+- Decide auto-collect vs. manual invoicing before your first billing cycle runs.
+- Generate a test invoice and verify line items match expected usage.
+
+## 6. Webhooks
+
+- Register Production webhook endpoints and implement signature verification.
+- Subscribe to: `invoice.update.finalized`, `invoice.update.payment`, `subscription.created`, `subscription.cancelled`.
+- Return 2xx for all received events. A 4xx permanently stops retries for that event.
+
+## 7. Smoke Test
+
+1. Send test events for a Production test customer.
+2. Confirm meter aggregation matches what you sent.
+3. Finalize the draft invoice and verify line items.
+4. Confirm `invoice.update.finalized` fires and your handler processes it.
+
+## 8. Post-Launch
+
+- Subscribe to the [Flexprice changelog](/changelog) for API changes.
+- Subscribe to the [status page](https://status.flexprice.io) for incident notifications.
+- Join the [Slack community](https://join.slack.com/t/flexpricecommunity/shared_invite/zt-39uat51l0-n8JmSikHZP~bHJNXladeaQ) for support.
+
+<CardGroup cols={2}>
+  <Card icon="cloud" href="/docs/getting-started/cloud" title="Environments & API Keys" />
+  <Card icon="bolt" href="/docs/event-ingestion/overview" title="Event Ingestion" />
+  <Card icon="webhook" href="/docs/webhook/webhooks" title="Webhooks" />
+  <Card icon="file-invoice" href="/docs/invoices/overview" title="Invoices" />
+</CardGroup>
