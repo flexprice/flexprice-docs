@@ -4,6 +4,19 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="June 18th 2026">
+  ## Service account guardrails and API key attribution
+
+  Service account creation now rejects mixing `super_admin` with other roles, and API key responses include the owning identity so you can attribute keys at a glance.
+
+  * **`super_admin` exclusivity**: Creating a service account with `super_admin` plus any other role returns a validation error — `super_admin` already grants unrestricted access and must stand alone
+  * **Identity on every secret**: Secret responses now include `user_id` (the user or service account the key belongs to) and `user_type` (`user` or `service_account`)
+  * **Service account name inline**: When `user_type` is `service_account`, responses also include `service_account_name`, so you can list keys and see which service owns each one without a second lookup
+
+  <br />
+
+</Update>
+
 <Update label="June 8th 2026">
   ## Commitment time buckets
 

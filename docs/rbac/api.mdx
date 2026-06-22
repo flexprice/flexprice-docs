@@ -113,9 +113,24 @@ curl --request POST \
   "name": "Event Service Production Key",
   "api_key": "sk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
   "roles": ["event_ingestor"],
+  "user_type": "service_account",
+  "user_id": "usr_abc123",
+  "service_account_name": "Event Ingestion Worker",
   "created_at": "2025-11-14T10:00:00Z"
 }
 ```
+
+<ParamField path="user_type" type="string">
+  Either `user` (the key belongs to a human user) or `service_account` (the key belongs to a service account).
+</ParamField>
+
+<ParamField path="user_id" type="string">
+  ID of the user or service account this key authenticates as. Use it to trace which identity made a given API call.
+</ParamField>
+
+<ParamField path="service_account_name" type="string">
+  Display name of the owning service account. Only returned when `user_type` is `service_account`, so you can identify keys in a list without a second lookup.
+</ParamField>
 
 <Warning>
 **Save Your API Key Now**
