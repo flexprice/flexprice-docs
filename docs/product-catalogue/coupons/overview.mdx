@@ -1,111 +1,69 @@
 ---
 title: "Coupons Overview"
-description: "Learn about Flexprice's discount coupon system for flexible pricing and promotional strategies."
+description: "Create percentage or fixed-amount discounts and apply them to subscriptions at the invoice or line-item level."
 ---
 
-# Coupons
+A coupon is a reusable discount definition. You create it once, then link it to one or more subscriptions via an **association**. Each association can be scoped to a time window and optionally targeted at a specific line item rather than the whole invoice.
 
-Flexprice's coupon system allows you to create and manage discount offers for your customers. Coupons provide flexible pricing options to drive customer acquisition, retention, and revenue growth.
+## Coupon types
 
-## What are Coupons?
+| Type | Discount field | Currency required | Example |
+|------|---------------|-------------------|---------|
+| `percentage` | `percentage_off` | No | 15% off the invoice |
+| `fixed` | `amount_off` | Yes | $50 off |
 
-Coupons are discount offers that can be applied to customer subscriptions. They help you:
+## Cadence
 
-- **Attract New Customers**: Offer welcome discounts and promotional pricing
-- **Retain Existing Customers**: Provide loyalty discounts and retention offers
-- **Drive Revenue**: Create time-limited promotions and seasonal sales
-- **Test Pricing**: Experiment with different discount strategies
+Cadence controls how many billing cycles the discount repeats within an association's active window.
 
-## Key Features
+| Cadence | Behavior |
+|---------|----------|
+| `once` | Applied to the first invoice of the association period only |
+| `repeated` | Applied for `duration_in_periods` consecutive billing cycles |
+| `forever` | Applied to every invoice for the life of the subscription |
 
-### Flexible Discount Types
+## Validity controls
 
-- **Fixed Amount**: Provide specific currency discounts (e.g., $10 off)
-- **Percentage**: Offer percentage-based discounts (e.g., 15% off)
+These fields live on the coupon itself and gate whether a new association can be created.
 
-### Multiple Cadence Options
+| Field | Purpose |
+|-------|---------|
+| `redeem_after` | Earliest timestamp a coupon can be associated to a subscription |
+| `redeem_before` | Expiry timestamp. Associations cannot be created after this date. Existing associations created before expiry remain active. |
+| `max_redemptions` | Maximum total associations allowed across all subscriptions |
 
-- **Once**: Apply discount for a single billing period
-- **Repeated**: Apply discount for multiple billing periods
-- **Forever**: Apply discount indefinitely for the subscription lifetime
+The `total_redemptions` counter increments when the association is **created**, not when an invoice is generated.
 
-### Advanced Controls
+## Coupon scope
 
-- **Validity Periods**: Set start and end dates for coupon availability
-- **Usage Limits**: Control maximum redemptions across all customers
-- **Targeting Rules**: Apply coupons based on customer, plan, or amount criteria
-- **Metadata**: Add custom information for tracking and integration
+**Subscription level**: discount applies to the invoice subtotal (or the running subtotal after earlier coupons have applied).
 
-## Quick Start
+**Line-item level**: discount applies to a specific price within the invoice before any subscription-level coupons run.
 
-1. **[Create a Coupon](/docs/product-catalogue/coupons/create)**: Set up your first discount offer
-2. **[Apply to Subscriptions](/docs/product-catalogue/coupons/apply-discount-on-subscription)**: Learn how to apply coupons to customer subscriptions
+## How multiple coupons apply
 
-## Creating Your First Coupon
+When an invoice has both line-item and subscription-level coupons:
 
-The coupon creation interface provides an intuitive form with all the necessary fields to configure your discount offer:
+1. Line-item coupons apply first, reducing each targeted line item's amount individually.
+2. Subscription-level coupons apply next, in association order, each seeing the subtotal left after the previous coupon.
+3. Wallet credits are deducted after all coupon discounts.
+4. Tax is calculated on `MAX(subtotal - all_discounts, 0)`. Tax is never charged on discounted-away amounts.
 
-<Frame>
-  ![Create Coupon Interface](/public/images/docs/Product%20catalogue/Coupons/create_coupon_drawer.png)
-</Frame>
+<Info>
+Two 20% subscription-level coupons do not produce a 40% total discount. The second coupon applies to the amount remaining after the first. See [Billing Calculation Order](/docs/invoices/billing-calculation-order) for the full worked example.
+</Info>
 
-Each field includes helpful descriptions and validation to ensure your coupon is configured correctly. The interface guides you through the process step by step.
+## Coupon statuses
 
-## Managing Coupon Details
+| Status | Meaning |
+|--------|---------|
+| `draft` | Created but not yet usable |
+| `active` | Can be associated to subscriptions |
+| `archived` | No longer usable for new associations |
 
-Once created, you can view detailed information about each coupon including its current status, usage statistics, and configuration:
+Only `active` coupons pass association validation.
 
-<Frame>
-  ![Coupon Details](/public/images/docs/Product%20catalogue/Coupons/coupon_details.png)
-</Frame>
+## Quick start
 
-This detailed view helps you monitor coupon performance and verify settings before applying them to customer subscriptions.
-
-## Applying Coupons to Subscriptions
-
-When applying coupons to customer subscriptions, you'll use a simple selection dialog:
-
-<Frame>
-  ![Link Coupon Dialog](/public/images/docs/Product%20catalogue/Coupons/link_coupon_dialog.png)
-</Frame>
-
-The interface makes it easy to select the appropriate coupon from your available options and apply it to customer subscriptions with just a few clicks.
-
-## Use Cases
-
-### New Customer Acquisition
-
-- Welcome discounts for first-time customers
-- Free trial periods with automatic conversion
-- Referral program incentives
-
-### Customer Retention
-
-- Loyalty discounts for long-term subscribers
-- Win-back offers for churned customers
-- Upgrade incentives for existing customers
-
-### Revenue Optimization
-
-- Seasonal promotions and sales events
-- Volume-based discounts for enterprise customers
-- A/B testing different pricing strategies
-
-## Best Practices
-
-1. **Clear Naming**: Use descriptive coupon names that indicate the purpose
-2. **Set Expiry Dates**: Always include expiration dates to prevent unintended long-term discounts
-3. **Monitor Performance**: Track redemption rates and revenue impact
-4. **Test Before Launch**: Validate coupons with small customer groups
-5. **Plan for Renewals**: Consider how discounts affect subscription renewals
-
-## Integration
-
-Coupons integrate seamlessly with:
-
-- **Subscription Management**: Apply discounts during subscription creation and updates
-- **Billing System**: Automatic discount calculations in invoices
-- **Analytics**: Track coupon performance and customer behavior
-- **API Access**: Programmatically create and manage coupons
-
-💡 **Ready to get started?** [Create your first coupon](/docs/product-catalogue/coupons/create) to begin offering flexible pricing options to your customers.
+1. [Create a coupon](/docs/product-catalogue/coupons/create) with a type, value, and optional validity window.
+2. [Apply it to a subscription](/docs/product-catalogue/coupons/apply-discount-on-subscription) at creation time or via subscription phases for scheduled windows.

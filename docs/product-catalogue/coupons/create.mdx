@@ -1,137 +1,137 @@
 ---
 title: "Create a Coupon"
-description: "Learn how to create discount coupons in Flexprice to offer flexible pricing options to your customers."
+description: "Create percentage or fixed-amount discount coupons via API or dashboard."
 ---
 
-Follow the steps below to create a discount coupon in Flexprice:
+## Via API
 
-1. In the main navigation menu, select **Product Catalog** > **Coupons**.
+```bash
+curl -X POST https://api.flexprice.io/v1/coupons \
+  -H "x-api-key: <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Summer Sale",
+    "type": "percentage",
+    "percentage_off": "15.00",
+    "cadence": "once",
+    "coupon_code": "SUMMER15",
+    "redeem_after": "2025-07-01T00:00:00Z",
+    "redeem_before": "2025-08-31T23:59:59Z",
+    "max_redemptions": 1000
+  }'
+```
 
-2. Click **Create Coupon** to open the coupon creation side drawer.
+**Response**
 
-3. Fill in the coupon details in the form:
+```json
+{
+  "id": "coup_01abc123",
+  "name": "Summer Sale",
+  "type": "percentage",
+  "percentage_off": "15.00",
+  "cadence": "once",
+  "coupon_code": "SUMMER15",
+  "redeem_after": "2025-07-01T00:00:00Z",
+  "redeem_before": "2025-08-31T23:59:59Z",
+  "max_redemptions": 1000,
+  "total_redemptions": 0,
+  "status": "active"
+}
+```
 
-<Frame>
-  ![Create Coupon Drawer](/public/images/docs/Product%20catalogue/Coupons/create_coupon_drawer.png)
-</Frame>
+## Request fields
 
-The create coupon side drawer provides a comprehensive form with all the necessary fields to configure your discount offer. Each field is clearly labeled with helpful descriptions to guide you through the setup process.
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Display name shown in the dashboard and invoice details |
+| `type` | string | Yes | `percentage` or `fixed` |
+| `cadence` | string | Yes | `once`, `repeated`, or `forever` |
+| `percentage_off` | decimal string | When `type=percentage` | Discount as a percent, e.g. `"15.00"` for 15% |
+| `amount_off` | decimal string | When `type=fixed` | Flat discount amount, e.g. `"50.00"` |
+| `currency` | string | When `type=fixed` | ISO currency code, e.g. `"USD"` |
+| `duration_in_periods` | int | When `cadence=repeated` | Number of billing cycles the discount applies. Must not be set for other cadences. |
+| `coupon_code` | string | No | Human-readable code customers can enter to redeem (e.g. `"SUMMER15"`). Auto-generated if omitted. |
+| `redeem_after` | timestamp | No | Earliest time a new association can be created |
+| `redeem_before` | timestamp | No | Expiry. New associations cannot be created after this time. |
+| `max_redemptions` | int | No | Cap on total associations across all subscriptions |
+| `metadata` | object | No | Key-value pairs for your own tracking |
 
-## Coupon Details
+## Cadence behaviour
 
-### Coupon Name
+| Cadence | What happens |
+|---------|-------------|
+| `once` | Discount applies to the first invoice in the association window only |
+| `repeated` | Discount applies for `duration_in_periods` consecutive billing cycles |
+| `forever` | Discount applies to every invoice for the life of the subscription |
 
-- **Field**: Enter a descriptive name for the coupon (e.g., "Summer Sale", "New Customer Discount")
-- **Description**: A descriptive name for this coupon that will be visible to customers and in your dashboard
+## Fixed-amount coupon
 
-### Coupon Type
+For a fixed dollar amount off, set `type: fixed` and provide both `amount_off` and `currency`:
 
-- **Field**: Choose between two discount types:
-  - **Fixed Amount**: Provides a specific currency amount discount (e.g., $10 off)
-  - **Percentage**: Provides a percentage-based discount (e.g., 15% off)
-- **Description**: Choose between fixed amount or percentage discount
+```bash
+curl -X POST https://api.flexprice.io/v1/coupons \
+  -H "x-api-key: <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "New Customer Credit",
+    "type": "fixed",
+    "amount_off": "50.00",
+    "currency": "USD",
+    "cadence": "once"
+  }'
+```
 
-As shown in the image above, the dropdown allows you to select between "Fixed Amount" and "Percentage" discount types. The description below the field explains the purpose of this selection.
+## Recurring coupon
 
-### Amount Off / Percentage Off
+To discount multiple billing cycles, use `cadence: repeated` with `duration_in_periods`:
 
-- **Field**: Enter the discount value
-  - For **Fixed Amount**: Enter the currency amount (e.g., 10.00)
-  - For **Percentage**: Enter the percentage value (e.g., 15.00 for 15%)
-- **Description**: The discount amount or percentage to apply
+```bash
+curl -X POST https://api.flexprice.io/v1/coupons \
+  -H "x-api-key: <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Quarterly Promo",
+    "type": "percentage",
+    "percentage_off": "20.00",
+    "cadence": "repeated",
+    "duration_in_periods": 3
+  }'
+```
 
-The image shows the "Amount Off" field set to "0.00" with up/down arrows for easy adjustment. When "Fixed Amount" is selected, this field accepts the currency amount. For percentage discounts, this field would show the percentage value.
+This applies a 20% discount for the first 3 billing cycles of each association.
 
-### Currency
+## Manage existing coupons
 
-- **Field**: Select the currency for the discount (e.g., USD, EUR, GBP)
-- **Description**: The currency in which the discount will be applied
+```bash
+# List coupons
+curl https://api.flexprice.io/v1/coupons \
+  -H "x-api-key: <API_KEY>"
 
-In the image, you can see the currency dropdown showing "USD" as the selected currency. This ensures the discount is applied in the correct currency format.
+# Get a coupon
+curl https://api.flexprice.io/v1/coupons/<coupon_id> \
+  -H "x-api-key: <API_KEY>"
 
-### Cadence
+# Search coupons by status
+curl -X POST https://api.flexprice.io/v1/coupons/search \
+  -H "x-api-key: <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "status": "active" }'
 
-- **Field**: Choose how often the coupon can be used:
-  - **Once**: The discount applies only one time per customer
-  - **Repeated**: The discount applies for a specific number of billing periods
-  - **Forever**: The discount applies indefinitely for the subscription
-- **Description**: How often this coupon can be used
+# Update a coupon (only name and metadata are updatable)
+curl -X PUT https://api.flexprice.io/v1/coupons/<coupon_id> \
+  -H "x-api-key: <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "name": "Summer Sale 2025" }'
 
-The image shows the cadence dropdown with "Once" selected, indicating this coupon will apply the discount only for the first billing period.
+# Delete a coupon
+curl -X DELETE https://api.flexprice.io/v1/coupons/<coupon_id> \
+  -H "x-api-key: <API_KEY>"
+```
 
-### Duration in Periods
+## Via dashboard
 
-- **Field**: Enter the number of billing periods the discount should apply (only relevant for "Repeated" cadence)
-- **Description**: Number of billing periods the discount will be active
+Go to **Product Catalog** > **Coupons** > **Create Coupon** and fill in the same fields described above.
 
-### Redeem After (Optional)
+## Next step
 
-- **Field**: Select a start date when the coupon becomes valid
-- **Description**: When the coupon becomes valid for redemption
-
-The image shows the date picker with a calendar icon and "Select start date" placeholder text. This field allows you to set when the coupon becomes available for use.
-
-### Redeem Before (Optional)
-
-- **Field**: Select an expiry date when the coupon expires
-- **Description**: When the coupon expires and can no longer be used
-
-Similar to the "Redeem After" field, this date picker shows "Select expiry date" and allows you to set when the coupon will no longer be valid for redemption.
-
-### Max Redemptions (Optional)
-
-- **Field**: Enter the maximum number of times this coupon can be used across all customers
-- **Description**: Maximum number of times this coupon can be used
-
-The image shows this field set to "100" with up/down arrows for easy adjustment. This controls the total number of times the coupon can be redeemed across all customers.
-
-### Metadata (Optional)
-
-- **Field**: Add custom key-value pairs for additional information
-- **Description**: Additional metadata for tracking or integration purposes
-
-The image shows a text area with example JSON format `{"key": "value"}`. This allows you to add custom metadata for tracking, integration, or organizational purposes.
-
-## Example Coupon Configuration
-
-Here's an example of a typical coupon setup:
-
-- **Name**: "Summer Sale 2024"
-- **Type**: Percentage
-- **Percentage Off**: 15.00
-- **Currency**: USD
-- **Cadence**: Once
-- **Redeem After**: July 1, 2024
-- **Redeem Before**: August 31, 2024
-- **Max Redemptions**: 1000
-
-This creates a 15% discount coupon that can be used once per customer, is valid from July to August 2024, and can be redeemed up to 1000 times total.
-
-<Frame>
-  ![Coupon Details](/public/images/docs/Product%20catalogue/Coupons/coupon_details.png)
-</Frame>
-
-This image shows the detailed view of a created coupon ("Freedom Sale") with all its configured settings displayed in an organized layout. You can see the coupon type (Percentage), discount amount (10%), cadence (Once), status (Active), and other important details.
-
-## Coupon Rules and Filters
-
-💡 **Advanced Configuration**: You can also configure coupon rules to control when and how the discount applies:
-
-- **Inclusions**: All conditions must be met for the coupon to apply (AND logic)
-- **Exclusions**: Any exclusion prevents the coupon from applying (OR logic)
-
-Common rule fields include:
-
-- `customer_id`: Apply only to specific customers
-- `plan_id`: Apply only to specific plans
-- `amount`: Apply only to subscriptions above/below certain amounts
-
-## Next Steps
-
-After creating a coupon, you can:
-
-1. [Apply it to subscriptions](/docs/product-catalogue/coupons/apply-discount-on-subscription)
-2. Monitor its usage and redemption statistics
-3. Archive or modify the coupon as needed
-
-💡 **Tip**: Test your coupons with a small group of customers before launching them widely to ensure they work as expected.
+[Apply the coupon to a subscription](/docs/product-catalogue/coupons/apply-discount-on-subscription) at creation time or post-creation via the subscription modification API.

@@ -1,0 +1,65 @@
+---
+title: "Taxes Overview"
+description: "How flexprice handles tax rates, associations, and automatic inheritance across customers and subscriptions."
+---
+
+flexprice uses a two-object model for taxes: a **tax rate** (the reusable definition) and a **tax association** (the link between that rate and an entity). You define rates once and attach them to your tenant, customers, or individual subscriptions. Invoice generation picks up the right rates automatically and applies them to the post-discount subtotal.
+
+## Two objects, one workflow
+
+**Tax Rate**
+The rate definition: its `tax_rate_type` (`percentage` or `fixed`), its value, and a unique `code` you reference everywhere else.
+
+**Tax Association**
+The link between a tax rate and an entity (`tenant`, `customer`, `subscription`, or `invoice`). The association controls whether the rate fires automatically on new invoices and at what priority when multiple rates apply.
+
+## Inheritance chain
+
+flexprice resolves which tax rates apply to an invoice by walking this chain, from least specific to most specific:
+
+```
+Tenant-level associations
+  (inherited when a customer has no associations of its own)
+Customer-level associations
+  (inherited when a subscription has no tax_rate_overrides)
+Subscription-level associations   <-- highest specificity, always wins
+```
+
+Setting `tax_rate_overrides` on a subscription replaces, not adds to, the customer's associations for that subscription's invoices. Omit `tax_rate_overrides` entirely to inherit from the customer.
+
+<Info>
+An invoice gets **no tax** if none of the three levels has an active association set to apply automatically. Verify your inheritance chain before going live.
+</Info>
+
+## Where tax fits in invoice calculation
+
+Tax is always computed on the post-discount, post-credit balance:
+
+| Step | Value |
+|------|-------|
+| Subtotal | Sum of all line items |
+| Line-item coupon discounts | Applied per line item |
+| Invoice-level coupon discounts | Applied to running subtotal |
+| Wallet / prepaid credits | Deducted |
+| **Taxable amount** | `MAX(subtotal - all_discounts, 0)` |
+| **Tax** | Sum of all matching tax rates applied to taxable amount |
+| **Invoice total** | `subtotal - discounts - wallet_credits + tax` |
+
+Tax is never charged on a negative base. If coupons eliminate the subtotal, tax is zero.
+
+## Tax rate types
+
+| `tax_rate_type` | Use case | Value field |
+|-----------------|----------|-------------|
+| `percentage` | Sales tax, VAT, GST | `percentage_value` (e.g. `"8.25"` for 8.25%) |
+| `fixed` | Flat regulatory fees, per-invoice levies | `fixed_value` |
+
+## Multiple tax rates
+
+You can attach multiple tax rate associations to the same entity. Each rate is applied independently to the same taxable base (they do not compound). Use `priority` (lower number fires first) to control application order when ordering matters for reporting.
+
+## Quick start
+
+1. [Create a tax rate](/docs/product-catalogue/taxes/configure) with a unique `code` and a `percentage` or `fixed` value.
+2. [Create a tax association](/docs/product-catalogue/taxes/apply) to link that rate to your tenant, a customer, or a subscription.
+3. Generate an invoice. flexprice resolves applicable rates via the inheritance chain and applies them to the taxable amount automatically.

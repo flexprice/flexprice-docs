@@ -1,0 +1,117 @@
+---
+title: "Configure Tax Rates"
+description: "Create and manage reusable tax rate definitions in flexprice."
+---
+
+A tax rate is a reusable definition. You create it once with a unique `code`, then reference that `code` whenever you link it to a customer, subscription, or tenant.
+
+## Create a tax rate
+
+```bash
+curl -X POST https://api.flexprice.io/v1/taxes/rates \
+  -H "x-api-key: <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "US Sales Tax",
+    "code": "TAX_US_CA",
+    "tax_rate_type": "percentage",
+    "percentage_value": "8.25",
+    "description": "California state sales tax"
+  }'
+```
+
+**Response**
+
+```json
+{
+  "id": "txr_01abc123",
+  "name": "US Sales Tax",
+  "code": "TAX_US_CA",
+  "tax_rate_type": "percentage",
+  "percentage_value": "8.25",
+  "tax_rate_status": "active",
+  "description": "California state sales tax",
+  "created_at": "2025-01-15T10:00:00Z"
+}
+```
+
+## Request fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Display name shown in invoices and the dashboard |
+| `code` | string | Yes | Unique identifier used in associations. **Immutable after creation.** |
+| `tax_rate_type` | string | Yes | `percentage` or `fixed` |
+| `percentage_value` | decimal string | When `tax_rate_type=percentage` | Rate as a percent, e.g. `"8.25"` for 8.25% |
+| `fixed_value` | decimal string | When `tax_rate_type=fixed` | Flat amount added per invoice, e.g. `"5.00"` |
+| `description` | string | No | Notes for your own reference |
+| `metadata` | object | No | Key-value pairs for your own tracking |
+
+<Warning>
+The `code` field is immutable. Choose it carefully since it is the key used in all association requests. To rename a code, create a new tax rate and migrate your associations to it.
+</Warning>
+
+## Create a fixed-amount tax rate
+
+Use `tax_rate_type: fixed` when you need to add a flat fee to every invoice regardless of the subtotal, such as a regulatory levy.
+
+```bash
+curl -X POST https://api.flexprice.io/v1/taxes/rates \
+  -H "x-api-key: <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Regulatory Fee",
+    "code": "FEE_REG_US",
+    "tax_rate_type": "fixed",
+    "fixed_value": "5.00"
+  }'
+```
+
+## List tax rates
+
+```bash
+curl https://api.flexprice.io/v1/taxes/rates \
+  -H "x-api-key: <API_KEY>"
+```
+
+## Get a tax rate
+
+```bash
+curl https://api.flexprice.io/v1/taxes/rates/<tax_rate_id> \
+  -H "x-api-key: <API_KEY>"
+```
+
+## Update a tax rate
+
+You can update `name`, `description`, and `metadata`. The `code` and `tax_rate_type` fields are immutable.
+
+```bash
+curl -X PUT https://api.flexprice.io/v1/taxes/rates/<tax_rate_id> \
+  -H "x-api-key: <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "description": "Updated for 2025 rate change"
+  }'
+```
+
+## Delete a tax rate
+
+A tax rate can only be deleted if it has no active associations and no applied records on existing invoices. To stop applying a tax without losing audit history, delete the association instead of the rate.
+
+```bash
+curl -X DELETE https://api.flexprice.io/v1/taxes/rates/<tax_rate_id> \
+  -H "x-api-key: <API_KEY>"
+```
+
+**Error: rate has active associations**
+
+```json
+{
+  "error": "tax_rate_in_use",
+  "message": "Cannot delete a tax rate with active associations. Delete associations first."
+}
+```
+
+## Next step
+
+Once you have a tax rate, [apply it to a customer or subscription](/docs/product-catalogue/taxes/apply).
