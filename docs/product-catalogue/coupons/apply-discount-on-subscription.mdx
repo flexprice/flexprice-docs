@@ -176,12 +176,12 @@ curl -X POST https://api.flexprice.io/v1/subscriptions/<subscription_id>/modify/
     "type": "coupon",
     "coupon_params": {
       "action": "remove",
-      "association_id": "<coupon_association_id>"
+      "coupon_association_id": "<coupon_association_id>"
     }
   }'
 ```
 
-Get the `association_id` from the subscription response with `expand=coupon_associations`.
+Get the `coupon_association_id` from the subscription response with `expand=coupon_associations`.
 
 Removal affects only invoices generated after the request. Previously issued invoices are not changed.
 
@@ -216,7 +216,7 @@ curl -X POST https://api.flexprice.io/v1/subscriptions/<subscription_id>/modify/
 |-------|------|----------|-------------|
 | `action` | string | Yes | `add` or `remove` |
 | `coupon_code` | string | When `action=add` | Code of the coupon to attach |
-| `association_id` | string | When `action=remove` | ID of the coupon association to detach |
+| `coupon_association_id` | string | When `action=remove` | ID of the coupon association to detach |
 | `start_date` | timestamp | No | When the association starts. Defaults to now. |
 | `end_date` | timestamp | No | When the association ends. Omit for indefinite. |
 | `subscription_line_item_id` | string | No | Target a specific line item. Mutually exclusive with `subscription_id`. |

@@ -136,12 +136,12 @@ curl -X POST https://api.flexprice.io/v1/subscriptions/<subscription_id>/modify/
     "type": "tax",
     "tax_params": {
       "action": "remove",
-      "association_id": "<tax_association_id>"
+      "tax_association_id": "<tax_association_id>"
     }
   }'
 ```
 
-Get the `association_id` from `GET /v1/taxes/associations?entity_type=subscription&entity_id=<subscription_id>`.
+Get the `tax_association_id` from `GET /v1/taxes/associations?entity_type=subscription&entity_id=<subscription_id>`.
 
 Removing a tax association affects only invoices generated after the change. Previously issued invoices are not changed.
 
@@ -168,7 +168,7 @@ curl -X POST https://api.flexprice.io/v1/subscriptions/<subscription_id>/modify/
 |-------|------|----------|-------------|
 | `action` | string | Yes | `add` or `remove` |
 | `tax_rate_id` | string | When `action=add` | ID of the tax rate to attach |
-| `association_id` | string | When `action=remove` | ID of the tax association to detach |
+| `tax_association_id` | string | When `action=remove` | ID of the tax association to detach |
 | `effective_date` | timestamp | No | When the change takes effect. Defaults to now. |
 
 ## Multiple tax rates on the same entity
@@ -217,7 +217,7 @@ curl "https://api.flexprice.io/v1/taxes/associations?entity_type=customer&entity
 You can update `priority`, `auto_apply`, and `metadata` without deleting and recreating.
 
 ```bash
-curl -X PUT https://api.flexprice.io/v1/taxes/associations/<association_id> \
+curl -X PUT https://api.flexprice.io/v1/taxes/associations/<tax_association_id> \
   -H "x-api-key: <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -236,4 +236,4 @@ Create no customer-level associations and ensure no tenant associations set to a
 Use `tax_rate_overrides` at subscription creation. The customer's associations remain unchanged for their other subscriptions.
 
 **Stop a tax mid-lifecycle**
-Use the modification API with `action: "remove"`. Pass the `association_id` from listing the subscription's associations.
+Use the modification API with `action: "remove"`. Pass the `tax_association_id` from listing the subscription's associations.
