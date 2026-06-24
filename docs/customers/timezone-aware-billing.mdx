@@ -1,0 +1,136 @@
+---
+title: "Customer Timezones"
+description: "Bill customers in their local timezone. Set a timezone on a customer and Flexprice automatically aligns billing periods, usage windows, entitlement resets, and credit expirations to their local calendar."
+---
+
+When you serve customers across geographies, billing in UTC creates a visible problem: a customer in Bangalore on a monthly plan ends their billing period at 5:30 AM local time, not midnight. Their invoice covers dates that do not match their calendar, and usage that feels like "this month" to them lands on "next month's" invoice. Customer timezones fix this by aligning every billing boundary to the customer's local time.
+
+---
+
+## How It Works
+
+Set a `timezone` on the customer record. Flexprice then aligns the following to the customer's local calendar:
+
+- **Billing period start and end:** each period (daily, weekly, monthly, quarterly, half-yearly, annual) begins and ends at local midnight.
+- **Usage windows:** usage is aggregated per local day or month, not UTC.
+- **Entitlement resets:** daily and monthly usage limits reset at local midnight.
+- **Credit grants:** prepaid credits expiring at period-end use the customer's local boundary.
+- **Coupon end dates:** coupons tied to billing periods expire at the local period boundary.
+
+Customers without a timezone set default to `UTC`.
+
+---
+
+## Setting Up
+
+### Via the API
+
+Set the `timezone` field when creating a customer, or update it at any time:
+
+```bash
+# Create a customer with a timezone
+curl -X POST https://api.flexprice.io/v1/customers \
+  -H "Authorization: Bearer <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "external_id": "cust_001",
+    "name": "Acme India",
+    "email": "billing@acme.in",
+    "timezone": "Asia/Kolkata"
+  }'
+```
+
+```bash
+# Update an existing customer's timezone
+curl -X PATCH https://api.flexprice.io/v1/customers/{id} \
+  -H "Authorization: Bearer <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "timezone": "America/Los_Angeles"
+  }'
+```
+
+<Warning>
+  Updating a customer's timezone does **not** affect active subscriptions. Only new subscriptions created after the update will use the new timezone.
+</Warning>
+
+Use standard IANA timezone names. Common examples:
+
+| Region | IANA Name |
+|---|---|
+| India (IST) | `Asia/Kolkata` |
+| US Eastern | `America/New_York` |
+| US Pacific | `America/Los_Angeles` |
+| Germany | `Europe/Berlin` |
+| UK | `Europe/London` |
+| Singapore | `Asia/Singapore` |
+| Australia Eastern | `Australia/Sydney` |
+| Nepal | `Asia/Kathmandu` |
+
+Invalid timezone names are rejected with HTTP 400.
+
+### Via the Dashboard
+
+When creating or editing a customer, select the timezone from the **Timezone** dropdown. It applies to all future subscriptions for that customer.
+
+<Note>
+  If no timezone is selected, the customer defaults to `UTC`.
+</Note>
+
+---
+
+## What Stays the Same
+
+Changing a customer's timezone does not affect how you send events or how historical data is stored. Your event pipeline requires no changes.
+
+Existing customers without a timezone and their historical subscriptions are unaffected.
+
+---
+
+## Example
+
+A customer in India (IST, UTC+5:30) on a monthly calendar plan:
+
+| | Without timezone | With timezone (IST) |
+|---|---|---|
+| Daily usage resets at | 5:30 AM IST | 12:00 AM IST ✓ |
+| Entitlement resets at | 5:30 AM IST | 12:00 AM IST ✓ |
+| Invoice period | March 15 – April 1 (UTC dates) | March 15 – April 1 (IST dates) ✓ |
+
+---
+
+## Limitations
+
+**Changing timezone on an active subscription**
+
+Updating a customer's timezone only applies to new subscriptions. To rebill an existing subscription under a new timezone, cancel it and create a new one.
+
+**Non-standard offsets**
+
+Half-hour and 45-minute offsets such as India (UTC+5:30), Nepal (UTC+5:45), and Newfoundland (UTC-3:30) are fully supported.
+
+---
+
+## Related Articles
+
+<CardGroup cols={2}>
+  <Card icon="users" href="/docs/customers/create" title="Creating a Customer">
+    Create customers via the dashboard or API.
+  </Card>
+  <Card icon="refresh" href="/docs/subscriptions/customers-create-subscription" title="Creating a Subscription">
+    Create a subscription and set the start date for a customer.
+  </Card>
+  <Card icon="wallet" href="/docs/wallet/prepaid-and-promotional" title="Wallet & Credit Grants">
+    Credit grants that expire at billing period boundaries respect the customer's timezone.
+  </Card>
+  <Card icon="tag" href="/docs/product-catalogue/coupons/overview" title="Coupons">
+    Coupons tied to billing periods use the customer's local timezone for expiry.
+  </Card>
+</CardGroup>
+
+---
+
+**API References**
+- [Create a Customer](/api-reference/customers/create-customer)
+- [Update a Customer](/api-reference/customers/update-customer)
+- [Create a Subscription](/api-reference/subscriptions/create-subscription)
