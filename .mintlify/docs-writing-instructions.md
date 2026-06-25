@@ -145,14 +145,14 @@ Use `##` for top-level sections and `###` for subsections. Never use `#` (reserv
 ### Code Blocks
 
 Single language:
-```mdx
+````mdx
 ```json
 { "key": "value" }
 ```
-```
+````
 
 Multiple languages side by side:
-```mdx
+````mdx
 <CodeGroup>
 ```bash cURL
 curl ...
@@ -166,7 +166,7 @@ fetch(...)
 import requests
 ```
 </CodeGroup>
-```
+````
 
 ### Tables
 
