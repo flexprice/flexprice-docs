@@ -165,7 +165,7 @@ fetch(...)
 ```python Python
 import requests
 ```
-</CodeGroup>
+\</CodeGroup>
 ```
 
 ### Tables
