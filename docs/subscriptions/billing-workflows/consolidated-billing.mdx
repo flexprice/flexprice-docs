@@ -130,7 +130,9 @@ Open the parent subscription's detail page. Child skeleton subscriptions appear 
 
 ## Post-creation changes
 
-You can add additional child customers to an existing parent subscription using the modify API.
+Use the modify API to add or remove child customers on an existing parent subscription. The `action` field selects the operation: `add` attaches new children, `remove` schedules existing inherited children for cancellation at the end of their billing period.
+
+### Add child customers
 
 <Tabs>
   <Tab title="API">
@@ -141,16 +143,42 @@ You can add additional child customers to an existing parent subscription using 
       -d '{
         "type": "inheritance",
         "inheritance_params": {
+          "action": "add",
           "external_customer_ids_to_inherit_subscription": ["ext-latam-team"]
         }
       }'
     ```
 
-    Replace `{parent_subscription_id}` with the `id` of the parent subscription.
-
-    You can preview the modify operation without committing changes using `POST /subscriptions/{id}/modify/preview` with the same request body.
+    Replace `{parent_subscription_id}` with the `id` of the parent subscription. When `action` is omitted, Flexprice defaults to `add` so existing integrations remain compatible.
   </Tab>
 </Tabs>
+
+### Remove child customers
+
+<Tabs>
+  <Tab title="API">
+    ```bash
+    curl -X POST https://api.flexprice.io/v1/subscriptions/{parent_subscription_id}/modify/execute \
+      -H "Authorization: Bearer YOUR_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "type": "inheritance",
+        "inheritance_params": {
+          "action": "remove",
+          "external_customer_ids_to_remove": ["ext-apac-team"]
+        }
+      }'
+    ```
+
+    The matching inherited child subscriptions are scheduled for cancellation at the end of the current billing period. Usage continues to roll up to the parent until the period closes.
+  </Tab>
+</Tabs>
+
+<Note>
+  Provide at least one non-empty external customer ID. For `action: "remove"`, only `external_customer_ids_to_remove` is read; for `action: "add"`, only `external_customer_ids_to_inherit_subscription` is read.
+</Note>
+
+Preview either operation without committing changes by calling `POST /subscriptions/{id}/modify/preview` with the same request body.
 
 ## Analytics: per-child and aggregated
 
