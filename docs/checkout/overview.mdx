@@ -1,0 +1,47 @@
+---
+title: "Checkout"
+description: "Accept payment and activate subscriptions in a hosted checkout flow, without building any payment UI."
+---
+
+Flexprice Checkout is a hosted payment integration that handles the full subscription activation sequence for you. Connect a payment provider, create a session from your backend, and redirect your customer. Flexprice takes care of the payment page, the subscription, the invoice, and the cleanup if something goes wrong.
+
+It is the fastest way to go from a pricing page to an active, paying subscriber.
+
+## When to use Checkout
+
+Use Checkout when your customers initiate and pay for their own subscription: a self-serve pricing page, an upgrade flow, or a sign-up gate.
+
+If you create subscriptions on behalf of customers from your own backend (after a sales call, from an admin dashboard, or via contract), use the [Subscriptions API](/docs/subscriptions/customers-create-subscription) instead.
+
+## How it works
+
+Your backend creates a Checkout Session with the customer, plan, and payment provider. Flexprice generates a hosted payment page URL and returns it to you. You redirect the customer there. Once payment is complete, Flexprice activates the subscription and finalizes the invoice.
+
+If the customer cancels, the session times out, or the payment fails, Flexprice cleans up all draft records automatically.
+
+## Choose your payment provider
+
+Each provider has its own setup page with connection instructions, webhook configuration, and test credentials.
+
+<CardGroup cols={2}>
+  <Card icon="credit-card" href="/docs/checkout/razorpay-checkout" title="Razorpay">
+    Accept payments via Razorpay payment links.
+  </Card>
+</CardGroup>
+
+## Start building
+
+<CardGroup cols={2}>
+  <Card icon="code" href="/docs/checkout/checkout-sessions" title="Checkout Sessions API">
+    Create, retrieve, and manage sessions.
+  </Card>
+  <Card icon="list-check" href="/docs/checkout/implementation-guide" title="Implementation Guide">
+    Backend, frontend redirect, webhook handling, and go-live checklist.
+  </Card>
+  <Card icon="webhook" href="/docs/webhook/webhooks" title="Webhook Events">
+    Subscribe to `checkout.session.*` events to trigger fulfillment in your system.
+  </Card>
+  <Card icon="refresh" href="/docs/subscriptions/customers-create-subscription" title="Manual Subscriptions">
+    Create subscriptions directly without a payment step.
+  </Card>
+</CardGroup>

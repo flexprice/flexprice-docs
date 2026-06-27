@@ -1,0 +1,87 @@
+---
+title: "Razorpay Checkout Setup"
+description: "Configure Razorpay to work with Flexprice Checkout Sessions, including the exact webhook events required."
+---
+
+Before creating your first Checkout Session with Razorpay, you need a connected Razorpay account and the correct webhook events enabled in your Razorpay dashboard.
+
+## Step 1: Connect Razorpay
+
+Follow the [Razorpay Connection Setup guide](/integrations/razorpay/connection-setup) to add your API keys and webhook secret. Come back here once the connection is active.
+
+## Step 2: Enable the required webhook events
+
+Go to your Razorpay Dashboard: **Settings → Webhooks → [your Flexprice endpoint]** and enable all five events:
+
+| Event | Required for |
+|-------|-------------|
+| `payment.captured` | Payment reconciliation |
+| `payment.failed` | Payment failure handling |
+| `payment_link.paid` | Activating the subscription when payment completes |
+| `payment_link.cancelled` | Cleaning up when a customer cancels the payment link |
+| `payment_link.expired` | Cleaning up when the payment link expires |
+
+<Warning>
+  If `payment_link.paid` is not enabled, Flexprice will never receive payment confirmation and the subscription will stay inactive. Verify all five events are enabled before testing.
+</Warning>
+
+### Webhook URL
+
+Your Flexprice webhook URL follows this format:
+
+```
+https://api.cloud.flexprice.io/v1/webhooks/razorpay/<TENANT_ID>/<ENVIRONMENT_ID>
+```
+
+Find your `TENANT_ID` and `ENVIRONMENT_ID` in **Settings → General**.
+
+## Step 3: Verify the webhook secret
+
+Flexprice validates the signature on every inbound Razorpay webhook. If the secret doesn't match, events are rejected silently.
+
+Go to **Settings → Connections → Razorpay** in Flexprice and confirm the webhook secret matches what's shown in your Razorpay dashboard for that endpoint.
+
+## Step 4: Test the flow
+
+Use Razorpay test mode before going live.
+
+**Test cards:**
+
+| Network | Card number | CVV | Expiry |
+|---------|-------------|-----|--------|
+| Visa | `4386 2894 0766 0153` | Any 3 digits | Any future date |
+| Mastercard | `2305 3242 5784 8228` | Any 3 digits | Any future date |
+
+**Test UPI:**
+
+| UPI ID | Simulates |
+|--------|-----------|
+| `success@razorpay` | Successful payment |
+| `failure@razorpay` | Failed payment |
+
+After a test payment, confirm:
+
+- Session status is `completed`
+- Subscription status is `active`
+- Invoice status is `finalized`
+- Your server received the `checkout.session.completed` event
+
+If the session stays `pending` after payment, check the Razorpay webhook delivery log and confirm all five events are enabled on the correct endpoint URL.
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---------|-------------|-----|
+| Session stays `pending` after payment | `payment_link.paid` not enabled | Add it in Razorpay Dashboard → Webhooks |
+| Session fails immediately on creation | Razorpay connection inactive | Check status in Settings → Connections |
+| Webhook secret mismatch error | Secret out of sync | Re-copy the secret from Razorpay into Flexprice |
+| Subscription stays inactive after payment | Wrong tenant or environment ID in webhook URL | Verify the URL in Razorpay matches the format above |
+
+<CardGroup cols={2}>
+  <Card icon="plug" href="/integrations/razorpay/connection-setup" title="Razorpay Connection Setup">
+    Connect your Razorpay account to Flexprice.
+  </Card>
+  <Card icon="code" href="/docs/checkout/checkout-sessions" title="Checkout Sessions API">
+    Create your first session once Razorpay is configured.
+  </Card>
+</CardGroup>
