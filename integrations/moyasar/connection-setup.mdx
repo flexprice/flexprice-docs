@@ -5,19 +5,19 @@ description: 'Complete guide to setting up and configuring Moyasar connections i
 
 ## Overview
 
-A Moyasar connection in Flexprice stores encrypted credentials so Flexprice can sync invoices to Moyasar and generate payment links for them.
+A Moyasar connection in Flexprice stores encrypted credentials so Flexprice can sync invoices to Moyasar, generate payment links, and enable autopay via the Flexprice checkout page.
 
 ### Steps required
 
 <Steps>
   <Step title="Gather credentials">
-    Get Secret Key (required), and Webhook Secret (required) from the Moyasar Dashboard.
+    Get your Secret Key, Publishable Key, and Webhook Secret from the Moyasar Dashboard.
   </Step>
   <Step title="Configure webhook">
-    Add webhook URL in Moyasar, select `payment_paid`, and copy the Webhook Secret.
+    Add the webhook URL in Moyasar, select `payment_paid`, and copy the Webhook Secret.
   </Step>
   <Step title="Create connection">
-    In the Flexprice dashboard (Integrations → Moyasar → Add a connection), enter your Secret Key and Webhook Secret.
+    In the Flexprice dashboard (Integrations → Moyasar → Add a connection), enter your Secret Key, Publishable Key, and Webhook Secret.
   </Step>
 </Steps>
 
@@ -28,15 +28,15 @@ A Moyasar connection in Flexprice stores encrypted credentials so Flexprice can 
 
 | Credential | Location in Moyasar Dashboard | Required | Purpose |
 |------------|-------------------------------|----------|---------|
-| **Secret Key** | Settings → API Keys | ✅ | API authentication (Required for all operations) |
-| **Publishable Key** | Settings → API Keys | ⚠️ Optional | Frontend integration (if using client-side elements) |
-| **Webhook Secret** | Settings → Webhooks → [Your Endpoint] | ⚠️ Optional | Webhook signature verification |
+| **Secret Key** | Settings → API Keys | ✅ | API authentication for all server-side operations |
+| **Publishable Key** | Settings → API Keys | ✅ | Required for the Flexprice checkout page (autopay card entry) |
+| **Webhook Secret** | Settings → Webhooks → [Your Endpoint] | ✅ | Webhook signature verification |
 
 ### Finding Your Credentials
 
 <Steps>
   <Step title="Get API Keys">
-    Go to Moyasar Dashboard → Settings → API Keys. Copy your **Secret Key** (starts with `sk_`). Optionally copy your **Publishable Key** (starts with `pk_`).
+    Go to Moyasar Dashboard → Settings → API Keys. Copy both your **Secret Key** (starts with `sk_`) and your **Publishable Key** (starts with `pk_`). Both are required.
   </Step>
   <Step title="Get Webhook Secret">
     Go to Moyasar Dashboard → Settings → Webhooks. Create or select your webhook endpoint and copy the webhook secret (used to verify that events are from Moyasar).
@@ -94,7 +94,7 @@ https://api.cloud.flexprice.io/v1/webhooks/moyasar/tenant_YOUR_TENANT_ID/env_YOU
     Go to **Flexprice dashboard** → **Integrations** → **Moyasar** → **Add a connection**.
   </Step>
   <Step title="Enter credentials">
-    Enter your Secret Key (required) and Webhook Secret (required).
+    Enter your Secret Key, Publishable Key, and Webhook Secret.
   </Step>
   <Step title="Save connection">
     Click to create the connection. Flexprice will store your credentials securely.
