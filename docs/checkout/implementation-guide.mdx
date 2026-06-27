@@ -5,6 +5,10 @@ description: "Step-by-step guide to integrating Flexprice Checkout: backend setu
 
 This guide covers the complete integration: backend session creation, frontend redirect, webhook handling, and going live. By the end, customers will be able to select a plan, pay, and get an active subscription without any manual step on your side.
 
+<Note>
+  **Base URL:** Use `https://us.api.flexprice.io/v1` for US deployments and `https://api.cloud.flexprice.io/v1` for India. All curl examples below use the US endpoint — replace the host if you are on India.
+</Note>
+
 ## Prerequisites
 
 - [ ] Payment provider connected to Flexprice: see [Razorpay Setup](/docs/checkout/razorpay-checkout)
@@ -13,31 +17,12 @@ This guide covers the complete integration: backend session creation, frontend r
 - [ ] Customer record exists in Flexprice before the checkout starts
 - [ ] Plan has at least one non-zero charge
 
-## Architecture
-
-```
-Your frontend        Your backend          Flexprice         Razorpay
-─────────────        ────────────          ─────────         ────────
-User clicks          POST /checkout/       Draft sub +       Payment
-"Subscribe" ───────► sessions      ──────► invoice       ──► link created
-                     Returns URL ◄─────────────────────────────────────
-Redirect ◄───────────
-
-User pays ──────────────────────────────────────────────────► Checkout
-
-                                           ◄── payment_link.paid ──────
-                                           Activates subscription
-                                           Finalizes invoice
-                     ◄── checkout.session.completed ──────────
-Fulfill order ◄──────
-```
-
 ## Step 1: Create a customer
 
 A customer must exist in Flexprice before a session can be created. Create one at sign-up:
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/customers \
+curl -X POST https://us.api.flexprice.io/v1/customers \
   -H "Authorization: Bearer <API_KEY>" \
   -H "X-Environment-ID: <ENVIRONMENT_ID>" \
   -H "Content-Type: application/json" \
@@ -56,7 +41,7 @@ Use the `external_id` as your reference in subsequent calls.
 Call this from your backend only: never expose your API key to the frontend.
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/checkout/sessions \
+curl -X POST https://us.api.flexprice.io/v1/checkout/sessions \
   -H "Authorization: Bearer <API_KEY>" \
   -H "X-Environment-ID: <ENVIRONMENT_ID>" \
   -H "Content-Type: application/json" \
@@ -131,7 +116,7 @@ Use the redirect URLs for UX only, not for fulfillment logic.
 **Success page**: poll the session to confirm before showing a result:
 
 ```bash
-curl https://api.flexprice.io/v1/checkout/sessions/<SESSION_ID> \
+curl https://us.api.flexprice.io/v1/checkout/sessions/<SESSION_ID> \
   -H "Authorization: Bearer <API_KEY>" \
   -H "X-Environment-ID: <ENVIRONMENT_ID>"
 ```

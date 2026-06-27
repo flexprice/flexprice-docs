@@ -5,6 +5,10 @@ description: "Create a time-bounded payment session that activates a subscriptio
 
 A Checkout Session represents a single payment attempt. Call `POST /v1/checkout/sessions`, get back a payment URL, redirect your customer, and Flexprice activates the subscription once payment is confirmed.
 
+<Note>
+  **Base URL:** `https://us.api.flexprice.io/v1` (US) or `https://api.cloud.flexprice.io/v1` (India).
+</Note>
+
 ## Session lifecycle
 
 | Status | Meaning |
@@ -18,7 +22,7 @@ A Checkout Session represents a single payment attempt. Call `POST /v1/checkout/
 ## Create a Checkout Session
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/checkout/sessions \
+curl -X POST https://us.api.flexprice.io/v1/checkout/sessions \
   -H "Authorization: Bearer <API_KEY>" \
   -H "X-Environment-ID: <ENVIRONMENT_ID>" \
   -H "Content-Type: application/json" \
@@ -78,7 +82,7 @@ Redirect the customer to `payment_action.url`. Each session has its own link. Do
 ## Get a Checkout Session
 
 ```bash
-curl https://api.flexprice.io/v1/checkout/sessions/<SESSION_ID> \
+curl https://us.api.flexprice.io/v1/checkout/sessions/<SESSION_ID> \
   -H "Authorization: Bearer <API_KEY>" \
   -H "X-Environment-ID: <ENVIRONMENT_ID>"
 ```
@@ -88,7 +92,7 @@ Use this to confirm `checkout_status` on your redirect pages before showing the 
 ## Delete a Checkout Session
 
 ```bash
-curl -X DELETE https://api.flexprice.io/v1/checkout/sessions/<SESSION_ID> \
+curl -X DELETE https://us.api.flexprice.io/v1/checkout/sessions/<SESSION_ID> \
   -H "Authorization: Bearer <API_KEY>" \
   -H "X-Environment-ID: <ENVIRONMENT_ID>"
 ```
