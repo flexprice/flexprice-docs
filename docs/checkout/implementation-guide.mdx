@@ -1,0 +1,230 @@
+---
+title: "Implementation Guide"
+description: "End-to-end integration guide for developers building a self-serve checkout flow with Flexprice."
+---
+
+This guide walks you through a complete Checkout Session integration: backend API calls, frontend redirect logic, webhook handling, and error states. By the end, your users will be able to select a plan, pay, and get an active subscription without any manual step on your side.
+
+## Prerequisites
+
+Before writing any code:
+
+- [ ] Razorpay account connected to Flexprice ([Connection Setup](/integrations/razorpay/connection-setup))
+- [ ] All 5 webhook events enabled in Razorpay dashboard ([Razorpay Checkout Setup](/docs/checkout/razorpay-checkout))
+- [ ] Flexprice webhook endpoint configured in your system to receive `checkout.session.*` events
+- [ ] Customer exists in Flexprice before initiating a session (create via `POST /v1/customers`)
+- [ ] Plan exists with at least one non-zero charge
+
+## Architecture overview
+
+```
+Your frontend         Your backend           Flexprice          Razorpay
+─────────────         ────────────           ─────────          ────────
+User clicks           POST /checkout/        Creates draft      Creates
+"Subscribe" ────────► sessions        ─────► subscription  ──► payment link
+                                             + invoice
+                      Returns URL ◄──────────────────────────────────────
+Redirect to ◄────────
+payment URL
+
+User pays ────────────────────────────────────────────────────► Razorpay checkout
+
+                                             ◄── payment_link.paid webhook ──
+                                             Activates subscription
+                                             Finalizes invoice
+                      ◄── checkout.session.completed webhook ──
+Your backend          
+handles fulfillment
+```
+
+## Step 1: Create a customer (if not exists)
+
+Sessions require a customer to already exist. Create one at signup or before the checkout flow:
+
+```bash
+curl -X POST https://api.flexprice.io/v1/customers \
+  -H "Authorization: Bearer <API_KEY>" \
+  -H "X-Environment-ID: <ENVIRONMENT_ID>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "external_id": "user_12345",
+    "name": "Acme Corp",
+    "email": "admin@acme.com",
+    "currency": "INR"
+  }'
+```
+
+Store the returned `id` or use `external_id` as your reference going forward.
+
+## Step 2: Create a Checkout Session (backend)
+
+Call this from your backend, never from the frontend. The response contains a payment URL that you return to the client.
+
+```bash
+curl -X POST https://api.flexprice.io/v1/checkout/sessions \
+  -H "Authorization: Bearer <API_KEY>" \
+  -H "X-Environment-ID: <ENVIRONMENT_ID>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_external_id": "user_12345",
+    "action": "create_subscription",
+    "payment_provider": "razorpay",
+    "configuration": {
+      "create_subscription_params": {
+        "plan_id": "plan_pro_monthly",
+        "currency": "INR",
+        "billing_period": "monthly"
+      }
+    },
+    "success_url": "https://app.example.com/onboarding/success?session_id={CHECKOUT_SESSION_ID}",
+    "failure_url": "https://app.example.com/pricing?error=payment_failed",
+    "cancel_url": "https://app.example.com/pricing",
+    "idempotency_key": "order_<your_internal_order_id>"
+  }'
+```
+
+**Important implementation notes:**
+
+- Use `idempotency_key` tied to your internal order or checkout attempt ID. If the network request drops and you retry, you won't create duplicate sessions.
+- The `success_url` can include `{CHECKOUT_SESSION_ID}` as a placeholder. Razorpay will substitute it with the actual session ID on redirect.
+- Store the returned `session.id` in your database. You'll need it to reconcile the webhook later.
+
+**Response:**
+
+```json
+{
+  "id": "chk_01HXXX",
+  "checkout_status": "pending",
+  "expires_at": "2024-01-01T12:15:00Z",
+  "payment_action": {
+    "type": "payment_link",
+    "url": "https://rzp.io/l/XXXXXXX"
+  }
+}
+```
+
+## Step 3: Redirect the customer (frontend)
+
+Return `payment_action.url` to your frontend and do a full-page redirect, not an iframe or popup. Razorpay's checkout does not support embedding.
+
+```javascript
+// After getting the response from your backend
+window.location.href = session.payment_action.url;
+```
+
+**UX tip:** Show a loading state on your side before the redirect. Don't delay the redirect. The payment link has a 15-minute expiry, and if the user arrives at the payment page after it has expired, Razorpay will show an error.
+
+## Step 4: Handle the webhook (backend)
+
+This is the most important part. Do not rely on the redirect URL alone to confirm payment. Webhooks are the authoritative signal.
+
+Subscribe to `checkout.session.completed` in Flexprice (Settings → Webhooks → Add Endpoint). When Flexprice fires this event, the subscription is `active`, the invoice is `finalized`, and the payment is `succeeded`.
+
+### Webhook handler example (Node.js)
+
+```javascript
+app.post('/webhooks/flexprice', express.raw({ type: 'application/json' }), async (req, res) => {
+  const payload = JSON.parse(req.body);
+
+  // Respond 200 immediately, then process async
+  res.status(200).send('ok');
+
+  const { event_type, data } = payload;
+
+  if (event_type === 'checkout.session.completed') {
+    const sessionId = data.id;
+    const customerId = data.customer_id;
+
+    // Look up your internal order by session_id
+    // Grant access, send welcome email, update your DB
+    await fulfillOrder(sessionId, customerId);
+  }
+
+  if (event_type === 'checkout.session.failed') {
+    const sessionId = data.id;
+    // Notify the user, clean up any pending state
+    await handleCheckoutFailure(sessionId);
+  }
+
+  if (event_type === 'checkout.session.expired') {
+    const sessionId = data.id;
+    // Session timed out. User can start a new one.
+    await handleCheckoutExpiry(sessionId);
+  }
+});
+```
+
+**Make your handler idempotent.** Flexprice may fire the same event more than once (at-least-once delivery). Check if the order has already been fulfilled before acting.
+
+## Step 5: Handle the redirect pages
+
+The `success_url` and `failure_url` are where Razorpay sends the customer back. Do not use these alone for fulfillment. They can be tampered with or missed if the user closes the browser. Always cross-check with the webhook or a status poll.
+
+### Success page
+
+```javascript
+// GET /onboarding/success?session_id=chk_01HXXX
+const sessionId = req.query.session_id;
+
+// Poll the session status from your backend
+const session = await flexprice.checkoutSessions.get(sessionId);
+
+if (session.checkout_status === 'completed') {
+  // Safe to show success UI
+  renderSuccessPage();
+} else {
+  // Webhook may not have arrived yet. Poll briefly or show a "processing" state.
+  renderProcessingPage();
+}
+```
+
+### Failure page
+
+If the user lands on the failure or cancel URL, they can retry. Create a new session and send them through the flow again. Old sessions and their draft entities are cleaned up automatically.
+
+## Step 6: Test the full flow
+
+Use Razorpay test mode and these test credentials:
+
+| Method | Credential | Simulates |
+|--------|-----------|-----------|
+| Card (Visa) | `4386 2894 0766 0153`, any CVV, any future date | Successful payment |
+| UPI | `success@razorpay` | Successful payment |
+| UPI | `failure@razorpay` | Failed payment |
+
+**Checklist after a test payment:**
+
+- [ ] Session status is `completed`
+- [ ] Subscription status is `active`
+- [ ] Invoice status is `finalized`
+- [ ] Your backend received `checkout.session.completed`
+- [ ] Fulfillment logic ran (access granted, email sent, DB updated)
+
+## Error reference
+
+| Scenario | What happens | What to do |
+|----------|-------------|------------|
+| Customer doesn't exist | Session creation returns 404 | Create the customer first |
+| Plan has zero-amount invoice | Session creation returns 400 | Use a plan with at least one non-zero charge |
+| Duplicate `idempotency_key` for active session | Returns 409 | Retrieve the existing session; use a new key for a new attempt |
+| Customer doesn't pay within 15 min | Session moves to `expired`; drafts cleaned up | Let the user start a new checkout |
+| `payment_link.paid` webhook missing | Subscription stays `draft` indefinitely | Add the event in Razorpay Dashboard → Webhooks |
+| Webhook secret mismatch | All inbound Razorpay webhooks rejected | Re-copy the secret from Razorpay into your Flexprice connection |
+
+## Going live checklist
+
+- [ ] Switch Razorpay connection from test keys to live keys
+- [ ] Verify all 5 webhook events are enabled on the production endpoint URL (not the test URL)
+- [ ] Confirm `success_url`, `failure_url`, `cancel_url` point to production domains
+- [ ] Webhook endpoint on your server uses HTTPS and responds within 5 seconds
+- [ ] Fulfillment logic is idempotent (safe to run twice on duplicate webhooks)
+- [ ] Currency minimums met: ₹1.00 minimum for INR, $0.01 for USD
+
+<CardGroup cols={2}>
+  <Card icon="credit-card" href="/docs/checkout/razorpay-checkout" title="Razorpay Checkout Setup">
+    Exact webhook events to configure in Razorpay.
+  </Card>
+  <Card icon="code" href="/docs/checkout/checkout-sessions" title="Checkout Sessions API">
+    Full API reference for creating and managing sessions.
+  </Card>
+</CardGroup>

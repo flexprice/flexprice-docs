@@ -1,0 +1,67 @@
+---
+title: "Checkout"
+description: "Let customers pay and activate their own subscriptions, without manual intervention from your team."
+---
+
+When you build a self-serve product, you need a way for customers to select a plan, pay, and get access immediately. Flexprice Checkout handles this entire sequence in a single API call: no manual subscription creation, no orphaned draft records, no follow-up.
+
+You create a Checkout Session. Flexprice generates a payment link via your connected payment provider. The customer pays. Flexprice activates the subscription and finalizes the invoice automatically.
+
+## What Checkout is for
+
+Checkout is designed for **B2C and self-serve flows** where:
+
+- Customers sign up and pay independently, without a sales process
+- Subscription activation should be instant, tied to successful payment
+- You want failed or abandoned payments to clean up automatically, with no orphaned draft records
+
+If you're creating subscriptions on behalf of customers from your own backend (e.g., sales-assisted, contract-driven, or internal operations), use the [Subscriptions API](/docs/subscriptions/customers-create-subscription) directly. You don't need a Checkout Session for backend-initiated flows.
+
+## How it works
+
+<Steps>
+  <Step title="Create a session">
+    Your backend calls `POST /v1/checkout/sessions` with the customer, plan, currency, and payment provider. Flexprice creates a draft subscription and invoice, then opens a payment link with your provider.
+  </Step>
+  <Step title="Redirect the customer">
+    The response includes a `payment_action.url`. Redirect the customer's browser to this URL to complete payment on the provider's hosted checkout page.
+  </Step>
+  <Step title="Payment confirmed">
+    The provider sends a webhook to Flexprice. Flexprice activates the subscription, finalizes the invoice, and marks the session `completed`.
+  </Step>
+  <Step title="Automatic cleanup on failure">
+    If the customer doesn't pay, cancels, or the session expires, all draft entities (subscription, invoice, payment) are automatically removed. No manual cleanup needed.
+  </Step>
+</Steps>
+
+## Supported providers and actions
+
+| Payment provider | Available actions |
+|-----------------|-------------------|
+| Razorpay | `create_subscription` |
+
+One-time payments, plan changes via Checkout, and additional payment providers are on the roadmap.
+
+## Before you start
+
+To use Checkout, you need:
+
+1. A connected payment provider. For Razorpay, see [Setting up Razorpay](/integrations/razorpay/connection-setup).
+2. The Razorpay webhook events configured for Checkout. See [Razorpay Checkout Setup](/docs/checkout/razorpay-checkout) for the exact list.
+3. A customer already created in Flexprice. The `customer_external_id` in the session request must exist.
+4. A plan with at least one non-zero charge. Checkout requires a non-zero invoice to generate a payment link.
+
+<CardGroup cols={2}>
+  <Card icon="credit-card" href="/docs/checkout/razorpay-checkout" title="Razorpay Checkout Setup">
+    Connect Razorpay and configure the exact webhook events needed for Checkout.
+  </Card>
+  <Card icon="code" href="/docs/checkout/checkout-sessions" title="Checkout Sessions API">
+    Create, retrieve, and manage Checkout Sessions via the API.
+  </Card>
+  <Card icon="list-check" href="/docs/checkout/implementation-guide" title="Implementation Guide">
+    End-to-end developer walkthrough: backend, frontend, webhooks, and go-live checklist.
+  </Card>
+  <Card icon="webhook" href="/docs/webhook/webhooks" title="Webhook Events">
+    Subscribe to checkout.session.* events to drive your downstream flows.
+  </Card>
+</CardGroup>

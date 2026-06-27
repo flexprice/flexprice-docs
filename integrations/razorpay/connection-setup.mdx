@@ -60,6 +60,13 @@ Configure these events in your Razorpay webhook endpoint:
 |------------|---------|
 | `payment.captured` | Track successful payment completions |
 | `payment.failed` | Handle payment failures and errors |
+| `payment_link.paid` | Required for Checkout Sessions — triggers subscription activation |
+| `payment_link.cancelled` | Required for Checkout Sessions — triggers draft entity cleanup |
+| `payment_link.expired` | Required for Checkout Sessions — triggers draft entity cleanup |
+
+<Note>
+  The `payment_link.*` events are required if you use [Flexprice Checkout Sessions](/docs/checkout/checkout-sessions). Without them, subscriptions created via Checkout will remain in `draft` status after payment. If you only use manual invoice payment links (not Checkout Sessions), these three events are optional.
+</Note>
 
 ### Setting Up the Webhook
 
