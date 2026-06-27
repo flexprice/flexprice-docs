@@ -3,25 +3,17 @@ title: "Checkout Sessions API"
 description: "Create a time-bounded payment session that activates a subscription on successful payment."
 ---
 
-A Checkout Session represents a single payment attempt tied to a specific billing action. Call `POST /v1/checkout/sessions`, get back a payment URL, redirect your customer, and Flexprice handles the rest: subscription activation, invoice finalization, and cleanup on failure or expiry.
-
-<Note>
-  Before using the Checkout Sessions API, complete the [Razorpay Checkout Setup](/docs/checkout/razorpay-checkout). Sessions will fail to create if the required webhook events aren't configured in Razorpay.
-</Note>
+A Checkout Session represents a single payment attempt. Call `POST /v1/checkout/sessions`, get back a payment URL, redirect your customer, and Flexprice activates the subscription once payment is confirmed.
 
 ## Session lifecycle
 
 | Status | Meaning |
 |--------|---------|
-| `initiated` | Session created; provider call in progress |
-| `pending` | Payment link returned; awaiting customer payment |
+| `initiated` | Session created; payment provider call in progress |
+| `pending` | Payment URL returned; awaiting customer payment |
 | `completed` | Payment confirmed; subscription activated, invoice finalized |
 | `failed` | Payment failed or provider cancelled the link |
-| `expired` | Session window elapsed without payment |
-
-<Warning>
-  Razorpay payment links expire after **15 minutes** by default. Redirect customers promptly. Avoid long loading states before showing the payment URL.
-</Warning>
+| `expired` | Session timed out without payment |
 
 ## Create a Checkout Session
 
@@ -65,35 +57,23 @@ curl -X POST https://api.flexprice.io/v1/checkout/sessions \
 }
 ```
 
-Redirect the customer to `payment_action.url`. Do not cache or reuse this URL. Each session has its own link tied to its expiry window.
+Redirect the customer to `payment_action.url`. Each session has its own link. Do not reuse URLs across sessions.
 
 ### Request fields
 
 | Field | Required | Description |
 |-------|----------|-------------|
 | `customer_external_id` | Yes | Your identifier for the customer. Must already exist in Flexprice. |
-| `action` | Yes | The billing action. `create_subscription` is available today, with one-time payments and plan changes on the roadmap. |
-| `payment_provider` | Yes | Payment gateway. Razorpay is supported today, with additional providers on the roadmap. |
+| `action` | Yes | Billing action to perform. `create_subscription` is supported. |
+| `payment_provider` | Yes | Payment gateway to use. See [Choose your provider](/docs/checkout/overview#choose-your-payment-provider). |
 | `configuration.create_subscription_params.plan_id` | Yes | The plan to subscribe the customer to. |
 | `configuration.create_subscription_params.currency` | Yes | Billing currency (e.g., `INR`, `USD`). |
 | `configuration.create_subscription_params.billing_period` | No | `monthly`, `quarterly`, `annual`, etc. Defaults to the plan's period. |
 | `configuration.create_subscription_params.start_date` | No | Subscription start date. Defaults to now. |
-| `success_url` | No | Redirect URL after successful payment. |
-| `failure_url` | No | Redirect URL after a failed payment. |
-| `cancel_url` | No | Redirect URL if the customer cancels. |
-| `idempotency_key` | No | Unique key to prevent duplicate sessions for the same order. Submitting a duplicate key for an active session returns a 409. |
-
-## What happens on create
-
-When you call this endpoint, Flexprice:
-
-1. Looks up the customer by `customer_external_id`
-2. Creates a draft subscription for the specified plan, currency, and billing period
-3. Computes a draft invoice (must be non-zero)
-4. Creates a Razorpay payment link for the invoice amount
-5. Returns the session in `pending` status with `payment_action.url`
-
-If any step fails, all created entities are rolled back and the session is marked `failed`.
+| `success_url` | No | Where to redirect after successful payment. |
+| `failure_url` | No | Where to redirect after a failed payment. |
+| `cancel_url` | No | Where to redirect if the customer cancels. |
+| `idempotency_key` | No | Prevents duplicate sessions on retry. A duplicate key for an active session returns 409. |
 
 ## Get a Checkout Session
 
@@ -103,7 +83,7 @@ curl https://api.flexprice.io/v1/checkout/sessions/<SESSION_ID> \
   -H "X-Environment-ID: <ENVIRONMENT_ID>"
 ```
 
-Poll this endpoint on your success/failure redirect pages to confirm `checkout_status` before showing a result to the customer.
+Use this to confirm `checkout_status` on your redirect pages before showing the customer a result.
 
 ## Delete a Checkout Session
 
@@ -113,45 +93,37 @@ curl -X DELETE https://api.flexprice.io/v1/checkout/sessions/<SESSION_ID> \
   -H "X-Environment-ID: <ENVIRONMENT_ID>"
 ```
 
-Soft-deletes the session. Sessions in a terminal state (`completed`, `failed`, `expired`) cannot be deleted.
+Sessions in a terminal state (`completed`, `failed`, `expired`) cannot be deleted.
 
 ## Webhook events
 
-Flexprice fires outbound events at each stage. Configure your endpoint in **Settings > Webhooks** to receive them.
+Subscribe to these in **Settings > Webhooks** to drive fulfillment from your backend.
 
-| Event | When |
+| Event | Fired when |
 |-------|------|
-| `checkout.session.initiated` | Session created and payment link returned |
-| `checkout.session.completed` | Payment confirmed; subscription and invoice activated |
-| `checkout.session.failed` | Payment failed or provider cancelled the link |
-| `checkout.session.expired` | Session elapsed without payment |
+| `checkout.session.initiated` | Session created and payment URL returned |
+| `checkout.session.completed` | Payment confirmed; subscription active, invoice finalized |
+| `checkout.session.failed` | Payment failed or provider cancelled |
+| `checkout.session.expired` | Session timed out without payment |
 
 <Note>
-  Completion events from Razorpay may arrive more than once. Flexprice deduplicates them: a session already marked `completed` ignores subsequent confirmation webhooks.
+  Safe to receive the same event twice. If your payment provider delivers `payment_link.paid` more than once, Flexprice ignores the duplicate. Your webhook handler should also be idempotent for the same reason.
 </Note>
 
-## Automatic expiry
+## Requirements
 
-Sessions in `initiated` or `pending` status that pass their `expires_at` are automatically moved to `expired` and their draft subscription, invoice, and payment are cleaned up. No action required on your side.
+**Customer must exist first.** The `customer_external_id` must refer to a customer already in Flexprice. Create them at sign-up if they don't exist yet.
 
-## Things to keep in mind
+**Plan must have a non-zero charge.** Checkout requires a payable invoice amount to generate a payment link. Plans with only free or zero-amount charges will cause session creation to fail.
 
-- **Non-zero invoices:** A plan that produces a zero-amount invoice will cause the session to fail at creation time. Use a plan with at least one non-zero charge.
-- **Existing customer required:** The customer must already exist in Flexprice before creating a session.
-- **Idempotency:** Submitting a duplicate `idempotency_key` for an active session returns a 409. Retrieve the existing session or use a new key for a new attempt.
+**Idempotency on retry.** If your create call times out, retry with the same `idempotency_key`. You'll get back the existing session instead of a duplicate.
 
 <CardGroup cols={2}>
-  <Card icon="credit-card" href="/docs/checkout/razorpay-checkout" title="Razorpay Checkout Setup">
-    How to configure Razorpay so webhook events reach Flexprice correctly.
+  <Card icon="credit-card" href="/docs/checkout/razorpay-checkout" title="Razorpay Setup">
+    Configure the webhook events Razorpay needs to send Flexprice.
   </Card>
   <Card icon="list-check" href="/docs/checkout/implementation-guide" title="Implementation Guide">
-    Full end-to-end integration walkthrough with code examples.
-  </Card>
-  <Card icon="file-text" href="/docs/invoices/overview" title="Invoices">
-    How Flexprice generates and finalizes invoices.
-  </Card>
-  <Card icon="webhook" href="/docs/webhook/webhooks" title="Webhooks">
-    Full list of events Flexprice can send to your endpoint.
+    Full end-to-end integration with code examples.
   </Card>
 </CardGroup>
 
