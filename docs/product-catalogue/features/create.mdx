@@ -14,25 +14,61 @@ Follow the steps below to create a feature in Flexprice:
      - **Metered:** Tracks quantifiable usage (e.g., number of API calls)
      - **Boolean:** Indicates a simple on/off state (e.g., access to a premium dashboard)
      - **Static:** Represents fixed attributes or entitlements (e.g., priority support)
+     - **Config:** Delivers a custom JSON configuration to your application through the customer's entitlements (e.g., feature flags, rate limits, tenant settings)
 
-## Creating a Boolean Feature
+## How to create a Boolean feature
 
-1. Select **Boolean** as Type which indicates a simple on/off state (e.g., access to a premium dashboard).
+Select **Boolean** as Type which indicates a simple on/off state (e.g., access to a premium dashboard).
 
 <Frame>
   ![Boolean Feature Creation](/public/images/docs/Product%20catalogue/Features/Creating%20a%20feature/Screenshot_2025-03-08_at_9.25.27_PM.png)
 </Frame>
 
-## Creating a Static Feature
+## How to create a Static feature
 
-1. Select **Static** as feature type which represents fixed attributes or entitlements (e.g., priority support)
+Select **Static** as feature type which represents fixed attributes or entitlements (e.g., priority support)
 
 <Frame>
   ![Static Feature Creation](/public/images/docs/Product%20catalogue/Features/Creating%20a%20feature/Screenshot_2025-03-08_at_9.31.36_PM.png)
 </Frame>
 
-## Creating a Metered Feature
+## How to create a Config feature
 
+A Config feature lets you attach a JSON object to an entitlement as a `config_value`. Flexprice stores and delivers this payload through plans and subscriptions, giving your application full control over how the configuration is applied.
+
+<Steps>
+  <Step title="Select Config as the feature type">
+    In the **Add Feature** form, choose **Config** as the Feature Type.
+
+    <Note>
+      The `config_value` is set at the entitlement level, not on the feature itself. You define it when attaching this feature to a plan.
+    </Note>
+  </Step>
+
+  <Step title="Add the feature to a plan">
+    Navigate to the target plan, open the **Entitlements** tab, and select **Add Entitlement**. Choose the Config feature you created.
+
+    A JSON editor appears. Enter a valid JSON object as the `config_value`. The editor validates the input and blocks submission if the value is not valid JSON.
+
+    <Frame>
+      ![Add Entitlement with Config feature JSON editor](/public/images/docs/Product%20catalogue/Features/Creating%20a%20feature/add-entitlement-feat-config.png)
+    </Frame>
+  </Step>
+
+  <Step title="Save and verify">
+    Click **Add** to save the entitlement. The plan's Entitlements tab displays a truncated JSON preview in the **Value** column. Click the preview to open the full stored config payload.
+
+    <Frame>
+      ![Entitlements tab showing Config feature value](/public/images/docs/Product%20catalogue/Features/Creating%20a%20feature/view-entitlement-feature-type-config.png)
+    </Frame>
+  </Step>
+</Steps>
+
+<Note>
+  The `config_value` is available on the customer's entitlements as soon as they subscribe to a plan that includes this feature. Use the [Get Customer Entitlements](/api-reference/customers/get-customer-entitlements) endpoint to retrieve it.
+</Note>
+
+## How to create a Metered feature
 1. Select **Metered** as Type which tracks quantifiable usage (e.g., number of API calls).
 
 2. Optionally edit the singular and plural unit names, for example: "token" and "tokens".
