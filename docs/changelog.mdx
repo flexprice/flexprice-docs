@@ -4,6 +4,112 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="June 12th 2026">
+  ## Per-bucket commitment and pricing
+
+  Time-of-day buckets on windowed commitments can now each carry their own commitment amount, overage factor, true-up setting, and base price — so peak and off-peak hours bill against independent rates and minimums instead of sharing the line item's defaults.
+
+  * **Per-bucket commitment fields**: Each `TimeOfDayBucket` accepts `commitment_type`, `commitment_value`, `overage_factor`, and `true_up_enabled` alongside its start and end times
+  * **Subscription-scoped bucket prices**: Inline `price` on each bucket materializes a subscription-scoped price at create or update time; out-of-bucket usage falls back to the line item's existing price and commitment
+  * **Replace-all updates**: `UpdateSubscriptionLineItem` replaces the full bucket array atomically — old bucket prices are archived and new ones materialized inside the same transaction
+  * **Bucket analytics breakdown**: Opt-in `breakdown_bucket` flag on usage analytics stamps each point with its bucket ID and price ID, and returns per-bucket utilized, overage, and true-up rollups
+  * **Validation guards**: Buckets are validated for minute precision, midnight-wrap overlap, window alignment, and partial commitment shapes before persisting; cumulative commitments paired with per-bucket commitments are rejected
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/subscriptions/commitment" title="Commitment - Documentation" />
+
+  <br />
+
+  ## `subscription.usage.alert` webhook
+
+  Auto-invoice threshold subscriptions can now run in alert-only mode — when usage crosses the configured threshold, Flexprice fires a `subscription.usage.alert` webhook instead of generating a mid-period invoice.
+
+  * **Alert-only opt-in**: Set the `auto_invoice_threshold_alert_only` subscription metadata flag to true to receive the webhook without a mid-period invoice
+  * **Threshold context in payload**: The event carries the subscription ID, current usage amount, and configured threshold so downstream systems can react before billing
+  * **Invoiced path unchanged**: Subscriptions without the flag continue to generate a mid-period invoice when the threshold is crossed
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/webhook/webhooks" title="Webhooks - Documentation" />
+
+  <br />
+
+  ## Temporary JWT tokens
+
+  A new token type lets you mint short-lived JWTs scoped to a tenant and environment — useful for embedded flows, support tooling, and one-off API access without provisioning a long-lived API key.
+
+  * **Scoped lifetime**: Temporary tokens carry an explicit expiry and tenant/environment claims
+  * **Drop-in auth**: Issued tokens authenticate against the same API surface as standard credentials
+
+  <br />
+
+  ## User signup metadata
+
+  The user signup API now accepts a `metadata` object — capture acquisition source, onboarding answers, or any other key-value context at the moment an account is created.
+
+  * **Carried through onboarding**: Metadata is attached to the user record and available to downstream onboarding flows and webhooks
+
+  <br />
+
+  ## SigNoz error and exception reporting
+
+  Errors and panics are now captured as OpenTelemetry `exception` span events and surface in SigNoz's Exceptions tab — closing the last Sentry-only path in the observability pipeline.
+
+  * **On-span auto-capture**: `log.Error(ctx, ...)` records an `exception` event on the active span with `exception.type`, `exception.message`, and a full stacktrace
+  * **Spanless capture**: Background goroutines and consumers without an active span synthesize a short-lived `error.capture` span so nothing is dropped
+  * **Panic recovery**: `OtelRecoveryMiddleware` records panics as exception events before handing off to Gin's recovery
+  * **Per-request dedup**: HTTP, Temporal, and transaction scopes seed dedup so a logged-and-captured error yields a single event
+  * **Config flag**: `otel.traces.capture_exceptions` (default `true`) gates the behavior; Sentry is disabled by default and retained only for rollback
+
+  <br />
+
+  ## Paddle unpaid invoice sync
+
+  A new cron periodically pulls unpaid finalized invoices from Paddle and reconciles them in Flexprice — payment status now stays current without waiting for a webhook to arrive.
+
+  * **Scheduled reconciliation**: Unpaid finalized invoices are fetched on a recurring schedule and updated in place
+  * **External API instrumentation**: Outbound calls to Paddle and other integrations now emit OTel client spans for end-to-end tracing in SigNoz
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Plans API now supports `billing_periods` filtering — fetch only the plans that match one or more billing cadences
+      * Tax rates with active customer or subscription associations can no longer be deleted; archive or detach associations first
+      * Unique index added on published tax associations to prevent duplicate active records for the same customer
+      * Billing scheduler now uses the actual job run time as the lookup reference window, eliminating drift on delayed runs
+      * Currency formatting supports per-tenant symbol overrides — display localized or branded currency symbols across the dashboard
+      * Plan price table now shows the charge type and billing timing inline for faster scanning
+      * Fluentd logging support has been removed; OTel logs are the canonical path
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Wallet endpoints now return `409 Conflict` on duplicate idempotency keys instead of `500 Internal Server Error`
+      * Wallet operations now populate the idempotency key on transactions that were missing it
+      * Meter usage processing errors are logged at `Error` level instead of `Warn` so they surface in alerting
+      * Stripe customer lookup in integration mappings now filters by published status, preventing matches against archived mappings
+      * Paddle subscription workflows no longer retry on terminal errors, avoiding duplicate side effects
+      * Analytics filter and `window_size` handling corrected for combined-filter queries
+      * Helm chart now renders `extraEnv` correctly and OTel trace exporter env vars are passed through to the pod
+      * Customers page empty state description now matches the rest of the empty-state copy
+      * Subscription cancel dialog corrected for the new backdated-cancellation flow
+      * Tax association table cleaned up unused icons and adds the trash action where expected
+    </Accordion>
+
+    <Accordion title="API">
+      * `commitment_time_buckets[].commitment_type`, `commitment_value`, `overage_factor`, `true_up_enabled`, and inline `price` added to subscription line item create and update DTOs
+      * `breakdown_bucket` flag added to the usage analytics request; response points carry `bucket_id` / `bucket_price_id` and items carry a `bucket_summaries` array
+      * New `subscription.usage.alert` webhook event published when an auto-invoice-threshold subscription crosses its threshold in alert-only mode
+      * `billing_periods` filter added to the plans list endpoint
+      * User signup endpoint now accepts a `metadata` object
+      * Temporary JWT tokens issued via the token endpoint with explicit expiry and tenant/environment scope
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
 <Update label="June 8th 2026">
   ## Commitment time buckets
 
