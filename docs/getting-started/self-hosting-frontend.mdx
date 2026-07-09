@@ -1,0 +1,316 @@
+---
+title: 'Self-hosting the Frontend'
+description: 'Run the Flexprice dashboard on your own infrastructure and connect it to a self-hosted backend'
+---
+
+The [backend self-hosting guide](/docs/getting-started/self-hosting-guide) gets the Flexprice API and its infrastructure running. This guide covers the other half: running the Flexprice dashboard (`flexprice-front`) yourself and pointing it at that backend.
+
+<Note>
+  Complete the [backend self-hosting guide](/docs/getting-started/self-hosting-guide) first. The frontend is a static single-page app that talks to the API over HTTP; it has no database or infrastructure of its own.
+</Note>
+
+## Self-hosting options
+
+<CardGroup cols={3}>
+  <Card title="Docker Compose" icon="docker" href="/docs/getting-started/self-hosting-frontend#docker-compose">
+    Run the dashboard in a container alongside your self-hosted backend. Best for a single server.
+  </Card>
+  <Card title="Manual build" icon="terminal" href="/docs/getting-started/self-hosting-frontend#manual-build-and-serve">
+    Build static files with `npm run build` and serve them with nginx or any static host.
+  </Card>
+  <Card title="Vercel" icon="cloud" href="/docs/getting-started/self-hosting-frontend#deploying-on-vercel">
+    Deploy the same repo to Vercel using the bundled `vercel.json`.
+  </Card>
+</CardGroup>
+
+---
+
+<span id="self-hosted-environment-configuration"></span>
+
+## Self-hosted environment configuration
+
+Before you build or deploy anything, set these. They're the three variables that actually change how the app behaves in a self-hosted setup, and getting them wrong is the single most common way this deployment breaks:
+
+| Variable | Self-hosted value | Why |
+|---|---|---|
+| `VITE_APP_ENV` | `self-hosted` | Switches the dashboard's auth flow to call your backend's own `/auth/login` and `/auth/signup` endpoints directly, and stores the session token in the browser instead of using Supabase. Without this, the app expects a Supabase project to exist. |
+| `VITE_AUTH_PROVIDER` | `flexprice` | Confirms the dashboard is using Flexprice's own auth rather than Supabase, and hides Supabase-only UI (Google sign-in, cloud announcement banners) that don't apply to a self-hosted instance. |
+| `VITE_API_URL` | `http://<your-backend-host>:8080/v1` | Points the dashboard at your self-hosted API. See [Connecting to the backend](#connecting-to-the-backend) for what "reachable" means here. |
+
+<Warning>
+  The `.env.example` file defaults `VITE_AUTH_PROVIDER` to `supabase` and leaves `VITE_APP_ENV` unset (which falls back to `local`). If you skip setting these two values, login and signup will silently try to reach Supabase instead of your backend.
+</Warning>
+
+With `VITE_APP_ENV=self-hosted` set, you do **not** need to fill in `VITE_SUPABASE_URL` or `VITE_SUPABASE_ANON_KEY` — leave them blank.
+
+<Tip>
+  Vite bakes every `VITE_*` variable into the static bundle at **build time**, not at container start. Whenever you change `.env`, you must rebuild (`docker compose up -d --build`, or `npm run build` again) before the change takes effect. This trips people up more than anything else in this guide, see [Troubleshooting](#troubleshooting).
+</Tip>
+
+### Full environment variable reference
+
+<Accordion title="Core (required)">
+| Variable | Self-hosted value | Notes |
+|---|---|---|
+| `VITE_APP_ENV` | `self-hosted` | See above. Also accepts `local`, `development`, `production` for other setups. |
+| `VITE_API_URL` | Your backend's API URL, e.g. `http://localhost:8080/v1` | Must be reachable from the browser, not just the server. |
+| `VITE_AUTH_ENABLED` | `true` | Set this regardless; the dashboard always requires login. Kept for forward compatibility. |
+| `VITE_AUTH_PROVIDER` | `flexprice` | Use Flexprice's built-in auth instead of Supabase. |
+</Accordion>
+
+<Accordion title="Supabase auth (leave unset for self-hosted)">
+| Variable | Self-hosted value | Notes |
+|---|---|---|
+| `VITE_SUPABASE_URL` | Leave blank | Only used when `VITE_AUTH_PROVIDER=supabase`. |
+| `VITE_SUPABASE_ANON_KEY` | Leave blank | Same as above. |
+</Accordion>
+
+<Accordion title="Observability and analytics (optional)">
+| Variable | Recommended for self-hosted | Notes |
+|---|---|---|
+| `VITE_SENTRY_ENABLED` | `false` unless you run your own Sentry | Set `VITE_SENTRY_DSN` if enabled. |
+| `VITE_POSTHOG_ENABLED` | `false` unless you run your own PostHog | Set `VITE_POSTHOG_KEY` / `VITE_POSTHOG_HOST` if enabled. |
+| `VITE_REO_ENABLED` | `false` | Cloud session-replay integration; not relevant for self-hosted. |
+</Accordion>
+
+<Accordion title="Billing and support widgets (cloud-only, leave disabled)">
+| Variable | Self-hosted value | Notes |
+|---|---|---|
+| `VITE_PADDLE_ENABLED` | `false` | Paddle checkout is used by Flexprice Cloud billing, not applicable when you self-host. |
+| `VITE_INTERCOM_ENABLED` | `false` | Flexprice Cloud support widget. |
+</Accordion>
+
+<Accordion title="Webhooks portal">
+| Variable | Self-hosted value | Notes |
+|---|---|---|
+| `VITE_WEBHOOK_PROVIDER` | `flexprice` | Uses the custom Flexprice webhook portal instead of hosted Svix. Set to `svix` only if you're self-hosting Svix yourself. |
+| `VITE_SVIX_URL` | Public origin of your self-hosted Svix API, or leave blank | Only needed if you run Svix yourself and set `VITE_WEBHOOK_PROVIDER=svix`. |
+</Accordion>
+
+<Accordion title="Multi-region and multi-tenant cloud features (leave unset)">
+| Variable | Self-hosted value | Notes |
+|---|---|---|
+| `VITE_DASHBOARD_URL_INDIA` / `VITE_DASHBOARD_URL_US` | Leave blank | Used to route between Flexprice Cloud regions; not applicable to a single self-hosted instance. |
+| `VITE_DATA_REGION_SELECTION_ENABLED` | `false` | Same as above. |
+| `VITE_RESTRICTED_ENVS` | Leave blank | Used by Flexprice Cloud to suspend tenant environments. |
+| `VITE_TENANT_FEATURE_ALLOWLIST` | Leave blank | Gates cloud-only UI for specific tenants; irrelevant when you're the only tenant. |
+</Accordion>
+
+<Accordion title="Integrations and branding (optional)">
+| Variable | Notes |
+|---|---|
+| `VITE_GOOGLE_SHEETS_WEB_APP_URL` | Only needed if you use the Google Sheets export integration. |
+| `VITE_FONT_CONFIG` | Optional JSON override for dashboard typography, e.g. `{"primary":"Inter","fallback":"ui-sans-serif, system-ui, sans-serif"}`. Omit to use the default font. |
+</Accordion>
+
+---
+
+<span id="first-login"></span>
+
+## First login: create your account
+
+A self-hosted instance starts with no dashboard users. There's no default username or password: every account, including your first one, is created through Sign Up against your own backend:
+
+<Steps>
+  <Step title="Open the dashboard">
+    Once your container or dev server is running, visit it in a browser (e.g. `http://localhost:3000`).
+  </Step>
+  <Step title="Use Sign Up, not Login">
+    On the auth screen, switch to the **Sign Up** tab and enter an email and password (6+ characters).
+  </Step>
+  <Step title="You're in immediately">
+    In self-hosted mode, sign-up skips email verification entirely: the app posts straight to your backend's `/auth/signup` endpoint and logs you in right away using the returned session token. There's no confirmation email to wait for.
+  </Step>
+</Steps>
+
+<Note>
+  If Sign Up fails with a network or CORS error instead of a validation error, that's almost always `VITE_API_URL` or backend CORS, not the auth flow itself. See [Troubleshooting](#troubleshooting).
+</Note>
+
+---
+
+<span id="docker-compose"></span>
+
+## Docker Compose
+
+### Prerequisites
+
+<Check>
+  [Git](https://git-scm.com/)
+</Check>
+<Check>
+  [Node.js](https://nodejs.org/) 20+ and npm (only needed for a manual build; skip if you're using Docker exclusively)
+</Check>
+<Check>
+  [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/)
+</Check>
+<Check>
+  A running Flexprice backend, reachable over HTTP from wherever the frontend runs. See the [backend self-hosting guide](/docs/getting-started/self-hosting-guide).
+</Check>
+
+### Quick start
+
+```bash
+# Clone the frontend repository
+git clone https://github.com/flexprice/flexprice-front
+cd flexprice-front
+
+# Copy the environment template
+cp .env.example .env
+```
+
+Edit `.env` with at least the three variables from [self-hosted environment configuration](#self-hosted-environment-configuration) above, then build and start the container:
+
+```bash
+docker compose up -d --build
+```
+
+<Tip>
+  Use `--build` here, and every time you change `.env` afterward. `docker compose up -d` alone reuses a cached image if one already exists, which silently keeps your old environment variables since Vite bakes them in at build time.
+</Tip>
+
+The `docker-compose.yml` in the repo builds the image from the included `Dockerfile` (a multi-stage Node 20 build) and exposes the dashboard on port 3000 with a built-in healthcheck.
+
+```bash
+# View logs
+docker compose logs -f app
+
+# Stop
+docker compose down
+```
+
+Visit `http://localhost:3000` once the container reports healthy, then follow [First login](#first-login) to create your account.
+
+---
+
+## Manual build and serve
+
+If you'd rather not use Docker, build static files and serve them yourself.
+
+```bash
+git clone https://github.com/flexprice/flexprice-front
+cd flexprice-front
+npm install
+
+cp .env.example .env
+# Edit .env: VITE_APP_ENV=self-hosted, VITE_AUTH_PROVIDER=flexprice,
+# VITE_API_URL=http://<your-backend-host>:8080/v1
+
+npm run build
+```
+
+This produces a static `dist/` folder. Serve it with any of the following:
+
+<Tabs>
+  <Tab title="nginx">
+    Copy the repo's `nginx.conf` (SPA fallback already configured) and point it at `dist/`:
+
+    ```bash
+    cp nginx.conf /etc/nginx/conf.d/flexprice.conf
+    nginx -s reload
+    ```
+  </Tab>
+  <Tab title="Vite preview server">
+    ```bash
+    npm run start
+    # Serves on 0.0.0.0:3000
+    ```
+  </Tab>
+  <Tab title="serve">
+    ```bash
+    npx serve -s dist
+    ```
+  </Tab>
+</Tabs>
+
+<Warning>
+  Whatever you use to serve the built files, it must fall back to `index.html` for unknown paths (a single-page app client-side router). The bundled `nginx.conf` handles this with `try_files $uri $uri/ /index.html;`. If you configure your own web server, replicate this rule or client-side routes like `/customers/123` will 404 on a hard refresh.
+</Warning>
+
+---
+
+<span id="deploying-on-vercel"></span>
+
+## Deploying on Vercel
+
+The repo includes a `vercel.json` with the SPA rewrite already configured (`/(.*) → /`), so you can deploy directly:
+
+1. Import the `flexprice-front` repository into Vercel.
+2. Set the environment variables from the [reference above](#self-hosted-environment-configuration) in the Vercel project settings (`VITE_APP_ENV=self-hosted`, `VITE_AUTH_PROVIDER=flexprice`, `VITE_API_URL`, and any optional ones you need).
+3. Deploy. Vercel runs `npm run build` automatically and serves the `dist/` output.
+
+<Note>
+  Your backend must be reachable from the public internet (or accessible to wherever your Vercel deployment resolves `VITE_API_URL`) since Vercel doesn't proxy to a private network by default.
+</Note>
+
+---
+
+<span id="connecting-to-the-backend"></span>
+
+## Connecting to the backend
+
+- `VITE_API_URL` is baked into the JavaScript bundle and fetched by the **end user's browser**, not by the Docker container or server that built it. Use an address the browser can actually reach: the host machine's real IP or domain, not a Docker-internal hostname. `http://localhost:8080/v1` only works if the person opening the dashboard is on the same machine as the backend.
+- CORS: the Flexprice API needs to allow requests from the origin the dashboard is served on. If you're serving the frontend from a different domain or port than the API expects, configure the backend's CORS allow-list accordingly (see the [backend self-hosting guide](/docs/getting-started/self-hosting-guide) and [configuration reference](/docs/getting-started/configuration)).
+- Login and signup (`/auth/login`, `/auth/signup`) are public endpoints: they don't require an API key. After you log in, the dashboard authenticates every other request with the session token from that login, not with a Flexprice API key. You only need an API key (e.g. for testing with `curl`) if you're calling the API directly, outside the dashboard.
+
+---
+
+<span id="troubleshooting"></span>
+
+## Troubleshooting
+
+<Accordion title="Login redirects to Supabase or shows a Supabase error">
+  `VITE_APP_ENV` is not set to `self-hosted`, or `VITE_AUTH_PROVIDER` is still `supabase` (the `.env.example` default). Set both explicitly and rebuild, since Vite environment variables are baked in at build time, not read at container start.
+</Accordion>
+
+<Accordion title="Signed up successfully but nothing happens, or Sign Up isn't in self-hosted mode">
+  Confirm `VITE_APP_ENV=self-hosted` was set at build time. If it wasn't, sign-up falls back to the Supabase flow and waits for an email confirmation that will never arrive on a self-hosted instance with no email provider configured.
+</Accordion>
+
+<Accordion title="Blank page or 404 on refresh for routes like /customers/123">
+  The web server isn't falling back to `index.html` for unknown paths. Use the bundled `nginx.conf`, or add an equivalent SPA fallback rule to your own server config.
+</Accordion>
+
+<Accordion title="Dashboard loads but all API calls fail (network error or CORS)">
+  1. Confirm `VITE_API_URL` is reachable from your browser, not just from the container network:
+  ```bash
+  curl <your-VITE_API_URL>/health
+  ```
+  2. Check the browser console for a CORS error. If present, add the frontend's origin to the backend's CORS configuration.
+  3. Remember Vite bakes `VITE_*` variables in at build time. Changing `.env` after `npm run build` requires rebuilding.
+</Accordion>
+
+<Accordion title="Changed .env but nothing changed in the running app">
+  Vite environment variables are compiled into the static bundle at build time, they aren't read at runtime. Rebuild the image (`docker compose up -d --build`) or rerun `npm run build`, then restart the container or server.
+</Accordion>
+
+<Accordion title="Docker container unhealthy">
+  ```bash
+  docker compose logs -f app
+  docker compose ps
+  ```
+  The bundled healthcheck curls `http://localhost:3000` inside the container; a non-2xx response usually means the build failed or the app crashed on start. Check the logs above for the actual error.
+</Accordion>
+
+## Need help?
+
+- Check our [GitHub Issues](https://github.com/flexprice/flexprice-front/issues) for similar problems
+- Join our [Slack community](https://join.slack.com/t/flexpricecommunity/shared_invite/zt-39uat51l0-n8JmSikHZP~bHJNXladeaQ) for real-time support
+- Contact us at support@flexprice.io
+
+## Additional resources
+
+<CardGroup cols={2}>
+  <Card title="Backend Self-Hosting Guide" icon="server" href="/docs/getting-started/self-hosting-guide">
+    Run the Flexprice API and infrastructure
+  </Card>
+  <Card title="Configuration Reference" icon="gear" href="/docs/getting-started/configuration">
+    Complete list of Flexprice environment variables
+  </Card>
+  <Card title="Contribution Guidelines" icon="code-branch" href="https://github.com/flexprice/flexprice-front/blob/main/CONTRIBUTING.md">
+    Learn how to contribute to the frontend
+  </Card>
+  <Card title="Flexprice Website" icon="globe" href="https://flexprice.io">
+    Visit our official website
+  </Card>
+</CardGroup>
