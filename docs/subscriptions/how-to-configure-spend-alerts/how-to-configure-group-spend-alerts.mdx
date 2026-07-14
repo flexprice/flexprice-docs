@@ -3,11 +3,8 @@ title: "Group Spend Alerts"
 description: "Monitor spend summed across every subscription line item whose feature belongs to a group, configured via API"
 ---
 
-Group spend alerts monitor the **usage-based spend summed across every line item on a subscription whose feature belongs to a given group**, for example every metered feature grouped under "Compute" or "Storage". This scope is useful when several distinct meters should count toward one shared budget.
+Group spend alerts monitor the **usage-based spend summed across every line item on a subscription whose feature belongs to a given group**, for example every metered feature grouped under "Compute" or "Storage". This scope is useful when several distinct meters should count toward one shared budget, and is configured through the API.
 
-<Note>
-Group spend alerts are configured via API only. There is no dashboard screen for this scope yet. Subscription and line item scopes do have a dashboard UI; see [Subscription spend alerts](/docs/subscriptions/how-to-configure-spend-alerts/how-to-configure-subscription-spend-alerts) and [Line item spend alerts](/docs/subscriptions/how-to-configure-spend-alerts/how-to-configure-subscription-line-item-spend-alerts).
-</Note>
 
 ## Prerequisite: Assign Features to the Group
 
@@ -26,16 +23,6 @@ If none of a subscription's line items resolve to a feature in the configured gr
     For every feature whose usage should count toward this alert, set its `group_id` to the group created above. See [Feature grouping](/docs/product-catalogue/groups/feature-grouping).
   </Step>
 </Steps>
-
-## Alert Levels
-
-| Level | Purpose |
-|-------|---------|
-| **Info** | Informational alert when the group's summed spend crosses a defined threshold |
-| **Warning** | Early warning level before critical |
-| **Critical** | Critical alert level requiring immediate action |
-
-Each level is configured with a **threshold value** (in the subscription's currency) and always uses the **above** condition.
 
 ## Configuring via API
 
@@ -74,20 +61,10 @@ curl -X POST 'https://api.cloud.flexprice.io/v1/alerts/setting' \
 ```
 </CodeGroup>
 
+<Note>
 `parent_entity_type` and `parent_entity_id` are mandatory for group alerts. Unlike subscription-level alerts, a group alert cannot be unscoped.
+</Note>
 
-## Alert Behavior
-
-Once configured and enabled, Flexprice:
-
-- **Resolves group membership**: On every usage event affecting the subscription, resolves which of the subscription's line items map (via their meter's feature) to this group
-- **Sums spend**: Adds up the usage-based spend of every line item in the group, using the same invoicing-grade calculation used to generate invoices
-- **Compares against thresholds**: Evaluates the summed total against Critical, Warning, and Info
-- **Notifies**: Sends a webhook only when the state changes
-
-<Info>
-Only groups actually touched by an event's usage are re-evaluated for that event. A group with no configured alert, or whose member features weren't touched by the event, is skipped without extra computation.
-</Info>
 
 ## Managing Alert Settings
 
@@ -159,25 +136,15 @@ Only groups actually touched by an event's usage are re-evaluated for that event
 | `subscription.group_spend.threshold_reached` | Spend crosses a threshold |
 | `subscription.group_spend.threshold_recovered` | Spend recovers to `ok` |
 
+<Info>
+Only groups actually touched by an event's usage are re-evaluated for that event.
+</Info>
+
 ## Use Cases
 
 - **Shared budgets across meters**: Alert once for combined spend across several related metered features (e.g. all compute-related meters) instead of tracking each individually
 - **Product-line budgets**: Group features by product line and alert per line, independent of how many individual meters make it up
 - **Consolidating noisy line items**: Roll up several low-value, high-frequency line items into one group threshold instead of alerting on each separately
-
-## Best Practices
-
-<Check>
-**Verify group membership before debugging a silent alert**: if a group alert isn't firing, confirm the relevant features actually have `group_id` set to that group first.
-</Check>
-
-<Check>
-**Use one group per shared budget, not per feature**: group alerts are only useful when multiple features should count toward the same limit; a single-feature group is equivalent to a line item alert.
-</Check>
-
-<Check>
-**Make webhook handlers idempotent**: use the group ID plus subscription ID plus `alert_status` as an idempotency key.
-</Check>
 
 ## Related
 
