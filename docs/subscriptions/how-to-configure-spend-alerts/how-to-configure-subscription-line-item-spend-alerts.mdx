@@ -1,0 +1,191 @@
+---
+title: "Line Item Spend Alerts"
+description: "Monitor spend on a single subscription line item and get notified by webhook when it crosses a configured threshold"
+---
+
+Line item spend alerts monitor the **usage-based spend of a single line item** on a subscription, independently of the subscription's total. Use this when one specific charge (for example, a particular metered API) needs its own budget, separate from the rest of the subscription.
+
+## Alert Levels
+
+| Level | Purpose |
+|-------|---------|
+| **Info** | Informational alert when this line item's spend crosses a defined threshold |
+| **Warning** | Early warning level before critical |
+| **Critical** | Critical alert level requiring immediate action |
+
+Each level is configured with a **threshold value** (in the subscription's currency) and always uses the **above** condition.
+
+## Configuring via the Dashboard
+
+<Steps>
+  <Step title="Open the subscription for editing">
+    Go to **Billing** → **Subscriptions**, open the subscription, and go to **Edit Subscription**.
+  </Step>
+
+  <Step title="Open the line item's menu">
+    Find the line item to monitor and click its **three-dot menu (⋮)**.
+  </Step>
+
+  <Step title="Select Alert Settings">
+    Choose **Alert Settings** from the dropdown. It appears alongside **Edit** and **Terminate** for that line item.
+  </Step>
+
+  <Step title="Enable alerts">
+    In the **Line Item Alert Settings** dialog, turn **Enable Alerts** on.
+  </Step>
+
+  <Step title="Configure thresholds">
+    - Click **Add** on **Critical**, **Warning**, and/or **Info** to add a level
+    - Set **Threshold Value** for each level you add. **Condition** is fixed to **Above**
+    - Use **Remove** to drop a level you don't need
+    - Click **Save Changes** to apply
+  </Step>
+</Steps>
+
+## Configuring via API
+
+```json
+{
+  "entity_type": "subscription_line_item",
+  "entity_id": "subs_line_01K7YQ0000LINEITEM00001",
+  "parent_entity_type": "subscription",
+  "parent_entity_id": "subs_01K7YQ8ZR4M3V2N1XA9C6D0EFG",
+  "config": {
+    "alert_enabled": true,
+    "warning":  { "threshold": "150", "condition": "above" },
+    "critical": { "threshold": "300", "condition": "above" }
+  }
+}
+```
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://api.cloud.flexprice.io/v1/alerts/setting' \
+  -H 'x-api-key: <api_key>' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "entity_type": "subscription_line_item",
+    "entity_id": "subs_line_01K7YQ0000LINEITEM00001",
+    "parent_entity_type": "subscription",
+    "parent_entity_id": "subs_01K7YQ8ZR4M3V2N1XA9C6D0EFG",
+    "config": {
+      "alert_enabled": true,
+      "warning":  { "threshold": "150", "condition": "above" },
+      "critical": { "threshold": "300", "condition": "above" }
+    }
+  }'
+```
+</CodeGroup>
+
+<Warning>
+`entity_id` must be a line item that belongs to the subscription identified by `parent_entity_id`. The API rejects a line item ID from a different subscription.
+</Warning>
+
+## Alert Behavior
+
+Once configured and enabled, Flexprice:
+
+- **Recalculates spend**: On every usage event affecting the subscription, recomputes this line item's usage-based spend for the current billing period (the same invoicing-grade calculation used to generate invoices)
+- **Compares against thresholds**: Evaluates the line item's spend against Critical, Warning, and Info
+- **Updates state**: Reflects the current state (`ok`, `info`, `warning`, `in_alarm`) in alert history
+- **Notifies**: Sends a webhook only when the state changes
+
+<Info>
+Usage on a different line item in the same subscription does not affect this alert. It only tracks the one line item it's configured on.
+</Info>
+
+## Managing Alert Settings
+
+### Viewing current configuration
+
+<Steps>
+  <Step title="Open the line item's menu">
+    Open **Edit Subscription**, find the line item, and click its **three-dot menu (⋮)**.
+  </Step>
+
+  <Step title="Open Alert Settings">
+    Select **Alert Settings**. The dialog shows **Enable Alerts** and all configured threshold levels with their values.
+  </Step>
+</Steps>
+
+### Changing thresholds
+
+<Steps>
+  <Step title="Open Alert Settings">
+    Open **Edit Subscription**, find the line item, click its **three-dot menu (⋮)** → **Alert Settings**.
+  </Step>
+
+  <Step title="Adjust values">
+    Change **Enable Alerts** or any threshold value in the dialog.
+  </Step>
+
+  <Step title="Save">
+    Click **Save Changes**.
+  </Step>
+</Steps>
+
+### Removing a threshold
+
+<Steps>
+  <Step title="Open Alert Settings">
+    Open **Edit Subscription**, find the line item, click its **three-dot menu (⋮)** → **Alert Settings**.
+  </Step>
+
+  <Step title="Remove the level">
+    Click **Remove** on the threshold level you want to drop.
+  </Step>
+
+  <Step title="Save">
+    Click **Save Changes**. Removed thresholds are cleared, not just hidden, so send the complete remaining configuration.
+  </Step>
+</Steps>
+
+### Disabling alerts
+
+<Steps>
+  <Step title="Open Alert Settings">
+    Open **Edit Subscription**, find the line item, click its **three-dot menu (⋮)** → **Alert Settings**.
+  </Step>
+
+  <Step title="Turn off Enable Alerts">
+    Set **Enable Alerts** to off (or set `alert_enabled` to `false` via API).
+  </Step>
+
+  <Step title="Save">
+    Click **Save Changes**.
+  </Step>
+</Steps>
+
+## Webhooks
+
+| Event | Fires when |
+|-------|------------|
+| `subscription.line_item_spend.threshold_reached` | Spend crosses a threshold |
+| `subscription.line_item_spend.threshold_recovered` | Spend recovers to `ok` |
+
+## Use Cases
+
+- **Per-charge budgets**: Alert on a specific metered charge (e.g. a particular API or compute meter) without noise from the rest of the subscription
+- **High-cost line items**: Set tighter thresholds on line items with the highest per-unit cost or the most usage variance
+- **Customer-specific overrides**: Combine with per-subscription price overrides to alert on a customer's negotiated rate independently
+
+## Best Practices
+
+<Check>
+**Scope alerts to volatile charges**: line item alerts are most useful on usage-priced charges with variable consumption, not fixed recurring charges.
+</Check>
+
+<Check>
+**Pair with subscription-level alerts**: a line item alert pinpoints which charge is driving spend; a subscription-level alert confirms overall budget impact.
+</Check>
+
+<Check>
+**Make webhook handlers idempotent**: use the line item ID plus `alert_status` as an idempotency key.
+</Check>
+
+## Related
+
+- [What Are Spend Alerts?](/docs/subscriptions/how-to-configure-spend-alerts/what-are-spend-alerts): all three alert scopes, shared validation, and the full API reference
+- [Subscription spend alerts](/docs/subscriptions/how-to-configure-spend-alerts/how-to-configure-subscription-spend-alerts): monitor the whole subscription instead of one line item
+- [Group spend alerts](/docs/subscriptions/how-to-configure-spend-alerts/how-to-configure-group-spend-alerts): monitor spend across a feature group
+- [Webhooks](/docs/webhook/webhooks): endpoint setup, payload signatures, and retry behavior

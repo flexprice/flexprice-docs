@@ -1,0 +1,116 @@
+---
+title: "What Are Spend Alerts?"
+description: "Threshold-based alerts that track billed spend at the subscription, line item, or group level, with webhook notifications on every state change"
+---
+
+Spend alerts monitor usage-based spend against configured thresholds and notify you by webhook when a threshold is crossed. Unlike wallet and feature-usage alerts, which track balance or raw usage, spend alerts track **billed spend**: the same invoicing-grade calculation used to generate invoices, including commitments and overage.
+
+Spend alerts have three independent scopes:
+
+- **Subscription**: total usage-based spend across the whole subscription
+- **Subscription line item**: spend on a single line item
+- **Group**: spend summed across every line item whose feature belongs to a given group
+
+All three scopes share the same configuration shape, the same three-level alert model (`info` → `warning` → `critical`), and the same webhook delivery mechanism. Pick a scope based on how granular the budget you're protecting actually is: a whole subscription, one metered charge, or a set of related meters.
+
+**Benefits:**
+
+- **Budget enforcement**: Catch spend overruns before the invoice is generated
+- **Granular scope**: Monitor an entire subscription, a single line item, or a feature group independently
+- **Invoicing-grade accuracy**: Thresholds compare against the same commitment- and overage-aware spend calculation used for billing
+- **Real-time evaluation**: Spend is recalculated and compared against thresholds as usage events arrive, not on a delay
+
+## Alert Scopes at a Glance
+
+| Scope | What is monitored | Webhook event |
+|---|---|---|
+| [Subscription](/docs/subscriptions/how-to-configure-spend-alerts/how-to-configure-subscription-spend-alerts) | Total usage-based spend across the subscription | `subscription.spend.threshold_reached` / `.threshold_recovered` |
+| [Subscription line item](/docs/subscriptions/how-to-configure-spend-alerts/how-to-configure-subscription-line-item-spend-alerts) | Spend on one usage-priced line item | `subscription.line_item_spend.threshold_reached` / `.threshold_recovered` |
+| [Group](/docs/subscriptions/how-to-configure-spend-alerts/how-to-configure-group-spend-alerts) | Spend summed across every line item in a group | `subscription.group_spend.threshold_reached` / `.threshold_recovered` |
+
+<Note>
+Group-level spend alerts are configured via API only. There is no dedicated UI screen for them yet.
+</Note>
+
+## Alert Levels and Conditions
+
+Every alert configuration supports up to three independent threshold levels:
+
+| Level | API state | Purpose |
+|-------|-----------|---------|
+| **Info** | `info` | Early milestone: spend is approaching a limit |
+| **Warning** | `warning` | Action needed: spend is significantly high |
+| **Critical** | `in_alarm` | Immediate action required |
+| (none breached) | `ok` | Healthy, no thresholds breached |
+
+<Warning>
+Spend alerts only support the **above** condition: an alert fires when spend rises above the threshold. The `below` condition (used by wallet balance alerts) is rejected for subscription, line item, and group scopes.
+</Warning>
+
+Because every threshold uses `above`, ordering runs from smallest to largest:
+
+```
+Info < Warning < Critical
+```
+
+<Note>
+A **Warning** threshold requires a **Critical** threshold to also be set. You cannot configure Warning without Critical. **Info** can be set independently of the other two.
+</Note>
+
+## Configuration API
+
+All three scopes are configured through the same `alert_settings` resource:
+
+| Action | Method | Endpoint |
+|--------|--------|----------|
+| Create alert setting | POST | `/v1/alerts/setting` |
+| Get alert setting | GET | `/v1/alerts/setting/:id` |
+| Query alert settings | POST | `/v1/alerts/setting/search` |
+| Update alert setting | PUT | `/v1/alerts/setting/:id` |
+| Delete alert setting | DELETE | `/v1/alerts/setting/:id` |
+
+**Create request body:**
+
+```json
+{
+  "entity_type": "subscription",
+  "entity_id": "subs_01K7YQ8ZR4M3V2N1XA9C6D0EFG",
+  "config": {
+    "alert_enabled": true,
+    "info":     { "threshold": "100",  "condition": "above" },
+    "warning":  { "threshold": "500",  "condition": "above" },
+    "critical": { "threshold": "1000", "condition": "above" }
+  }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `entity_type` | `subscription`, `subscription_line_item`, or `group` |
+| `entity_id` | ID of the monitored entity, matching `entity_type`: subscription ID, subscription line item ID, or group ID |
+| `parent_entity_type` | `subscription` for line item and group alerts; omitted for subscription-level alerts |
+| `parent_entity_id` | The subscription ID that owns a line item or group alert; omitted for subscription-level alerts |
+| `config.alert_enabled` | Turns evaluation on or off for this alert setting |
+| `config.critical` / `config.warning` / `config.info` | Threshold objects: `{ "threshold": "<amount>", "condition": "above" }` |
+
+<Warning>
+`PUT /v1/alerts/setting/:id` replaces the stored `config` wholesale. It does not merge with the existing configuration. Send the complete set of thresholds you want on every update; a threshold left out of the request is cleared, not left unchanged.
+</Warning>
+
+## Validation
+
+| Rule | Detail |
+|------|--------|
+| **Condition** | Every threshold's `condition` must be `above` |
+| **Warning requires Critical** | A `warning` threshold cannot exist without a `critical` threshold |
+| **Info stands alone** | `info` can be configured with or without `warning`/`critical` |
+| **Ordering** | `info` < `warning` < `critical`, when each is set |
+| **One setting per entity** | At most one alert setting per `(entity_type, entity_id, parent_entity_type, parent_entity_id)`; creating a duplicate is rejected |
+| **Line item scope** | `entity_id` must be a line item that belongs to the subscription identified by `parent_entity_id` |
+| **Group scope** | `parent_entity_id` is mandatory; a group alert always belongs to exactly one subscription |
+
+## What's Next
+
+- [Subscription spend alerts](/docs/subscriptions/how-to-configure-spend-alerts/how-to-configure-subscription-spend-alerts): monitor total subscription spend, via UI or API
+- [Line item spend alerts](/docs/subscriptions/how-to-configure-spend-alerts/how-to-configure-subscription-line-item-spend-alerts): monitor one line item's spend, via UI or API
+- [Group spend alerts](/docs/subscriptions/how-to-configure-spend-alerts/how-to-configure-group-spend-alerts): monitor spend across a feature group, via API
