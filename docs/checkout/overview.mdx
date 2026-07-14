@@ -19,6 +19,16 @@ Your backend creates a Checkout Session with the customer, plan, and payment pro
 
 If the customer cancels, the session times out, or the payment fails, Flexprice cleans up all draft records automatically.
 
+## Collection methods
+
+A checkout session collects payment one of three ways, depending on whether you need a recurring mandate:
+
+- **One-time payment link** (default) — the customer pays a single hosted link. Every future invoice needs a new link.
+- **UPI Autopay mandate** — the customer authorizes a recurring UPI mandate once, and future invoices auto-charge.
+- **Card mandate** — the customer saves a card and authorizes recurring charges once, and future invoices auto-charge.
+
+The default is the payment link. To collect a mandate, pass `payment_provider_config` on the session — see [Autopay & Mandates](/docs/checkout/autopay-mandates).
+
 ## Choose your payment provider
 
 Each provider has its own setup page with connection instructions, webhook configuration, and test credentials.
@@ -37,6 +47,9 @@ Each provider has its own setup page with connection instructions, webhook confi
   </Card>
   <Card icon="list-check" href="/docs/checkout/implementation-guide" title="Implementation Guide">
     Backend, frontend redirect, webhook handling, and go-live checklist.
+  </Card>
+  <Card icon="repeat" href="/docs/checkout/autopay-mandates" title="Autopay & Mandates">
+    Collect a recurring mandate once, then auto-charge future invoices.
   </Card>
   <Card icon="webhook" href="/docs/webhook/webhooks" title="Webhook Events">
     Subscribe to `checkout.session.*` events to trigger fulfillment in your system.

@@ -1,0 +1,123 @@
+---
+title: "Autopay & Mandates"
+description: "Collect a recurring payment mandate once at checkout, then let future invoices charge automatically"
+---
+
+A mandate is a one-time authorization from your customer that lets Flexprice charge their future invoices without asking them to pay each time. The lifecycle has three phases: the customer **registers** the mandate once at checkout, the **first charge** runs, and every invoice after that **auto-debits** in the background.
+
+Razorpay Checkout supports three collection methods:
+
+| Method | What the customer does | Future invoices |
+|--------|------------------------|-----------------|
+| Payment link (default) | Pays a one-time hosted link | Each one needs a new link |
+| UPI Autopay mandate | Authorizes a recurring UPI mandate once | Auto-charged, no customer action |
+| Card mandate | Saves a card and authorizes recurring charges once | Auto-charged, no customer action |
+
+Use a mandate when the customer will be billed repeatedly — a subscription, metered usage, or wallet top-ups. Use the [one-time payment link](/docs/checkout/checkout-sessions) when there is a single payment and nothing recurring.
+
+## Prerequisites
+
+- **Razorpay connection** with invoice sync enabled. Set `sync_config.invoice.outbound: true` when you [connect Razorpay](/integrations/razorpay/connection-setup) so future invoices sync automatically.
+- **Customer `contact` (phone number).** A mandate registration is rejected without it (`"The contact field is required"`). The requirement comes from Razorpay's authorization step, so set `contact` when you create the customer if you plan to use autopay.
+- **A plan and price** in the currency you will charge. The examples below use `INR`.
+
+<Warning>
+  Set `contact` at customer-creation time. Adding it later does not retroactively fix a mandate registration that already failed — you will need to start a new checkout.
+</Warning>
+
+## Register a mandate at checkout
+
+Create a checkout session and include `payment_provider_config`. This is what switches the session from a one-time payment link to a mandate registration.
+
+```bash
+curl -X POST https://api.flexprice.io/v1/checkout/sessions \
+  -H "Authorization: Bearer <API_KEY>" \
+  -H "X-Environment-ID: <ENVIRONMENT_ID>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_external_id": "cust_abc123",
+    "action": "create_subscription",
+    "payment_provider": "razorpay",
+    "configuration": {
+      "create_subscription_params": {
+        "plan_id": "plan_xyz",
+        "currency": "INR",
+        "billing_period": "monthly"
+      }
+    },
+    "payment_provider_config": {
+      "collection_method": "charge_automatically",
+      "preferred_method": "UPI",
+      "max_mandate_limit": "5000"
+    },
+    "success_url": "https://app.example.com/checkout/success",
+    "cancel_url": "https://app.example.com/checkout/cancel"
+  }'
+```
+
+The response is the same shape as any checkout session — a `payment_action.url`, this time a Razorpay UPI Autopay authorization link:
+
+```json
+{
+  "id": "chk_01HXXX",
+  "checkout_status": "pending",
+  "payment_action": {
+    "type": "payment_link",
+    "url": "https://rzp.io/l/XXXXXXX"
+  }
+}
+```
+
+Redirect the customer to `payment_action.url`. They authorize the mandate once in their UPI app.
+
+### payment_provider_config fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `collection_method` | Yes | Set to `charge_automatically` to register a mandate. Omit `payment_provider_config` entirely for the default one-time payment link. |
+| `preferred_method` | Yes | `UPI` for UPI Autopay, `CARD` for a card mandate. |
+| `max_mandate_limit` | Yes | Ceiling, in the major currency unit (e.g. rupees), for any single future auto-charge. Invoices above this are not auto-charged. |
+
+### Card mandate
+
+A card mandate uses the same request. Change `preferred_method` to `CARD`:
+
+```json
+"payment_provider_config": {
+  "collection_method": "charge_automatically",
+  "preferred_method": "CARD",
+  "max_mandate_limit": "5000"
+}
+```
+
+The response is the same — a Razorpay-hosted link where the customer enters card details and authorizes recurring charges. Everything after authorization works identically to UPI.
+
+## What happens after authorization
+
+Once the customer authorizes, Razorpay confirms the mandate (`token.confirmed`) and captures the first payment (`payment.captured`). Flexprice marks the checkout session `completed`, activates the subscription, and finalizes the invoice — the same completion path as a one-time payment link.
+
+From then on, every new invoice for that customer is checked for a usable saved token and charged automatically, with no further customer action. This applies to subscription renewals, and also to one-off invoices and wallet top-up invoices.
+
+An invoice falls back to a normal Razorpay payment link when there is no usable saved token, or when the invoice amount exceeds `max_mandate_limit`. The fallback is automatic and safe to rely on — the customer receives a link to pay that invoice manually.
+
+<Note>
+  `max_mandate_limit` is a hard ceiling, not a soft warning. An invoice above it never auto-charges; it always falls back to a payment link. Set the limit high enough to cover your largest expected invoice.
+</Note>
+
+## Gotchas
+
+- **`contact` is mandatory** to register a mandate. Collect it at customer creation — see [Prerequisites](#prerequisites).
+- **`max_mandate_limit` is a hard ceiling.** Invoices above it fall back to a payment link rather than auto-charging. This is an intentional safety cap.
+- **Currency casing.** Send `currency` in any casing — Flexprice normalizes it to uppercase before calling Razorpay.
+
+<CardGroup cols={2}>
+  <Card icon="plug" href="/docs/checkout/razorpay-checkout" title="Razorpay Setup">
+    Enable the webhook events, including the mandate events autopay needs.
+  </Card>
+  <Card icon="code" href="/docs/checkout/checkout-sessions" title="Checkout Sessions API">
+    Full field reference for the create session call.
+  </Card>
+  <Card icon="list-check" href="/docs/checkout/implementation-guide" title="Implementation Guide">
+    End-to-end integration with webhook handling.
+  </Card>
+</CardGroup>

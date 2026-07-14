@@ -70,6 +70,10 @@ Redirect the customer to `payment_action.url`. Each session has its own link. Do
 | `configuration.create_subscription_params.currency` | Yes | Billing currency (e.g., `INR`, `USD`). |
 | `configuration.create_subscription_params.billing_period` | No | `monthly`, `quarterly`, `annual`, etc. Defaults to the plan's period. |
 | `configuration.create_subscription_params.start_date` | No | Subscription start date. Defaults to now. |
+| `payment_provider_config` | No | Collect a recurring mandate instead of a one-time link. Omit for the default payment-link flow. See [Autopay & Mandates](/docs/checkout/autopay-mandates). |
+| `payment_provider_config.collection_method` | No | Set to `charge_automatically` to register a mandate. |
+| `payment_provider_config.preferred_method` | No | `UPI` or `CARD`. Selects the mandate type. |
+| `payment_provider_config.max_mandate_limit` | No | Ceiling for any single future auto-charge, in the major currency unit. |
 | `success_url` | No | Where to redirect after successful payment. |
 | `failure_url` | No | Where to redirect after a failed payment. |
 | `cancel_url` | No | Where to redirect if the customer cancels. |

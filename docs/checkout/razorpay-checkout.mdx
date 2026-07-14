@@ -11,7 +11,7 @@ Follow the [Razorpay Connection Setup guide](/integrations/razorpay/connection-s
 
 ## Step 2: Enable the required webhook events
 
-Go to your Razorpay Dashboard: **Settings → Webhooks → [your Flexprice endpoint]** and enable all five events:
+Go to your Razorpay Dashboard: **Settings → Webhooks → [your Flexprice endpoint]** and enable these events:
 
 | Event | Required for |
 |-------|-------------|
@@ -20,10 +20,15 @@ Go to your Razorpay Dashboard: **Settings → Webhooks → [your Flexprice endpo
 | `payment_link.paid` | Activating the subscription when payment completes |
 | `payment_link.cancelled` | Cleaning up when a customer cancels the payment link |
 | `payment_link.expired` | Cleaning up when the payment link expires |
+| `token.confirmed` | Confirming a mandate registration (autopay only) |
 
 <Warning>
-  If `payment_link.paid` is not enabled, Flexprice will never receive payment confirmation and the subscription will stay inactive. Verify all five events are enabled before testing.
+  If `payment_link.paid` is not enabled, Flexprice will never receive payment confirmation and the subscription will stay inactive. Verify these events are enabled before testing.
 </Warning>
+
+<Note>
+  `token.confirmed` is only needed if you use [Autopay & Mandates](/docs/checkout/autopay-mandates). Without it, mandate registrations never complete and the session stays `pending`. It is harmless to enable for payment-link-only setups.
+</Note>
 
 ### Webhook URL
 
