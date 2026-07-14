@@ -25,6 +25,26 @@ reference, plus targeted edits to the existing checkout pages.
 3. **Auto-charge scope** — Renewals-focused. Subscription renewals are the main worked case;
    one-off and wallet top-up invoices get a one-line mention; the payment-link fallback and
    `max_mandate_limit` ceiling are covered briefly.
+4. **Compliance depth** — Omit RBI-specific detail (₹15,000 AFA re-authentication threshold,
+   pre-debit notifications). Keep the page Flexprice-API-focused; these are gateway-level
+   specifics users can get from Razorpay.
+5. **Fallback depth** — Keep the payment-link fallback as noted lines inside the auto-charge
+   section, not a separate section.
+
+### Informed by competitive research (2026-07-14)
+
+Reviewed how Stripe, Razorpay, Chargebee, Recurly, Orb, Polar, and Paddle document
+"authorize a recurring mandate once, then auto-charge future invoices." Takeaways applied
+below:
+
+- **Structure is validated.** A dedicated concept page with narrative-on-top, tables-on-bottom
+  matches the cleanest competitors (Polar; Razorpay's own concept pages). No structural change.
+- **Three-phase framing** (from Razorpay): register mandate once → first charge → subsequent
+  auto-debits. Folded into the intro as a one-sentence orientation — no added length.
+- **Accuracy corrections** (from verifying claims against Razorpay's docs) — see below.
+- Deliberately NOT adopted (per lean scope decision): promoting the fallback to its own
+  section, RBI compliance callouts, a retry-schedule table (we have no multi-attempt dunning
+  cadence — the payment link *is* the recovery artifact).
 
 ## New page: `docs/checkout/autopay-mandates.mdx`
 
@@ -40,15 +60,19 @@ reference, plus targeted edits to the existing checkout pages.
 
 ### Page outline
 
-1. **Intro** — What a mandate is. The three collection methods (one-time payment link vs
-   UPI Autopay mandate vs card mandate) and when to choose autopay over one-time links.
+1. **Intro** — What a mandate is, framed as a three-phase lifecycle in one sentence: register
+   the mandate once → the first charge runs → subsequent invoices auto-debit. The three
+   collection methods (one-time payment link vs UPI Autopay mandate vs card mandate) and when
+   to choose autopay over one-time links.
 
 2. **Prerequisites**
    - Razorpay connection with `sync_config.invoice.outbound: true` (enables auto-sync of
      future invoices).
-   - Customer **must** have a `contact` (phone number). Flagged as required — Razorpay rejects
-     mandate registration and later auto-charge without it (`"The contact field is required"`).
-     Recommend collecting it at customer-creation time.
+   - Customer **must** have a `contact` (phone number) **to register a mandate**. The requirement
+     comes from Razorpay's checkout/authentication step, not the Create Customer API — but a
+     mandate registration without it is rejected (`"The contact field is required"`). Recommend
+     collecting `contact` at customer-creation time if you'll use autopay. (Do NOT claim
+     Razorpay's Create Customer API hard-requires it — it doesn't.)
    - A plan + price in the currency being charged (examples use `INR`).
 
 3. **Register a mandate at checkout** — The `POST /v1/checkout/sessions` call with
@@ -74,11 +98,13 @@ reference, plus targeted edits to the existing checkout pages.
      safety cap, not a bug.
 
 5. **Gotchas**
-   - `contact` is mandatory for registration and auto-charge.
-   - `max_mandate_limit` is a hard ceiling; invoices above it never auto-charge (they fall back).
-   - Currency casing — folded in as a light one-liner: send currency consistently; Flexprice
-     normalizes it to uppercase before calling Razorpay, so you don't need to handle Razorpay's
-     case sensitivity yourself. Not a prominent warning.
+   - `contact` is mandatory to register a mandate (see Prerequisites for the precise wording).
+   - `max_mandate_limit` is a hard ceiling; invoices above it never auto-charge (they fall back
+     to a payment link). No RBI/AFA-threshold detail here — omitted per scope decision.
+   - Currency casing — light one-liner, framed **only** as a Flexprice convenience: Flexprice
+     normalizes currency to uppercase for you, so send it in any casing. Do NOT assert anything
+     about Razorpay's own case handling (that "lowercase → treated as international" behavior is
+     unverified against Razorpay's docs and must not be presented as a documented gateway guarantee).
 
 6. **Cross-link cards** — to `razorpay-checkout` (webhook setup), `checkout-sessions` (API
    reference), `implementation-guide` (end-to-end).
@@ -111,3 +137,7 @@ reference, plus targeted edits to the existing checkout pages.
   expiry checks) — kept as behavior context only, not exhaustively documented.
 - Any provider other than Razorpay.
 - Full end-to-end card-entry walkthrough (card is documented as a config variant of the UPI flow).
+- RBI-specific compliance detail (₹15,000 AFA re-authentication threshold, 24h pre-debit
+  notifications) — gateway-level; users get it from Razorpay.
+- Any multi-attempt dunning/retry cadence — Flexprice's recovery path is a single payment-link
+  fallback, not a retry schedule.
