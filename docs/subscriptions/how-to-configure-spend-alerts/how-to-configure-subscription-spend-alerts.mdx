@@ -1,0 +1,192 @@
+---
+title: "Subscription Spend Alerts"
+description: "Monitor total usage-based spend across a subscription and get notified by webhook when it crosses a configured threshold"
+---
+
+Subscription spend alerts monitor the **total usage-based spend across an entire subscription** for the current billing period. This is the broadest of the three spend alert scopes: it catches overall budget overruns regardless of which line item drove the spend.
+
+## Alert Levels
+
+| Level | Purpose |
+|-------|---------|
+| **Info** | Informational alert when total spend crosses a defined threshold |
+| **Warning** | Early warning level before critical |
+| **Critical** | Critical alert level requiring immediate action |
+
+Each level is configured with a **threshold value** (in the subscription's currency) and always uses the **above** condition, so spend alerts fire when spend rises above the threshold.
+
+Alerts are turned on or off using **Enable Alerts** (`alert_enabled` in the API).
+
+## Configuring via the Dashboard
+
+<Steps>
+  <Step title="Open the subscription">
+    - Go to **Billing** → **Subscriptions**, or open a customer and select their subscription
+    - You can do this from either the **Subscription Details** page or the customer's **Overview** tab subscriptions list
+  </Step>
+
+  <Step title="Open Alert Settings">
+    Click the **three-dot menu (⋮)** on the subscription and select **Alert Settings**.
+  </Step>
+
+  <Step title="Enable alerts">
+    In the **Subscription Alert Settings** dialog, turn **Enable Alerts** on to activate monitoring against your configured thresholds.
+  </Step>
+
+  <Step title="Configure thresholds">
+    - Click **Add** on **Critical**, **Warning**, and/or **Info** to add a level
+    - Set **Threshold Value** for each level you add. **Condition** is fixed to **Above**
+    - Use **Remove** to drop a level you don't need
+    - Click **Save Changes** to apply
+  </Step>
+</Steps>
+
+## Configuring via API
+
+```json
+{
+  "entity_type": "subscription",
+  "entity_id": "subs_01K7YQ8ZR4M3V2N1XA9C6D0EFG",
+  "config": {
+    "alert_enabled": true,
+    "info":     { "threshold": "250",  "condition": "above" },
+    "warning":  { "threshold": "500",  "condition": "above" },
+    "critical": { "threshold": "1000", "condition": "above" }
+  }
+}
+```
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://api.cloud.flexprice.io/v1/alerts/setting' \
+  -H 'x-api-key: <api_key>' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "entity_type": "subscription",
+    "entity_id": "subs_01K7YQ8ZR4M3V2N1XA9C6D0EFG",
+    "config": {
+      "alert_enabled": true,
+      "info":     { "threshold": "250",  "condition": "above" },
+      "warning":  { "threshold": "500",  "condition": "above" },
+      "critical": { "threshold": "1000", "condition": "above" }
+    }
+  }'
+```
+</CodeGroup>
+
+<Note>
+No `parent_entity_type` or `parent_entity_id` is sent for subscription-level alerts. `entity_id` is the subscription itself.
+</Note>
+
+## Alert Behavior
+
+Once configured and enabled, Flexprice:
+
+- **Recalculates spend**: On every usage event for the subscription, recomputes total usage-based spend using the same invoicing-grade calculation (commitment- and overage-aware) used to generate invoices
+- **Compares against thresholds**: Evaluates the recalculated total against Critical, Warning, and Info
+- **Updates state**: Reflects the current state (`ok`, `info`, `warning`, `in_alarm`) in alert history
+- **Notifies**: Sends a webhook only when the state changes, not on every event
+
+<Info>
+Evaluation happens inline as usage events are ingested. There is no polling delay. The very first check for a new alert setting is silent if spend is already below every threshold (state `ok`); no webhook fires until spend actually crosses a level.
+</Info>
+
+## Managing Alert Settings
+
+### Viewing current configuration
+
+<Steps>
+  <Step title="Open the subscription">
+    Open the subscription and click the **three-dot menu (⋮)**.
+  </Step>
+
+  <Step title="Open Alert Settings">
+    Select **Alert Settings**. The dialog shows **Enable Alerts** and all configured threshold levels with their values.
+  </Step>
+</Steps>
+
+### Changing thresholds
+
+<Steps>
+  <Step title="Open Alert Settings">
+    Click the **three-dot menu (⋮)** on the subscription and select **Alert Settings**.
+  </Step>
+
+  <Step title="Adjust values">
+    Change **Enable Alerts** or any threshold value in the dialog.
+  </Step>
+
+  <Step title="Save">
+    Click **Save Changes**.
+  </Step>
+</Steps>
+
+### Removing a threshold
+
+<Steps>
+  <Step title="Open Alert Settings">
+    Click the **three-dot menu (⋮)** on the subscription and select **Alert Settings**.
+  </Step>
+
+  <Step title="Remove the level">
+    Click **Remove** on the threshold level you want to drop.
+  </Step>
+
+  <Step title="Save">
+    Click **Save Changes**. Removed thresholds are cleared, not just hidden, so send the complete remaining configuration.
+  </Step>
+</Steps>
+
+### Disabling alerts
+
+<Steps>
+  <Step title="Open Alert Settings">
+    Click the **three-dot menu (⋮)** on the subscription and select **Alert Settings**.
+  </Step>
+
+  <Step title="Turn off Enable Alerts">
+    Set **Enable Alerts** to off (or set `alert_enabled` to `false` via API).
+  </Step>
+
+  <Step title="Save">
+    Click **Save Changes**.
+  </Step>
+</Steps>
+
+## Webhooks
+
+| Event | Fires when |
+|-------|------------|
+| `subscription.spend.threshold_reached` | Spend crosses a threshold |
+| `subscription.spend.threshold_recovered` | Spend recovers to `ok` |
+
+## Use Cases
+
+- **Overall budget cap**: Alert when a customer's total subscription spend approaches or exceeds a contracted limit
+- **Early warning for usage spikes**: Set Info well below Critical to catch unexpected spend trends before they become a problem
+- **Account health monitoring**: Route `warning` and `in_alarm` webhooks to a support or account-management queue
+
+## Best Practices
+
+<Check>
+**Set Info and Warning with room to react**: for `above` conditions, Warning at ~80% and Critical at 100% of a target budget gives time to act before the hard limit.
+</Check>
+
+<Check>
+**Combine with line item alerts**: a subscription-level alert tells you the subscription is over budget; a line item alert on the same subscription tells you which charge is driving it.
+</Check>
+
+<Check>
+**Handle recovery webhooks**: when spend resets at the start of a new billing period, or a threshold is raised, Flexprice sends `alert_status: ok`. Use this to clear in-app banners or escalations.
+</Check>
+
+<Check>
+**Make webhook handlers idempotent**: use the subscription ID plus `alert_status` as an idempotency key, since retried deliveries can repeat a state transition.
+</Check>
+
+## Related
+
+- [What Are Spend Alerts?](/docs/subscriptions/how-to-configure-spend-alerts/what-are-spend-alerts): all three alert scopes, shared validation, and the full API reference
+- [Line item spend alerts](/docs/subscriptions/how-to-configure-spend-alerts/how-to-configure-subscription-line-item-spend-alerts): monitor one line item instead of the whole subscription
+- [Group spend alerts](/docs/subscriptions/how-to-configure-spend-alerts/how-to-configure-group-spend-alerts): monitor spend across a feature group
+- [Webhooks](/docs/webhook/webhooks): endpoint setup, payload signatures, and retry behavior
