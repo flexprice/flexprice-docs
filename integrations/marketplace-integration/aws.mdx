@@ -1,0 +1,247 @@
+---
+title: 'Set up AWS Marketplace'
+description: 'Report usage from Flexprice subscriptions to AWS Marketplace so AWS bills your buyers and pays you out'
+tag: 'Beta'
+---
+
+The AWS Marketplace integration lets you sell your product on AWS Marketplace while metering usage in Flexprice. You connect your AWS seller account to Flexprice once, link each buyer's AWS agreement to the Flexprice subscription that already tracks their usage, and Flexprice reports that usage to AWS on a schedule. AWS then invoices the buyer and pays you out.
+
+Flexprice never creates your AWS listing, resolves buyers, or listens to AWS lifecycle events. It does one thing: take usage that is already metered against a Flexprice subscription and report it to AWS through the `BatchMeterUsage` API, keyed by the buyer's AWS agreement.
+
+<Info>
+  The AWS Marketplace integration is in **beta**. The setup flow and API are stable enough to use, but details may change. Reach out to support before going to production.
+</Info>
+
+## How it works
+
+<Steps>
+  <Step title="Create your AWS Marketplace listing">
+    Set up your product on AWS Marketplace with a single usage dimension. This is done entirely in your AWS Seller account.
+  </Step>
+
+  <Step title="Grant Flexprice permission to meter">
+    Create a cross-account IAM role in your AWS account that Flexprice can assume to call `BatchMeterUsage` on your behalf.
+  </Step>
+
+  <Step title="Connect your AWS account to Flexprice">
+    Create an `aws_marketplace` connection in Flexprice with the role ARN, external ID, and region.
+  </Step>
+
+  <Step title="Register each buyer's agreement">
+    When a buyer subscribes on AWS Marketplace, resolve them on your own backend and register the agreement in Flexprice, linking it to a Flexprice subscription.
+  </Step>
+
+  <Step title="Flexprice reports usage on a schedule">
+    Flexprice periodically computes each subscription's usage for the elapsed window and reports it to AWS through `BatchMeterUsage`.
+  </Step>
+</Steps>
+
+## Prerequisites
+
+Before you begin, make sure you have:
+
+1. **An approved AWS Marketplace seller account** with permission to create products.
+2. **A product on AWS Marketplace** priced with a single usage dimension (see [Step 1](#step-1-create-your-aws-marketplace-listing)).
+3. **Access to AWS IAM** to create a policy and a role in your seller account.
+4. **A Flexprice environment** with the customers, plans, and subscriptions you want to meter already set up.
+
+## Step 1: Create your AWS Marketplace listing
+
+Create your product in the AWS Marketplace Management Portal. The integration supports products priced with **exactly one usage dimension**.
+
+<Steps>
+  <Step title="Start the product creation wizard">
+    In the AWS Marketplace Management Portal, create a new SaaS product and complete the initial product details.
+  </Step>
+
+  <Step title="Create a single usage dimension">
+    Add one usage dimension for your product. Note its **API identifier** — this is the dimension name Flexprice reports against, and it is immutable once created.
+  </Step>
+
+  <Step title="Set the dimension price">
+    Price the usage dimension at `$1.00` per unit. Flexprice reports the billable amount it computes as the quantity, so with a `$1.00` per-unit price the total AWS bills the buyer matches the amount Flexprice computed.
+  </Step>
+</Steps>
+
+<Warning>
+  Flexprice reports the billable amount it computes as the quantity, and does no unit conversion. Price your single dimension at `$1.00` per unit so the amount AWS bills matches the amount Flexprice computes. A different per-unit price will bill your buyers the wrong amount.
+</Warning>
+
+## Step 2: Grant Flexprice permission to meter
+
+Flexprice reports usage by assuming a cross-account IAM role in your AWS account. You create an IAM policy that allows the `BatchMeterUsage` action, then attach it to a role that trusts Flexprice's AWS account and requires a Flexprice-provided external ID.
+
+### Create the IAM policy
+
+In the AWS IAM console, create a policy with the following document. It grants the single permission Flexprice needs to meter usage.
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "aws-marketplace:BatchMeterUsage"
+      ],
+      "Resource": [
+        "*"
+      ]
+    }
+  ]
+}
+```
+
+<Note>
+  `aws-marketplace:BatchMeterUsage` is not resource-scopable in AWS's permission model, so `Resource` is `*`. Flexprice requests no other permissions.
+</Note>
+
+### Create the cross-account role
+
+Create an IAM role that Flexprice can assume. Its trust policy names Flexprice's AWS account as the principal and requires a matching external ID. Flexprice shows you the exact **AWS account ID** and **external ID** to use when you set up the connection in [Step 3](#step-3-connect-your-aws-account-to-flexprice).
+
+<Steps>
+  <Step title="Create a role for another AWS account">
+    In the AWS IAM console, create a role of type **AWS account → Another AWS account**, and enter the AWS account ID Flexprice shows you.
+  </Step>
+
+  <Step title="Require an external ID">
+    Select **Require external ID** and paste the external ID Flexprice shows you (for example, `flexprice-mp-6c3571d4-4c86-4902-a296-638103f96a60`). Leave **Require MFA** unchecked.
+  </Step>
+
+  <Step title="Attach the policy">
+    Attach the policy you created in the previous section.
+  </Step>
+
+  <Step title="Review the trust relationship">
+    Confirm the role's trust policy matches the following. Replace the account ID and external ID with the values Flexprice gave you.
+
+    ```json
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Principal": {
+            "AWS": "arn:aws:iam::851725232919:root"
+          },
+          "Action": "sts:AssumeRole",
+          "Condition": {
+            "StringEquals": {
+              "sts:ExternalId": "flexprice-mp-6c3571d4-4c86-4902-a296-638103f96a60"
+            }
+          }
+        }
+      ]
+    }
+    ```
+  </Step>
+
+  <Step title="Copy the role ARN">
+    Save the role and copy its ARN. It has the format `arn:aws:iam::<YOUR_ACCOUNT_ID>:role/<role-name>`. You will paste it into Flexprice in the next step.
+  </Step>
+</Steps>
+
+## Step 3: Connect your AWS account to Flexprice
+
+Create an `aws_marketplace` connection in Flexprice with the role ARN from Step 2, the external ID, and the AWS region your product is listed in.
+
+### Using the Flexprice dashboard
+
+Create the connection from the Flexprice dashboard under **Integrations → AWS Marketplace**.
+
+### Using the API
+
+**Endpoint:** `POST /api/v1/connections`
+
+**Headers:**
+```http
+Content-Type: application/json
+Authorization: Bearer your_api_key
+X-Environment-ID: your_environment_id
+```
+
+**Request body:**
+```json
+{
+  "name": "AWS Marketplace",
+  "provider_type": "aws_marketplace",
+  "encrypted_secret_data": {
+    "role_arn": "arn:aws:iam::123456789012:role/flexprice-marketplace",
+    "external_id": "flexprice-mp-6c3571d4-4c86-4902-a296-638103f96a60"
+  },
+  "metadata": {
+    "aws_marketplace": {
+      "region": "us-east-1"
+    }
+  }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `role_arn` | The ARN of the cross-account role you created in Step 2 |
+| `external_id` | The external ID Flexprice provided, matching the role's trust policy |
+| `region` | The AWS region your product is listed in (for example, `us-east-1`) |
+
+<Warning>
+  Put `role_arn` and `external_id` at the top level of `encrypted_secret_data` — Flexprice keys them by `provider_type`. Nesting them under an `aws_marketplace` object leaves them empty and the connection fails validation.
+</Warning>
+
+Both credentials are stored encrypted. The `region` is stored on the connection and selects the AWS Marketplace Metering endpoint Flexprice reports to.
+
+## Step 4: Register marketplace agreements
+
+When a buyer subscribes to your product on AWS Marketplace, AWS redirects them to your application with a registration token. On your own backend, resolve the buyer with the AWS `ResolveCustomer` API to get their `LicenseArn`, `CustomerAWSAccountId`, and `ProductCode`. Create a Flexprice subscription for the buyer, then register the agreement in Flexprice to link the AWS identifiers to that subscription.
+
+**Endpoint:** `POST /api/v1/marketplace/agreements`
+
+**Headers:**
+```http
+Content-Type: application/json
+Authorization: Bearer your_api_key
+X-Environment-ID: your_environment_id
+```
+
+**Request body:**
+```json
+{
+  "subscription_id": "subs_01KX6ABC3T731GFVZDYH3Z19CP",
+  "customer_id": "cust_01KX6ABC211T628N0NZHVMK2PZ",
+  "customer_aws_account_id": "222222222222",
+  "license_arn": "arn:aws:license-manager:us-east-1:222222222222:license:l-abc123xyz",
+  "plan_id": "plan_01KX5YWBTX2SZ76R7NPRAEBXZH",
+  "product_code": "4qwerty789",
+  "concurrent_agreements": true,
+  "dimension": "usage_fee"
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `subscription_id` | The Flexprice subscription that tracks this buyer's usage. Must already exist and be active |
+| `customer_id` | The Flexprice customer for this buyer |
+| `customer_aws_account_id` | The buyer's AWS account ID, from `ResolveCustomer` |
+| `license_arn` | The AWS agreement's license ARN, from `ResolveCustomer` |
+| `plan_id` | The Flexprice plan the subscription is on |
+| `product_code` | Your AWS product code, from `ResolveCustomer` |
+| `concurrent_agreements` | Whether your product is enrolled in AWS Concurrent Agreements (see note below) |
+| `dimension` | The API identifier of your product's single usage dimension |
+
+<Note>
+  Set `concurrent_agreements` to `true` for products enrolled in AWS Concurrent Agreements. For these products, Flexprice reports usage using the `LicenseArn` and omits the `ProductCode`, as required by AWS. Set it to `false` for legacy products, where Flexprice includes the `ProductCode`.
+</Note>
+
+Each agreement maps to exactly one subscription. Registering a new agreement always means a new subscription — an existing subscription cannot be re-pointed to a different agreement.
+
+## What Flexprice meters to AWS
+
+Once a connection and agreements are in place, Flexprice reports usage automatically. No further action is needed.
+
+- **Usage is computed on a schedule.** Flexprice periodically computes each mapped subscription's usage for the elapsed window, using the same commitment- and overage-aware computation as your Flexprice invoices, and stores it as a usage record.
+- **Usage is reported through `BatchMeterUsage`.** On a separate schedule, Flexprice reports each usage record to AWS. The billable amount Flexprice computes is sent as the quantity, against your product's single dimension, timestamped to the end of the window.
+- **Reporting is safe to retry.** Each usage record is reported with a fixed timestamp, so AWS de-duplicates a repeated report and never double-bills. A record AWS does not accept stays unreported and is retried on the next run.
+
+## Next steps
+
+<Card icon="plug" horizontal={true} href="/integrations/integrations" title="Browse all integrations" />
