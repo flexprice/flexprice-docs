@@ -1,0 +1,190 @@
+---
+title: 'AWS Marketplace Agreement Registration'
+description: 'Link each buyer AWS Marketplace agreement to a Flexprice subscription so their usage is reported to AWS'
+tag: 'Beta'
+---
+
+## Overview
+
+When a buyer subscribes to your product on AWS Marketplace, AWS creates an agreement for them and redirects them to your application. Registering that agreement tells Flexprice which subscription's usage belongs to which buyer on AWS.
+
+Registration links three Flexprice entities to their AWS counterparts:
+
+| Flexprice entity | Links to | AWS identifier |
+|------------------|----------|----------------|
+| **Customer** | The buyer's AWS account | `CustomerAWSAccountId` |
+| **Subscription** | The buyer's AWS agreement | `LicenseArn` |
+| **Plan** | Your AWS product | `ProductCode` |
+
+Register the agreement once per buyer, at the point they subscribe. After that, usage reporting runs on its own.
+
+
+## Prerequisites
+
+Before registering an agreement, ensure you have:
+
+1. **A published AWS Marketplace connection** - See [How to Set Up AWS Marketplace](/integrations/marketplace-integration/aws/connection-setup)
+2. **Your dimension API identifier** - The single usage dimension you created on your AWS product
+3. **A Flexprice customer, plan, and active subscription** - For the buyer, see [Step 3](#step-3-make-sure-the-buyer-exists-in-flexprice)
+
+## Step 1: Handle the AWS Redirect
+
+When a buyer subscribes, AWS redirects their browser to the **registration URL** configured on your product. This is an HTTP `POST` to your URL carrying a single form field:
+
+| Field | Description |
+|-------|-------------|
+| `x-amzn-marketplace-token` | A short-lived registration token identifying this buyer's subscription attempt |
+
+<Warning>
+  This token expires quickly. Exchange it immediately. Do not queue it, store it for later, or wait for a user action first. AWS returns `ExpiredTokenException` if you wait too long.
+</Warning>
+
+For details on configuring your registration URL, see [Determine how buyers will access your product](https://docs.aws.amazon.com/marketplace/latest/userguide/saas-product-settings.html#configure-product-access) in the AWS documentation.
+
+## Step 2: Call ResolveCustomer
+
+Call the AWS Marketplace Metering Service `ResolveCustomer` API from your backend, passing the token from Step 1.
+
+**Request to AWS:**
+```json
+{
+  "RegistrationToken": "the x-amzn-marketplace-token value"
+}
+```
+
+<Note>
+  This is a call your own backend makes directly to AWS, using credentials from the AWS account that published the product. Flexprice is not involved in this exchange.
+</Note>
+
+**AWS responds with:**
+
+| Field | What it is | Needed by Flexprice |
+|-------|------------|---------------------|
+| `CustomerAWSAccountId` | The buyer's AWS account ID | ✅ |
+| `LicenseArn` | The unique identifier for this buyer's granted license, their AWS agreement | ✅ |
+| `ProductCode` | Your AWS product code | ✅ |
+| `CustomerIdentifier` | An identifier for this buyer, scoped to your product | ❌ |
+
+<Warning>
+  Persist all four values on your own side. AWS does not return them again outside this exchange, and the registration token cannot be replayed.
+</Warning>
+
+## Step 3: Make Sure the Buyer Exists in Flexprice
+
+Three things must already exist in Flexprice before you can register the agreement. Flexprice does not create any of them for you.
+
+<Steps>
+  <Step title="A Flexprice customer for this buyer">
+    Create one with `POST /v1/customers` if it does not already exist. Usage and billing are attributed to this customer.
+  </Step>
+
+  <Step title="The Flexprice plan for this product">
+    The plan whose usage-based charge corresponds to the AWS product the buyer subscribed to. See [Creating a Plan](/docs/product-catalogue/plans/create).
+  </Step>
+
+  <Step title="An active Flexprice subscription">
+    Create it with `POST /v1/subscriptions` on that plan if it does not already exist. The subscription must be **active**: registration rejects a subscription in any other state.
+  </Step>
+</Steps>
+
+## Step 4: Register the Agreement
+
+### Using Flexprice Dashboard
+
+You can link a buyer's AWS agreement to a Flexprice subscription directly from the Flexprice dashboard.
+
+### API Request
+
+**Endpoint:** `POST /api/v1/marketplace/agreements`
+
+**Headers:**
+```http
+Content-Type: application/json
+Authorization: Bearer your_api_key
+X-Environment-ID: your_environment_id
+```
+
+**Request Body:**
+```json
+{
+  "provider": "aws_marketplace",
+  "subscription_id": "subs_01KX6ABC3T731GFVZDYH3Z19CP",
+  "customer_id": "cust_01KX6ABC211T628N0NZHVMK2PZ",
+  "plan_id": "plan_01KX5YWBTX2SZ76R7NPRAEBXZH",
+  "customer_aws_account_id": "222222222222",
+  "license_arn": "arn:aws:license-manager:us-east-1:222222222222:license:l-abc123xyz",
+  "product_code": "4qwerty789",
+  "dimension": "usage_fee",
+  "concurrent_agreements": true
+}
+```
+
+| Field | Where it comes from | Required |
+|-------|---------------------|----------|
+| `provider` | Must be `aws_marketplace` | ✅ |
+| `subscription_id` | The Flexprice subscription for this buyer. Must exist and be active | ✅ |
+| `customer_id` | The Flexprice customer for this buyer. Must match the subscription's customer | ✅ |
+| `plan_id` | The Flexprice plan the subscription is on. Must match the subscription's plan | ✅ |
+| `customer_aws_account_id` | `CustomerAWSAccountId` from the `ResolveCustomer` response | ✅ |
+| `license_arn` | `LicenseArn` from the `ResolveCustomer` response | ✅ |
+| `product_code` | `ProductCode` from the `ResolveCustomer` response | ✅ |
+| `dimension` | The API identifier of your product's single usage dimension | ✅ |
+| `concurrent_agreements` | Whether your product is enrolled in AWS Concurrent Agreements. Defaults to `false` | ❌ |
+
+<Note>
+  Set `concurrent_agreements` to `true` for products enrolled in AWS Concurrent Agreements. For these products, AWS identifies the product by the `LicenseArn` and does not accept a `ProductCode`. Set it to `false` for legacy products.
+</Note>
+
+### Response
+
+```json
+{
+  "plan_mapping_id": "eim_01KX5YWBTX2SZ76R7NPRAEBXZH",
+  "subscription_mapping_id": "eim_01KX6ABC3T731GFVZDYH3Z19CP",
+  "customer_mapping_id": "eim_01KX6ABC211T628N0NZHVMK2PZ",
+  "status": "active"
+}
+```
+
+A successful response means the mapping is recorded. Nothing else happens synchronously: usage reporting begins on its own schedule, described in [Usage Reporting](/integrations/marketplace-integration/aws/usage-reporting).
+
+### Validation Rules
+
+Registration rejects the request if any of these do not hold:
+
+| Rule | Error |
+|------|-------|
+| The subscription exists and is **active** | `subscription is not active` |
+| `customer_id` matches the subscription's customer | `customer_id does not match subscription` |
+| `plan_id` matches the subscription's plan | `plan_id does not match subscription` |
+| The `license_arn` is not already registered to a different subscription | `license_arn already registered` |
+| The subscription is not already registered to a different `license_arn` | `subscription already mapped to a different license_arn` |
+
+<Warning>
+  Each agreement maps to exactly one subscription, and a subscription cannot be re-pointed to a different agreement. If a buyer re-subscribes and AWS issues a new `LicenseArn`, create a new Flexprice subscription for them rather than reusing the old one.
+</Warning>
+
+## Registering Multiple Buyers on One Plan
+
+The plan mapping stores your product-level AWS configuration, so it is created once and reused. Registering a second buyer on the same plan reuses the existing plan mapping rather than creating another one.
+
+This means `product_code`, `dimension`, and `concurrent_agreements` are set by the **first** agreement registered against a plan. Later registrations for that plan do not change them.
+
+<Check>
+  Register every buyer for the same AWS product against the same Flexprice plan, with the same `product_code` and `dimension`.
+</Check>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card icon="chart-line" href="/integrations/marketplace-integration/aws/usage-reporting" title="Usage Reporting">
+    Understand what gets metered to AWS and when.
+  </Card>
+  <Card icon="plug" href="/integrations/marketplace-integration/aws/connection-setup" title="Connection Setup">
+    Set up your AWS listing, IAM role, and Flexprice connection.
+  </Card>
+</CardGroup>
+
+**API References**
+- [Create a Customer](/api-reference/customers/create-customer)
+- [Create a Subscription](/api-reference/subscriptions/create-subscription)
