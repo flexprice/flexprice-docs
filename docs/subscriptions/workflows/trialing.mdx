@@ -31,11 +31,11 @@ Trial subscriptions move through three statuses:
 trialing -> (trial_end reached) -> incomplete -> (invoice paid / zero amount) -> active
 ```
 
-| Status | What it means | Billing |
-|---|---|---|
-| `trialing` | Trial window is active | **`SUBSCRIPTION_TRIAL_START`**: **`$0`** finalized invoice for **`trial_start` → `trial_end`** (preview line items); subscription **stays** `trialing` |
-| `incomplete` | Trial ended; first paid invoice issued | Awaiting **`SUBSCRIPTION_TRIAL_END`** payment (unless amount is **`$0`**) |
-| `active` | Trial converted or non-trial start | Normal billing cycle |
+| Status       | What it means                          | Billing                                                                                                                                                |
+| ------------ | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `trialing`   | Trial window is active                 | **`SUBSCRIPTION_TRIAL_START`**: **`$0`** finalized invoice for **`trial_start` → `trial_end`** (preview line items); subscription **stays** `trialing` |
+| `incomplete` | Trial ended; first paid invoice issued | Awaiting **`SUBSCRIPTION_TRIAL_END`** payment (unless amount is **`$0`**)                                                                              |
+| `active`     | Trial converted or non-trial start     | Normal billing cycle                                                                                                                                   |
 
 **Period fields while trialing**
 
@@ -62,15 +62,15 @@ What you get on create:
 
 Use these fields deliberately: they clarify how **trial start** differs from **trial end**.
 
-| Topic | Role |
-| --- | --- |
-| **`payment_behavior`** | Applies when generating / paying **`SUBSCRIPTION_TRIAL_END`** and broader subscription invoice payment flows (`default_active`, `allow_incomplete`, …). See **[What happens at trial end](#what-happens-at-trial-end)**. |
-| **`collection_method`** | After finalize, **`$0`** trial-start invoices are **`SUCCEEDED`** under **`charge_automatically`** or left **`PENDING`** under **`send_invoice`** so outbound invoice sync can capture a card **without `active`**. |
+| Topic                   | Role                                                                                                                                                                                                                     |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **`payment_behavior`**  | Applies when generating / paying **`SUBSCRIPTION_TRIAL_END`** and broader subscription invoice payment flows (`default_active`, `allow_incomplete`, …). See **[What happens at trial end](#what-happens-at-trial-end)**. |
+| **`collection_method`** | After finalize, **`$0`** trial-start invoices are **`SUCCEEDED`** under **`charge_automatically`** or left **`PENDING`** under **`send_invoice`** so outbound invoice sync can capture a card **without `active`**.      |
 
-| `collection_method` | Trial-start invoice `payment_status` (typical) |
-| --- | --- |
-| **`charge_automatically`** | **`SUCCEEDED`** at **`$0`** |
-| **`send_invoice`** | **`PENDING`** until host / PSP completes the synced **`$0`** flow |
+| `collection_method`        | Trial-start invoice `payment_status` (typical)                    |
+| -------------------------- | ----------------------------------------------------------------- |
+| **`charge_automatically`** | **`SUCCEEDED`** at **`$0`**                                       |
+| **`send_invoice`**         | **`PENDING`** until host / PSP completes the synced **`$0`** flow |
 
 On **`POST /v1/subscriptions`**, **`latest_invoice`** is this document when **`subscription_status`** is **`trialing`**.
 
@@ -89,7 +89,7 @@ There is **no `trial_enabled` flag.** If **`trial_period_days` > 0** after resol
 - Omitted ⇒ **`0`**. That price contributes **no inherited trial**.
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/prices \
+curl -X POST https://us.api.flexprice.io/v1/prices \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -119,7 +119,7 @@ Response (abbreviated):
 When all recurring fixed prices on a plan share the same `trial_period_days`, that value is inherited by the subscription automatically. No trial fields are required in the subscription request.
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/subscriptions \
+curl -X POST https://us.api.flexprice.io/v1/subscriptions \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -181,7 +181,7 @@ Notes on the abbreviated response:
 Pass `trial_period_days` in the subscription request to override the plan-level value.
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/subscriptions \
+curl -X POST https://us.api.flexprice.io/v1/subscriptions \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -196,16 +196,16 @@ curl -X POST https://api.flexprice.io/v1/subscriptions \
   }'
 ```
 
-| Value | Effect |
-|---|---|
-| Omitted | Inherits `trial_period_days` from plan prices |
-| `0` | Disables trial; subscription starts as `active` immediately |
-| `> 0` | Overrides plan-level value with this number of days |
+| Value   | Effect                                                      |
+| ------- | ----------------------------------------------------------- |
+| Omitted | Inherits `trial_period_days` from plan prices               |
+| `0`     | Disables trial; subscription starts as `active` immediately |
+| `> 0`   | Overrides plan-level value with this number of days         |
 
 To shorten or lengthen the plan-level trial, pass a positive integer:
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/subscriptions \
+curl -X POST https://us.api.flexprice.io/v1/subscriptions \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -231,17 +231,18 @@ Trial end is detected automatically. When `trial_end <= now`:
 5. If the invoice amount is **non-zero**: subscription stays `incomplete` until the invoice is paid.
 
 <Note>
-An `incomplete` subscription does not auto-expire. It remains `incomplete` until the trial-end invoice is paid or the subscription is cancelled.
+  An `incomplete` subscription does not auto-expire. It remains `incomplete`
+  until the trial-end invoice is paid or the subscription is cancelled.
 </Note>
 
 **`payment_behavior` at trial end:**
 
-| Value | Behavior if payment fails |
-|---|---|
-| `default_active` (default) | Subscription activates regardless of payment result |
-| `allow_incomplete` | Subscription stays `incomplete` if payment fails |
-| `error_if_incomplete` | Subscription stays `incomplete` if payment fails; wallet fallback is not attempted |
-| `default_incomplete` | Subscription stays `incomplete`; only valid with `send_invoice` collection method |
+| Value                      | Behavior if payment fails                                                          |
+| -------------------------- | ---------------------------------------------------------------------------------- |
+| `default_active` (default) | Subscription activates regardless of payment result                                |
+| `allow_incomplete`         | Subscription stays `incomplete` if payment fails                                   |
+| `error_if_incomplete`      | Subscription stays `incomplete` if payment fails; wallet fallback is not attempted |
+| `default_incomplete`       | Subscription stays `incomplete`; only valid with `send_invoice` collection method  |
 
 Credit grants held pending activation are applied automatically when the subscription becomes `active`.
 
@@ -249,29 +250,29 @@ Credit grants held pending activation are applied automatically when the subscri
 
 ### Price fields
 
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `trial_period_days` | integer | No | Trial length inherited by subscriptions linking this recurring fixed price. Default `0` (no trial). Only valid for `billing_cadence: RECURRING` + `price_type: FIXED`. Must be `>= 0`. |
+| Field               | Type    | Required | Description                                                                                                                                                                            |
+| ------------------- | ------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `trial_period_days` | integer | No       | Trial length inherited by subscriptions linking this recurring fixed price. Default `0` (no trial). Only valid for `billing_cadence: RECURRING` + `price_type: FIXED`. Must be `>= 0`. |
 
 ### Subscription create fields
 
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `trial_period_days` | integer | No | Override plan-level trial length in days. `0` disables trial. Omit to inherit from plan prices (all recurring fixed plan prices must share the same value). Must be `>= 0`. |
-| `payment_behavior` | enum | No | **`SUBSCRIPTION_TRIAL_END`** and broader subscription payment semantics when attempts fail (`default_active`, `allow_incomplete`, `error_if_incomplete`, `default_incomplete`). API normalizes unspecified creates toward **`default_active`** (not all combinations are valid with every `collection_method`). |
-| `collection_method` | enum | No | **`charge_automatically`** vs **`send_invoice`**. For **`SUBSCRIPTION_TRIAL_START`**, controls whether the **`$0`** invoice is **`succeeded` immediately** or left **`pending`** for outbound invoicing/card capture. |
+| Field               | Type    | Required | Description                                                                                                                                                                                                                                                                                                     |
+| ------------------- | ------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `trial_period_days` | integer | No       | Override plan-level trial length in days. `0` disables trial. Omit to inherit from plan prices (all recurring fixed plan prices must share the same value). Must be `>= 0`.                                                                                                                                     |
+| `payment_behavior`  | enum    | No       | **`SUBSCRIPTION_TRIAL_END`** and broader subscription payment semantics when attempts fail (`default_active`, `allow_incomplete`, `error_if_incomplete`, `default_incomplete`). API normalizes unspecified creates toward **`default_active`** (not all combinations are valid with every `collection_method`). |
+| `collection_method` | enum    | No       | **`charge_automatically`** vs **`send_invoice`**. For **`SUBSCRIPTION_TRIAL_START`**, controls whether the **`$0`** invoice is **`succeeded` immediately** or left **`pending`** for outbound invoicing/card capture.                                                                                           |
 
 ### Subscription response (trial-related fields)
 
-| Field | Type | Description |
-|---|---|---|
-| `subscription_status` | string | **`trialing`** while the trial window is open. Prefer this for branching; **`status`** may also exist on **`SubscriptionResponse`**. |
-| `trial_start` | timestamp | Trial start (= **`start_date`** on create). |
-| `trial_end` | timestamp | When paid billing anchors; first **`SUBSCRIPTION_TRIAL_END`** period starts here. |
-| `current_period_start` | timestamp | During trial = **`trial_start`**. |
-| `current_period_end` | timestamp | During trial = **`trial_end`**. |
-| `latest_invoice` | object | On non-draft **`trialing`** creates, populated with **`SUBSCRIPTION_TRIAL_START`**. |
-| `latest_invoice.billing_reason` | string | **`SUBSCRIPTION_TRIAL_START`**, the **`$0`** trial preview invoice. |
+| Field                           | Type      | Description                                                                                                                          |
+| ------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `subscription_status`           | string    | **`trialing`** while the trial window is open. Prefer this for branching; **`status`** may also exist on **`SubscriptionResponse`**. |
+| `trial_start`                   | timestamp | Trial start (= **`start_date`** on create).                                                                                          |
+| `trial_end`                     | timestamp | When paid billing anchors; first **`SUBSCRIPTION_TRIAL_END`** period starts here.                                                    |
+| `current_period_start`          | timestamp | During trial = **`trial_start`**.                                                                                                    |
+| `current_period_end`            | timestamp | During trial = **`trial_end`**.                                                                                                      |
+| `latest_invoice`                | object    | On non-draft **`trialing`** creates, populated with **`SUBSCRIPTION_TRIAL_START`**.                                                  |
+| `latest_invoice.billing_reason` | string    | **`SUBSCRIPTION_TRIAL_START`**, the **`$0`** trial preview invoice.                                                                  |
 
 ## Webhooks & Events
 
@@ -282,7 +283,10 @@ Credit grants held pending activation are applied automatically when the subscri
 - **`SUBSCRIPTION_TRIAL_START`** emits **no** **`subscription.activated`**. **`subscription_status`** remains **`trialing`** until **`SUBSCRIPTION_TRIAL_END`** finishes, even if the opening invoice shows **`payment_status: SUCCEEDED`**.
 
 <Note>
-There is no dedicated **`subscription.trialing`**, **`subscription.trial_ended`**, or **`subscription.trial_ending`** webhook. Use **`subscription.activated`** (and your own trial clock if needed) to detect conversion.
+  There is no dedicated **`subscription.trialing`**,
+  **`subscription.trial_ended`**, or **`subscription.trial_ending`** webhook.
+  Use **`subscription.activated`** (and your own trial clock if needed) to
+  detect conversion.
 </Note>
 
 Example payload shape (**truncated**; your handler may receive more fields):
@@ -304,16 +308,16 @@ For information on configuring webhook endpoints, see [Webhooks](/docs/webhook/w
 
 ## Edge Cases
 
-| Scenario | Behavior |
-|---|---|
-| `trial_period_days = 0` at subscription level | Trial disabled even if plan price has `trial_period_days > 0` |
-| Plan prices have mismatched `trial_period_days` | Subscription creation fails: `"all recurring fixed plan prices must have the same trial_period_days"` |
-| Cancellation during trial | Standard cancellation applies. Trial-end processing skips subscriptions not in `trialing` status. |
-| Paused subscription when `trial_end` is reached | Trial-end processing is skipped. Runs when the subscription is unpaused. |
-| Zero-amount trial-end invoice | Subscription auto-activates immediately without waiting for a payment event. |
-| Trial-start **`$0`** invoice | Always created for **`trialing`** creates; **`SUBSCRIPTION_TRIAL_START`** stays visible (not **`SKIPPED`**) unlike other **`$0`** subscription invoices |
-| Inherited (child) subscriptions | Trial status cascades from parent. Children are not processed independently. |
-| Re-trialing | Not supported. Each subscription has one trial window. To extend a trial, cancel and recreate the subscription. |
+| Scenario                                        | Behavior                                                                                                                                                |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `trial_period_days = 0` at subscription level   | Trial disabled even if plan price has `trial_period_days > 0`                                                                                           |
+| Plan prices have mismatched `trial_period_days` | Subscription creation fails: `"all recurring fixed plan prices must have the same trial_period_days"`                                                   |
+| Cancellation during trial                       | Standard cancellation applies. Trial-end processing skips subscriptions not in `trialing` status.                                                       |
+| Paused subscription when `trial_end` is reached | Trial-end processing is skipped. Runs when the subscription is unpaused.                                                                                |
+| Zero-amount trial-end invoice                   | Subscription auto-activates immediately without waiting for a payment event.                                                                            |
+| Trial-start **`$0`** invoice                    | Always created for **`trialing`** creates; **`SUBSCRIPTION_TRIAL_START`** stays visible (not **`SKIPPED`**) unlike other **`$0`** subscription invoices |
+| Inherited (child) subscriptions                 | Trial status cascades from parent. Children are not processed independently.                                                                            |
+| Re-trialing                                     | Not supported. Each subscription has one trial window. To extend a trial, cancel and recreate the subscription.                                         |
 
 ## Best Practices
 

@@ -21,13 +21,13 @@ flowchart LR
 
 Each subscription is self-contained:
 
-| Property | Where it lives |
-| -------- | -------------- |
-| Plan and line items | Subscription |
-| Usage tracking | Customer |
-| Invoice | Customer (the subscription owner) |
-| Wallet | Customer |
-| Entitlements | Subscription |
+| Property            | Where it lives                    |
+| ------------------- | --------------------------------- |
+| Plan and line items | Subscription                      |
+| Usage tracking      | Customer                          |
+| Invoice             | Customer (the subscription owner) |
+| Wallet              | Customer                          |
+| Entitlements        | Subscription                      |
 
 ## When to use standalone
 
@@ -51,10 +51,11 @@ Each subscription is self-contained:
     5. Click **Create Subscription**
 
     No additional configuration is needed. A subscription created without any `inheritance` fields is automatically standalone.
+
   </Tab>
   <Tab title="API">
     ```bash
-    curl -X POST https://api.flexprice.io/v1/subscriptions \
+    curl -X POST https://us.api.flexprice.io/v1/subscriptions \
       -H "Authorization: Bearer YOUR_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -77,6 +78,7 @@ Each subscription is self-contained:
       "status": "active"
     }
     ```
+
   </Tab>
 </Tabs>
 
@@ -91,19 +93,34 @@ Usage analytics behave like any normal subscription. Call [**Get usage analytics
 ## Validations and constraints
 
 <Note>
-  A customer that already has an **inherited** subscription (from a consolidated billing parent) cannot create a standalone subscription. If you need a standalone subscription for such a customer, remove them from the parent hierarchy first.
+  A customer that already has an **inherited** subscription (from a consolidated
+  billing parent) cannot create a standalone subscription. If you need a
+  standalone subscription for such a customer, remove them from the parent
+  hierarchy first.
 </Note>
 
 ## Related workflows
 
 <CardGroup cols={2}>
-  <Card title="Consolidated Billing" icon="building-columns" href="/docs/subscriptions/billing-workflows/consolidated-billing">
+  <Card
+    title="Consolidated Billing"
+    icon="building-columns"
+    href="/docs/subscriptions/billing-workflows/consolidated-billing"
+  >
     When one parent contract should cover multiple customers
   </Card>
-  <Card title="Delegated Invoicing" icon="arrow-right-arrow-left" href="/docs/subscriptions/billing-workflows/delegated-invoicing">
+  <Card
+    title="Delegated Invoicing"
+    icon="arrow-right-arrow-left"
+    href="/docs/subscriptions/billing-workflows/delegated-invoicing"
+  >
     When a third party should receive the invoice
   </Card>
-  <Card title="Grouped Invoicing" icon="layer-group" href="/docs/subscriptions/billing-workflows/grouped-invoicing">
+  <Card
+    title="Grouped Invoicing"
+    icon="layer-group"
+    href="/docs/subscriptions/billing-workflows/grouped-invoicing"
+  >
     When separate subscriptions should merge into one invoice
   </Card>
 </CardGroup>

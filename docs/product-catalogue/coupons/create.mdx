@@ -6,7 +6,7 @@ description: "Create percentage or fixed-amount discount coupons via API or dash
 ## Via API
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/coupons \
+curl -X POST https://us.api.flexprice.io/v1/coupons \
   -H "x-api-key: <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -41,35 +41,35 @@ curl -X POST https://api.flexprice.io/v1/coupons \
 
 ## Request fields
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | string | Yes | Display name shown in the dashboard and invoice details |
-| `type` | string | Yes | `percentage` or `fixed` |
-| `cadence` | string | Yes | `once`, `repeated`, or `forever` |
-| `percentage_off` | decimal string | When `type=percentage` | Discount as a percent, e.g. `"15.00"` for 15% |
-| `amount_off` | decimal string | When `type=fixed` | Flat discount amount, e.g. `"50.00"` |
-| `currency` | string | When `type=fixed` | ISO currency code, e.g. `"USD"` |
-| `duration_in_periods` | int | When `cadence=repeated` | Number of billing cycles the discount applies. Must not be set for other cadences. |
-| `coupon_code` | string | No | Human-readable code customers can enter to redeem (e.g. `"SUMMER15"`). Auto-generated if omitted. |
-| `redeem_after` | timestamp | No | Earliest time a new association can be created |
-| `redeem_before` | timestamp | No | Expiry. New associations cannot be created after this time. |
-| `max_redemptions` | int | No | Cap on total associations across all subscriptions |
-| `metadata` | object | No | Key-value pairs for your own tracking |
+| Field                 | Type           | Required                | Description                                                                                       |
+| --------------------- | -------------- | ----------------------- | ------------------------------------------------------------------------------------------------- |
+| `name`                | string         | Yes                     | Display name shown in the dashboard and invoice details                                           |
+| `type`                | string         | Yes                     | `percentage` or `fixed`                                                                           |
+| `cadence`             | string         | Yes                     | `once`, `repeated`, or `forever`                                                                  |
+| `percentage_off`      | decimal string | When `type=percentage`  | Discount as a percent, e.g. `"15.00"` for 15%                                                     |
+| `amount_off`          | decimal string | When `type=fixed`       | Flat discount amount, e.g. `"50.00"`                                                              |
+| `currency`            | string         | When `type=fixed`       | ISO currency code, e.g. `"USD"`                                                                   |
+| `duration_in_periods` | int            | When `cadence=repeated` | Number of billing cycles the discount applies. Must not be set for other cadences.                |
+| `coupon_code`         | string         | No                      | Human-readable code customers can enter to redeem (e.g. `"SUMMER15"`). Auto-generated if omitted. |
+| `redeem_after`        | timestamp      | No                      | Earliest time a new association can be created                                                    |
+| `redeem_before`       | timestamp      | No                      | Expiry. New associations cannot be created after this time.                                       |
+| `max_redemptions`     | int            | No                      | Cap on total associations across all subscriptions                                                |
+| `metadata`            | object         | No                      | Key-value pairs for your own tracking                                                             |
 
 ## Cadence behaviour
 
-| Cadence | What happens |
-|---------|-------------|
-| `once` | Discount applies to the first invoice in the association window only |
+| Cadence    | What happens                                                          |
+| ---------- | --------------------------------------------------------------------- |
+| `once`     | Discount applies to the first invoice in the association window only  |
 | `repeated` | Discount applies for `duration_in_periods` consecutive billing cycles |
-| `forever` | Discount applies to every invoice for the life of the subscription |
+| `forever`  | Discount applies to every invoice for the life of the subscription    |
 
 ## Fixed-amount coupon
 
 For a fixed dollar amount off, set `type: fixed` and provide both `amount_off` and `currency`:
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/coupons \
+curl -X POST https://us.api.flexprice.io/v1/coupons \
   -H "x-api-key: <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -86,7 +86,7 @@ curl -X POST https://api.flexprice.io/v1/coupons \
 To discount multiple billing cycles, use `cadence: repeated` with `duration_in_periods`:
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/coupons \
+curl -X POST https://us.api.flexprice.io/v1/coupons \
   -H "x-api-key: <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -104,27 +104,27 @@ This applies a 20% discount for the first 3 billing cycles of each association.
 
 ```bash
 # List coupons
-curl https://api.flexprice.io/v1/coupons \
+curl https://us.api.flexprice.io/v1/coupons \
   -H "x-api-key: <API_KEY>"
 
 # Get a coupon
-curl https://api.flexprice.io/v1/coupons/<coupon_id> \
+curl https://us.api.flexprice.io/v1/coupons/<coupon_id> \
   -H "x-api-key: <API_KEY>"
 
 # Search coupons by status
-curl -X POST https://api.flexprice.io/v1/coupons/search \
+curl -X POST https://us.api.flexprice.io/v1/coupons/search \
   -H "x-api-key: <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{ "status": "active" }'
 
 # Update a coupon (only name and metadata are updatable)
-curl -X PUT https://api.flexprice.io/v1/coupons/<coupon_id> \
+curl -X PUT https://us.api.flexprice.io/v1/coupons/<coupon_id> \
   -H "x-api-key: <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{ "name": "Summer Sale 2025" }'
 
 # Delete a coupon
-curl -X DELETE https://api.flexprice.io/v1/coupons/<coupon_id> \
+curl -X DELETE https://us.api.flexprice.io/v1/coupons/<coupon_id> \
   -H "x-api-key: <API_KEY>"
 ```
 
