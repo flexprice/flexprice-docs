@@ -8,7 +8,7 @@ A tax rate is a reusable definition. You create it once with a unique `code`, th
 ## Create a tax rate
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/taxes/rates \
+curl -X POST https://us.api.flexprice.io/v1/taxes/rates \
   -H "x-api-key: <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -37,18 +37,20 @@ curl -X POST https://api.flexprice.io/v1/taxes/rates \
 
 ## Request fields
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | string | Yes | Display name shown in invoices and the dashboard |
-| `code` | string | Yes | Unique identifier used in associations. **Immutable after creation.** |
-| `tax_rate_type` | string | Yes | `percentage` or `fixed` |
-| `percentage_value` | decimal string | When `tax_rate_type=percentage` | Rate as a percent, e.g. `"8.25"` for 8.25% |
-| `fixed_value` | decimal string | When `tax_rate_type=fixed` | Flat amount added per invoice, e.g. `"5.00"` |
-| `description` | string | No | Notes for your own reference |
-| `metadata` | object | No | Key-value pairs for your own tracking |
+| Field              | Type           | Required                        | Description                                                           |
+| ------------------ | -------------- | ------------------------------- | --------------------------------------------------------------------- |
+| `name`             | string         | Yes                             | Display name shown in invoices and the dashboard                      |
+| `code`             | string         | Yes                             | Unique identifier used in associations. **Immutable after creation.** |
+| `tax_rate_type`    | string         | Yes                             | `percentage` or `fixed`                                               |
+| `percentage_value` | decimal string | When `tax_rate_type=percentage` | Rate as a percent, e.g. `"8.25"` for 8.25%                            |
+| `fixed_value`      | decimal string | When `tax_rate_type=fixed`      | Flat amount added per invoice, e.g. `"5.00"`                          |
+| `description`      | string         | No                              | Notes for your own reference                                          |
+| `metadata`         | object         | No                              | Key-value pairs for your own tracking                                 |
 
 <Warning>
-The `code` field is immutable. Choose it carefully since it is the key used in all association requests. To rename a code, create a new tax rate and migrate your associations to it.
+  The `code` field is immutable. Choose it carefully since it is the key used in
+  all association requests. To rename a code, create a new tax rate and migrate
+  your associations to it.
 </Warning>
 
 ## Create a fixed-amount tax rate
@@ -56,7 +58,7 @@ The `code` field is immutable. Choose it carefully since it is the key used in a
 Use `tax_rate_type: fixed` when you need to add a flat fee to every invoice regardless of the subtotal, such as a regulatory levy.
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/taxes/rates \
+curl -X POST https://us.api.flexprice.io/v1/taxes/rates \
   -H "x-api-key: <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -70,14 +72,14 @@ curl -X POST https://api.flexprice.io/v1/taxes/rates \
 ## List tax rates
 
 ```bash
-curl https://api.flexprice.io/v1/taxes/rates \
+curl https://us.api.flexprice.io/v1/taxes/rates \
   -H "x-api-key: <API_KEY>"
 ```
 
 ## Get a tax rate
 
 ```bash
-curl https://api.flexprice.io/v1/taxes/rates/<tax_rate_id> \
+curl https://us.api.flexprice.io/v1/taxes/rates/<tax_rate_id> \
   -H "x-api-key: <API_KEY>"
 ```
 
@@ -86,7 +88,7 @@ curl https://api.flexprice.io/v1/taxes/rates/<tax_rate_id> \
 You can update `name`, `description`, and `metadata`. The `code` and `tax_rate_type` fields are immutable.
 
 ```bash
-curl -X PUT https://api.flexprice.io/v1/taxes/rates/<tax_rate_id> \
+curl -X PUT https://us.api.flexprice.io/v1/taxes/rates/<tax_rate_id> \
   -H "x-api-key: <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -99,7 +101,7 @@ curl -X PUT https://api.flexprice.io/v1/taxes/rates/<tax_rate_id> \
 A tax rate can only be deleted if it has no active associations and no applied records on existing invoices. To stop applying a tax without losing audit history, delete the association instead of the rate.
 
 ```bash
-curl -X DELETE https://api.flexprice.io/v1/taxes/rates/<tax_rate_id> \
+curl -X DELETE https://us.api.flexprice.io/v1/taxes/rates/<tax_rate_id> \
   -H "x-api-key: <API_KEY>"
 ```
 

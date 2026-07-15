@@ -42,15 +42,15 @@ flowchart TB
   G --> H
 ```
 
-| Property | Where it lives |
-| -------- | -------------- |
-| Plan and line items | Parent subscription |
-| Usage tracking (billing) | Parent subscription (rolled up from all children) |
+| Property                   | Where it lives                                           |
+| -------------------------- | -------------------------------------------------------- |
+| Plan and line items        | Parent subscription                                      |
+| Usage tracking (billing)   | Parent subscription (rolled up from all children)        |
 | Usage tracking (analytics) | Per child customer (use `include_children` to aggregate) |
-| Invoice | Parent customer only |
-| Wallet | Parent customer |
-| Entitlements | Parent subscription |
-| Child subscriptions | Skeleton only: no line items, no independent invoice |
+| Invoice                    | Parent customer only                                     |
+| Wallet                     | Parent customer                                          |
+| Entitlements               | Parent subscription                                      |
+| Child subscriptions        | Skeleton only: no line items, no independent invoice     |
 
 ## When to use consolidated billing
 
@@ -66,7 +66,10 @@ flowchart TB
 - Child customers must **not** already have an active `inherited` subscription under another parent
 
 <Note>
-  On create, you cannot combine `inheritance.external_customer_ids_to_inherit_subscription` with `invoicing_customer_external_id` or `subscriptions_ids_for_grouped_invoicing` in the same request.
+  On create, you cannot combine
+  `inheritance.external_customer_ids_to_inherit_subscription` with
+  `invoicing_customer_external_id` or `subscriptions_ids_for_grouped_invoicing`
+  in the same request.
 </Note>
 
 ## Configure
@@ -87,10 +90,11 @@ Create the parent customer and each child customer through the Dashboard or API.
     <Frame>
       ![Subscription create form showing Customer Hierarchy section](/public/images/docs/CustomerHierarchy/inherited-cust-subscription-creation.png)
     </Frame>
+
   </Tab>
   <Tab title="API">
     ```bash
-    curl -X POST https://api.flexprice.io/v1/subscriptions \
+    curl -X POST https://us.api.flexprice.io/v1/subscriptions \
       -H "Authorization: Bearer YOUR_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -121,6 +125,7 @@ Create the parent customer and each child customer through the Dashboard or API.
     ```
 
     Flexprice automatically creates an `inherited` skeleton subscription for each child external ID. Verify by calling `GET /subscriptions` filtered by the child customer.
+
   </Tab>
 </Tabs>
 
@@ -135,7 +140,7 @@ You can add additional child customers to an existing parent subscription using 
 <Tabs>
   <Tab title="API">
     ```bash
-    curl -X POST https://api.flexprice.io/v1/subscriptions/{parent_subscription_id}/modify/execute \
+    curl -X POST https://us.api.flexprice.io/v1/subscriptions/{parent_subscription_id}/modify/execute \
       -H "Authorization: Bearer YOUR_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -149,6 +154,7 @@ You can add additional child customers to an existing parent subscription using 
     Replace `{parent_subscription_id}` with the `id` of the parent subscription.
 
     You can preview the modify operation without committing changes using `POST /subscriptions/{id}/modify/preview` with the same request body.
+
   </Tab>
 </Tabs>
 
@@ -159,7 +165,7 @@ Inherited children do **not** appear in billing usage summaries. All billable us
 **Aggregate all children under the parent:**
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/events/analytics \
+curl -X POST https://us.api.flexprice.io/v1/events/analytics \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -173,7 +179,7 @@ curl -X POST https://api.flexprice.io/v1/events/analytics \
 **Per-child usage breakdown:**
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/events/analytics \
+curl -X POST https://us.api.flexprice.io/v1/events/analytics \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -184,33 +190,50 @@ curl -X POST https://api.flexprice.io/v1/events/analytics \
 ```
 
 <Note>
-  `include_children: true` aggregates all inherited children's usage into the parent's response. Query each child's `external_customer_id` individually to see per-child contribution.
+  `include_children: true` aggregates all inherited children's usage into the
+  parent's response. Query each child's `external_customer_id` individually to
+  see per-child contribution.
 </Note>
 
 <Warning>
-  [**Get customer usage summary**](/api-reference/customers/get-customer-usage-summary) for a child that only has an **inherited** subscription returns **no billable usage** on that child. This is expected. Confirm totals on the **parent** customer or use analytics as above.
+  [**Get customer usage
+  summary**](/api-reference/customers/get-customer-usage-summary) for a child
+  that only has an **inherited** subscription returns **no billable usage** on
+  that child. This is expected. Confirm totals on the **parent** customer or use
+  analytics as above.
 </Warning>
 
 ## Validations and constraints
 
 <Warning>
-  **Child already has an inherited subscription.** A customer that already has an `inherited` subscription under another parent cannot be added as a child here. Error: `"customer already has an inherited subscription"`. Resolve: cancel the existing inherited subscription or use a different child customer.
+  **Child already has an inherited subscription.** A customer that already has
+  an `inherited` subscription under another parent cannot be added as a child
+  here. Error: `"customer already has an inherited subscription"`. Resolve:
+  cancel the existing inherited subscription or use a different child customer.
 </Warning>
 
 <Warning>
-  **Inherited subscriptions cannot be cancelled directly.** Calling cancel on an `inherited` subscription returns an error: `"inherited subscription cannot be cancelled directly"`. Cancel the **parent** subscription instead. All inherited children are cancelled automatically at the same time.
+  **Inherited subscriptions cannot be cancelled directly.** Calling cancel on an
+  `inherited` subscription returns an error: `"inherited subscription cannot be
+  cancelled directly"`. Cancel the **parent** subscription instead. All
+  inherited children are cancelled automatically at the same time.
 </Warning>
 
 <Note>
-  **Cascade behavior.** When the parent subscription is paused, resumed, or cancelled, all inherited children are updated to match automatically.
+  **Cascade behavior.** When the parent subscription is paused, resumed, or
+  cancelled, all inherited children are updated to match automatically.
 </Note>
 
 <Note>
-  **Wallet balance.** The parent customer's wallet is used for all settlement. Inherited children have no independent wallet balance for this subscription.
+  **Wallet balance.** The parent customer's wallet is used for all settlement.
+  Inherited children have no independent wallet balance for this subscription.
 </Note>
 
 <Note>
-  **Mutual exclusion.** The `inheritance.external_customer_ids_to_inherit_subscription` field cannot be combined with `invoicing_customer_external_id` or `subscriptions_ids_for_grouped_invoicing` in the same request.
+  **Mutual exclusion.** The
+  `inheritance.external_customer_ids_to_inherit_subscription` field cannot be
+  combined with `invoicing_customer_external_id` or
+  `subscriptions_ids_for_grouped_invoicing` in the same request.
 </Note>
 
 ## Frequently asked questions
@@ -220,9 +243,10 @@ curl -X POST https://api.flexprice.io/v1/events/analytics \
     No. Currency is set on the parent subscription and applies to all invoices. Inherited children use the parent's currency.
   </Accordion>
 
-  <Accordion title="What happens to inherited subscriptions when the parent is upgraded?">
-    Plan changes apply to the parent subscription only. Inherited skeleton subscriptions keep routing usage events to the updated parent.
-  </Accordion>
+<Accordion title="What happens to inherited subscriptions when the parent is upgraded?">
+  Plan changes apply to the parent subscription only. Inherited skeleton
+  subscriptions keep routing usage events to the updated parent.
+</Accordion>
 
   <Accordion title="Why does getCustomerUsageSummary return zero usage for my child customer?">
     Billable usage for inherited subscriptions is attributed to the **parent** subscription. A child with only an inherited subscription has no independent billing usage ledger. This is expected. Use `POST /events/analytics` for per-child breakdowns.
@@ -232,10 +256,18 @@ curl -X POST https://api.flexprice.io/v1/events/analytics \
 ## Related workflows
 
 <CardGroup cols={2}>
-  <Card title="Delegated Invoicing" icon="arrow-right-arrow-left" href="/docs/subscriptions/billing-workflows/delegated-invoicing">
+  <Card
+    title="Delegated Invoicing"
+    icon="arrow-right-arrow-left"
+    href="/docs/subscriptions/billing-workflows/delegated-invoicing"
+  >
     When children need their own subscriptions but a third party pays
   </Card>
-  <Card title="Grouped Invoicing" icon="layer-group" href="/docs/subscriptions/billing-workflows/grouped-invoicing">
+  <Card
+    title="Grouped Invoicing"
+    icon="layer-group"
+    href="/docs/subscriptions/billing-workflows/grouped-invoicing"
+  >
     When separate subscriptions should merge into one invoice
   </Card>
 </CardGroup>

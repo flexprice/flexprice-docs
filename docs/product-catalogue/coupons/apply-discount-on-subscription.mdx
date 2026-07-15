@@ -8,6 +8,7 @@ You can attach coupons at subscription creation time. For post-creation changes 
 ## Before you start
 
 The coupon must be:
+
 - Status: `active`
 - Within its `redeem_after` / `redeem_before` window (if set)
 - Below its `max_redemptions` limit (if set)
@@ -23,7 +24,7 @@ Pass coupons in the `subscription_coupons` array. Each entry takes a `coupon_cod
 Discounts the full invoice subtotal. Omit `price_id`:
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/subscriptions \
+curl -X POST https://us.api.flexprice.io/v1/subscriptions \
   -H "x-api-key: <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -45,7 +46,7 @@ curl -X POST https://api.flexprice.io/v1/subscriptions \
 Discounts one specific price in the plan only. Set `price_id` to the target price:
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/subscriptions \
+curl -X POST https://us.api.flexprice.io/v1/subscriptions \
   -H "x-api-key: <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -68,7 +69,7 @@ Subscription phases are the recommended way to apply time-bounded coupons. Each 
 ### Example: introductory discount for Q1 only
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/subscriptions \
+curl -X POST https://us.api.flexprice.io/v1/subscriptions \
   -H "x-api-key: <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -95,7 +96,7 @@ The coupon is active during Phase 1 only. Phase 2 has no coupon, so invoices fro
 ### Example: line-item discount scoped to a phase
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/subscriptions \
+curl -X POST https://us.api.flexprice.io/v1/subscriptions \
   -H "x-api-key: <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -122,12 +123,12 @@ curl -X POST https://api.flexprice.io/v1/subscriptions \
 
 ## Common scheduling patterns
 
-| Goal | Phase configuration |
-|------|---------------------|
-| Discount for first 3 months | Phase 1: `end_date` = 3 months out, `coupons: [id]`. Phase 2: no coupon. |
-| Discount starting 6 months in | Phase 1: no coupon. Phase 2: `start_date` = 6 months in, `coupons: [id]`. |
+| Goal                                     | Phase configuration                                                                |
+| ---------------------------------------- | ---------------------------------------------------------------------------------- |
+| Discount for first 3 months              | Phase 1: `end_date` = 3 months out, `coupons: [id]`. Phase 2: no coupon.           |
+| Discount starting 6 months in            | Phase 1: no coupon. Phase 2: `start_date` = 6 months in, `coupons: [id]`.          |
 | Remove a discount on a known future date | Phase 1: today to removal date with coupon. Phase 2: from removal date, no coupon. |
-| Discount on one charge only | In `subscription_coupons`, set `price_id` to the target price ID. |
+| Discount on one charge only              | In `subscription_coupons`, set `price_id` to the target price ID.                  |
 
 ## Add or remove a coupon after subscription creation
 
@@ -136,7 +137,7 @@ Use the subscription modification API with `type: "coupon"`.
 ### Add a coupon
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/subscriptions/<subscription_id>/modify/execute \
+curl -X POST https://us.api.flexprice.io/v1/subscriptions/<subscription_id>/modify/execute \
   -H "x-api-key: <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -169,7 +170,7 @@ To target a specific line item instead of the full invoice, add `subscription_li
 ### Remove a coupon
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/subscriptions/<subscription_id>/modify/execute \
+curl -X POST https://us.api.flexprice.io/v1/subscriptions/<subscription_id>/modify/execute \
   -H "x-api-key: <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -188,7 +189,7 @@ Removal affects only invoices generated after the request. Previously issued inv
 ### Preview before executing
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/subscriptions/<subscription_id>/modify/preview \
+curl -X POST https://us.api.flexprice.io/v1/subscriptions/<subscription_id>/modify/preview \
   -H "x-api-key: <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -203,32 +204,32 @@ curl -X POST https://api.flexprice.io/v1/subscriptions/<subscription_id>/modify/
 
 ## subscription_coupons fields (at creation)
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `coupon_code` | string | Yes | The coupon's `code` value (case-insensitive) |
-| `start_date` | timestamp | No | When the association starts. Defaults to the subscription or phase start date. |
-| `end_date` | timestamp | No | When the association ends. Omit for indefinite. |
-| `price_id` | string | No | Target a specific line item. Omit for subscription-level. |
+| Field         | Type      | Required | Description                                                                    |
+| ------------- | --------- | -------- | ------------------------------------------------------------------------------ |
+| `coupon_code` | string    | Yes      | The coupon's `code` value (case-insensitive)                                   |
+| `start_date`  | timestamp | No       | When the association starts. Defaults to the subscription or phase start date. |
+| `end_date`    | timestamp | No       | When the association ends. Omit for indefinite.                                |
+| `price_id`    | string    | No       | Target a specific line item. Omit for subscription-level.                      |
 
 ## coupon_params fields (post-creation modification)
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `action` | string | Yes | `add` or `remove` |
-| `coupon_code` | string | When `action=add` | Code of the coupon to attach |
-| `coupon_association_id` | string | When `action=remove` | ID of the coupon association to detach |
-| `start_date` | timestamp | No | When the association starts. Defaults to now. |
-| `end_date` | timestamp | No | When the association ends. Omit for indefinite. |
-| `subscription_line_item_id` | string | No | Target a specific line item. Mutually exclusive with `subscription_id`. |
+| Field                       | Type      | Required             | Description                                                             |
+| --------------------------- | --------- | -------------------- | ----------------------------------------------------------------------- |
+| `action`                    | string    | Yes                  | `add` or `remove`                                                       |
+| `coupon_code`               | string    | When `action=add`    | Code of the coupon to attach                                            |
+| `coupon_association_id`     | string    | When `action=remove` | ID of the coupon association to detach                                  |
+| `start_date`                | timestamp | No                   | When the association starts. Defaults to now.                           |
+| `end_date`                  | timestamp | No                   | When the association ends. Omit for indefinite.                         |
+| `subscription_line_item_id` | string    | No                   | Target a specific line item. Mutually exclusive with `subscription_id`. |
 
 ## How discounts appear on invoices
 
 Discount amounts are tracked at two levels on each line item:
 
-| Field | Description |
-|-------|-------------|
-| `line_item_discount` | Discount applied directly to this line item (from a line-item coupon targeting this price) |
-| `invoice_level_discount` | Invoice-wide coupon discount prorated to this line item |
+| Field                    | Description                                                                                |
+| ------------------------ | ------------------------------------------------------------------------------------------ |
+| `line_item_discount`     | Discount applied directly to this line item (from a line-item coupon targeting this price) |
+| `invoice_level_discount` | Invoice-wide coupon discount prorated to this line item                                    |
 
 At the invoice level, `total_discount` is the sum of all coupon discounts across all line items.
 
@@ -237,15 +238,15 @@ The discount terms are snapshotted when the coupon is applied, so they are prese
 ## Check active coupons on a subscription
 
 ```bash
-curl "https://api.flexprice.io/v1/subscriptions/<subscription_id>?expand=coupon_associations" \
+curl "https://us.api.flexprice.io/v1/subscriptions/<subscription_id>?expand=coupon_associations" \
   -H "x-api-key: <API_KEY>"
 ```
 
 ## Validation errors
 
-| Error | Cause |
-|-------|-------|
-| `coupon_not_active` | Coupon is not in `active` status |
-| `coupon_expired` | Current time is after `redeem_before` |
-| `coupon_not_yet_valid` | Current time is before `redeem_after` |
+| Error                     | Cause                                  |
+| ------------------------- | -------------------------------------- |
+| `coupon_not_active`       | Coupon is not in `active` status       |
+| `coupon_expired`          | Current time is after `redeem_before`  |
+| `coupon_not_yet_valid`    | Current time is before `redeem_after`  |
 | `max_redemptions_reached` | `total_redemptions >= max_redemptions` |

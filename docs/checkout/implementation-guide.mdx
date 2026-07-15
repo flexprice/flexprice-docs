@@ -37,7 +37,7 @@ Fulfill order ◄──────
 A customer must exist in Flexprice before a session can be created. Create one at sign-up:
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/customers \
+curl -X POST https://us.api.flexprice.io/v1/customers \
   -H "Authorization: Bearer <API_KEY>" \
   -H "X-Environment-ID: <ENVIRONMENT_ID>" \
   -H "Content-Type: application/json" \
@@ -56,7 +56,7 @@ Use the `external_id` as your reference in subsequent calls.
 Call this from your backend only: never expose your API key to the frontend.
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/checkout/sessions \
+curl -X POST https://us.api.flexprice.io/v1/checkout/sessions \
   -H "Authorization: Bearer <API_KEY>" \
   -H "X-Environment-ID: <ENVIRONMENT_ID>" \
   -H "Content-Type: application/json" \
@@ -79,6 +79,7 @@ curl -X POST https://api.flexprice.io/v1/checkout/sessions \
 ```
 
 Two things worth noting here:
+
 - `{CHECKOUT_SESSION_ID}` in `success_url` is a placeholder that Razorpay replaces on redirect. Use it to identify which session the customer just completed.
 - `idempotency_key` tied to your internal order ID means a retry on timeout gives you back the same session, not a duplicate.
 
@@ -101,25 +102,29 @@ Do not rely on the redirect URL to confirm payment: it can be bypassed. The `che
 Register your endpoint in **Settings → Webhooks**, then handle the events:
 
 ```javascript
-app.post('/webhooks/flexprice', express.raw({ type: 'application/json' }), async (req, res) => {
-  const { event_type, data } = JSON.parse(req.body);
+app.post(
+  "/webhooks/flexprice",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    const { event_type, data } = JSON.parse(req.body);
 
-  res.status(200).send('ok'); // respond fast, process async
+    res.status(200).send("ok"); // respond fast, process async
 
-  if (event_type === 'checkout.session.completed') {
-    // subscription is active, invoice is finalized
-    await grantAccess(data.customer_id);
-    await sendWelcomeEmail(data.customer_id);
-  }
+    if (event_type === "checkout.session.completed") {
+      // subscription is active, invoice is finalized
+      await grantAccess(data.customer_id);
+      await sendWelcomeEmail(data.customer_id);
+    }
 
-  if (event_type === 'checkout.session.failed') {
-    await notifyPaymentFailed(data.id);
-  }
+    if (event_type === "checkout.session.failed") {
+      await notifyPaymentFailed(data.id);
+    }
 
-  if (event_type === 'checkout.session.expired') {
-    await clearPendingState(data.id);
-  }
-});
+    if (event_type === "checkout.session.expired") {
+      await clearPendingState(data.id);
+    }
+  },
+);
 ```
 
 Make this handler idempotent: Flexprice delivers events at least once. Check whether you've already fulfilled the order before acting.
@@ -131,7 +136,7 @@ Use the redirect URLs for UX only, not for fulfillment logic.
 **Success page**: poll the session to confirm before showing a result:
 
 ```bash
-curl https://api.flexprice.io/v1/checkout/sessions/<SESSION_ID> \
+curl https://us.api.flexprice.io/v1/checkout/sessions/<SESSION_ID> \
   -H "Authorization: Bearer <API_KEY>" \
   -H "X-Environment-ID: <ENVIRONMENT_ID>"
 ```
@@ -154,13 +159,13 @@ After a test payment, verify:
 
 ## Error reference
 
-| Scenario | Response | Fix |
-|----------|----------|-----|
-| Customer doesn't exist | 404 | Create the customer before starting checkout |
-| Plan produces zero-amount invoice | 400 | Use a plan with at least one non-zero charge |
-| Duplicate `idempotency_key` for active session | 409 | Fetch the existing session; use a new key for a new attempt |
-| Customer doesn't pay in time | Session expires; drafts cleaned up | Let the user start a new checkout |
-| `payment_link.paid` not enabled | Subscription stays inactive | Enable the event in your payment provider dashboard |
+| Scenario                                       | Response                           | Fix                                                         |
+| ---------------------------------------------- | ---------------------------------- | ----------------------------------------------------------- |
+| Customer doesn't exist                         | 404                                | Create the customer before starting checkout                |
+| Plan produces zero-amount invoice              | 400                                | Use a plan with at least one non-zero charge                |
+| Duplicate `idempotency_key` for active session | 409                                | Fetch the existing session; use a new key for a new attempt |
+| Customer doesn't pay in time                   | Session expires; drafts cleaned up | Let the user start a new checkout                           |
+| `payment_link.paid` not enabled                | Subscription stays inactive        | Enable the event in your payment provider dashboard         |
 
 ## Recurring payments
 
@@ -175,10 +180,18 @@ This guide uses the default one-time payment link: each invoice generates its ow
 - [ ] Fulfillment handler is idempotent
 
 <CardGroup cols={2}>
-  <Card icon="credit-card" href="/docs/checkout/razorpay-checkout" title="Razorpay Setup">
+  <Card
+    icon="credit-card"
+    href="/docs/checkout/razorpay-checkout"
+    title="Razorpay Setup"
+  >
     Test credentials and webhook event configuration.
   </Card>
-  <Card icon="code" href="/docs/checkout/checkout-sessions" title="Checkout Sessions API">
+  <Card
+    icon="code"
+    href="/docs/checkout/checkout-sessions"
+    title="Checkout Sessions API"
+  >
     Full field reference for the create session call.
   </Card>
 </CardGroup>

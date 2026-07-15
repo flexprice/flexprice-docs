@@ -1,6 +1,6 @@
 ---
-title: 'Paddle Integration Workflow'
-description: 'End-to-end guide to the Paddle integration: subscription sync, customer checkout, and invoice auto-charge'
+title: "Paddle Integration Workflow"
+description: "End-to-end guide to the Paddle integration: subscription sync, customer checkout, and invoice auto-charge"
 ---
 
 ## Overview
@@ -61,7 +61,7 @@ graph TD
 Create a subscription in Flexprice as you normally would. Flexprice automatically creates a corresponding $0 subscription in Paddle and returns the checkout URL in the response metadata.
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/subscriptions \
+curl -X POST https://us.api.flexprice.io/v1/subscriptions \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -93,7 +93,9 @@ curl -X POST https://api.flexprice.io/v1/subscriptions \
 The same metadata fields are also included in the `subscription.created` webhook payload.
 
 <Note>
-  `paddle_checkout_url` and `paddle_transaction_id` are only present when your Flexprice environment has an active Paddle connection. If these fields are missing, verify the connection in **Integrations → Paddle**.
+  `paddle_checkout_url` and `paddle_transaction_id` are only present when your
+  Flexprice environment has an active Paddle connection. If these fields are
+  missing, verify the connection in **Integrations → Paddle**.
 </Note>
 
 ### With a Trial Period
@@ -101,7 +103,7 @@ The same metadata fields are also included in the `subscription.created` webhook
 To give the customer a free trial before billing begins, pass `trial_period_days`:
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/subscriptions \
+curl -X POST https://us.api.flexprice.io/v1/subscriptions \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -135,11 +137,15 @@ Once the card is saved:
 - The customer is ready to be charged automatically on the next invoice.
 
 <Note>
-  The customer should save their card before Flexprice raises the first invoice, or the auto-charge will fail.
+  The customer should save their card before Flexprice raises the first invoice,
+  or the auto-charge will fail.
 </Note>
 
 <Note>
-  `subscription.activated` here is a **Paddle webhook event** — it fires when the Paddle-side $0 subscription is activated after card capture. This is separate from the Flexprice `subscription.activated` event, which fires when a Flexprice subscription transitions from `trialing` to `active`.
+  `subscription.activated` here is a **Paddle webhook event** — it fires when
+  the Paddle-side $0 subscription is activated after card capture. This is
+  separate from the Flexprice `subscription.activated` event, which fires when a
+  Flexprice subscription transitions from `trialing` to `active`.
 </Note>
 
 ---
@@ -154,7 +160,10 @@ No action is required from you for recurring charges. When Flexprice generates a
 4. Flexprice marks the invoice as paid and reconciles the amounts.
 
 <Note>
-  If Paddle applies tax on top of the invoice amount and the charged total exceeds the invoice total, Flexprice marks the invoice as **overpaid**. To avoid this, align your Paddle tax mode (internal vs. external) with your Flexprice pricing setup.
+  If Paddle applies tax on top of the invoice amount and the charged total
+  exceeds the invoice total, Flexprice marks the invoice as **overpaid**. To
+  avoid this, align your Paddle tax mode (internal vs. external) with your
+  Flexprice pricing setup.
 </Note>
 
 ---
@@ -169,11 +178,11 @@ Paddle requires a customer address (at minimum: a country code) to create transa
 
 ## Troubleshooting
 
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| No `paddle_checkout_url` in subscription metadata | No active Paddle connection in environment | Verify connection in **Integrations → Paddle** |
-| `transaction.completed` webhook not received | Webhook destination not configured or wrong events | Go to Paddle → Developers → Notifications and confirm both `transaction.completed` and `subscription.activated` are selected |
-| Invoice not auto-charged | Customer hasn't saved card yet (`subscription.activated` not received) | Share the `paddle_checkout_url` with the customer; wait for card save before expecting auto-charges |
-| Invoice sync fails — "Paddle address ID not found" | Customer missing country on their address | Add country to the customer's address in Flexprice |
-| Invoice marked overpaid | Paddle applied tax on top of the invoice amount | Align tax mode (internal vs. external) in Paddle settings with your Flexprice pricing |
-| Checkout URL expired or invalid | Paddle transaction expired | Re-create the subscription or contact Flexprice support to re-sync the Paddle subscription |
+| Issue                                              | Cause                                                                  | Solution                                                                                                                     |
+| -------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| No `paddle_checkout_url` in subscription metadata  | No active Paddle connection in environment                             | Verify connection in **Integrations → Paddle**                                                                               |
+| `transaction.completed` webhook not received       | Webhook destination not configured or wrong events                     | Go to Paddle → Developers → Notifications and confirm both `transaction.completed` and `subscription.activated` are selected |
+| Invoice not auto-charged                           | Customer hasn't saved card yet (`subscription.activated` not received) | Share the `paddle_checkout_url` with the customer; wait for card save before expecting auto-charges                          |
+| Invoice sync fails — "Paddle address ID not found" | Customer missing country on their address                              | Add country to the customer's address in Flexprice                                                                           |
+| Invoice marked overpaid                            | Paddle applied tax on top of the invoice amount                        | Align tax mode (internal vs. external) in Paddle settings with your Flexprice pricing                                        |
+| Checkout URL expired or invalid                    | Paddle transaction expired                                             | Re-create the subscription or contact Flexprice support to re-sync the Paddle subscription                                   |

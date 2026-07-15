@@ -7,18 +7,18 @@ A Checkout Session represents a single payment attempt. Call `POST /v1/checkout/
 
 ## Session lifecycle
 
-| Status | Meaning |
-|--------|---------|
-| `initiated` | Session created; payment provider call in progress |
-| `pending` | Payment URL returned; awaiting customer payment |
+| Status      | Meaning                                                      |
+| ----------- | ------------------------------------------------------------ |
+| `initiated` | Session created; payment provider call in progress           |
+| `pending`   | Payment URL returned; awaiting customer payment              |
 | `completed` | Payment confirmed; subscription activated, invoice finalized |
-| `failed` | Payment failed or provider cancelled the link |
-| `expired` | Session timed out without payment |
+| `failed`    | Payment failed or provider cancelled the link                |
+| `expired`   | Session timed out without payment                            |
 
 ## Create a Checkout Session
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/checkout/sessions \
+curl -X POST https://us.api.flexprice.io/v1/checkout/sessions \
   -H "Authorization: Bearer <API_KEY>" \
   -H "X-Environment-ID: <ENVIRONMENT_ID>" \
   -H "Content-Type: application/json" \
@@ -61,28 +61,28 @@ Redirect the customer to `payment_action.url`. Each session has its own link. Do
 
 ### Request fields
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `customer_external_id` | Yes | Your identifier for the customer. Must already exist in Flexprice. |
-| `action` | Yes | Billing action to perform. `create_subscription` is supported. |
-| `payment_provider` | Yes | Payment gateway to use. See [Choose your provider](/docs/checkout/overview#choose-your-payment-provider). |
-| `configuration.create_subscription_params.plan_id` | Yes | The plan to subscribe the customer to. |
-| `configuration.create_subscription_params.currency` | Yes | Billing currency (e.g., `INR`, `USD`). |
-| `configuration.create_subscription_params.billing_period` | No | `monthly`, `quarterly`, `annual`, etc. Defaults to the plan's period. |
-| `configuration.create_subscription_params.start_date` | No | Subscription start date. Defaults to now. |
-| `payment_provider_config` | No | Collect a recurring mandate instead of a one-time link. Omit for the default payment-link flow. See [Autopay & Mandates](/docs/checkout/autopay-mandates). |
-| `payment_provider_config.collection_method` | No | Set to `charge_automatically` to register a mandate. |
-| `payment_provider_config.preferred_method` | No | `UPI` or `CARD`. Selects the mandate type. |
-| `payment_provider_config.max_mandate_limit` | No | Ceiling for any single future auto-charge, in the major currency unit. |
-| `success_url` | No | Where to redirect after successful payment. |
-| `failure_url` | No | Where to redirect after a failed payment. |
-| `cancel_url` | No | Where to redirect if the customer cancels. |
-| `idempotency_key` | No | Prevents duplicate sessions on retry. A duplicate key for an active session returns 409. |
+| Field                                                     | Required | Description                                                                                                                                                |
+| --------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `customer_external_id`                                    | Yes      | Your identifier for the customer. Must already exist in Flexprice.                                                                                         |
+| `action`                                                  | Yes      | Billing action to perform. `create_subscription` is supported.                                                                                             |
+| `payment_provider`                                        | Yes      | Payment gateway to use. See [Choose your provider](/docs/checkout/overview#choose-your-payment-provider).                                                  |
+| `configuration.create_subscription_params.plan_id`        | Yes      | The plan to subscribe the customer to.                                                                                                                     |
+| `configuration.create_subscription_params.currency`       | Yes      | Billing currency (e.g., `INR`, `USD`).                                                                                                                     |
+| `configuration.create_subscription_params.billing_period` | No       | `monthly`, `quarterly`, `annual`, etc. Defaults to the plan's period.                                                                                      |
+| `configuration.create_subscription_params.start_date`     | No       | Subscription start date. Defaults to now.                                                                                                                  |
+| `payment_provider_config`                                 | No       | Collect a recurring mandate instead of a one-time link. Omit for the default payment-link flow. See [Autopay & Mandates](/docs/checkout/autopay-mandates). |
+| `payment_provider_config.collection_method`               | No       | Set to `charge_automatically` to register a mandate.                                                                                                       |
+| `payment_provider_config.preferred_method`                | No       | `UPI` or `CARD`. Selects the mandate type.                                                                                                                 |
+| `payment_provider_config.max_mandate_limit`               | No       | Ceiling for any single future auto-charge, in the major currency unit.                                                                                     |
+| `success_url`                                             | No       | Where to redirect after successful payment.                                                                                                                |
+| `failure_url`                                             | No       | Where to redirect after a failed payment.                                                                                                                  |
+| `cancel_url`                                              | No       | Where to redirect if the customer cancels.                                                                                                                 |
+| `idempotency_key`                                         | No       | Prevents duplicate sessions on retry. A duplicate key for an active session returns 409.                                                                   |
 
 ## Get a Checkout Session
 
 ```bash
-curl https://api.flexprice.io/v1/checkout/sessions/<SESSION_ID> \
+curl https://us.api.flexprice.io/v1/checkout/sessions/<SESSION_ID> \
   -H "Authorization: Bearer <API_KEY>" \
   -H "X-Environment-ID: <ENVIRONMENT_ID>"
 ```
@@ -92,7 +92,7 @@ Use this to confirm `checkout_status` on your redirect pages before showing the 
 ## Delete a Checkout Session
 
 ```bash
-curl -X DELETE https://api.flexprice.io/v1/checkout/sessions/<SESSION_ID> \
+curl -X DELETE https://us.api.flexprice.io/v1/checkout/sessions/<SESSION_ID> \
   -H "Authorization: Bearer <API_KEY>" \
   -H "X-Environment-ID: <ENVIRONMENT_ID>"
 ```
@@ -103,15 +103,17 @@ Sessions in a terminal state (`completed`, `failed`, `expired`) cannot be delete
 
 Subscribe to these in **Settings > Webhooks** to drive fulfillment from your backend.
 
-| Event | Fired when |
-|-------|------|
-| `checkout.session.initiated` | Session created and payment URL returned |
+| Event                        | Fired when                                                |
+| ---------------------------- | --------------------------------------------------------- |
+| `checkout.session.initiated` | Session created and payment URL returned                  |
 | `checkout.session.completed` | Payment confirmed; subscription active, invoice finalized |
-| `checkout.session.failed` | Payment failed or provider cancelled |
-| `checkout.session.expired` | Session timed out without payment |
+| `checkout.session.failed`    | Payment failed or provider cancelled                      |
+| `checkout.session.expired`   | Session timed out without payment                         |
 
 <Note>
-  Safe to receive the same event twice. If your payment provider delivers `payment_link.paid` more than once, Flexprice ignores the duplicate. Your webhook handler should also be idempotent for the same reason.
+  Safe to receive the same event twice. If your payment provider delivers
+  `payment_link.paid` more than once, Flexprice ignores the duplicate. Your
+  webhook handler should also be idempotent for the same reason.
 </Note>
 
 ## Requirements
@@ -123,15 +125,24 @@ Subscribe to these in **Settings > Webhooks** to drive fulfillment from your bac
 **Idempotency on retry.** If your create call times out, retry with the same `idempotency_key`. You'll get back the existing session instead of a duplicate.
 
 <CardGroup cols={2}>
-  <Card icon="credit-card" href="/docs/checkout/razorpay-checkout" title="Razorpay Setup">
+  <Card
+    icon="credit-card"
+    href="/docs/checkout/razorpay-checkout"
+    title="Razorpay Setup"
+  >
     Configure the webhook events Razorpay needs to send Flexprice.
   </Card>
-  <Card icon="list-check" href="/docs/checkout/implementation-guide" title="Implementation Guide">
+  <Card
+    icon="list-check"
+    href="/docs/checkout/implementation-guide"
+    title="Implementation Guide"
+  >
     Full end-to-end integration with code examples.
   </Card>
 </CardGroup>
 
 **API References**
+
 - [Create a Checkout Session](/api-reference/checkout/create-checkout-session)
 - [Get a Checkout Session](/api-reference/checkout/get-checkout-session)
 - [Delete a Checkout Session](/api-reference/checkout/delete-checkout-session)

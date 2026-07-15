@@ -31,7 +31,7 @@ pipeline:
 
 output:
   flexprice:
-    api_host: https://api.flexprice.io
+    api_host: https://us.api.flexprice.io
     api_key: ${FLEXPRICE_API_KEY}
     scheme: https
     batching:
@@ -89,16 +89,16 @@ spec:
         app: bento-collector
     spec:
       containers:
-      - name: bento
-        image: ghcr.io/flexprice/bento-collector:latest
-        args: ["-c", "/config/config.yaml"]
-        envFrom:
-        - secretRef:
-            name: bento-collector
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
+        - name: bento
+          image: ghcr.io/flexprice/bento-collector:latest
+          args: ["-c", "/config/config.yaml"]
+          envFrom:
+            - secretRef:
+                name: bento-collector
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
 ```
 
 ## Configuration
@@ -111,12 +111,13 @@ Tune based on event volume:
 output:
   flexprice:
     batching:
-      count: 10      # Events per batch
-      period: 2s     # Max wait time
-    max_in_flight: 10  # Concurrent requests
+      count: 10 # Events per batch
+      period: 2s # Max wait time
+    max_in_flight: 10 # Concurrent requests
 ```
 
 **Guidelines:**
+
 - Low volume (< 100/min): `count: 5, period: 5s`
 - Medium volume: `count: 10, period: 2s` (default)
 - High volume (> 1000/min): `count: 50, period: 1s`
@@ -126,7 +127,7 @@ output:
 ```yaml
 input:
   kafka:
-    fetch_buffer_cap: 256        # Fetch more messages for batching
+    fetch_buffer_cap: 256 # Fetch more messages for batching
     commit_period: 1s
     max_processing_period: 100ms
 ```
@@ -134,27 +135,30 @@ input:
 ## Troubleshooting
 
 **Events not batching?**
+
 - Increase `fetch_buffer_cap` in Kafka input
 - Check event volume is sufficient
 - Rebuild binary if code changed
 
 **Connection errors?**
+
 - Verify API key is correct
 - Check Kafka broker addresses
 - Ensure `external_customer_id` exists in Flexprice
 
 **Memory issues?**
+
 - Reduce `fetch_buffer_cap`
 - Lower `max_in_flight`
 - Set resource limits
 
 ## Environment Variables
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `FLEXPRICE_API_KEY` | Flexprice API key | `fp_live_abc123...` |
-| `FLEXPRICE_API_HOST` | API hostname | `https://api.flexprice.io` |
-| `KAFKA_BROKERS` | Kafka brokers | `broker:9092` |
+| Variable             | Description       | Example                       |
+| -------------------- | ----------------- | ----------------------------- |
+| `FLEXPRICE_API_KEY`  | Flexprice API key | `fp_live_abc123...`           |
+| `FLEXPRICE_API_HOST` | API hostname      | `https://us.api.flexprice.io` |
+| `KAFKA_BROKERS`      | Kafka brokers     | `broker:9092`                 |
 
 ## Observability
 

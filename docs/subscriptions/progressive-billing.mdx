@@ -16,7 +16,9 @@ Progressive billing lets you set a usage amount threshold on a subscription. Whe
 5. At period end, a normal invoice is issued for remaining usage.
 
 <Note>
-Only **arrear usage charges** count toward the threshold. Fixed or advance charges are excluded. The invoice amount may slightly exceed the threshold since evaluation happens on a 5-minute interval, not in real time.
+  Only **arrear usage charges** count toward the threshold. Fixed or advance
+  charges are excluded. The invoice amount may slightly exceed the threshold
+  since evaluation happens on a 5-minute interval, not in real time.
 </Note>
 
 ## Configuring Progressive Billing
@@ -31,12 +33,13 @@ Only **arrear usage charges** count toward the threshold. Fixed or advance charg
     <Frame>
       ![Progressive billing configuration: Auto invoice threshold](/auto-invoicing-config.png)
     </Frame>
+
   </Tab>
   <Tab title="API">
     Pass `auto_invoice_threshold` when creating a subscription:
 
     ```bash
-    curl -X POST https://api.flexprice.io/v1/subscriptions \
+    curl -X POST https://us.api.flexprice.io/v1/subscriptions \
       -H "Authorization: Bearer YOUR_API_KEY" \
       -H "Content-Type: application/json" \
       -d '{
@@ -62,43 +65,45 @@ Only **arrear usage charges** count toward the threshold. Fixed or advance charg
       "current_period_end": "2025-06-01T00:00:00Z"
     }
     ```
+
   </Tab>
 </Tabs>
 
 <Note>
-`auto_invoice_threshold` is set at the subscription level, not the plan level. Each subscription can have its own threshold.
+  `auto_invoice_threshold` is set at the subscription level, not the plan level.
+  Each subscription can have its own threshold.
 </Note>
 
 ## Invoicing Behavior
 
-| Scenario | Behavior |
-|---|---|
-| Usage reaches threshold | Mid-period invoice created and finalized immediately |
-| Usage below threshold at period end | Normal period-end invoice covers all remaining usage |
-| Threshold not set (`null`) | Progressive billing disabled; standard billing applies |
+| Scenario                            | Behavior                                               |
+| ----------------------------------- | ------------------------------------------------------ |
+| Usage reaches threshold             | Mid-period invoice created and finalized immediately   |
+| Usage below threshold at period end | Normal period-end invoice covers all remaining usage   |
+| Threshold not set (`null`)          | Progressive billing disabled; standard billing applies |
 
 ## API Reference
 
 ### Subscription create fields
 
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `auto_invoice_threshold` | string (decimal) | No | Usage amount that triggers a mid-period invoice. Must be > 0. `null` disables progressive billing. |
+| Field                    | Type             | Required | Description                                                                                        |
+| ------------------------ | ---------------- | -------- | -------------------------------------------------------------------------------------------------- |
+| `auto_invoice_threshold` | string (decimal) | No       | Usage amount that triggers a mid-period invoice. Must be > 0. `null` disables progressive billing. |
 
 ### Subscription response fields
 
-| Field | Type | Description |
-|---|---|---|
+| Field                    | Type                       | Description                                                        |
+| ------------------------ | -------------------------- | ------------------------------------------------------------------ |
 | `auto_invoice_threshold` | string (decimal), nullable | The configured threshold for this subscription. `null` if not set. |
 
 ## Webhooks & Events
 
 No new webhook event type is introduced for progressive billing. Standard invoice events fire when a threshold invoice is created and finalized. Use the `billing_reason` field on the invoice object to identify threshold-triggered invoices:
 
-| Event | When it fires |
-|---|---|
-| `invoice.created` | When usage crosses the threshold and a mid-period invoice is generated |
-| `invoice.finalized` | When the threshold invoice is finalized and ready for payment |
+| Event               | When it fires                                                          |
+| ------------------- | ---------------------------------------------------------------------- |
+| `invoice.created`   | When usage crosses the threshold and a mid-period invoice is generated |
+| `invoice.finalized` | When the threshold invoice is finalized and ready for payment          |
 
 The `billing_reason` on threshold invoices is `AUTO_INVOICE_THRESHOLD`.
 

@@ -7,24 +7,24 @@ A **tax association** is the link between a tax rate and an entity. flexprice su
 
 ## Association fields
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `tax_rate_code` | string | Yes | The `code` of the tax rate to link |
-| `entity_type` | string | No | `tenant`, `customer`, `subscription`, or `invoice` |
-| `entity_id` | string | No | ID of the entity to link |
-| `external_customer_id` | string | No | Your own customer ID, usable instead of `entity_id` for customer-level associations |
-| `auto_apply` | bool | No | Set to `true` to apply this tax automatically on every new invoice |
-| `priority` | int | No | Lower number fires first. Default: `0` |
-| `currency` | string | No | Scopes this association to a specific currency, e.g. `"USD"` |
-| `start_date` | timestamp | No | When the association becomes active. Defaults to now. |
-| `end_date` | timestamp | No | When the association expires. Omit for indefinite. |
+| Field                  | Type      | Required | Description                                                                         |
+| ---------------------- | --------- | -------- | ----------------------------------------------------------------------------------- |
+| `tax_rate_code`        | string    | Yes      | The `code` of the tax rate to link                                                  |
+| `entity_type`          | string    | No       | `tenant`, `customer`, `subscription`, or `invoice`                                  |
+| `entity_id`            | string    | No       | ID of the entity to link                                                            |
+| `external_customer_id` | string    | No       | Your own customer ID, usable instead of `entity_id` for customer-level associations |
+| `auto_apply`           | bool      | No       | Set to `true` to apply this tax automatically on every new invoice                  |
+| `priority`             | int       | No       | Lower number fires first. Default: `0`                                              |
+| `currency`             | string    | No       | Scopes this association to a specific currency, e.g. `"USD"`                        |
+| `start_date`           | timestamp | No       | When the association becomes active. Defaults to now.                               |
+| `end_date`             | timestamp | No       | When the association expires. Omit for indefinite.                                  |
 
 ## Apply to a tenant (default for all customers)
 
 A tenant-level association acts as the default tax for every customer that has no association of its own.
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/taxes/associations \
+curl -X POST https://us.api.flexprice.io/v1/taxes/associations \
   -H "x-api-key: <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -56,7 +56,7 @@ curl -X POST https://api.flexprice.io/v1/taxes/associations \
 Customer-level associations override tenant-level ones for that customer only.
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/taxes/associations \
+curl -X POST https://us.api.flexprice.io/v1/taxes/associations \
   -H "x-api-key: <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -74,7 +74,7 @@ curl -X POST https://api.flexprice.io/v1/taxes/associations \
 Pass `tax_rate_overrides` in the create subscription request to link rates directly to that subscription. These override any customer or tenant associations for that subscription's invoices.
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/subscriptions \
+curl -X POST https://us.api.flexprice.io/v1/subscriptions \
   -H "x-api-key: <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -91,18 +91,20 @@ curl -X POST https://api.flexprice.io/v1/subscriptions \
 ```
 
 <Info>
-When `tax_rate_overrides` is set, flexprice uses only those rates for the subscription's invoices. Customer and tenant associations are not inherited. Omit `tax_rate_overrides` entirely to inherit from the customer.
+  When `tax_rate_overrides` is set, flexprice uses only those rates for the
+  subscription's invoices. Customer and tenant associations are not inherited.
+  Omit `tax_rate_overrides` entirely to inherit from the customer.
 </Info>
 
 **`tax_rate_overrides` fields**
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `tax_rate_code` | string | Yes | The `code` of the tax rate to link |
-| `currency` | string | Yes | ISO currency code, e.g. `"USD"` |
-| `auto_apply` | bool | No | Defaults to `true` |
-| `priority` | int | No | Lower number fires first. Default: `0` |
-| `metadata` | object | No | Key-value pairs for your own tracking |
+| Field           | Type   | Required | Description                            |
+| --------------- | ------ | -------- | -------------------------------------- |
+| `tax_rate_code` | string | Yes      | The `code` of the tax rate to link     |
+| `currency`      | string | Yes      | ISO currency code, e.g. `"USD"`        |
+| `auto_apply`    | bool   | No       | Defaults to `true`                     |
+| `priority`      | int    | No       | Lower number fires first. Default: `0` |
+| `metadata`      | object | No       | Key-value pairs for your own tracking  |
 
 ## Add or remove tax after subscription creation
 
@@ -111,7 +113,7 @@ Use the subscription modification API with `type: "tax"`.
 ### Add a tax rate
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/subscriptions/<subscription_id>/modify/execute \
+curl -X POST https://us.api.flexprice.io/v1/subscriptions/<subscription_id>/modify/execute \
   -H "x-api-key: <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -129,7 +131,7 @@ curl -X POST https://api.flexprice.io/v1/subscriptions/<subscription_id>/modify/
 ### Remove a tax rate
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/subscriptions/<subscription_id>/modify/execute \
+curl -X POST https://us.api.flexprice.io/v1/subscriptions/<subscription_id>/modify/execute \
   -H "x-api-key: <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -150,7 +152,7 @@ Removing a tax association affects only invoices generated after the change. Pre
 Swap `/modify/execute` for `/modify/preview` to see the effect without committing:
 
 ```bash
-curl -X POST https://api.flexprice.io/v1/subscriptions/<subscription_id>/modify/preview \
+curl -X POST https://us.api.flexprice.io/v1/subscriptions/<subscription_id>/modify/preview \
   -H "x-api-key: <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -164,12 +166,12 @@ curl -X POST https://api.flexprice.io/v1/subscriptions/<subscription_id>/modify/
 
 ## tax_params fields
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `action` | string | Yes | `add` or `remove` |
-| `tax_rate_id` | string | When `action=add` | ID of the tax rate to attach |
-| `tax_association_id` | string | When `action=remove` | ID of the tax association to detach |
-| `effective_date` | timestamp | No | When the change takes effect. Defaults to now. |
+| Field                | Type      | Required             | Description                                    |
+| -------------------- | --------- | -------------------- | ---------------------------------------------- |
+| `action`             | string    | Yes                  | `add` or `remove`                              |
+| `tax_rate_id`        | string    | When `action=add`    | ID of the tax rate to attach                   |
+| `tax_association_id` | string    | When `action=remove` | ID of the tax association to detach            |
+| `effective_date`     | timestamp | No                   | When the change takes effect. Defaults to now. |
 
 ## Multiple tax rates on the same entity
 
@@ -177,7 +179,7 @@ Create one association per rate. Each rate is applied independently to the same 
 
 ```bash
 # State tax (higher priority)
-curl -X POST https://api.flexprice.io/v1/taxes/associations \
+curl -X POST https://us.api.flexprice.io/v1/taxes/associations \
   -H "x-api-key: <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -190,7 +192,7 @@ curl -X POST https://api.flexprice.io/v1/taxes/associations \
   }'
 
 # Federal tax (lower priority)
-curl -X POST https://api.flexprice.io/v1/taxes/associations \
+curl -X POST https://us.api.flexprice.io/v1/taxes/associations \
   -H "x-api-key: <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -208,7 +210,7 @@ If the taxable amount is $100, state at 6% adds $6 and federal at 2% adds $2 for
 ## List associations
 
 ```bash
-curl "https://api.flexprice.io/v1/taxes/associations?entity_type=customer&entity_id=<customer_id>" \
+curl "https://us.api.flexprice.io/v1/taxes/associations?entity_type=customer&entity_id=<customer_id>" \
   -H "x-api-key: <API_KEY>"
 ```
 
@@ -217,7 +219,7 @@ curl "https://api.flexprice.io/v1/taxes/associations?entity_type=customer&entity
 You can update `priority`, `auto_apply`, and `metadata` without deleting and recreating.
 
 ```bash
-curl -X PUT https://api.flexprice.io/v1/taxes/associations/<tax_association_id> \
+curl -X PUT https://us.api.flexprice.io/v1/taxes/associations/<tax_association_id> \
   -H "x-api-key: <API_KEY>" \
   -H "Content-Type: application/json" \
   -d '{

@@ -38,9 +38,7 @@ Follow the steps below to create a pricing plan in Flexprice:
 2. In the left sidebar, go to **Customer Management > Pricing Plan**.
 
 3. Click **"Add Pricing Plan"** at the top-right of the screen.
-   <Frame>
-     ![Add Pricing Plan](/Screenshot2025-01-21at3.03.14AM.png)
-   </Frame>
+   <Frame>![Add Pricing Plan](/Screenshot2025-01-21at3.03.14AM.png)</Frame>
 
 This opens a **three-step form** to configure your plan.
 
@@ -54,30 +52,23 @@ This step captures key identifiers for your pricing plan.
 - **Plan Slug**: A unique identifier used in API calls and system integrations.
 - **Plan Description** _(Optional)_: Provides internal context about the plan.
 
-<Frame>
-  ![Plan Details Form](/Screenshot2025-01-21at3.05.22AM.png)
-</Frame><Frame>
-  ![Plan Configuration](/Screenshot2025-01-21at3.06.14AM.png)
-</Frame>
+<Frame>![Plan Details Form](/Screenshot2025-01-21at3.05.22AM.png)</Frame>
+<Frame>![Plan Configuration](/Screenshot2025-01-21at3.06.14AM.png)</Frame>
 
 ## **Step 2: Configure Billing Preferences**
 
 Billing preferences define when and how the customer will be billed. It includes:
 
 - **Choose billing timing**:
-
   - **Advance:** Customers are billed at the beginning of the billing period.
   - **Arrears:** Customers are billed at the end of the billing period based on actual usage.
 
 - **Adding trial period** _(Optional)_:
-
   - Toggle **on** to enable a free trial.
   - Enter the **trial period duration** in days.
 
 - Click **Next** to continue.
-  <Frame>
-    ![Billing Preferences](/Screenshot2025-01-21at3.08.50AM.png)
-  </Frame>
+  <Frame>![Billing Preferences](/Screenshot2025-01-21at3.08.50AM.png)</Frame>
 
 ## **Step 3: Define plan charges**
 
@@ -88,26 +79,22 @@ It defines how customers will be charged under this plan. You can add **one or m
   - **Usage-Based Charges**: Charges based on actual consumption (e.g., $0.01 per API call, $5 per 1,000 tokens).
 
 You can create a plan by adding multiple usage-based charges in the same plan as well
-<Frame>
-  ![Multiple Charges](/Screenshot2025-01-21at3.11.27AM.png)
-</Frame>
+
+<Frame>![Multiple Charges](/Screenshot2025-01-21at3.11.27AM.png)</Frame>
 
 ### Setting-up a recurring-based charge:
 
 Select subscription type as Recurring to charge your customers a recurring fee based on the defined billing period. Whenever user purchases this plan, it will be charged a flat fee and given access to the features that will be part of that plan.
-<Frame>
-  ![Recurring Charge](/Screenshot2025-01-21at3.18.13AM.png)
-</Frame>
+
+<Frame>![Recurring Charge](/Screenshot2025-01-21at3.18.13AM.png)</Frame>
 
 - **Select billing currency**
   We currently support 2 currencies which includes:
-
   - INR (Indian Rupees)
   - USD (United States Dollars)
 
 - **Choose a billable period**
   The plan interval corresponds to the billing period and defines when invoices are generated. There are several plan intervals:
-
   - **Weekly**: subscription fees and charges are billed on a weekly basis (Monday to Sunday);
   - **Monthly**: subscription fees and charges are billed on a monthly basis;
   - **Quarterly**: subscription fees and charges are billed on a quarterly basis (every 3 months); and
@@ -123,27 +110,24 @@ To incorporate usage-based charges into a plan, you can utilize existing billabl
 - Define relevant currency and billing period for your plan
 - Select the pricing model.
   Flexprice currently support 3 types of pricing models:
-
   - **Flat fee**
     Select the Flat fee pricing model if you want to charge the **same price for each unit** consumed.
     **Example:** $0.01 per API call.
-    <Frame>
-      ![Flat Fee Pricing](/Screenshot2025-01-21at3.28.12AM.png)
-    </Frame>
+
+    <Frame>![Flat Fee Pricing](/Screenshot2025-01-21at3.28.12AM.png)</Frame>
 
   - **Package pricing**
     Select the package charge model if you want to apply a **fixed price to a range of units**.
     **Example:** $5 per 100 API calls.
-    <Frame>
-      ![Package Pricing](/Screenshot2025-01-21at3.30.33AM.png)
-    </Frame>
+
+    <Frame>![Package Pricing](/Screenshot2025-01-21at3.30.33AM.png)</Frame>
 
   - **Volume tiered based pricing**
     Select the volume charge model if you want to define several price tiers but want to apply a **single unit price based on the total volume**. You can also apply a **flat fee** in addition to the unit price.
 
     **Example:**- 0 – 10,000 calls → $0.001 per call
-
     - 10,001 – ∞ calls → $0.0008 per call
+
       <Frame>
         ![Volume Tiered Pricing](/Screenshot2025-01-21at3.32.13AM.png)
       </Frame>
@@ -153,9 +137,8 @@ To incorporate usage-based charges into a plan, you can utilize existing billabl
 ### Setting-up hybrid charges:
 
 You can create a single pricing plan which includes multiple charges - Recurring as well usage-based charges.
-<Frame>
-  ![Hybrid Charges](/Screenshot2025-01-21at3.35.59AM.png)
-</Frame>
+
+<Frame>![Hybrid Charges](/Screenshot2025-01-21at3.35.59AM.png)</Frame>
 
 ### **Review & Save**
 
@@ -187,7 +170,7 @@ To immediately terminate a price:
 **API Example:**
 
 ```bash
-curl -X DELETE "https://api.flexprice.io/v1/prices/{price_id}" \
+curl -X DELETE "https://us.api.flexprice.io/v1/prices/{price_id}" \
   -H "Authorization: Bearer YOUR_API_KEY"
 ```
 
@@ -202,7 +185,7 @@ For better business continuity, you can schedule price termination in the future
 **API Example with Future End Date:**
 
 ```bash
-curl -X DELETE "https://api.flexprice.io/v1/prices/{price_id}" \
+curl -X DELETE "https://us.api.flexprice.io/v1/prices/{price_id}" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
@@ -248,7 +231,7 @@ Use the Plan Price Sync API to synchronize terminated prices across all existing
 **Example:**
 
 ```bash
-curl -X POST "https://api.flexprice.io/v1/plans/{plan_id}/sync/subscriptions" \
+curl -X POST "https://us.api.flexprice.io/v1/plans/{plan_id}/sync/subscriptions" \
   -H "Authorization: Bearer YOUR_API_KEY"
 ```
 
@@ -266,25 +249,21 @@ The sync process:
 #### **Best Practices for Price Termination**
 
 1. **Plan Ahead**
-
    - Schedule terminations well in advance
    - Consider customer notification periods
    - Plan for business continuity
 
 2. **Use Scheduled Termination**
-
    - Avoid immediate termination when possible
    - Give customers time to adjust
    - Maintain billing stability
 
 3. **Always Run Plan Price Sync**
-
    - Run sync after any price changes
    - Ensure existing subscriptions are updated
    - Verify billing accuracy
 
 4. **Monitor the Process**
-
    - Check sync results and statistics
    - Verify line item updates
    - Test billing calculations
@@ -348,13 +327,11 @@ The Plan Price Sync API returns detailed statistics:
 #### **Common Issues**
 
 1. **Sync Failures**
-
    - Check plan ID validity
    - Verify API permissions
    - Review error logs for specific issues
 
 2. **Incomplete Updates**
-
    - Verify all prices are properly terminated
    - Check for override prices that may interfere
    - Ensure sync completed successfully
