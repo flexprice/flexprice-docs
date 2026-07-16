@@ -1,0 +1,119 @@
+---
+title: 'Tabs Connection Setup'
+description: 'Connect Flexprice to Tabs to automatically sync invoices'
+---
+
+## Overview
+
+A Tabs connection in Flexprice lets you:
+
+- **Sync invoices** - push Flexprice invoices to Tabs automatically
+- **Create customers and contracts** - Flexprice creates the matching customer and contract in Tabs when needed
+- **Keep billing in one place** - invoices arrive in Tabs as editable drafts for review before collection
+
+Sync is one-way: **Flexprice → Tabs**. There are no webhooks to configure.
+
+## Prerequisites
+
+Before you start, have:
+
+1. **Tabs account** - [tabsplatform.com](https://app.tabsplatform.com)
+2. **Flexprice account** - [flexprice.io](https://flexprice.io)
+
+## Keys you need
+
+| Key | Where to get it | What it's for |
+|-----|-----------------|----------------|
+| **API Key** | Tabs → **Developers** → **Add API key** → set access level to **Editor (full access)** | Authenticating all Tabs API calls from Flexprice |
+
+Flexprice creates customers, contracts, and invoices in Tabs, so the API key must have write access. Select **Editor (full access)** - a **Reporter (read-only)** key cannot sync invoices.
+
+<Steps>
+  <Step title="Open the Tabs Developer keys page">
+    In Tabs, go to **Developers** ([app.tabsplatform.com/merchant/developers](https://app.tabsplatform.com/merchant/developers)) and click **Add API key**.
+  </Step>
+
+  <Step title="Create the key">
+    Enter a name (e.g. `FlexpriceKey`), set **Access Level** to **Editor (full access)**, and create the key.
+
+    <Frame>
+      ![Create an API key in Tabs](/images/docs/integrations/tabs/create-api-key.png)
+    </Frame>
+  </Step>
+
+  <Step title="Copy the key">
+    Copy the generated API key. You will paste it into Flexprice in the next step.
+  </Step>
+</Steps>
+
+## Connect your Tabs account
+
+Go to **Flexprice Dashboard** → **Integrations** → **Tabs** → **Connect**.
+
+<Steps>
+  <Step title="Name your connection">
+    Enter a name to identify this connection, e.g. `tabs`.
+  </Step>
+
+  <Step title="Enter your API Key">
+    Paste the API key copied from Tabs.
+  </Step>
+
+  <Step title="Enable Invoice Sync">
+    Under **Sync Configuration**, toggle **Invoices** on to push invoices to Tabs. With this off, invoices stay only in Flexprice.
+  </Step>
+
+  <Step title="Create the connection">
+    Click **Create Connection**.
+  </Step>
+</Steps>
+
+<Frame>
+  ![Connect to Tabs in Flexprice](/images/docs/integrations/tabs/connection.png)
+</Frame>
+
+### Create the connection via API
+
+You can also create the connection through the API instead of the dashboard:
+
+```bash cURL
+curl --location 'https://api.cloud.flexprice.io/v1/connections' \
+--header 'x-api-key: your_flexprice_api_key' \
+--header 'Content-Type: application/json' \
+--data '{
+    "name": "My Tabs Connection",
+    "provider_type": "tabs",
+    "encrypted_secret_data": {
+        "api_key": "api_key_from_tabs"
+    },
+    "sync_config": {
+        "invoice": {
+            "outbound": true
+        }
+    }
+}'
+```
+
+| Field | Description |
+|-------|-------------|
+| `name` | A friendly name to identify this connection |
+| `provider_type` | Always `tabs` |
+| `encrypted_secret_data.api_key` | The API key generated in Tabs |
+| `sync_config.invoice.outbound` | Set to `true` to push invoices to Tabs |
+
+## Troubleshooting
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| Invoice not syncing to Tabs | Invoice sync toggle is off | Enable **Invoices** sync in the connection settings |
+| Authentication fails | Read-only API key | Recreate the key in Tabs with **Editor (full access)** |
+| Sync fails - customer error | Customer is missing required details | Add the missing details to the customer in Flexprice and re-sync |
+
+## Next Steps
+
+1. Finalize a test invoice in Flexprice and verify it appears in your Tabs dashboard
+2. Confirm the invoice is created in Tabs as a **draft** for review
+
+## Related Documentation
+
+- [Invoice Sync](/integrations/tabs/invoice-sync) - How Flexprice syncs invoices to Tabs
