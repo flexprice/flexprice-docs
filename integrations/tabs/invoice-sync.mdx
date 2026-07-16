@@ -1,0 +1,60 @@
+---
+title: 'Tabs Invoice Sync'
+description: 'How Flexprice syncs invoices to Tabs, creating customers, contracts, and obligations automatically'
+---
+
+Flexprice pushes invoices to Tabs. When an invoice is synced, Flexprice ensures the corresponding customer and contract exist in Tabs, then creates the invoice as a **draft** that you can review and modify before collection.
+
+---
+
+## What gets created in Tabs
+
+When Flexprice syncs an invoice, it maps Flexprice entities to Tabs entities, creating each one only if it does not already exist.
+
+| Flexprice entity | Tabs entity | Behavior |
+|------------------|-------------|----------|
+| Customer | Customer | If the Flexprice customer is not yet linked to a Tabs customer, Flexprice creates one and stores the link |
+| Subscription | Contract | If the invoice's subscription has no linked Tabs contract, Flexprice creates a contract on the customer |
+| Invoice line items | Obligations | Flexprice raises obligations against the contract from the invoice's line items |
+| Invoice | Invoice (draft) | The invoice is generated in Tabs in **draft** state, open to modification |
+
+<Check>
+  The sync is idempotent. Existing customers and contracts are reused, so re-syncing an invoice does not create duplicates.
+</Check>
+
+---
+
+## When sync happens
+
+Flexprice syncs an invoice to Tabs when both of these are true:
+
+- The Tabs connection is **active**
+- **Invoice Sync** is **enabled** on the connection
+
+Sync is triggered at two points in the invoice lifecycle:
+
+- **Invoice finalization** - when an invoice transitions to `finalized`
+- **Draft invoice computation** - when a draft invoice is computed
+
+<Note>
+Syncing draft invoices to Tabs is configurable. To change whether draft invoices are pushed, contact your Flexprice point of contact.
+</Note>
+
+<Info>
+  Invoices arrive in Tabs as **drafts**, so you can adjust them in Tabs before finalizing and collecting payment there.
+</Info>
+
+For setup, see [Connection Setup](/integrations/tabs/connection-setup).
+
+---
+
+## Troubleshooting
+
+| Scenario | Behavior |
+|----------|----------|
+| No Tabs connection configured | Sync skipped |
+| Invoice sync toggle off | Sync skipped |
+| Customer not yet in Tabs | Flexprice creates the customer, then continues |
+| Subscription has no Tabs contract | Flexprice creates a contract on the customer, then continues |
+| Invoice already synced to Tabs | Reused; duplicate creation is prevented |
+| API key is read-only | Sync fails - recreate the key in Tabs with **Editor (full access)** |
