@@ -3,7 +3,7 @@ title: 'Tabs Invoice Sync'
 description: 'How Flexprice syncs invoices to Tabs, creating customers, contracts, and obligations automatically'
 ---
 
-Flexprice syncs invoices to Tabs one-way (**Flexprice → Tabs**). When an invoice is synced, Flexprice ensures the customer and contract exist in Tabs, then creates the invoice in Tabs as a **draft** that you can review and modify before collection.
+Flexprice pushes invoices to Tabs. When an invoice is synced, Flexprice ensures the corresponding customer and contract exist in Tabs, then creates the invoice as a **draft** that you can review and modify before collection.
 
 ---
 
@@ -18,7 +18,9 @@ When Flexprice syncs an invoice, it maps Flexprice entities to Tabs entities, cr
 | Invoice line items | Obligations | Flexprice raises obligations against the contract from the invoice's line items |
 | Invoice | Invoice (draft) | The invoice is generated in Tabs in **draft** state, open to modification |
 
-The sync is idempotent: existing customers and contracts are reused, so re-syncing an invoice does not create duplicates.
+<Check>
+  The sync is idempotent. Existing customers and contracts are reused, so re-syncing an invoice does not create duplicates.
+</Check>
 
 ---
 
@@ -38,7 +40,11 @@ Sync is triggered at two points in the invoice lifecycle:
 Syncing draft invoices to Tabs is configurable. To change whether draft invoices are pushed, contact your Flexprice point of contact.
 </Note>
 
-Because invoices arrive in Tabs as drafts, you can adjust them in Tabs before finalizing and collecting payment there. For setup, see [Connection Setup](/integrations/tabs/connection-setup).
+<Info>
+  Invoices arrive in Tabs as **drafts**, so you can adjust them in Tabs before finalizing and collecting payment there.
+</Info>
+
+For setup, see [Connection Setup](/integrations/tabs/connection-setup).
 
 ---
 
