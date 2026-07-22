@@ -1,0 +1,227 @@
+---
+title: 'How to Set Up GCP Marketplace'
+description: 'Complete guide to listing your product on GCP Marketplace and connecting your GCP producer project to Flexprice'
+tag: 'Beta'
+---
+
+## Overview
+
+The GCP Marketplace integration lets you sell your product on GCP Marketplace while metering usage in Flexprice. Usage that is already tracked against a Flexprice subscription is reported to GCP on your behalf, GCP invoices the buyer, and GCP pays you out.
+
+Setting this up is a one-time job with three parts:
+
+- **Your GCP listing**: a product with a single usage metric, priced so GCP bills exactly what Flexprice computes
+- **Workload Identity Federation**: lets Flexprice authenticate into your GCP project without a long-lived GCP key
+- **A Flexprice connection**: stores the federation details so reporting can run
+
+Once this is done, you link each buyer's GCP entitlement to a Flexprice subscription. That is covered in [GCP Marketplace Agreement Registration](/integrations/marketplace-integration/gcp/agreement-registration).
+
+
+## Prerequisites
+
+Before setting up your GCP Marketplace connection, ensure you have:
+
+1. **GCP Marketplace Producer Portal access** - Enrolled as a producer, with permission to create and publish products
+2. **GCP IAM Access** - To create a workload identity pool, provider, and service account in your producer project
+
+## Step 1: Create Your GCP Marketplace Listing
+
+Create your product in the GCP Marketplace Producer Portal. The integration supports products priced with **exactly one usage metric**.
+
+<Steps>
+  <Step title="Choose your pricing model">
+    Select a usage-based pricing model for your product.
+  </Step>
+
+  <Step title="Create a single usage metric">
+    Add **one** metered dimension to your product's Service Control managed service. Note its **metric name**: this is what Flexprice reports against.
+
+    | Field | Value |
+    |-------|-------|
+    | **Metric count** | Exactly one |
+    | **Metric name** | Your choice, for example `usage_fee` |
+    | **Price per unit** | `$0.01` |
+  </Step>
+
+  <Step title="Set the metric price to $0.01">
+    Price your single usage metric at **`$0.01` per unit**.
+
+    GCP's Service Control API only accepts whole numbers as a metric value, so Flexprice reports your billable amount in cents. Pricing at this rate means GCP multiplies those cents back into the exact amount Flexprice computed, down to the cent.
+
+    <Warning>
+      The price must be exactly `$0.01` per unit. Any other value scales what GCP bills your buyers by that factor.
+    </Warning>
+  </Step>
+</Steps>
+
+<Note>
+  Once your pricing model is submitted, GCP assigns your product a Service Control managed service name and finalizes your metric's identifier. Both are visible in Producer Portal's **Technical integration** section, see [Configure usage reporting to Google](https://docs.cloud.google.com/marketplace/docs/partners/integrated-saas/configure-usage-reports). GCP's own docs give this example format: service name `example-messaging-service.gcpmarketplace.example.com`, metric name `example-messaging-service/UsageInGiB`, your actual values are account-specific. You need both, as `service_name` and `metric_name`, when registering agreements, see [Agreement Registration](/integrations/marketplace-integration/gcp/agreement-registration).
+</Note>
+
+## Step 2: Set Up Workload Identity Federation for Flexprice to Meter on Your Behalf
+
+Flexprice reports usage by authenticating into your GCP project through Workload Identity Federation (WIF). Flexprice's own AWS identity is federated into a short-lived GCP token, with no long-lived GCP key stored anywhere. You create a workload identity pool and provider that trust Flexprice's AWS identity, and a service account scoped to report usage only.
+
+<Steps>
+  <Step title="Get Flexprice's AWS account ID and role name">
+    Go to your GCP Marketplace connection setup in Flexprice to find the **AWS account ID** and **role name** to trust. You need both to run the setup script below.
+  </Step>
+
+  <Step title="Run the setup script in your GCP project">
+    In your GCP project's Cloud Shell (or a terminal with the `gcloud` CLI authenticated against your project), fill in `GCP_PROJECT_ID`, `GCP_PROJECT_NUMBER`, and `SA_ID`, and set `FLEXPRICE_AWS_ACCOUNT_ID` / `FLEXPRICE_AWS_ROLE_NAME` to the values from the previous step. Then run:
+
+    ```bash
+    GCP_PROJECT_ID="your-gcp-project-id"
+    GCP_PROJECT_NUMBER="your-gcp-project-number"
+    SA_ID="flexprice-metering-sa"
+    FLEXPRICE_AWS_ACCOUNT_ID="<from Flexprice dashboard>"
+    FLEXPRICE_AWS_ROLE_NAME="<from Flexprice dashboard>"
+
+    # Create the workload identity pool
+    gcloud iam workload-identity-pools create "flexprice-pool" \
+      --location="global" --project="$GCP_PROJECT_ID"
+
+    # Create the provider, trusting only Flexprice's AWS account and role
+    gcloud iam workload-identity-pools providers create-aws "flexprice-provider" \
+      --location="global" --workload-identity-pool="flexprice-pool" \
+      --account-id="$FLEXPRICE_AWS_ACCOUNT_ID" \
+      --attribute-mapping="google.subject=assertion.arn,attribute.account=assertion.account,attribute.aws_role=assertion.arn.extract('assumed-role/{role}/')" \
+      --attribute-condition="attribute.aws_role == '$FLEXPRICE_AWS_ROLE_NAME'" \
+      --project="$GCP_PROJECT_ID"
+
+    # Create the service account Flexprice will report usage as
+    gcloud iam service-accounts create "$SA_ID" --project="$GCP_PROJECT_ID"
+
+    # Grant it exactly one permission: report usage
+    gcloud projects add-iam-policy-binding "$GCP_PROJECT_ID" \
+      --role="roles/servicemanagement.serviceController" \
+      --member="serviceAccount:$SA_ID@$GCP_PROJECT_ID.iam.gserviceaccount.com" \
+      --condition=None
+
+    # Let Flexprice's AWS identity impersonate the service account
+    gcloud iam service-accounts add-iam-policy-binding \
+      "$SA_ID@$GCP_PROJECT_ID.iam.gserviceaccount.com" \
+      --role="roles/iam.workloadIdentityUser" \
+      --member="principalSet://iam.googleapis.com/projects/$GCP_PROJECT_NUMBER/locations/global/workloadIdentityPools/flexprice-pool/attribute.account/$FLEXPRICE_AWS_ACCOUNT_ID" \
+      --project="$GCP_PROJECT_ID"
+
+    # Generate the credentials file to paste into Flexprice
+    gcloud iam workload-identity-pools create-cred-config \
+      "projects/$GCP_PROJECT_NUMBER/locations/global/workloadIdentityPools/flexprice-pool/providers/flexprice-provider" \
+      --service-account="$SA_ID@$GCP_PROJECT_ID.iam.gserviceaccount.com" \
+      --aws --output-file="flexprice-gcp-creds.json"
+    ```
+  </Step>
+
+  <Step title="Copy the generated credentials file">
+    Open `flexprice-gcp-creds.json` and copy its full contents. This file contains no private key, only configuration describing how to complete the federation exchange. You need it in the next step.
+  </Step>
+</Steps>
+
+<Note>
+  This setup covers the whole GCP project it runs in, not one product. If your GCP project hosts multiple Marketplace listings, one connection covers usage reporting for all of them.
+</Note>
+
+## Step 3: Create the GCP Marketplace Connection
+
+### Using Flexprice Dashboard
+
+You can create a GCP Marketplace connection directly from the Flexprice dashboard under **Integrations → GCP Marketplace**. The dashboard walks you through the same setup script and credentials JSON paste described above, with your Flexprice AWS account ID and role name pre-filled.
+
+<Frame>
+  ![Connect to GCP Marketplace from the Flexprice dashboard](/images/docs/marketplace/gcp/gcp-connection-setup.png)
+</Frame>
+
+### API Request
+
+**Endpoint:** `POST /api/v1/connections`
+
+**Headers:**
+```http
+Content-Type: application/json
+Authorization: Bearer your_api_key
+X-Environment-ID: your_environment_id
+```
+
+`flexprice-gcp-creds.json` from Step 2 looks like this:
+
+```json
+{
+  "type": "external_account",
+  "audience": "//iam.googleapis.com/projects/<project-number>/locations/global/workloadIdentityPools/flexprice-pool/providers/flexprice-provider",
+  "subject_token_type": "urn:ietf:params:aws:token-type:aws4_request",
+  "token_url": "https://sts.googleapis.com/v1/token",
+  "credential_source": {
+    "environment_id": "aws1",
+    "region_url": "http://169.254.169.254/latest/meta-data/placement/availability-zone",
+    "url": "http://169.254.169.254/latest/meta-data/iam/security-credentials",
+    "regional_cred_verification_url": "https://sts.{region}.amazonaws.com?Action=GetCallerIdentity&Version=2011-06-15"
+  },
+  "service_account_impersonation_url": "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/flexprice-metering-sa@<your-project>.iam.gserviceaccount.com:generateAccessToken"
+}
+```
+
+`credentials_json` is a **string** field, not a nested object. Its value is that entire file's contents, JSON-encoded as one string:
+
+**Request Body:**
+```json
+{
+  "name": "GCP Marketplace",
+  "provider_type": "gcp_marketplace",
+  "encrypted_secret_data": {
+    "credentials_json": "{\"type\":\"external_account\",\"audience\":\"//iam.googleapis.com/projects/<project-number>/locations/global/workloadIdentityPools/flexprice-pool/providers/flexprice-provider\",\"subject_token_type\":\"urn:ietf:params:aws:token-type:aws4_request\",\"token_url\":\"https://sts.googleapis.com/v1/token\",\"credential_source\":{\"environment_id\":\"aws1\",\"region_url\":\"http://169.254.169.254/latest/meta-data/placement/availability-zone\",\"url\":\"http://169.254.169.254/latest/meta-data/iam/security-credentials\",\"regional_cred_verification_url\":\"https://sts.{region}.amazonaws.com?Action=GetCallerIdentity&Version=2011-06-15\"},\"service_account_impersonation_url\":\"https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/flexprice-metering-sa@<your-project>.iam.gserviceaccount.com:generateAccessToken\"}"
+  }
+}
+```
+
+<Note>
+  If you are building this request programmatically, read the file and pass its raw contents through your language's JSON string encoding rather than constructing the escaped string by hand.
+</Note>
+
+| Field | Description | Required |
+|-------|-------------|----------|
+| `name` | A friendly name for the connection | ✅ |
+| `provider_type` | Must be `gcp_marketplace` | ✅ |
+| `credentials_json` | The full contents of the credentials file from Step 2, as a single JSON-encoded string | ✅ |
+
+### Response
+
+```json
+{
+  "id": "conn_01KY2GQY0D0W38S5NAVM5HC9RC",
+  "name": "GCP Marketplace",
+  "provider_type": "gcp_marketplace",
+  "status": "published",
+  "created_at": "2026-07-21T14:19:41Z",
+  "updated_at": "2026-07-21T14:19:41Z"
+}
+```
+
+The credentials are stored encrypted.
+
+### Connection Verification
+
+<Check>
+  Creating the connection immediately attempts the full Workload Identity Federation exchange: trading your AWS identity for a federated GCP token, then impersonating your service account. The connection is only saved if that succeeds, so a successful response confirms your setup actually works rather than failing silently later.
+</Check>
+
+If it fails, nothing is saved and you get a validation error. Fix the cause and create the connection again.
+
+| Cause | Fix |
+|-------|-----|
+| Provider trusts the wrong AWS account or role | Confirm `--account-id` and `--attribute-condition` in the setup script match the values Flexprice showed you |
+| Attribute mapping missing `attribute.account` | Re-run the provider creation command exactly as shown; a missing mapping makes the impersonation binding match nothing |
+| Service account impersonation not granted | Confirm the `iam.workloadIdentityUser` binding was applied to the service account, not the project |
+| `servicemanagement.serviceController` not granted | Confirm the role was granted to the service account at the project level |
+| Pasted credentials file is incomplete or edited | Re-copy the full, unmodified contents of `flexprice-gcp-creds.json` |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card icon="link" href="/integrations/marketplace-integration/gcp/agreement-registration" title="Agreement Registration">
+    Link each buyer's GCP entitlement to a Flexprice subscription.
+  </Card>
+  <Card icon="chart-line" href="/integrations/marketplace-integration/gcp/usage-reporting" title="Usage Reporting">
+    Understand what gets metered to GCP and when.
+  </Card>
+</CardGroup>
