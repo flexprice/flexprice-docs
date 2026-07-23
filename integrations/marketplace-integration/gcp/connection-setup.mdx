@@ -55,7 +55,7 @@ Create your product in the GCP Marketplace Producer Portal. The integration supp
 </Steps>
 
 <Note>
-  Once your pricing model is submitted, GCP assigns your product a Service Control managed service name and finalizes your metric's identifier. Both are visible in Producer Portal's **Technical integration** section, see [Configure usage reporting to Google](https://docs.cloud.google.com/marketplace/docs/partners/integrated-saas/configure-usage-reports). GCP's own docs give this example format: service name `example-messaging-service.gcpmarketplace.example.com`, metric name `example-messaging-service/UsageInGiB`, your actual values are account-specific. You need both, as `service_name` and `metric_name`, when registering agreements, see [Agreement Registration](/integrations/marketplace-integration/gcp/agreement-registration).
+  Once your pricing model is submitted, GCP assigns your product a Service Control managed service name and finalizes your metric's identifier. Both are account-specific and visible in Producer Portal's **Technical integration** section, see [Configure usage reporting to Google](https://docs.cloud.google.com/marketplace/docs/partners/integrated-saas/configure-usage-reports). You need both, as `service_name` and `metric_name`, when registering agreements, see [Agreement Registration](/integrations/marketplace-integration/gcp/agreement-registration).
 </Note>
 
 ## Step 2: Set Up Workload Identity Federation for Flexprice to Meter on Your Behalf
@@ -117,10 +117,6 @@ Flexprice reports usage by authenticating into your GCP project through Workload
     Open `flexprice-gcp-creds.json` and copy its full contents. This file contains no private key, only configuration describing how to complete the federation exchange. You need it in the next step.
   </Step>
 </Steps>
-
-<Note>
-  This setup covers the whole GCP project it runs in, not one product. If your GCP project hosts multiple Marketplace listings, one connection covers usage reporting for all of them.
-</Note>
 
 ## Step 3: Create the GCP Marketplace Connection
 
