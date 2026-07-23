@@ -23,16 +23,6 @@ That means the reported amount already accounts for:
 
 The amount is reported in cents against your single usage metric. With the metric priced at `$0.01` per unit, GCP multiplies it back into the exact amount, down to the cent. See [Create Your GCP Marketplace Listing](/integrations/marketplace-integration/gcp/connection-setup#step-1-create-your-gcp-marketplace-listing).
 
-## Reporting Cadence
-
-<Note>
-  Flexprice reports usage to GCP on a recurring schedule, approximately every 3 hours, not in real time. Do not expect usage to appear in GCP immediately after it happens in Flexprice.
-</Note>
-
-### Where Usage Appears in GCP
-
-Reported usage shows up against your product's entitlements in Producer Portal, under its usage and reporting views. Use this to confirm usage is reaching GCP.
-
 ## Retries and Failures
 
 Reporting recovers from transient failures on its own.
@@ -62,7 +52,7 @@ To detect these events, subscribe to your product's Procurement API notification
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
 | No usage in GCP at all | Agreement never registered | Confirm registration succeeded, see [Agreement Registration](/integrations/marketplace-integration/gcp/agreement-registration) |
-| Usage appears late | Expected: reporting is scheduled, not real time | None, see [Reporting Cadence](#reporting-cadence) |
+| Usage appears late | Expected: reporting is scheduled, not real time | None |
 | GCP bills the wrong amount | Metric not priced at `$0.01` per unit | Correct the metric price on your GCP product |
 | Reports rejected with a permission error naming your service | The service name in your plan mapping does not match a real, provisioned Service Control managed service | Confirm the product's pricing has been approved and the managed service is live |
 
