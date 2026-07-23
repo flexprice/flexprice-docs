@@ -1,0 +1,78 @@
+---
+title: 'GCP Marketplace Usage Reporting'
+description: 'What Flexprice meters to GCP Marketplace and when it reports'
+tag: 'Beta'
+---
+
+## Overview
+
+Once a buyer's entitlement is registered, usage reporting runs automatically. You do not call Flexprice again for that buyer unless their subscription changes.
+
+Flexprice reports usage against your product's single usage metric via the Service Control API. GCP then invoices the buyer and pays you out.
+
+
+## What Flexprice Meters to GCP
+
+The amount reported to GCP is the same billable amount that appears on that subscription's Flexprice invoice for the same period. It is computed with the same rules, so GCP bills what Flexprice bills.
+
+That means the reported amount already accounts for:
+
+- **Usage-based charges** across every meter on the subscription
+- **Commitment amounts**, where the subscription has a committed spend
+- **Overage rates**, where usage exceeds the commitment
+
+The amount is reported in cents against your single usage metric. With the metric priced at `$0.01` per unit, GCP multiplies it back into the exact amount, down to the cent. See [Create Your GCP Marketplace Listing](/integrations/marketplace-integration/gcp/connection-setup#step-1-create-your-gcp-marketplace-listing).
+
+## Reporting Cadence
+
+<Note>
+  Flexprice reports usage to GCP on a recurring schedule, approximately every 3 hours, not in real time. Do not expect usage to appear in GCP immediately after it happens in Flexprice.
+</Note>
+
+### Where Usage Appears in GCP
+
+Reported usage shows up against your product's entitlements in Producer Portal, under its usage and reporting views. Use this to confirm usage is reaching GCP.
+
+## Retries and Failures
+
+Reporting recovers from transient failures on its own.
+
+- **Reports are safe to retry.** Each report carries a fixed operation ID, so a retry is an identical request and GCP de-duplicates it rather than billing twice.
+- **Unaccepted reports are retried.** Service Control's API can return a `200 OK` and still reject a report; Flexprice checks for this and leaves rejected reports unreported so they are retried on the next run. No action is needed from you.
+- **A rejected buyer resolves itself.** If GCP reports the entitlement is not active, reporting keeps retrying and succeeds once the buyer's entitlement is active again.
+
+## Handling Marketplace Lifecycle Events
+
+Flexprice does not learn about GCP-side changes to a buyer's subscription. You handle these.
+
+| Event on GCP | What you must do in Flexprice |
+|--------------|-------------------------------|
+| Buyer cancels or unsubscribes | Cancel or end the buyer's Flexprice subscription |
+| Buyer's entitlement expires | Cancel or end the buyer's Flexprice subscription |
+| Buyer re-subscribes with a new entitlement | Create a new Flexprice subscription and register the new entitlement |
+
+<Warning>
+  If a buyer cancels on GCP and you leave their Flexprice subscription active, Flexprice keeps computing usage for it and attempting to report it to GCP. Cancel the Flexprice subscription to stop this.
+</Warning>
+
+To detect these events, subscribe to your product's Procurement API notifications in your own application. Flexprice does not subscribe to them.
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| No usage in GCP at all | Agreement never registered | Confirm registration succeeded, see [Agreement Registration](/integrations/marketplace-integration/gcp/agreement-registration) |
+| Usage appears late | Expected: reporting is scheduled, not real time | None, see [Reporting Cadence](#reporting-cadence) |
+| GCP bills the wrong amount | Metric not priced at `$0.01` per unit | Correct the metric price on your GCP product |
+| Reports rejected with a permission error naming your service | The service name in your plan mapping does not match a real, provisioned Service Control managed service | Confirm the product's pricing has been approved and the managed service is live |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card icon="plug" href="/integrations/marketplace-integration/gcp/connection-setup" title="Connection Setup">
+    Set up your GCP listing, Workload Identity Federation, and Flexprice connection.
+  </Card>
+  <Card icon="link" href="/integrations/marketplace-integration/gcp/agreement-registration" title="Agreement Registration">
+    Link each buyer's GCP entitlement to a Flexprice subscription.
+  </Card>
+</CardGroup>

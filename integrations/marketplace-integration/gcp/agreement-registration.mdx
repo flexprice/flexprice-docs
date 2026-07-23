@@ -1,0 +1,175 @@
+---
+title: 'GCP Marketplace Agreement Registration'
+description: 'Link each buyer GCP Marketplace entitlement to a Flexprice subscription so their usage is reported to GCP'
+tag: 'Beta'
+---
+
+## Overview
+
+When a buyer subscribes to your product on GCP Marketplace, GCP creates an entitlement for them. Registering that entitlement tells Flexprice which subscription's usage belongs to which buyer on GCP.
+
+Registration links three Flexprice entities to their GCP counterparts:
+
+| Flexprice entity | Links to | GCP identifier |
+|------------------|----------|----------------|
+| **Customer** | The buyer's GCP account | `account_id` |
+| **Subscription** | The buyer's entitlement | `usage_reporting_id` |
+| **Plan** | Your GCP product | `service_name` + `metric_name` |
+
+Flexprice does not call the GCP Procurement API itself. You retrieve the entitlement's identifiers yourself and pass them to Flexprice. Register the entitlement once per buyer, at the point they subscribe. After that, usage reporting runs on its own.
+
+
+## Prerequisites
+
+Before registering an agreement, ensure you have:
+
+1. **A published GCP Marketplace connection** - See [How to Set Up GCP Marketplace](/integrations/marketplace-integration/gcp/connection-setup)
+2. **Your metric name** - The single usage metric you created on your GCP product
+3. **A Flexprice customer, plan, and active subscription** - For the buyer, see [Step 3](#step-3-make-sure-the-buyer-exists-in-flexprice)  for what you must check or create before registering.
+
+## Step 1: Handle the Entitlement Creation
+
+When a buyer subscribes on GCP Marketplace, GCP creates an entitlement for them in your producer project. Detecting and retrieving that entitlement is done through the GCP Procurement API, in your own backend, using credentials from the GCP project that published the product.
+
+<Note>
+  This is a call your own backend makes directly to the GCP Procurement API. Flexprice is not involved in this exchange. See [Manage customer entitlements](https://docs.cloud.google.com/marketplace/docs/partners/integrated-saas/manage-entitlements) for how to detect and read a new entitlement.
+</Note>
+
+## Step 2: Get the Values Flexprice Needs
+
+Registering an agreement needs four values. Two are per-buyer, from the entitlement your backend retrieved in [Step 1](#step-1-handle-the-entitlement-creation). Two are per-product, fixed for every buyer and already known from setting up your listing.
+
+| Field | What it is | Where it comes from |
+|-------|------------|----------------------|
+| Usage reporting ID | The identifier for this buyer's entitlement. Sent to GCP as the consumer ID on every usage report | The entitlement, per buyer |
+| Account identifier | An identifier for the buyer's GCP account | The entitlement, per buyer |
+| Service name | Your product's Service Control managed service name | Your own product setup, same for every buyer on this product, see [Create Your GCP Marketplace Listing](/integrations/marketplace-integration/gcp/connection-setup#step-1-create-your-gcp-marketplace-listing) |
+| Metric name | The fully qualified `<service_name>/<metric>` identifier for your usage metric | Your own product setup, same for every buyer on this product, see [Create Your GCP Marketplace Listing](/integrations/marketplace-integration/gcp/connection-setup#step-1-create-your-gcp-marketplace-listing) |
+
+<Note>
+  GCP's own docs give this example format: service name `example-messaging-service.gcpmarketplace.example.com`, metric name `example-messaging-service/UsageInGiB`. Your actual values are account-specific, GCP does not publish a fixed value, view yours in Producer Portal's **Technical integration** section, see [Configure usage reporting to Google](https://docs.cloud.google.com/marketplace/docs/partners/integrated-saas/configure-usage-reports).
+</Note>
+
+<Warning>
+  Persist these values on your own side. Flexprice does not look them up again after registration.
+</Warning>
+
+## Step 3: Make Sure the Buyer Exists in Flexprice
+
+Three things must already exist in Flexprice before you can register the agreement. Flexprice does not create any of them for you.
+
+<Steps>
+  <Step title="A Flexprice customer for this buyer">
+    Create one with `POST /v1/customers` if it does not already exist. Usage and billing are attributed to this customer.
+  </Step>
+
+  <Step title="The Flexprice plan for this product">
+    The plan whose usage-based charge corresponds to the GCP product the buyer subscribed to. See [Creating a Plan](/docs/product-catalogue/plans/create).
+  </Step>
+
+  <Step title="An active Flexprice subscription">
+    Create it with `POST /v1/subscriptions` on that plan if it does not already exist. The subscription must be **active**: registration rejects a subscription in any other state.
+  </Step>
+</Steps>
+
+## Step 4: Register the Agreement
+
+### Using Flexprice Dashboard
+
+You can link a buyer's GCP entitlement to a Flexprice subscription directly from the Flexprice dashboard.
+
+### API Request
+
+**Endpoint:** `POST /api/v1/marketplace/agreements`
+
+**Headers:**
+```http
+Content-Type: application/json
+Authorization: Bearer your_api_key
+X-Environment-ID: your_environment_id
+```
+
+**Request Body:**
+```json
+{
+  "provider": "gcp_marketplace",
+  "subscription_id": "subs_01KY2J08K0196MJYEVXWXGQWND",
+  "customer_id": "cust_01KY2HVFA430GB6HQS556DDA0V",
+  "plan_id": "plan_01KXG2APD7806XMH1V01465Q64",
+  "gcp": {
+    "service_name": "your-service.endpoints.your-project.cloud.goog",
+    "usage_reporting_id": "consumer-identifier-from-entitlement",
+    "metric_name": "your-service.endpoints.your-project.cloud.goog/usage_fee",
+    "account_id": "buyer-account-identifier"
+  }
+}
+```
+
+| Field | Where it comes from | Required |
+|-------|---------------------|----------|
+| `provider` | Must be `gcp_marketplace` | ✅ |
+| `subscription_id` | The Flexprice subscription for this buyer. Must exist and be active | ✅ |
+| `customer_id` | The Flexprice customer for this buyer. Must match the subscription's customer | ✅ |
+| `plan_id` | The Flexprice plan the subscription is on. Must match the subscription's plan | ✅ |
+| `gcp.service_name` | Your product's Service Control managed service name | ✅ |
+| `gcp.usage_reporting_id` | The consumer ID from Step 2, identifying this buyer's entitlement | ✅ |
+| `gcp.metric_name` | The fully qualified metric name, `<service_name>/<metric>`, for example `your-service.endpoints.your-project.cloud.goog/usage_fee` | ✅ |
+| `gcp.account_id` | The buyer's GCP account identifier from Step 2 | ✅ |
+
+<Note>
+  `gcp.metric_name` is sent to GCP exactly as you provide it, with no prefix added by Flexprice. Pass the fully qualified `<service_name>/<metric>` form, not the bare metric name.
+</Note>
+
+### Response
+
+```json
+{
+  "plan_mapping_id": "eim_01KY2J3SVSCVGQXKHQRY4GBS3V",
+  "subscription_mapping_id": "eim_01KY2J3T23EBFZHH9ZZ2XCEMJM",
+  "customer_mapping_id": "eim_01KY2HWSV0JM53DZZ9Z84C2H75",
+  "status": "active"
+}
+```
+
+A successful response means the mapping is recorded. Nothing else happens synchronously: usage reporting begins on its own schedule, described in [Usage Reporting](/integrations/marketplace-integration/gcp/usage-reporting).
+
+### Validation Rules
+
+Registration rejects the request if any of these do not hold:
+
+| Rule | Error |
+|------|-------|
+| The subscription exists and is **active** | `subscription is not active` |
+| `customer_id` matches the subscription's customer | `customer_id does not match subscription` |
+| `plan_id` matches the subscription's plan | `plan_id does not match subscription` |
+| The `usage_reporting_id` is not already registered to a different subscription | `agreement identifier already registered to a different subscription` |
+| The subscription is not already registered to a different `usage_reporting_id` | `subscription already mapped to a different agreement identifier` |
+
+<Warning>
+  Each entitlement maps to exactly one subscription, and a subscription cannot be re-pointed to a different entitlement. If a buyer re-subscribes and GCP issues a new entitlement, create a new Flexprice subscription for them rather than reusing the old one.
+</Warning>
+
+## Registering Multiple Buyers on One Plan
+
+The plan mapping stores your product-level GCP configuration, so it is created once and reused. Registering a second buyer on the same plan reuses the existing plan mapping rather than creating another one.
+
+This means `service_name` and `metric_name` are set by the **first** agreement registered against a plan. Later registrations for that plan do not change them.
+
+<Check>
+  Register every buyer for the same GCP product against the same Flexprice plan, with the same `service_name` and `metric_name`.
+</Check>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card icon="plug" href="/integrations/marketplace-integration/gcp/connection-setup" title="Connection Setup">
+    Set up your GCP listing, Workload Identity Federation, and Flexprice connection.
+  </Card>
+  <Card icon="chart-line" href="/integrations/marketplace-integration/gcp/usage-reporting" title="Usage Reporting">
+    Understand what gets metered to GCP and when.
+  </Card>
+</CardGroup>
+
+**API References**
+- [Create a Customer](/api-reference/customers/create-customer)
+- [Create a Subscription](/api-reference/subscriptions/create-subscription)
