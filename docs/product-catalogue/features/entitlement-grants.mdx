@@ -1,0 +1,237 @@
+---
+title: "Entitlement Grants"
+description: "Configure time-boxed usage quotas on entitlements — rolling windows, parallel limits, and amount-based caps with exhaustion alerts and overage billing"
+---
+
+Entitlement grants add time-boxed quotas on top of [entitlements](/docs/product-catalogue/features/linking-to-plans). A regular entitlement gives a customer a usage limit per billing period; a grant config turns it into a quota per window — "1M tokens per 5 hours" or "$50 of compute per day" — independent of the billing cycle. Flexprice opens a concrete grant window when usage starts, tracks consumption against the quota, fires a webhook when the quota is exhausted, and bills usage beyond the quota as overage on the invoice.
+
+**Benefits:**
+
+- **Rolling limits** — Quotas measured in hours, days, or weeks instead of the billing period
+- **Parallel limits** — Stack independent windows on one feature, such as a 5-hour limit and a weekly limit
+- **Amount-based quotas** — Cap spend in currency, priced through your existing billing pipeline
+- **Exhaustion webhooks** — `entitlement.grant.exhausted` fires when a window's quota is used up
+- **Overage billing** — Usage beyond the quota lands on the arrears invoice automatically
+
+## Concepts
+
+| Term | Meaning |
+|------|---------|
+| **Entitlement config** | An entitlement that carries a grant config (`grant_measure`, `grant_duration_value`, `grant_duration_unit`, `grant_quota`, `aggregation_mode`). Setting these fields is the opt-in — there is no separate type flag. |
+| **Entitlement grant** | One concrete window instantiated from the config: a `valid_from`/`valid_to` range with an immutable quota and a usage snapshot. |
+| **Measure** | What the quota counts: `quantity` (raw meter units) or `amount` (currency, priced through the billing pipeline). |
+| **Aggregation mode** | How multiple grant configs on the same feature combine: `additive` merges quotas into one bucket, `parallel` keeps each config as its own independent bucket. |
+
+## Configuring a Grant
+
+Add the grant fields to a [create entitlement](/api-reference/entitlements/create-entitlement) or [update entitlement](/api-reference/entitlements/update-entitlement) request. The feature must be metered.
+
+```bash cURL
+curl -X POST "https://us.api.flexprice.io/v1/entitlements" \
+  -H "x-api-key: <your-api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "feature_id": "feat_tokens",
+    "feature_type": "metered",
+    "entity_type": "plan",
+    "entity_id": "plan_pro",
+    "is_enabled": true,
+    "grant_measure": "quantity",
+    "grant_quota": "1000000",
+    "grant_duration_value": 5,
+    "grant_duration_unit": "hour",
+    "aggregation_mode": "parallel"
+  }'
+```
+
+### Grant Config Fields
+
+| Field | Description |
+|-------|-------------|
+| `grant_measure` | `quantity` (meter units) or `amount` (currency) |
+| `grant_quota` | Quota per window, as a decimal string |
+| `grant_duration_value` | Window length, a positive integer |
+| `grant_duration_unit` | `hour`, `day`, or `week` |
+| `aggregation_mode` | `additive` (default) or `parallel` |
+
+The grant config is all-or-nothing: set every field or none. On update, `clear_grant_config: true` removes the config and returns the entitlement to legacy behavior.
+
+<Warning>
+Grant configs are validated at write time:
+
+- The feature must be metered. Meters with `MAX` aggregation or bucketed aggregation are not supported.
+- All grant configs on one feature must share the same `grant_measure` and the same `aggregation_mode`. Additive configs must also share the same duration.
+- `amount` grants require flat per-unit pricing on the meter — tiered prices are rejected.
+</Warning>
+
+<Note>
+A grant config whose duration is the billing period or longer is ignored at runtime — a window spanning the whole period is just the period quota. Use `usage_limit` with `usage_reset_period` for that case.
+</Note>
+
+## How Grant Windows Work
+
+Windows are usage-anchored. Flexprice does not open a window on a fixed schedule; it opens one when usage arrives:
+
+1. The first usage event past the covered range opens a window at that event's timestamp. An event at 2:00 opens a window starting at 2:00, even if evaluation runs at 2:07.
+2. The window runs for the configured duration: `valid_to = valid_from + duration`.
+3. When the window ends, nothing happens until the next usage event — idle periods open no windows, so an inactive customer accumulates no grant rows.
+4. Windows never straddle billing cycles. A window that would end within an hour of the cycle boundary stretches to the boundary instead of leaving a short stub.
+
+Each grant tracks two states in `grant_status`:
+
+- `active` — usage is below the quota
+- `exhausted` — usage reached the quota (`usage >= quota`)
+
+Expiry is not a status. A grant is closed when `valid_to` has passed, regardless of how much quota was used.
+
+### Grant Object
+
+| Field | Description |
+|-------|-------------|
+| `id` | Grant identifier (`eg_` prefix) |
+| `entitlement_config_id` | The entitlement this window was instantiated from |
+| `customer_id`, `subscription_id` | Who the window belongs to |
+| `scope_entity_type`, `scope_entity_id` | What the grant meters — `feature` and the feature ID |
+| `measure` | `quantity` or `amount` |
+| `quota` | The window's quota (immutable; the summed quota for additive groups) |
+| `usage` | Usage consumed in this window, refreshed on each evaluation |
+| `valid_from`, `valid_to` | The window boundaries |
+| `grant_status` | `active` or `exhausted` |
+| `quota_crossed_at` | Set once, when evaluation first sees `usage >= quota`. Overage billing starts from this timestamp. |
+
+## Aggregation Modes
+
+When a customer holds multiple grant configs on the same feature — a plan entitlement plus an addon entitlement, for example — `aggregation_mode` decides how they combine.
+
+### Additive
+
+All configs merge into **one** window with `quota = sum of quotas`. Use this when an addon should top up the base allowance.
+
+**Example**: The Pro plan grants 100K tokens per day. A booster addon grants another 50K per day. The customer gets one daily window with a 150K quota.
+
+### Parallel
+
+Each config opens its **own** independent window with its own duration. All windows meter the same usage stream. A request is within limits only while every applicable window has quota left; exhausting any one window puts the feature into overage for the remainder of that window.
+
+**Example**: 1M tokens per 5 hours *and* 5M tokens per week, as two parallel configs. Heavy use exhausts the 5-hour window first; sustained use over days exhausts the weekly window even though no single 5-hour burst did.
+
+## Use Cases
+
+### Rolling Rate Limits for an AI Product
+
+Cap token consumption in a rolling window that has nothing to do with the monthly invoice — the pattern used by AI assistants that advertise "resets every 5 hours".
+
+```json
+{
+  "grant_measure": "quantity",
+  "grant_quota": "1000000",
+  "grant_duration_value": 5,
+  "grant_duration_unit": "hour",
+  "aggregation_mode": "parallel"
+}
+```
+
+Add a second parallel config with `"grant_duration_unit": "week"` to layer a weekly ceiling on top of the burst limit.
+
+### Daily Spend Cap
+
+Cap what a customer's usage *costs* rather than how many units they consume. The `amount` measure prices usage through your existing meter prices, so a mid-window price change is respected.
+
+```json
+{
+  "grant_measure": "amount",
+  "grant_quota": "50",
+  "grant_duration_value": 1,
+  "grant_duration_unit": "day",
+  "aggregation_mode": "additive"
+}
+```
+
+The customer gets $50 of compute per day. Alert on exhaustion, or let usage continue and bill the excess as overage.
+
+### Plan Plus Booster Addon
+
+Sell top-ups without new plumbing. The plan carries a grant config; the addon carries another on the same feature with `additive` mode. Buying the addon raises the shared window's quota by the addon's amount. With `parallel` mode instead, the addon grants a separate window — useful when the addon's allowance runs on its own clock.
+
+### Soft Limits With Billed Overage
+
+Grants implement soft limits: usage is never blocked. When a window's quota is crossed, usage recorded after the crossing is billed as overage on the subscription's arrears invoice — quantity overage re-enters the pricer as billable units, amount overage lands directly as a charge. With parallel windows, overlapping overage periods are merged so a unit of usage is never billed twice.
+
+<Note>
+Overage folding skips line items with tiered prices, commitments, or true-up — those price against the full cycle, so grant overage on them falls back to the standard billing calculation.
+</Note>
+
+## Exhaustion Alerts
+
+Evaluation runs after usage events arrive (debounced, ~5m30s by default). When a window's usage reaches its quota, the grant flips to `exhausted`, one alert log is written, and a webhook fires. Recovery is not a state transition — a fresh window with a fresh quota simply opens when the next one starts.
+
+### Webhook Payload
+
+**Event type:** `entitlement.grant.exhausted`
+
+```json
+{
+  "event_type": "entitlement.grant.exhausted",
+  "alert_type": "entitlement_grant_exhausted",
+  "alert_status": "in_alarm",
+  "usage_ratio": "1.15",
+  "triggered_at": "2026-07-25T20:20:23Z",
+  "subscription": {
+    "id": "subs_01KYARKSC3GVX64QEF4T4ABS9X",
+    "customer_id": "cust_01KYARB3TVZ0RZPDGC5P40NHHC",
+    "plan_id": "plan_pro",
+    "subscription_status": "active",
+    "currency": "usd",
+    "billing_period": "MONTHLY",
+    "current_period_start": "2026-07-24T19:11:06Z",
+    "current_period_end": "2026-08-24T19:11:06Z"
+  },
+  "customer": {
+    "id": "cust_01KYARB3TVZ0RZPDGC5P40NHHC",
+    "external_id": "cust-new",
+    "name": "Acme Corp",
+    "email": "billing@acme.com"
+  },
+  "entitlement": {
+    "id": "ent_01KYB5ESPNNB8DWFVQAFJN6KKZ",
+    "feature_id": "feat_tokens",
+    "feature_type": "metered",
+    "grant_measure": "quantity",
+    "grant_quota": "1000000",
+    "grant_duration_value": 5,
+    "grant_duration_unit": "hour",
+    "aggregation_mode": "parallel"
+  },
+  "entitlement_grant": {
+    "id": "eg_01KYDEZ86JA78AM7F7Y2SMTRWE",
+    "entitlement_config_id": "ent_01KYB5ESPNNB8DWFVQAFJN6KKZ",
+    "customer_id": "cust_01KYARB3TVZ0RZPDGC5P40NHHC",
+    "subscription_id": "subs_01KYARKSC3GVX64QEF4T4ABS9X",
+    "scope_entity_type": "feature",
+    "scope_entity_id": "feat_tokens",
+    "measure": "quantity",
+    "quota": "1000000",
+    "usage": "1150000",
+    "valid_from": "2026-07-25T15:20:00Z",
+    "valid_to": "2026-07-25T20:20:00Z",
+    "grant_status": "exhausted",
+    "quota_crossed_at": "2026-07-25T20:20:23Z"
+  }
+}
+```
+
+### Webhook Fields
+
+| Field | Description |
+|-------|-------------|
+| `alert_type` | Always `entitlement_grant_exhausted` |
+| `alert_status` | `in_alarm` when the quota is exhausted |
+| `usage_ratio` | `usage / quota` at evaluation time — `1` or more when exhausted |
+| `triggered_at` | When the exhaustion was detected |
+| `subscription` | The owning subscription, without line items or plan expansions |
+| `customer` | The customer the grant belongs to |
+| `entitlement` | The entitlement config the window was instantiated from |
+| `entitlement_grant` | The exhausted window, including `quota`, `usage`, and the window boundaries |
+
+<Card icon="book-open" horizontal={true} href="/docs/product-catalogue/features/linking-to-plans" title="Link features to plans" />
+<Card icon="book-open" horizontal={true} href="/docs/webhook/webhooks" title="Webhooks" />
