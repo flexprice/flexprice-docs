@@ -1,0 +1,70 @@
+---
+title: 'Azure Marketplace Usage Reporting'
+description: 'What Flexprice meters to Azure Marketplace and when it reports'
+tag: 'Beta'
+---
+
+## Overview
+
+Once a buyer's subscription is registered, Flexprice reports its usage to Azure automatically, going forward. Usage from before the connection was made is not reported, and you do not call Flexprice again for that buyer unless their subscription changes.
+
+Flexprice computes each mapped subscription's usage for the elapsed period and reports it against your plan's single metered dimension. Azure then invoices the buyer and pays you out.
+
+
+## What Flexprice Meters to Azure
+
+The amount reported to Azure is the same billable amount that appears on that subscription's Flexprice invoice for the same period. It is computed with the same rules, so Azure bills what Flexprice bills.
+
+That means the reported amount already accounts for:
+
+- **Usage-based charges** across every meter on the subscription
+- **Commitment amounts**, where the subscription has a committed spend
+- **Overage rates**, where usage exceeds the commitment
+
+The amount is reported in cents against your single metered dimension. With the dimension priced at `$0.01` per unit, Azure multiplies it back into the exact amount, down to the cent. See [Create Your Azure Marketplace Offer](/integrations/marketplace-integration/azure/connection-setup#step-1-create-your-azure-marketplace-offer).
+
+<Note>
+  Only subscriptions denominated in **USD** are reported. A subscription in any other currency is left unreported rather than converted.
+</Note>
+
+<Note>
+  Azure only accepts a usage quantity greater than zero. When a subscription's computed amount for a period rounds to zero cents, Flexprice does not send a usage event for it. This is expected: there is nothing to bill, and the subscription is not left in an error state.
+</Note>
+
+## Retries and Failures
+
+Reporting recovers from transient failures on its own.
+
+- **Reports are safe to retry.** Each report carries a fixed effective time, so a retry is an identical request. Azure rejects it as a duplicate rather than billing twice.
+- **Unaccepted reports are retried.** If Azure does not accept a report, it stays unreported and is retried on the next run. No action is needed from you.
+- **A rejected buyer resolves itself.** If Azure reports the subscription is not active, reporting keeps retrying and succeeds once the buyer's subscription is active again.
+
+<Warning>
+  Azure will not accept a report older than 24 hours. A report that keeps failing for a full day stops being accepted after that, and the usage it carries is not billed to the buyer. Act on repeated reporting failures the same day they appear.
+</Warning>
+
+<Warning>
+  If the app on your offer's Technical Configuration does not match the credentials on your Flexprice connection, Azure rejects every report with a `401`. Confirm the tenant ID and application ID on the offer match the app whose credentials you gave Flexprice. See [Set Up Authentication](/integrations/marketplace-integration/azure/connection-setup#step-2-set-up-authentication-for-flexprice-to-meter-on-your-behalf).
+</Warning>
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| No usage in Azure at all | Agreement never registered | Confirm registration succeeded, see [Agreement Registration](/integrations/marketplace-integration/azure/agreement-registration) |
+| Every report rejected with a `401` | The app on the offer's Technical Configuration does not match the connected credentials | Confirm the tenant ID and application ID on the offer match your Flexprice connection |
+| Reports stopped working after months of success | Client secret expired | Generate a new client secret and update your Flexprice connection |
+| Usage appears late | Expected: reporting is scheduled, not real time | None, see [Reporting Cadence](#reporting-cadence) |
+| Azure bills the wrong amount | Dimension not priced at `$0.01` per unit, or the plan's recurring price is not `$0` | Correct the pricing on your Azure plan |
+| Usage still reporting after cancellation | Flexprice subscription still active | Cancel the Flexprice subscription |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card icon="plug" href="/integrations/marketplace-integration/azure/connection-setup" title="Connection Setup">
+    Set up your Azure offer, Entra app credentials, and Flexprice connection.
+  </Card>
+  <Card icon="link" href="/integrations/marketplace-integration/azure/agreement-registration" title="Agreement Registration">
+    Link each buyer's Azure subscription to a Flexprice subscription.
+  </Card>
+</CardGroup>

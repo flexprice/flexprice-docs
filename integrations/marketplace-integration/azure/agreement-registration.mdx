@@ -1,0 +1,170 @@
+---
+title: 'Azure Marketplace Agreement Registration'
+description: 'Link each buyer Azure Marketplace subscription to a Flexprice subscription so their usage is reported to Azure'
+tag: 'Beta'
+---
+
+## Overview
+
+When a buyer subscribes to your offer on Azure Marketplace, Azure creates a SaaS subscription for them. Registering that subscription tells Flexprice which subscription's usage belongs to which buyer on Azure.
+
+Registration links three Flexprice entities to their Azure counterparts:
+
+| Flexprice entity | Links to | Azure identifier |
+|------------------|----------|------------------|
+| **Customer** | The buyer's Entra tenant | `beneficiary.tenantId` |
+| **Subscription** | The buyer's SaaS subscription | `id`, sent as `resourceId` |
+| **Plan** | The plan on your offer | `planId` + dimension |
+
+Flexprice does not call the Azure SaaS fulfillment APIs itself. You resolve the subscription's identifiers yourself and pass them to Flexprice. Register the subscription once per buyer, at the point they subscribe. After that, usage reporting runs on its own.
+
+
+## Prerequisites
+
+Before registering an agreement, ensure you have:
+
+1. **A published Azure Marketplace connection** - See [How to Set Up Azure Marketplace](/integrations/marketplace-integration/azure/connection-setup)
+2. **The buyer's Azure SaaS subscription, resolved and activated** - Through your own backend, using [Azure's SaaS fulfillment APIs](https://learn.microsoft.com/en-us/partner-center/marketplace-offers/pc-saas-fulfillment-subscription-api). Flexprice is not involved in this step.
+3. **Your dimension ID** - The single metered dimension you created on your plan
+4. **A Flexprice customer, plan, and active subscription** - For the buyer, see [Step 2](#step-2-make-sure-the-buyer-exists-in-flexprice)
+
+## Step 1: Get the Values Flexprice Needs
+
+Registering an agreement needs four values, from the subscription you resolved and your own offer setup.
+
+| Field | What it is | Where it comes from |
+|-------|------------|----------------------|
+| Resource ID | The Azure SaaS subscription ID. Sent to Azure as the `resourceId` on every usage report | The subscription's `id`, per buyer |
+| Plan ID | Azure's identifier for the plan the buyer bought | The subscription's `planId`, per buyer |
+| Beneficiary account ID | The Entra tenant ID of the buyer's account | The subscription's `beneficiary.tenantId`, per buyer |
+| Dimension | The metered dimension ID on your plan | Your own offer setup, see [Create Your Azure Marketplace Offer](/integrations/marketplace-integration/azure/connection-setup#step-1-create-your-azure-marketplace-offer) |
+
+<Note>
+  `offerId` is not part of Azure's usage report payload, so Flexprice does not store it. The plan is identified by `planId` alone.
+</Note>
+
+<Warning>
+  Persist these values on your own side. Flexprice does not look them up again after registration.
+</Warning>
+
+## Step 2: Make Sure the Buyer Exists in Flexprice
+
+Three things must already exist in Flexprice before you can register the agreement. Flexprice does not create any of them for you.
+
+<Steps>
+  <Step title="A Flexprice customer for this buyer">
+    Create one with `POST /v1/customers` if it does not already exist. Usage and billing are attributed to this customer.
+  </Step>
+
+  <Step title="The Flexprice plan for this Azure plan">
+    The plan whose usage-based charge corresponds to the Azure plan the buyer subscribed to. See [Creating a Plan](/docs/product-catalogue/plans/create).
+  </Step>
+
+  <Step title="An active Flexprice subscription">
+    Create it with `POST /v1/subscriptions` on that plan if it does not already exist. The subscription must be **active**: registration rejects a subscription in any other state.
+  </Step>
+</Steps>
+
+## Step 3: Register the Agreement
+
+### Using Flexprice Dashboard
+
+You can link a buyer's Azure subscription to a Flexprice subscription directly from the Flexprice dashboard.
+
+### API Request
+
+**Endpoint:** `POST /api/v1/marketplace/agreements`
+
+**Headers:**
+```http
+Content-Type: application/json
+Authorization: Bearer your_api_key
+X-Environment-ID: your_environment_id
+```
+
+**Request Body:**
+```json
+{
+  "provider": "azure_marketplace",
+  "subscription_id": "subs_01KYAHZ3FMB7MH9V2V0STQXJPK",
+  "customer_id": "cust_01KYAHVFA430GB6HQS556DDA0V",
+  "plan_id": "plan_01KXG2APD7806XMH1V01465Q64",
+  "azure": {
+    "plan_id": "silver",
+    "dimension": "usage_fee",
+    "resource_id": "11111111-2222-3333-4444-555555555555",
+    "beneficiary_account_id": "<buyer-entra-tenant-id>"
+  }
+}
+```
+
+| Field | Where it comes from | Required |
+|-------|---------------------|----------|
+| `provider` | Must be `azure_marketplace` | ✅ |
+| `subscription_id` | The Flexprice subscription for this buyer. Must exist and be active | ✅ |
+| `customer_id` | The Flexprice customer for this buyer. Must match the subscription's customer | ✅ |
+| `plan_id` | The Flexprice plan the subscription is on. Must match the subscription's plan | ✅ |
+| `azure.plan_id` | Azure's `planId` from Step 1, sent to Azure on every usage report | ✅ |
+| `azure.dimension` | The metered dimension ID on your plan | ✅ |
+| `azure.resource_id` | The Azure SaaS subscription ID from Step 1 | ✅ |
+| `azure.beneficiary_account_id` | The buyer's Entra tenant ID from Step 1 | ✅ |
+
+<Warning>
+  `azure.plan_id` is Azure's own plan identifier, sent in the usage report. The top-level `plan_id` is the Flexprice plan. These are two different values and both are required.
+</Warning>
+
+### Response
+
+```json
+{
+  "plan_mapping_id": "eim_01KYAJ3SVSCVGQXKHQRY4GBS3V",
+  "subscription_mapping_id": "eim_01KYAJ3T23EBFZHH9ZZ2XCEMJM",
+  "customer_mapping_id": "eim_01KYAHWSV0JM53DZZ9Z84C2H75",
+  "status": "active"
+}
+```
+
+A successful response means the mapping is recorded. Nothing else happens synchronously: usage reporting begins on its own schedule, described in [Usage Reporting](/integrations/marketplace-integration/azure/usage-reporting).
+
+### Validation Rules
+
+Registration rejects the request if any of these do not hold:
+
+| Rule | Error |
+|------|-------|
+| The subscription exists and is **active** | `subscription is not active` |
+| `customer_id` matches the subscription's customer | `customer_id does not match subscription` |
+| `plan_id` matches the subscription's plan | `plan_id does not match subscription` |
+| The `resource_id` is not already registered to a different subscription | `agreement identifier already registered` |
+| The subscription is not already registered to a different `resource_id` | `subscription already mapped to a different agreement identifier` |
+
+<Warning>
+  Each Azure subscription maps to exactly one Flexprice subscription, and a subscription cannot be re-pointed to a different Azure subscription. If a buyer re-subscribes and Azure issues a new resource ID, create a new Flexprice subscription for them rather than reusing the old one.
+</Warning>
+
+## Registering Multiple Buyers on One Plan
+
+The plan mapping stores your plan-level Azure configuration, so it is created once and reused. Registering a second buyer on the same plan reuses the existing plan mapping rather than creating another one.
+
+This means `azure.plan_id` and `dimension` are set by the **first** agreement registered against a plan. Later registrations for that plan do not change them.
+
+<Check>
+  Register every buyer for the same Azure plan against the same Flexprice plan, with the same `azure.plan_id` and `dimension`.
+</Check>
+
+If your offer has several plans, map each Azure plan to its own Flexprice plan. A buyer who changes plan on Azure moves to the Flexprice plan mapped to their new `planId`.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card icon="plug" href="/integrations/marketplace-integration/azure/connection-setup" title="Connection Setup">
+    Set up your Azure offer, Entra app credentials, and Flexprice connection.
+  </Card>
+  <Card icon="chart-line" href="/integrations/marketplace-integration/azure/usage-reporting" title="Usage Reporting">
+    Understand what gets metered to Azure and when.
+  </Card>
+</CardGroup>
+
+**API References**
+- [Create a Customer](/api-reference/customers/create-customer)
+- [Create a Subscription](/api-reference/subscriptions/create-subscription)
