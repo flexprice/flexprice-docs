@@ -4,6 +4,610 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="July 27th 2026">
+  ## GCP Marketplace integration
+
+  Marketplace usage reporting now extends to Google Cloud — connect a GCP Marketplace producer project and Flexprice reports computed usage against your listed offer the same way it already does for AWS.
+
+  * **Agreement registration**: Register agreements and report usage against a GCP Marketplace metered offer
+  * **Shared usage pipeline**: Backed by a refactored `UsageRecord` schema and cron workflow shared across all three marketplace providers
+
+  <br />
+
+  <Frame>
+    <img src="/images/docs/marketplace/gcp/gcp-connection-setup.png" alt="Connect to GCP Marketplace from the Flexprice dashboard" style={{ borderRadius: '0.5rem' }} />
+  </Frame>
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/integrations/marketplace-integration/gcp/connection-setup" title="GCP Marketplace - Documentation" />
+
+  <br />
+
+  ## Azure Marketplace integration
+
+  Marketplace usage reporting now also extends to Microsoft Azure — connect an Azure Marketplace transactable SaaS offer using Microsoft Entra app credentials and Flexprice reports computed usage the same way it already does for AWS and GCP.
+
+  * **Entra app credentials**: Authenticate with a dedicated Azure Marketplace client using a Microsoft Entra tenant ID, client ID, and client secret registered in your own tenant
+  * **Secret redaction**: A shared `RedactSecrets` utility sanitizes error messages from AWS, GCP, and Azure integrations so failure reasons stay visible without leaking credentials
+
+  <br />
+
+  <Frame>
+    <img src="/images/docs/marketplace/azure/creat-conn.png" alt="Connect to Azure Marketplace from the Flexprice dashboard" style={{ borderRadius: '0.5rem' }} />
+  </Frame>
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/integrations/marketplace-integration/azure/connection-setup" title="Azure Marketplace - Documentation" />
+
+  <br />
+
+  ## Entitlement grant overage and alerting
+
+  Entitlement grants now handle usage beyond the quota and notify you as windows fill up, completing the rolling-quota model introduced for metered features.
+
+  * **Overage billing**: Usage beyond a grant's quota is billed as overage on the invoice instead of being silently dropped
+  * **Grant window coverage**: New grants are clipped to the current cycle end and opened ahead of time so a window is always active to absorb incoming usage
+  * **Exhaustion alerting**: Alert evaluation now tracks grant consumption and fires when a window's quota is used up
+  * **Quota comparison fix**: Corrected a comparison that could misclassify a grant as exhausted before its quota was actually consumed
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/features/entitlement-grants" title="Entitlement grants - Documentation" />
+
+  <br />
+
+  ## Custom onboarding workflows
+
+  Customer onboarding now supports multiple named workflows instead of a single fixed sequence — pass a workflow name at customer creation to run a specific onboarding path.
+
+  * **`onboarding_workflow_name`**: New optional field on customer create resolves to a named entry in `custom_workflows`; unrecognized names fall back to the default onboarding actions
+  * **Default tenant name**: Onboarding configuration now accepts a default tenant name, used when provisioning a tenant during onboarding
+  * **Dashboard editor**: A new workflow card and action-set editor let you build and manage custom onboarding workflows from the settings area
+
+  <br />
+
+  ## One-time charges on subscriptions
+
+  Subscription plans can now include one-time, non-recurring charges alongside their regular recurring line items.
+
+  * **Plan price resolution**: Subscription creation now fetches both the subscription's billing-period prices and any `ONETIME` billing-period prices configured on the plan
+  * **Entity type validation**: Subscription pricing now validates that only supported price entity types are used, rejecting unsupported combinations up front
+
+  <br />
+
+  ## Zoho Books invoice mark-paid sync
+
+  Flexprice invoices synced to Zoho Books are now marked paid in Zoho automatically once payment succeeds, closing the loop on the existing Zoho invoice sync.
+
+  * **Automatic dispatch**: When a Zoho-synced invoice's payment status becomes `succeeded`, a Temporal workflow marks the corresponding invoice as paid in Zoho Books
+  * **New Zoho client methods**: `GetInvoice` and `CreateCustomerPayment` support fetching invoice state and recording the payment directly against the Zoho customer
+  * **Non-syncable line items skipped**: Line items that Zoho can't represent are excluded from the outbound sync instead of failing the whole invoice
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/integrations/zohobooks/connection-setup" title="Zoho Books - Documentation" />
+
+  <br />
+
+  ## Redis Sentinel support
+
+  Self-hosted deployments can now run Redis behind Sentinel for high availability and automatic failover, as an alternative to cluster mode.
+
+  * **Sentinel mode**: Setting `FLEXPRICE_REDIS_SENTINEL_MASTER_NAME` and `FLEXPRICE_REDIS_SENTINEL_ADDRS` switches the client to Sentinel mode, taking precedence over cluster and standalone
+  * **Replica read routing**: `FLEXPRICE_REDIS_ROUTE_READS_TO_REPLICAS` spreads reads across the master and replicas while keeping writes on the master
+  * **Fail-fast validation**: Sentinel master name and addresses must be configured together — a partial config now returns a clear startup error instead of silently falling back to standalone or losing HA
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Webhook delivery to Svix now filters events to only those an endpoint is actually subscribed to, instead of delivering every event type
+      * Webhooks dashboard adds an activity overview with delivery stats and Svix Play support for testing endpoints end-to-end
+      * `subscription.updated` webhook event propagation refined for more accurate change tracking
+      * Billing now supports multiple charges against the same line item in meter usage calculation
+      * Wallet auto-topup gains a configurable cooloff period, with a matching provider control in the topup modal
+      * Temporal client SDK metrics added for monitoring workflow and activity execution
+      * Cost sheets now accept property filters in usage requests
+      * Supabase auth tokens now include `environment_id` in their claims
+      * Helm chart supports an optional dedicated namespace for in-cluster ClickHouse
+      * Customer onboarding pins reads to the writer to avoid replication-lag races right after signup
+      * AWS Marketplace connections now generate their external ID deterministically from account details instead of leaving it free-form
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Whop webhook handler now verifies the webhook signature before processing events
+      * Commitment math is now applied once per line item instead of once per split charge, preventing overcounting
+      * Fixed a nil-pointer panic when a line item referenced a meter that no longer existed
+      * Azure Marketplace usage records with zero quantity are now handled correctly instead of being rejected
+      * GCP Marketplace usage report rejections now log a clearer error reason
+      * Paddle invoice payment updates now skip only the transaction linked to subscription activation, not all transactions
+      * Event debugger URLs now use a URL-safe event ID
+      * Subscription overage is now allowed to be exactly `1` instead of being rejected as invalid
+      * `cel-go` and `grpc` dependencies bumped to patch known CVEs (GHSA-gcjh-h69q-9w9g, GHSA-hrxh-6v49-42gf)
+      * Plans and customers now load correctly on subscription and invoice pages with no existing records (frontend)
+      * Subscription form no longer loops indefinitely fetching prices when a plan has no published charges (frontend)
+    </Accordion>
+
+    <Accordion title="API">
+      * Connection API accepts marketplace `provider: gcp` and `provider: azure` alongside the existing `aws` value
+      * Customer create request accepts an `onboarding_workflow_name` field to select a named onboarding workflow
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
+<Update label="July 20th 2026">
+  ## AWS Marketplace integration
+
+  Flexprice can now report usage directly to a seller's AWS Marketplace listing, joining the existing GCP integration — connect an AWS account, register each buyer's agreement, and let Flexprice-computed usage flow through to AWS billing.
+
+  * **Marketplace client & connection verification**: A new AWS Marketplace client assumes a tenant's IAM role via STS to verify and report usage; connection creation is now bounded by a timeout so a misconfigured or unreachable AWS credential chain fails fast instead of hanging the request
+  * **Agreement registration**: Link a buyer's AWS Marketplace agreement to a Flexprice subscription so usage is attributed to the right AWS account and reported through `BatchMeterUsage`
+  * **Dashboard connection management**: A new AWS Marketplace connection drawer lets you configure and manage the connection directly from the dashboard, with improved UI and localization
+
+  <br />
+
+  <Frame>
+    <img src="/images/docs/marketplace/aws/bills.png" alt="AWS Bills page showing a Marketplace charge reported by Flexprice" style={{ borderRadius: '0.5rem' }} />
+  </Frame>
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/integrations/marketplace-integration/aws/connection-setup" title="AWS Marketplace - Documentation" />
+
+  <br />
+
+  ## Grouped-invoicing children created inline with the parent
+
+  Parent subscriptions can now create their grouped-invoicing children in the same request instead of a separate step, with each child's first-period charges folded into the parent's opening invoice.
+
+  * **`grouped_invoicing_children_to_create`**: New field on subscription creation accepts child seat specs (plan, external customer, start date) to create alongside the parent; mutually exclusive with converting existing standalone subscriptions into the group
+  * **Unified opening invoice**: Each inline child's period-1 charges are folded into the parent's single opening invoice rather than generating a separate invoice per child
+  * **Aligned billing start**: Grouped-invoicing children created this way always start on the parent's billing date, keeping the group's billing periods in sync
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/subscriptions/billing-workflows/grouped-invoicing" title="Grouped invoicing - Documentation" />
+
+  <br />
+
+  ## Zero-quantity subscription line items
+
+  Subscription line items now accept an explicit quantity of `0` — useful for provisioning a seat-based or fixed charge at zero scale and ramping it up later — instead of silently defaulting to the price's minimum quantity.
+
+  * **Pointer-based quantity**: `CreateSubscriptionLineItemRequest.Quantity` and `LineItemQuantityChange.Quantity` are now pointers, distinguishing an explicit `0` from an omitted field (which still defaults to `min_quantity`)
+  * **Dashboard support**: The subscription quantity-modify dialog and price table now accept and display a typed `0` instead of coercing it back to the minimum quantity
+
+  <br />
+
+  ## Razorpay card auto-charge and payment status sync
+
+  Razorpay auto-charge mandates now support card in addition to UPI, and payment status is actively reconciled against the gateway instead of relying on webhooks alone.
+
+  * **Card mandate registration**: Razorpay mandate registration accepts `card` as a method alongside `upi`, chosen by a new token-selection helper that tries UPI first and falls back to card
+  * **Gateway status sync on read**: `GetPayment` now performs a best-effort status sync against Stripe or Razorpay for any payment still `PENDING` or `PROCESSING`, reconciling stuck statuses without waiting on a webhook
+  * **Payment link tracking**: Razorpay payment links can now be polled by tracking ID to resolve their current status
+
+  <br />
+
+  ## Wallet bonus credits and payment sync
+
+  Wallet top-ups and onboarding-created wallets gain a dedicated expiry for bonus and initial credits, and purchased-credit invoices can be force-synced to Moyasar with connection-configured redirect URLs.
+
+  * **`bonus_credits_expiry_date_utc`**: Top-up requests can set an expiry for bonus credits that's independent of the purchase credits' own expiry
+  * **Onboarding wallet initial credits**: The onboarding workflow's wallet-creation action can now apply an optional expiration duration to the initial credits it loads
+  * **Moyasar redirect URLs**: `force_sync_invoice` on wallet top-ups now forwards the connection-configured success/cancel URLs to Moyasar, mirroring the existing Paddle pattern, and is configurable from the Moyasar connection drawer
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Meter usage queries now support `group_by` on commitments for exports, and parent-child subscription usage is handled correctly when computing meter usage
+      * Customer analytics requests can now include child customer costs alongside the parent's own
+      * `formatPayableAmount` gives precise monetary formatting on the subscription addon table, replacing lossy rounding (frontend)
+      * Storage-span sampling and app-level DB metrics added for tracing, giving SigNoz trace-cost control (`FLE-1003`)
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Tax is now correctly applied when creating a subscription through checkout
+      * Coupon redemption race condition closed with an atomic DB-level guard — concurrent requests could previously all pass validation and push `total_redemptions` past `max_redemptions`
+      * Razorpay: mandate limit capping is now scoped to UPI only, `short_url`/`id` are validated on mandate registration responses, and `RefundLateCapturedPayment` failures now surface to the caller instead of being swallowed
+      * `MandateLimit.Currency` is now validated as a 3-letter currency code
+      * Inherited subscription revenue calculation corrected in meter usage computation
+      * `EnvironmentSelector` button opacity behavior fixed in the dashboard (frontend)
+      * `svix` browser bundle polyfill issue fixed in the self-hosted webhook dashboard (frontend)
+    </Accordion>
+
+    <Accordion title="API">
+      * New `wallet.transaction.updated` and `wallet.ongoing_balance.updated` webhook events; wallet transaction payloads now include the associated customer object
+      * Subscription search now supports expanding `entitlements`
+      * `Customer` entity gains a `contact` field, used for Razorpay customer sync
+      * `PaymentResponse` now includes `tenant_id` and `environment_id`
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
+<Update label="July 13th 2026">
+  ## Spend alert settings
+
+  Subscriptions and line items now support configurable, threshold-based spend alerts backed by a dedicated alert-settings entity and a real-time alert-log pipeline that evaluates billed spend as usage events arrive.
+
+  * **AlertSettings API**: New endpoints let you create and update spend-alert thresholds for a subscription or line item, with `info`, `warning`, and `critical` levels
+  * **Alert log pipeline**: Alert logs now track the originating `alert_setting_id` and flow through a dedicated consumer pipeline, driven by config rather than hardcoded thresholds
+  * **Dashboard support**: A new alert settings dialog lets you configure and save spend-alert thresholds for a subscription or line item directly from the dashboard
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/subscriptions/how-to-configure-spend-alerts/what-are-spend-alerts" title="Spend alerts - Documentation" />
+
+  <br />
+
+  ## Razorpay UPI Autopay and auto-charge
+
+  Razorpay checkout sessions now support mandate-based recurring payments — a customer authorizes a UPI Autopay or card mandate once, and every invoice after that is auto-charged with no further action needed.
+
+  * **Mandate registration at checkout**: Set `payment_provider_config.collection_method` to `charge_automatically` to register a UPI or card mandate instead of a one-time payment link
+  * **Automatic invoice charging**: Finalizing an invoice now triggers a best-effort `AutoChargeInvoice` call against any usable saved token, guarded by per-invoice and per-token-cycle idempotency claims to guarantee at-most-once charging
+  * **Mandate ceiling**: A configurable `max_mandate_limit` caps the size of any single auto-charge; invoices above it fall back automatically to a normal payment link
+  * **Reconciliation and webhook handling**: A reconciliation sweep recovers stuck charge claims, and the Razorpay webhook handler now processes `token.confirmed`, `token.rejected`, and `token.cancelled` events
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/checkout/autopay-mandates" title="Autopay & Mandates - Documentation" />
+
+  <br />
+
+  ## Tabs integration
+
+  Flexprice now connects to Tabs, syncing finalized invoices to its revenue recognition platform through a dedicated background workflow.
+
+  * **Connection setup**: Register and configure a Tabs connection from the dashboard's integrations catalog, alongside existing providers like Stripe and Razorpay
+  * **Invoice sync workflow**: A new Temporal workflow pushes finalized invoices to Tabs for revenue recognition as they're generated
+
+  <br />
+
+  ## Credit grants on addons
+
+  Addons can now carry their own credit grants, matching the behavior already available on plans.
+
+  * **Addon credit grants**: Attach credit grants directly to an addon — applying the addon to a subscription grants credits the same way a plan-level credit grant does
+  * **Dashboard parity**: Addon detail pages now surface credit grants alongside other addon configuration, matching the plan detail experience
+
+  <br />
+
+  ## Wallet bonus credit grants
+
+  Wallet top-ups now support slab-based bonus credits — an extra credit grant calculated automatically from the size of a purchased top-up.
+
+  * **Slab-based resolution**: A configurable slab table matches the top-up amount to a threshold and computes the bonus as either a flat amount or a percentage of the purchase
+  * **Linked bonus transaction**: The bonus is recorded as its own wallet transaction, linked back to the originating purchase via a new `parent_transaction_id` field, and shares its completion state with the purchase
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Table row dropdown menus across the dashboard (addons, cost sheets, coupons, credit grants, customers, entitlement overrides) now include a copy ID action
+      * Environment creation UI now supports platform-specific configuration, improving the setup flow for self-hosted deployments
+      * `ManualBalanceDebit` requests now accept a `metadata` field for recording debit context
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Scheduled subscription cancellations now correctly terminate line items, addons, and credit grants when the cancellation takes effect — previously only the subscription-level status was updated
+      * Reverting a scheduled cancellation on a parent subscription now cascades the reverted state to inherited child subscriptions — previously children kept stale `CancelAtPeriodEnd`/`CancelAt`/`CancelledAt` values
+      * Fixed a credit-grant application cancellation ordering bug, and cancellation failures are now propagated instead of silently swallowed
+      * `GET /v1/tenants/{id}` now rejects cross-tenant reads
+      * Meter usage charge calculations now include `SubscriptionLineItemID`, fixing incorrect spend-breach checks
+    </Accordion>
+
+    <Accordion title="API">
+      * New `event.unmatched` webhook (opt-in, throttled per tenant/environment/event name) fires when an ingested event produces no meter usage — either no meter is registered, or filters excluded it — replacing a previously silent drop
+      * `ManualBalanceDebit` requests now accept a `metadata` field
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
+<Update label="July 6th 2026">
+  ## Self-hosted webhooks portal
+
+  The webhooks dashboard now ships a full self-hosted management portal instead of a docs stub — manage endpoints, inspect message logs, and debug delivery attempts directly from Flexprice.
+
+  * **Endpoint and message detail views**: New endpoint overview, advanced, and testing tabs, plus a message detail view with per-attempt status and response bodies
+  * **Auto-switching portal**: The dashboard automatically renders the self-hosted Svix portal or the hosted Svix iframe depending on which URL your environment is configured with
+  * **Event type picker**: Endpoint filters now page through the full event catalog instead of stopping at the first 250 event types
+  * **Paddle event coverage**: Paddle connections can now subscribe to the full set of Paddle webhook event types, including `transaction.completed`
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/webhook/webhooks" title="Webhooks - Documentation" />
+
+  <br />
+
+  ## Settings redesign
+
+  The settings area is now a single tabbed dashboard, replacing the previous set of standalone pages for billing, team, and alerts.
+
+  * **Tabbed navigation**: Billing, Team, Alerts, and Customer Portal are now tabs on one settings page with shared routing and i18n
+  * **Billing tab**: Invoice numbering and subscription configuration moved into a dedicated tab with live invoice preview
+  * **Team tab**: Organization info and member management consolidated with filtering and invite flows
+  * **Alerts tab**: Wallet balance alert thresholds configurable with ordering validation to prevent conflicting rules
+  * **Customer Portal tab**: Toggle which sections and visibility options are exposed on the customer-facing portal
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/settings/settings" title="Settings - Documentation" />
+
+  <br />
+
+  ## Customer onboarding automation
+
+  You can now configure a default onboarding workflow that runs automatically whenever a new customer is created — provisioning a wallet, subscription, or custom action set without manual setup.
+
+  * **Action sets**: Define default actions (create wallet with an initial credit load, create subscription against a published plan) that fire on customer creation
+  * **Custom workflows**: Add named custom workflows alongside the default action set for different onboarding paths
+  * **Validation**: Wallet credit expiration and workflow name conflicts are validated before saving
+
+  <br />
+
+  ## Usage analytics discounts
+
+  Usage analytics now account for active percentage coupons — the detailed analytics endpoint reports gross cost, discount, and net cost per line item and per time-series point instead of just gross cost.
+
+  * **Discount-aware response**: `UsageAnalyticItem` and `UsageAnalyticPoint` now include `subtotal`, `total_discount`/`discount`, and a discount-adjusted `total_cost`/`cost`
+  * **Subscription and line-item coupons**: Percentage coupons with `forever` or `repeated` cadence are resolved and applied across the requested time range, including ranges that straddle a coupon's active window
+
+  <br />
+
+  ## Customer entitlements by external ID
+
+  A new endpoint resolves a customer's entitlements using your own external customer ID, making it easier to check feature access at the edge without an internal Flexprice lookup first.
+
+  * **New endpoint**: `GET /customers/external/{external_id}/entitlements` returns a customer's entitlements, with optional `feature_ids` and `subscription_ids` filters
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Meter creation now supports a `+ Custom Expression` toggle that swaps the aggregation field for a CEL formula input, with inline help for supported functions
+      * Meters gain a monthly bucket size option alongside existing bucket granularities
+      * Meter usage analytics support `expand: "source"` to return distinct event sources per bucketed meter
+      * Cost Sheet details support filtering and sorting
+      * Entitlement config-value editing now uses a dedicated JSON editor with validation, and overridden config values show a tooltip in the entitlements table
+      * Repository-layer DB calls for Postgres and ClickHouse are now traced as proper DB client spans, and high-volume info logs were downgraded to debug to cut log volume
+      * Entity caching gains ID-only keys, hit/miss/set observability, and tuned TTLs (2m in-memory, 30m Redis)
+      * Kafka consumer groups now each have a dedicated DLQ topic for events ingestion
+      * Credit grants support updating `end_date` after creation
+      * Settings pages adopt a shared info-icon and tooltip pattern across wallet alerts, subscription, portal, and onboarding fields
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Fixed a wallet balance alert double-firing bug by removing a redundant Kafka publish path
+      * Stripe invoice line items now preserve and display the original quantity in the line item description instead of losing it when only an amount is synced
+      * Paddle `transaction.completed` webhooks are now correctly handled against subscription activation
+      * `UpdateEntitlement` now rejects requests that try to enable a config-type feature or corrupt its `config_value`
+      * Fixed several `/users/me` session sync bugs — stale cached user data could overwrite newer state across tabs, and tenant updates weren't consistently reflected in the session
+      * Team members list now shows correct singular/plural counts and auto-refreshes
+      * Invoice configuration settings now save and reset to defaults correctly
+      * Webhook endpoint advanced settings no longer lose disabled status or duplicate custom headers on save
+    </Accordion>
+
+    <Accordion title="API">
+      * New `GET /customers/external/{external_id}/entitlements` endpoint for looking up entitlements by external customer ID
+      * `UsageAnalyticItem`/`UsageAnalyticPoint` response fields renamed: `net_cost` is now `total_cost`/`cost` (post-discount), with gross cost moved to a new `subtotal` field
+      * `UpdateCreditGrantRequest` accepts an `end_date` field
+      * `OverrideEntitlementRequest` accepts a `config_value` field for config-type feature overrides
+      * `/webhooks/dashboard` returns `token` and `app_id` for the self-hosted Svix portal in addition to the existing hosted URL
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
+<Update label="June 29th 2026">
+  ## Checkout Sessions
+
+  Flexprice now offers a hosted checkout flow that creates a subscription and finalizes payment end-to-end, without you building any payment UI. The initial release supports Razorpay, behind a pluggable provider architecture designed to add more gateways later.
+
+  * **Session lifecycle**: Create a session via `POST /v1/checkout/sessions` and redirect the customer to the returned payment URL; sessions move through `initiated`, `pending`, `completed`, `failed`, and `expired` states
+  * **Automatic cleanup**: If a session fails or expires, Flexprice automatically cleans up the draft payment, invoice, and subscription it created
+  * **Automatic expiry**: A Temporal workflow sweeps and expires stale sessions every 30 minutes so abandoned checkouts don't linger
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/checkout/checkout-sessions" title="Checkout Sessions API - Documentation" />
+
+  <br />
+
+  ## Per-subscription timezones
+
+  Timezone-aware billing now extends below the customer level — subscriptions carry their own `timezone` field (renamed from `customer_timezone`), and it threads through every date calculation that touches the subscription.
+
+  * **Timezone validation**: Customer and subscription timezone fields are validated as IANA timezone names (e.g. `Asia/Kolkata`) on create and update, instead of accepting arbitrary strings
+  * **Timezone-aware billing math**: Credit grant periods, proration, and ClickHouse usage aggregation now consistently use the subscription's timezone for period boundaries
+  * **Timezone-aware analytics**: Detailed usage analytics now bucket time-series data in the customer's timezone instead of hardcoded UTC
+  * **Dashboard**: Subscription and customer timezone are now visible in the Customer Information and Subscription Details views
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/customers/timezone-aware-billing" title="Customer Timezones - Documentation" />
+
+  <br />
+
+  ## Custom expressions for meters
+
+  Metered features can now compute their per-event quantity from a CEL formula instead of a single event property — useful when the billable quantity is derived from multiple fields, needs a unit conversion, or needs to be rounded or clamped.
+
+  * **CEL math helpers**: Expressions support `max`, `min`, `abs`, `ceil`, `floor`, `round`, `pow`, `sqrt`, and `log` alongside standard arithmetic and comparison operators
+  * **Validation**: Expressions are only accepted on SUM, AVG, MAX, and LATEST aggregations, and a meter can't set both a field and an expression at the same time
+  * **Dashboard**: A "+ Custom Expression" toggle on feature creation swaps the aggregation field input for a CEL formula input, with inline help text and examples
+
+  <br />
+
+  <Frame>
+    <img src="/public/images/docs/Product%20catalogue/Features/Custom%20expression/switch-from-field-to-cel.png" alt="Aggregation section with the Custom expression toggle highlighted" style={{ borderRadius: '0.5rem' }} />
+  </Frame>
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/features/custom-expression" title="Custom Expression - Documentation" />
+
+  <br />
+
+  ## Config feature type for entitlements
+
+  Entitlements can now carry an arbitrary JSON `config_value`, so you can deliver feature flags, rate limits, or tenant settings to customers through the standard entitlements pipeline instead of a boolean or numeric limit.
+
+  * **Config feature type**: A new `config` feature type accepts a JSON object as its `config_value` when the feature is attached to a plan's entitlements
+  * **Dashboard JSON editor**: A JSON editor with syntax highlighting validates the config payload on entry, and a side sheet displays the full stored value from the plan's Entitlements tab
+  * **Customer entitlements**: Config values are returned on the customer's entitlements as soon as they subscribe to a plan that includes the feature
+
+  <br />
+
+  <Frame>
+    <img src="/public/images/docs/Product%20catalogue/Features/Creating%20a%20feature/add-entitlement-feat-config.png" alt="Add Entitlement with Config feature JSON editor" style={{ borderRadius: '0.5rem' }} />
+  </Frame>
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/features/create" title="Creating a Feature - Documentation" />
+
+  <br />
+
+  ## Redesigned settings dashboard
+
+  Settings are now organized into a single tabbed dashboard instead of scattered pages, covering team, billing, alerts, and customer portal configuration.
+
+  * **Team tab**: Manage tenant members and pending invites in one place, with an option to show pending invites alongside published members
+  * **Billing tab**: Configure invoice and subscription settings — auto-cancellation and invoice numbering — directly from the dashboard
+  * **Alerts tab**: Configure wallet balance alert thresholds from Settings instead of a separate page
+  * **Customer portal tab**: New tab for configuring customer-facing portal settings
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/settings/settings" title="Settings - Documentation" />
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Customer Analytics tab now surfaces COGS and margin metrics alongside usage and cost data
+      * Subscription, payment, and customer-information list views now default to filtering on `PUBLISHED` status, hiding draft and pending records
+      * Wallet balance endpoint now falls back to the last cached balance — flagged with a new `is_cached_fallback` field — when real-time computation fails or exceeds a 30s timeout; a 5xx is only returned when no cached balance is available either
+      * Price entity limit increased from 3,000 to 5,000
+      * Customer entitlements response no longer includes subscription line items, reducing payload size for entitlement checks
+      * Service account archive action now shows the correct delete label and icon
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Moyasar webhook handler no longer errors when the referenced payment record can't be found — logs and returns gracefully instead
+      * Moyasar payments now sync their status into the linked invoice's `moyasar_invoice_status` metadata field on completion
+      * Credit note and tax association creation now return an `ErrAlreadyExists` error instead of a generic database error when the record already exists
+      * CEL expressions now reject non-finite property values (`NaN`, `±Inf`) and no longer leak raw property values in boundary error messages
+      * Svix webhook auth token environment variable is now bound correctly — webhooks were previously failing with 401s in production
+      * JsonEditor now uses a proper typed value for config editing and fixes text-selection handling
+    </Accordion>
+
+    <Accordion title="API">
+      * Customer entitlements response now includes a `subscriptions` field listing which subscriptions grant each entitlement
+      * Subscription's `customer_timezone` field renamed to `timezone`
+      * Coupon and line-item responses now support `expand` for richer nested data
+      * `includeAllStatuses` param added to the tenant members endpoint, returning pending invites alongside published members
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
+<Update label="June 22nd 2026">
+  ## Customer timezone-aware billing
+
+  Customers can now be assigned a timezone, which Flexprice uses to align billing periods, usage windows, entitlement resets, and credit/coupon expirations to their local calendar instead of UTC.
+
+  * **Timezone field on customers**: Set `timezone` (any IANA name) when creating or updating a customer — subscriptions inherit it at creation time
+  * **Timezone-aware billing periods**: Daily, weekly, monthly, quarterly, half-yearly, and annual periods now start and end at local midnight rather than UTC midnight
+  * **Timezone-aware usage and resets**: Usage aggregation windows, entitlement resets, credit grant expirations, and coupon end dates now compute from the customer's local time
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/customers/timezone-aware-billing" title="Customer timezones - Documentation" />
+
+  <br />
+
+  ## Moyasar autopay
+
+  Flexprice can now save a customer's card through Moyasar and charge it automatically on future invoices, with a hosted checkout page, 3DS verification, and lifecycle handling for reconciliation, voids, and refunds.
+
+  * **Checkout page**: New Flexprice-hosted checkout page tokenizes the customer's card and redirects through 3DS verification when the issuer requires it
+  * **Automatic invoice charging**: Once a card is saved, new invoices are charged directly against it without any customer action
+  * **Cron reconciliation and void/refund lifecycle**: A scheduled workflow reconciles pending card-verification charges — voiding the verification charge automatically, or issuing a refund if the void fails
+
+  <br />
+
+  <Frame>
+    <img src="/public/images/docs/integrations/moyasar/setup-autopay.png" alt="Setup Autopay button on the customer page" style={{ borderRadius: '0.5rem' }} />
+  </Frame>
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/integrations/moyasar/autopay" title="Moyasar autopay - Documentation" />
+
+  <br />
+
+  ## Coupon and tax associations on subscriptions
+
+  The subscription details page now has a dedicated dashboard flow for applying and removing coupons and tax rates on individual line items, mid-cycle, without needing to call the API directly.
+
+  * **Apply/Remove dialogs**: New `ApplyCouponDialog`, `RemoveCouponDialog`, `ApplyTaxDialog`, and `RemoveTaxDialog` walk through a preview step showing affected resources before executing the change
+  * **Association tables**: New `CouponAssociationTable` and `TaxAssociationTable` components list active associations with valid-from/to ranges, filtered to active, published associations only
+  * **Line item actions**: Apply and remove coupon/tax actions are now available directly from each line item's dropdown menu
+  * **Coupon codes**: Coupons now require a human-readable `coupon_code` on creation, shown as a monospace badge on the coupon details page
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/coupons/apply-discount-on-subscription" title="Apply coupons to subscriptions - Documentation" />
+
+  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/taxes/apply" title="Apply taxes - Documentation" />
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Addons can now be added to draft subscriptions, and addon line item dates shift to match the new start date when a draft is activated
+      * Subscription entitlement overrides can now be edited directly from the subscription page via a new edit drawer
+      * Webhook requests arriving at inbound integration endpoints are now logged and persisted for auditing, with oversized bodies skipped from persistence
+      * Tenant auth middleware reworked to support tenant-scoped access checks across permission and API key validation
+      * Service account name is now included in the list API keys response
+      * Zoho invoice sync no longer sends the Flexprice invoice number to Zoho, and instead updates the Flexprice invoice with the Zoho-generated number
+      * Recurring charges form now synchronizes billing model and tier mapping automatically when switching pricing configurations
+      * Service account role selection now prioritizes `super_admin` in the drawer's role list
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Meter usage queries now correctly handle meters with no active subscription and group by properties on bucketed meters
+      * Billing period calculation now enforces an exact match between subscription and plan price billing periods
+      * Analytics event count and bucket line-item queries corrected
+      * `DeleteUser` now correctly enforces tenant-scoped checks on the caller's API key
+      * Arabic characters are now accepted by input sanitization on form fields (previously rejected as invalid)
+      * Broken documentation links fixed across onboarding and integration guides
+    </Accordion>
+
+    <Accordion title="API">
+      * New `GET /coupons/associations` endpoint to list coupon associations
+      * `subscription_coupons`/`CreateCouponRequest`/`CouponAssociation` payloads now accept `coupon_code`
+      * Subscription details endpoint accepts an `expand` query parameter to include tax rate data
+      * `AssociationID` renamed to `CouponAssociationID`/`TaxAssociationID` on subscription line item associations
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
 <Update label="June 15th 2026">
   ## Service accounts
 
