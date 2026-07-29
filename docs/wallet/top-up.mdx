@@ -186,10 +186,68 @@ Once payment is recorded and the invoice is marked as paid:
 
 ---
 
+## Collect Payment Before Credits Apply
+
+The flow above finalizes an invoice and waits for you to record payment. If you would rather hand the customer a payment page and let a successful payment release the credits, add a `checkout` object to the top-up request:
+
+```json
+POST /wallets/wallet_01KY1TRVGSC4YVB3XAMFV66EC5/top-up
+{
+  "credits_to_add": "500",
+  "transaction_reason": "PURCHASED_CREDIT_INVOICED",
+  "checkout": {
+    "payment_provider": "razorpay",
+    "success_url": "https://app.example.com/wallet/success",
+    "cancel_url": "https://app.example.com/wallet/cancel"
+  }
+}
+```
+
+The wallet balance does not move. Flexprice creates a pending wallet transaction and a `DRAFT` invoice, then returns a payment link:
+
+```json
+{
+  "wallet": { "id": "wallet_01KY1TRVGSC4YVB3XAMFV66EC5", "balance": "100" },
+  "wallet_transaction": {
+    "id": "wtxn_01KY9HQ95BGBN77GZXZ45W6B6W",
+    "transaction_status": "pending",
+    "transaction_reason": "PURCHASED_CREDIT_INVOICED",
+    "credits": "500"
+  },
+  "invoice_id": "inv_01KY9HBFHBX2JBD01QZTS109D2",
+  "checkout_session": {
+    "id": "cs_01KY9HRYQBMHN2NM718CX16Z1R",
+    "checkout_status": "pending",
+    "payment_action": {
+      "type": "payment_link",
+      "url": "https://rzp.io/l/XXXXXXX"
+    }
+  }
+}
+```
+
+Redirect the customer to `checkout_session.payment_action.url`. When the payment succeeds, the invoice is finalized, the transaction moves to `completed`, and the 500 credits land in the wallet.
+
+| Behavior | Detail |
+|----------|--------|
+| Supported reason | `checkout` requires `transaction_reason: "PURCHASED_CREDIT_INVOICED"`. Any other reason returns a validation error |
+| Auto-complete override | If your environment has auto-complete enabled for purchased credit transactions, `checkout` overrides it. The transaction always stays pending until the payment clears |
+| One session per wallet | A second pay-first top-up on the same wallet is rejected while a session is open |
+| If payment never happens | On failure or expiry the draft invoice and the pending transaction are archived, and the balance is unchanged |
+
+<Note>
+  `checkout` and the manual **Record Payment** flow are alternatives, not steps in sequence. Use `checkout` when you want the customer to pay through a hosted page; use the invoice flow when you settle payment yourself or out of band.
+</Note>
+
+To attempt a charge against a payment method the customer has already authorized instead of sending them to a payment page, see [Charge a saved payment method](/docs/checkout/pay-first-checkout#charge-a-saved-payment-method).
+
+---
+
 ## Related Documentation
 
 - [Wallet Transactions](/docs/wallet/transactions) - Monitor and manage all wallet transactions
 - [Auto Top-Up Wallet](/docs/wallet/auto-top-up) - Configure automatic wallet recharging
 - [Low Balance Alert](/docs/wallet/low-balance-alert) - Set up balance threshold notifications
+- [Pay-First Checkout](/docs/checkout/pay-first-checkout) - Gate a top-up behind a successful payment
 
 ---

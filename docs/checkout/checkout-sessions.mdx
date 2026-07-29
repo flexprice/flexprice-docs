@@ -79,6 +79,17 @@ Redirect the customer to `payment_action.url`. Each session has its own link. Do
 | `cancel_url`                                              | No       | Where to redirect if the customer cancels.                                                                                                                 |
 | `idempotency_key`                                         | No       | Prevents duplicate sessions on retry. A duplicate key for an active session returns 409.                                                                   |
 
+## Other Checkout Actions
+
+Two more actions exist, but they are not created through this endpoint. Each is triggered by adding a `checkout` object to the endpoint that owns the change, so that Flexprice can compute the amount and defer the change itself:
+
+| Action | Create it with |
+|--------|----------------|
+| `modify_subscription` | `POST /subscriptions/{id}/modify/execute` |
+| `wallet_topup` | `POST /wallets/{id}/top-up` |
+
+Passing either action here returns a validation error naming the endpoint to use instead. Once created, both are read, deleted, and monitored through the same endpoints and webhook events described on this page. See [Pay-First Checkout](/docs/checkout/pay-first-checkout).
+
 ## Get a Checkout Session
 
 ```bash
@@ -122,7 +133,7 @@ Subscribe to these in **Settings > Webhooks** to drive fulfillment from your bac
 
 **Plan must have a non-zero charge.** Checkout requires a payable invoice amount to generate a payment link. Plans with only free or zero-amount charges will cause session creation to fail.
 
-**Idempotency on retry.** If your create call times out, retry with the same `idempotency_key`. You'll get back the existing session instead of a duplicate.
+**Idempotency on retry.** An `idempotency_key` is reserved while its session is active, so retrying with the same key returns 409 rather than creating a duplicate. Read the open session with `GET /checkout/sessions/{id}` to recover its payment URL. Once the session reaches a terminal state the key can be reused.
 
 <CardGroup cols={2}>
   <Card
