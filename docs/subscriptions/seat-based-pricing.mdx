@@ -90,13 +90,13 @@ The response includes the created subscription with `line_items[].id`. Save this
 
 ```json
 {
-  "id": "sub_01JVKM6S2BTUV8JKVWX3PFAD7",
+  "id": "subs_01JVKM6S2BTUV8JKVWX3PFAD7",
   "status": "ACTIVE",
   "customer_id": "cust_01JVKM2N8XPQR4FGHT9LBWZ3S",
   "plan_id": "plan_01JVKM3P9YQRS5GHTU0MCXA4T",
   "line_items": [
     {
-      "id": "li_01JVKM5R1ASTU7IJUVW2OEZC6",
+      "id": "subs_line_01JVKM5R1ASTU7IJUVW2OEZC6",
       "price_id": "price_01JVKM4Q0ZRST6HITUV1NDYB5",
       "quantity": "25",
       "price_type": "FIXED",
@@ -149,7 +149,7 @@ Use the subscription modification API to change the seat count after the subscri
 The modification API takes a line item ID (`li_...`), not a price ID. The `line_items[].id` is returned when you create the subscription (see Step 2) or when you fetch it:
 
 ```
-GET /subscriptions/sub_01JVKM6S2BTUV8JKVWX3PFAD7
+GET /subscriptions/subs_01JVKM6S2BTUV8JKVWX3PFAD7
 ```
 
 Match the line item to the right price via `line_items[].price_id`.
@@ -160,13 +160,13 @@ Match the line item to the right price via `line_items[].price_id`.
 Before executing, preview the billing impact:
 
 ```json
-POST /subscriptions/sub_01JVKM6S2BTUV8JKVWX3PFAD7/modify/preview
+POST /subscriptions/subs_01JVKM6S2BTUV8JKVWX3PFAD7/modify/preview
 {
   "type": "quantity_change",
   "quantity_change_params": {
     "line_items": [
       {
-        "id": "li_01JVKM5R1ASTU7IJUVW2OEZC6",
+        "id": "subs_line_01JVKM5R1ASTU7IJUVW2OEZC6",
         "quantity": "40"
       }
     ]
@@ -182,11 +182,11 @@ The UI preview shows the old and new line item periods and confirms a proration 
 
 ```json
 {
-  "subscription": { "id": "sub_01JVKM6S2BTUV8JKVWX3PFAD7", "..." : "..." },
+  "subscription": { "id": "subs_01JVKM6S2BTUV8JKVWX3PFAD7", "..." : "..." },
   "changed_resources": {
     "line_items": [
       {
-        "id": "li_01JVKM5R1ASTU7IJUVW2OEZC6",
+        "id": "(preview-ended)",
         "price_id": "price_01JVKM4Q0ZRST6HITUV1NDYB5",
         "quantity": "25",
         "start_date": "2026-06-01T00:00:00Z",
@@ -194,20 +194,23 @@ The UI preview shows the old and new line item periods and confirms a proration 
         "change_action": "ended"
       },
       {
-        "id": "li_01JVKN7T3CUVW9KLVWX4QGBE8",
+        "id": "(preview-created)",
         "price_id": "price_01JVKM4Q0ZRST6HITUV1NDYB5",
         "quantity": "40",
         "start_date": "2026-06-10T14:32:00Z",
-        "end_date": null,
+        "end_date": "2026-07-01T00:00:00Z",
         "change_action": "created"
       }
     ],
     "invoices": [
       {
-        "id": "inv_01JVKN8U4DVWX0LMWXY5RHCF9",
+        "id": "(preview-invoice)",
         "action": "created",
         "status": "preview",
         "invoice": {
+          "invoice_status": "DRAFT",
+          "invoice_type": "ONE_OFF",
+          "billing_reason": "SUBSCRIPTION_UPDATE",
           "amount_due": "203.23",
           "currency": "usd"
         }
@@ -217,20 +220,20 @@ The UI preview shows the old and new line item periods and confirms a proration 
 }
 ```
 
-Nothing is billed until you call the execute endpoint. The `status: "preview"` on the invoice confirms this is a dry run.
+Nothing is billed until you call the execute endpoint. The `status: "preview"` on the invoice confirms this is a dry run. Preview never writes anything, so the IDs are the placeholders `(preview-ended)`, `(preview-created)`, and `(preview-invoice)` rather than real IDs.
 
 ### 3c. Execute an Immediate Seat Change
 
 Omit `effective_date` to apply the change right now:
 
 ```json
-POST /subscriptions/sub_01JVKM6S2BTUV8JKVWX3PFAD7/modify/execute
+POST /subscriptions/subs_01JVKM6S2BTUV8JKVWX3PFAD7/modify/execute
 {
   "type": "quantity_change",
   "quantity_change_params": {
     "line_items": [
       {
-        "id": "li_01JVKM5R1ASTU7IJUVW2OEZC6",
+        "id": "subs_line_01JVKM5R1ASTU7IJUVW2OEZC6",
         "quantity": "40"
       }
     ]
@@ -238,15 +241,15 @@ POST /subscriptions/sub_01JVKM6S2BTUV8JKVWX3PFAD7/modify/execute
 }
 ```
 
-The current line item is terminated immediately and a new one starts with `quantity: 40`. The response has the same shape as the preview but with `status: "issued"` on the invoice, confirming the charge was generated:
+The current line item is terminated immediately and a new one starts with `quantity: 40`. The response has the same shape as the preview, but with real IDs and the invoice's payment status in place of `preview`:
 
 ```json
 {
-  "subscription": { "id": "sub_01JVKM6S2BTUV8JKVWX3PFAD7", "..." : "..." },
+  "subscription": { "id": "subs_01JVKM6S2BTUV8JKVWX3PFAD7", "..." : "..." },
   "changed_resources": {
     "line_items": [
       {
-        "id": "li_01JVKM5R1ASTU7IJUVW2OEZC6",
+        "id": "subs_line_01JVKM5R1ASTU7IJUVW2OEZC6",
         "price_id": "price_01JVKM4Q0ZRST6HITUV1NDYB5",
         "quantity": "25",
         "start_date": "2026-06-01T00:00:00Z",
@@ -254,7 +257,7 @@ The current line item is terminated immediately and a new one starts with `quant
         "change_action": "ended"
       },
       {
-        "id": "li_01JVKN7T3CUVW9KLVWX4QGBE8",
+        "id": "subs_line_01JVKN7T3CUVW9KLVWX4QGBE8",
         "price_id": "price_01JVKM4Q0ZRST6HITUV1NDYB5",
         "quantity": "40",
         "start_date": "2026-06-10T14:32:00Z",
@@ -266,8 +269,9 @@ The current line item is terminated immediately and a new one starts with `quant
       {
         "id": "inv_01JVKN8U4DVWX0LMWXY5RHCF9",
         "action": "created",
-        "status": "issued",
+        "status": "PENDING",
         "invoice": {
+          "invoice_status": "FINALIZED",
           "amount_due": "203.23",
           "currency": "usd"
         }
@@ -282,13 +286,13 @@ The current line item is terminated immediately and a new one starts with `quant
 Pass an `effective_date` to defer the change:
 
 ```json
-POST /subscriptions/sub_01JVKM6S2BTUV8JKVWX3PFAD7/modify/execute
+POST /subscriptions/subs_01JVKM6S2BTUV8JKVWX3PFAD7/modify/execute
 {
   "type": "quantity_change",
   "quantity_change_params": {
     "line_items": [
       {
-        "id": "li_01JVKM5R1ASTU7IJUVW2OEZC6",
+        "id": "subs_line_01JVKM5R1ASTU7IJUVW2OEZC6",
         "quantity": "40",
         "effective_date": "2026-07-01T00:00:00Z"
       }
@@ -307,6 +311,79 @@ Use this when a customer confirms they'll add seats at the start of next month a
 <Frame>
   ![Adjusting seat count in the UI](/images/seat-based/modify-seats-ui.png)
 </Frame>
+
+### 3e. Collect Payment Before Seats Change
+
+By default the seat change applies immediately and the proration charge is invoiced afterwards, which can leave an unpaid invoice. To require payment first, add a `checkout` object to the execute call:
+
+```json
+POST /subscriptions/subs_01KXZW2XJJPJ5GP919AD31HY7K/modify/execute
+{
+  "type": "quantity_change",
+  "quantity_change_params": {
+    "line_items": [
+      {
+        "id": "subs_line_01KXZW2XJP3S3D5NE7TE84YP0V",
+        "quantity": "5"
+      }
+    ]
+  },
+  "checkout": {
+    "payment_provider": "razorpay",
+    "success_url": "https://app.example.com/seats/success",
+    "cancel_url": "https://app.example.com/seats/cancel"
+  }
+}
+```
+
+Seats are left untouched. Flexprice creates a `DRAFT` proration invoice for the amount, opens a checkout session, and returns a payment link in `checkout_session.payment_action.url`:
+
+```json
+{
+  "subscription": { "id": "subs_01KXZW2XJJPJ5GP919AD31HY7K", "..." : "..." },
+  "changed_resources": {
+    "line_items": [
+      { "id": "(preview-ended)", "quantity": "1", "change_action": "ended" },
+      { "id": "(preview-created)", "quantity": "5", "change_action": "created" }
+    ],
+    "invoices": [
+      {
+        "id": "inv_01KY9HQG28KJ4PVVFH5A7M4P77",
+        "action": "created",
+        "status": "PENDING",
+        "invoice": {
+          "invoice_status": "DRAFT",
+          "amount_due": "56.89",
+          "currency": "usd"
+        }
+      }
+    ]
+  },
+  "checkout_session": {
+    "id": "cs_01KY9HRZ25PPJ7W1THZNM43QW8",
+    "checkout_status": "pending",
+    "payment_action": {
+      "type": "payment_link",
+      "url": "https://rzp.io/l/XXXXXXX"
+    }
+  }
+}
+```
+
+Redirect the customer to that URL. When the payment succeeds, Flexprice ends the old line item, creates the replacement, and finalizes the same invoice without recalculating the proration.
+
+| Behavior | Detail |
+|----------|--------|
+| Allowed types | `checkout` is only accepted with `type: "quantity_change"`. Any other type returns a validation error |
+| When it engages | Only when the batch nets to a charge. If charges minus credits is zero or negative, the change applies immediately and `checkout` is ignored |
+| Mixed batches | An upgrade and a downgrade in one request are netted into a single amount, not rejected |
+| Line item IDs | The response carries the `(preview-ended)` and `(preview-created)` placeholders because the real replacement ID is only generated after payment. Refetch the subscription once the session completes |
+
+<Warning>
+  The seat count does not change while the session is pending, and a second pay-first request for the same subscription is rejected until the open session is completed or cancelled. If the customer never pays, the draft invoice is archived and seats stay as they were.
+</Warning>
+
+For the session lifecycle, expiry, webhook events, and charging a saved payment method instead of sending a link, see [Pay-First Checkout](/docs/checkout/pay-first-checkout).
 
 
 ## Proration on Seat Changes
@@ -373,6 +450,7 @@ You can manage seat counts from the Subscription detail page in the Flexprice da
 | Increase seats immediately with proration | `POST /subscriptions/{id}/modify/execute` without `effective_date` |
 | Decrease seats at the end of the current period | `POST /subscriptions/{id}/modify/execute` with `effective_date` = start of next period |
 | Preview billing impact before changing seats | `POST /subscriptions/{id}/modify/preview` |
+| Require payment before the seat increase applies | `POST /subscriptions/{id}/modify/execute` with a `checkout` object - see [Pay-First Checkout](/docs/checkout/pay-first-checkout) |
 | Change seats and also change the plan tier | Use [Upgrade & Downgrade](/docs/subscriptions/upgrade-and-downgrade) |
 | Give one customer a different per-seat rate | Use [Plan Price Overrides](/docs/subscriptions/plan-price-overrides) with an `amount` override |
 | Track seat usage via events (identity-linked) | Use a metered feature with `COUNT_UNIQUE` aggregation - see [Features](/docs/product-catalogue/features/overview) |
@@ -384,7 +462,7 @@ You can manage seat counts from the Subscription detail page in the Flexprice da
 There is no top-level `quantity` field on a subscription object. It lives at `subscription.line_items[].quantity`. If your plan has multiple prices (e.g. a base fee plus a per-seat charge), only the seat price's line item needs a custom quantity. Leave the base fee line item at `quantity: 1`.
 
 **You need the line item ID, not the price ID.**
-The modification API takes `line_items[].id` (format: `li_01...`), not `price_id`. Fetch the subscription first with `GET /subscriptions/{id}` to find it.
+The modification API takes `line_items[].id` (format: `subs_line_01...`), not `price_id`. Fetch the subscription first with `GET /subscriptions/{id}` to find it.
 
 **Usage-based prices reject quantity.**
 Setting `quantity` on a metered price line item returns an error. Usage is computed from ingested events, not a quantity field.
@@ -398,6 +476,9 @@ Each change prorates against the state at the time of the call. The billing engi
 **Setting quantity to zero stops billing for that line item.**
 The remaining period's charge is credited in full. Use with care.
 
+**`effective_date` must fall inside the line item's active window.**
+Targeting a line item before it starts or after it ends returns a validation error naming the line item and its start date. This usually means you picked the future-dated record from a scheduled change instead of the currently active one.
+
 
 ## Related Topics
 
@@ -406,4 +487,5 @@ The remaining period's charge is credited in full. Use with care.
 - [Subscription Line Item Overrides](/docs/subscriptions/subscription-line-item-overrides)
 - [Understanding Proration](/docs/subscriptions/understanding-proration)
 - [Upgrade & Downgrade](/docs/subscriptions/upgrade-and-downgrade)
+- [Pay-First Checkout](/docs/checkout/pay-first-checkout)
 - [Plan Pricing Models](/docs/product-catalogue/plans/pricing)

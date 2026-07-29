@@ -1,0 +1,154 @@
+---
+title: "Pay-First Checkout"
+description: "Collect payment before a subscription or wallet change takes effect, using an opt-in checkout object on the endpoint you already call"
+---
+
+Some billing changes should not take effect until the customer has paid for them. A seat increase that generates a proration charge, or a wallet top-up that adds purchased credits, can both be gated behind a hosted payment.
+
+You opt in by adding a `checkout` object to the request you already send. Flexprice then defers the change, returns a payment link, and applies the change only after the payment succeeds. Omit `checkout` and the endpoint behaves exactly as before.
+
+## Supported flows
+
+| Flow | Endpoint | Checkout action |
+|------|----------|-----------------|
+| Seat or quantity change | `POST /subscriptions/{id}/modify/execute` | `modify_subscription` |
+| Purchased credit top-up | `POST /wallets/{id}/top-up` | `wallet_topup` |
+
+Both actions are created only through the endpoint that owns them. Passing either to `POST /checkout/sessions` returns a validation error pointing you at the right endpoint:
+
+```json
+{
+  "code": "validation_error",
+  "message": "Use POST /subscriptions/{id}/modify/execute with a checkout object instead",
+  "http_status_code": 400
+}
+```
+
+## The checkout object
+
+```json
+{
+  "checkout": {
+    "payment_provider": "razorpay",
+    "success_url": "https://app.example.com/checkout/success",
+    "failure_url": "https://app.example.com/checkout/failure",
+    "cancel_url": "https://app.example.com/checkout/cancel",
+    "idempotency_key": "seat-upgrade-2026-07-29-001",
+    "payment_provider_config": {
+      "collection_method": "send_invoice"
+    },
+    "metadata": {}
+  }
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `payment_provider` | Yes | Payment gateway to use. `razorpay` is the only accepted value |
+| `success_url` | No | Where to redirect after a successful payment |
+| `failure_url` | No | Where to redirect after a failed payment |
+| `cancel_url` | No | Where to redirect if the customer cancels |
+| `idempotency_key` | No | Prevents a duplicate session on retry. Unique only while a session is active |
+| `payment_provider_config` | No | Per-checkout payment behavior. See [Charge a saved payment method](#charge-a-saved-payment-method) |
+| `metadata` | No | Key-value pairs stored on the session |
+
+## How it works
+
+1. Flexprice validates the request and computes the amount to collect.
+2. A `ONE_OFF` invoice is created in `DRAFT` status. This invoice locks the amount — it is never recomputed later.
+3. A checkout session is created in `pending` status. The change you asked for is stored on the session's `configuration`, and the invoice and payment IDs are recorded as `checkout_invoice_id` and `checkout_payment_id`.
+4. A payment is created in `INITIATED` status and the provider is called for a payment link.
+5. The response includes a `checkout_session` object. Redirect the customer to `checkout_session.payment_action.url`.
+6. When the provider reports success, Flexprice completes the session: it applies the deferred change, finalizes the draft invoice, and marks the payment `SUCCEEDED`.
+
+Nothing about the subscription or wallet balance changes between steps 1 and 6.
+
+## Status at each phase
+
+| Phase | Checkout session | Invoice | Payment | Change applied |
+|-------|------------------|---------|---------|----------------|
+| After the pay-first call | `pending` | `DRAFT` | `INITIATED` | No |
+| After payment succeeds | `completed` | `FINALIZED`, paid | `SUCCEEDED` | Yes |
+| Failed, expired, or cancelled | `failed` or `expired` | Archived | Archived | No, and never will be |
+
+Poll `GET /v1/checkout/sessions/{id}` from your redirect pages to read `checkout_status` before showing the customer a result.
+
+## Charge a saved payment method
+
+Set `collection_method` to `charge_automatically` to attempt an off-session charge against a payment method the customer has already authorized, instead of sending them to a payment page.
+
+```json
+{
+  "payment_provider_config": {
+    "collection_method": "charge_automatically",
+    "payment_method": "UPI",
+    "max_mandate_limit": "5000"
+  }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `collection_method` | `send_invoice` (default) returns a payment link. `charge_automatically` attempts a saved-method charge first |
+| `payment_method` | Restricts the attempt to one method: `CARD`, `UPI`, `ACH`, `OFFLINE`, `CREDITS`, or `PAYMENT_LINK`. Omit to let the provider choose |
+| `max_mandate_limit` | Ceiling for the mandate being registered, as a decimal string. Must be greater than zero |
+
+With `charge_automatically`, Flexprice first looks for a confirmed saved token and tries to charge it off-session. Two outcomes are possible:
+
+- **The charge is submitted.** No payment URL is returned, so there is nothing to redirect to. The session completes when the provider's payment webhook arrives.
+- **No usable saved method exists, or the amount exceeds the mandate ceiling.** Flexprice falls back to a Razorpay authorization link, which registers a mandate and collects this payment in one step. Redirect the customer to it as usual.
+
+Because the first outcome returns no URL, treat `payment_action.url` as optional in your integration and drive completion from the webhook rather than the redirect.
+
+<Note>
+  `max_mandate_limit` is capped against your tenant-level mandate ceiling for UPI only. If you request a higher limit than the tenant allows, the tenant ceiling applies. Card mandates have no ceiling.
+</Note>
+
+## Guards and retries
+
+**One active session per target.** A second pay-first request for the same subscription, or the same wallet, is rejected while a session is `initiated` or `pending`. The error names the session that is already open:
+
+```json
+{
+  "code": "already_exists",
+  "message": "a pending checkout session already exists for this subscription",
+  "details": {
+    "subscription_id": "subs_01KXZW2XJJPJ5GP919AD31HY7K",
+    "checkout_session_id": "cs_01KY9HRZ25PPJ7W1THZNM43QW8"
+  }
+}
+```
+
+Complete or cancel the open session before starting another. Deleting a session is allowed only while it is non-terminal.
+
+**Sessions expire.** Razorpay sessions expire 15 minutes after creation. If the provider's own link expires sooner, Flexprice shortens the session to match. On expiry the draft invoice and payment are archived and the change is discarded.
+
+**Completion is idempotent.** If your provider delivers the same success event twice, only the first delivery applies the change; the duplicate is rejected. Make your own webhook handler idempotent for the same reason.
+
+**`idempotency_key` scope.** A key is reserved only while its session is active. Once the session reaches a terminal state the same key can be reused. Reusing a key that belongs to an active session returns a conflict rather than the existing session.
+
+## Webhook events
+
+| Event | Fired when |
+|-------|------------|
+| `checkout.session.initiated` | Session created and payment link returned |
+| `checkout.session.completed` | Payment confirmed, change applied, invoice finalized |
+| `checkout.session.failed` | Payment failed or the session was cleaned up with an error |
+| `checkout.session.expired` | Session timed out without payment |
+
+Completing a `modify_subscription` session also publishes `subscription.updated`.
+
+## Related Topics
+
+<CardGroup cols={2}>
+  <Card icon="users" href="/docs/subscriptions/seat-based-pricing#3e-collect-payment-before-seats-change" title="Gate a seat change">
+    Require payment before a seat increase takes effect.
+  </Card>
+  <Card icon="wallet" href="/docs/wallet/top-up#collect-payment-before-credits-apply" title="Gate a wallet top-up">
+    Require payment before purchased credits land.
+  </Card>
+</CardGroup>
+
+- [Checkout Sessions API](/docs/checkout/checkout-sessions)
+- [Razorpay Setup](/docs/checkout/razorpay-checkout)
+- [Understanding Proration](/docs/subscriptions/understanding-proration)

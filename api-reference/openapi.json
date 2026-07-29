@@ -3112,6 +3112,83 @@
         ]
       }
     },
+    "/customers/external/{external_id}/subscriptions": {
+      "get": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "Get subscriptions for customer by external ID",
+        "description": "Returns all subscriptions for a customer looked up by external_id, with line-item meters and entitlements attached (no pagination).",
+        "operationId": "getSubscriptionsForCustomer",
+        "parameters": [
+          {
+            "name": "external_id",
+            "in": "path",
+            "description": "Customer External ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "expand",
+            "in": "query",
+            "description": "Comma-separated fields to expand: subscription_line_items, subscription_line_items.meters, entitlements, plan, customer",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListSubscriptionsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "x-scope": "read"
+      }
+    },
     "/customers/search": {
       "post": {
         "tags": [
@@ -15079,6 +15156,26 @@
         "properties": {
           "create_subscription_params": {
             "$ref": "#/components/schemas/types.CreateSubscriptionParams"
+          },
+          "modify_subscription_params": {
+            "$ref": "#/components/schemas/types.ModifySubscriptionParams"
+          },
+          "wallet_topup_params": {
+            "$ref": "#/components/schemas/types.WalletTopupParams"
+          }
+        }
+      },
+      "checkout.JSONBCheckoutPaymentProviderConfig": {
+        "type": "object",
+        "properties": {
+          "collection_method": {
+            "$ref": "#/components/schemas/types.CollectionMethod"
+          },
+          "max_mandate_limit": {
+            "type": "string"
+          },
+          "payment_method": {
+            "$ref": "#/components/schemas/types.PaymentMethodType"
           }
         }
       },
@@ -15374,6 +15471,37 @@
           }
         }
       },
+      "AWSMarketplaceAgreement": {
+        "required": [
+          "customer_aws_account_id",
+          "dimension",
+          "license_arn",
+          "product_code"
+        ],
+        "type": "object",
+        "properties": {
+          "concurrent_agreements": {
+            "type": "boolean",
+            "description": "if true, ProductCode is omitted when reporting"
+          },
+          "customer_aws_account_id": {
+            "type": "string",
+            "description": "-> BatchMeterUsage's CustomerAWSAccountId"
+          },
+          "dimension": {
+            "type": "string",
+            "description": "-> BatchMeterUsage's Dimension (always \"usage_fee\" in the cents model)"
+          },
+          "license_arn": {
+            "type": "string",
+            "description": "-> BatchMeterUsage's LicenseArn; identifies the buyer's agreement"
+          },
+          "product_code": {
+            "type": "string",
+            "description": "-> BatchMeterUsage's ProductCode (omitted when ConcurrentAgreements)"
+          }
+        }
+      },
       "ActivateDraftSubscriptionRequest": {
         "required": [
           "start_date"
@@ -15617,6 +15745,15 @@
       "AggregatedEntitlement": {
         "type": "object",
         "properties": {
+          "aggregation_mode": {
+            "$ref": "#/components/schemas/types.EntitlementAggregationMode"
+          },
+          "buckets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AggregatedEntitlementBucket"
+            }
+          },
           "config_values": {
             "type": "array",
             "items": {
@@ -15643,6 +15780,32 @@
           },
           "usage_reset_period": {
             "$ref": "#/components/schemas/types.EntitlementUsageResetPeriod"
+          }
+        }
+      },
+      "AggregatedEntitlementBucket": {
+        "type": "object",
+        "properties": {
+          "entitlement_id": {
+            "type": "string"
+          },
+          "grant_duration_unit": {
+            "$ref": "#/components/schemas/types.EntitlementGrantDurationUnit"
+          },
+          "grant_duration_value": {
+            "type": "integer"
+          },
+          "grant_measure": {
+            "$ref": "#/components/schemas/types.EntitlementGrantMeasure"
+          },
+          "grant_quota": {
+            "type": "string"
+          },
+          "source_entity_id": {
+            "type": "string"
+          },
+          "usage_limit": {
+            "type": "integer"
           }
         }
       },
@@ -15787,6 +15950,33 @@
           },
           "status": {
             "$ref": "#/components/schemas/types.DebugTrackerStatus"
+          }
+        }
+      },
+      "AzureMarketplaceAgreement": {
+        "required": [
+          "beneficiary_account_id",
+          "dimension",
+          "plan_id",
+          "resource_id"
+        ],
+        "type": "object",
+        "properties": {
+          "beneficiary_account_id": {
+            "type": "string",
+            "description": "writes the customer mapping; not read in the report payload"
+          },
+          "dimension": {
+            "type": "string",
+            "description": "-> usageEvent's dimension (always \"usage_fee\" in the cents model)"
+          },
+          "plan_id": {
+            "type": "string",
+            "description": "-> usageEvent's planId; Azure's plan id, distinct from the request's top-level PlanID"
+          },
+          "resource_id": {
+            "type": "string",
+            "description": "-> usageEvent's resourceId; the Azure SaaS subscription id"
           }
         }
       },
@@ -16133,6 +16323,38 @@
           "ChangedSubscriptionActionCreated",
           "ChangedSubscriptionActionUpdated"
         ]
+      },
+      "CheckoutParams": {
+        "required": [
+          "payment_provider"
+        ],
+        "type": "object",
+        "properties": {
+          "cancel_url": {
+            "type": "string"
+          },
+          "failure_url": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "payment_provider": {
+            "$ref": "#/components/schemas/types.CheckoutPaymentProvider"
+          },
+          "payment_provider_config": {
+            "$ref": "#/components/schemas/types.CheckoutPaymentProviderConfig"
+          },
+          "success_url": {
+            "type": "string"
+          }
+        }
       },
       "CheckoutSessionResponse": {
         "type": "object",
@@ -17207,6 +17429,10 @@
             "type": "string",
             "description": "name is the full name or company name of the customer"
           },
+          "onboarding_workflow_name": {
+            "type": "string",
+            "description": "onboarding_workflow_name is given if a custom onboarding workflow is to be triggered for this customer"
+          },
           "skip_onboarding_workflow": {
             "type": "boolean",
             "description": "skip_onboarding_workflow when true, prevents the customer onboarding workflow from being triggered\nThis is used internally when a customer is created via a workflow to prevent infinite loops\nDefault: false"
@@ -17232,6 +17458,9 @@
         ],
         "type": "object",
         "properties": {
+          "aggregation_mode": {
+            "$ref": "#/components/schemas/types.EntitlementAggregationMode"
+          },
           "config_value": {
             "type": "object",
             "additionalProperties": true
@@ -17251,6 +17480,18 @@
           },
           "feature_type": {
             "$ref": "#/components/schemas/types.FeatureType"
+          },
+          "grant_duration_unit": {
+            "$ref": "#/components/schemas/types.EntitlementGrantDurationUnit"
+          },
+          "grant_duration_value": {
+            "type": "integer"
+          },
+          "grant_measure": {
+            "$ref": "#/components/schemas/types.EntitlementGrantMeasure"
+          },
+          "grant_quota": {
+            "type": "string"
           },
           "is_enabled": {
             "type": "boolean"
@@ -19051,6 +19292,9 @@
           "addon": {
             "$ref": "#/components/schemas/AddonResponse"
           },
+          "aggregation_mode": {
+            "$ref": "#/components/schemas/types.EntitlementAggregationMode"
+          },
           "config_value": {
             "type": "object",
             "additionalProperties": true
@@ -19086,6 +19330,18 @@
           },
           "feature_type": {
             "$ref": "#/components/schemas/types.FeatureType"
+          },
+          "grant_duration_unit": {
+            "$ref": "#/components/schemas/types.EntitlementGrantDurationUnit"
+          },
+          "grant_duration_value": {
+            "type": "integer"
+          },
+          "grant_measure": {
+            "$ref": "#/components/schemas/types.EntitlementGrantMeasure"
+          },
+          "grant_quota": {
+            "type": "number"
           },
           "id": {
             "type": "string"
@@ -19280,6 +19536,9 @@
         ],
         "type": "object",
         "properties": {
+          "checkout": {
+            "$ref": "#/components/schemas/CheckoutParams"
+          },
           "coupon_params": {
             "$ref": "#/components/schemas/SubModifyCouponParams"
           },
@@ -19439,6 +19698,33 @@
           }
         }
       },
+      "GCPMarketplaceAgreement": {
+        "required": [
+          "account_id",
+          "metric_name",
+          "service_name",
+          "usage_reporting_id"
+        ],
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "description": "writes the customer mapping; not read in the report payload"
+          },
+          "metric_name": {
+            "type": "string",
+            "description": "-> services.report's metricName (always \"{service_name}/usage_fee\")"
+          },
+          "service_name": {
+            "type": "string",
+            "description": "-> services.report URL's service_name; identifies the product"
+          },
+          "usage_reporting_id": {
+            "type": "string",
+            "description": "-> services.report's consumerId; identifies the buyer"
+          }
+        }
+      },
       "GetCostAnalyticsRequest": {
         "type": "object",
         "properties": {
@@ -19474,6 +19760,16 @@
           },
           "offset": {
             "type": "integer"
+          },
+          "property_filters": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "description": "Property filters to filter the events by the keys in `properties` field of the event"
           },
           "start_time": {
             "type": "string",
@@ -20088,6 +20384,21 @@
           "GroupedInvoicingActionAdd",
           "GroupedInvoicingActionRemove"
         ]
+      },
+      "GroupedInvoicingChildRequest": {
+        "required": [
+          "external_customer_id",
+          "plan_id"
+        ],
+        "type": "object",
+        "properties": {
+          "external_customer_id": {
+            "type": "string"
+          },
+          "plan_id": {
+            "type": "string"
+          }
+        }
       },
       "IngestEventRequest": {
         "required": [
@@ -22157,6 +22468,13 @@
               "type": "string"
             }
           },
+          "grouped_invoicing_children_to_create": {
+            "type": "array",
+            "description": "grouped_invoicing_children_to_create creates new grouped_invoicing children under this parent",
+            "items": {
+              "$ref": "#/components/schemas/GroupedInvoicingChildRequest"
+            }
+          },
           "invoicing_customer_external_id": {
             "type": "string",
             "description": "InvoicingCustomerExternalID sets a different billing recipient (external ID).\nRequired for delegated; rejected for inherited; optional for others."
@@ -22333,6 +22651,9 @@
         "properties": {
           "changed_resources": {
             "$ref": "#/components/schemas/ChangedResources"
+          },
+          "checkout_session": {
+            "$ref": "#/components/schemas/CheckoutSessionResponse"
           },
           "subscription": {
             "$ref": "#/components/schemas/SubscriptionResponse"
@@ -23624,6 +23945,9 @@
       "TopUpWalletResponse": {
         "type": "object",
         "properties": {
+          "checkout_session": {
+            "$ref": "#/components/schemas/CheckoutSessionResponse"
+          },
           "invoice_id": {
             "type": "string",
             "description": "Invoice ID if an invoice was created (only for PURCHASED_CREDIT_INVOICED)"
@@ -23843,9 +24167,28 @@
       "UpdateEntitlementRequest": {
         "type": "object",
         "properties": {
+          "aggregation_mode": {
+            "$ref": "#/components/schemas/types.EntitlementAggregationMode"
+          },
+          "clear_grant_config": {
+            "type": "boolean",
+            "description": "Grant config \u2014 nil fields leave the current value alone.\nClearGrantConfig=true wipes the whole grant config (back to a legacy entitlement)."
+          },
           "config_value": {
             "type": "object",
             "additionalProperties": true
+          },
+          "grant_duration_unit": {
+            "$ref": "#/components/schemas/types.EntitlementGrantDurationUnit"
+          },
+          "grant_duration_value": {
+            "type": "integer"
+          },
+          "grant_measure": {
+            "$ref": "#/components/schemas/types.EntitlementGrantMeasure"
+          },
+          "grant_quota": {
+            "type": "string"
           },
           "is_enabled": {
             "type": "boolean"
@@ -26583,10 +26926,14 @@
       "types.CheckoutAction": {
         "type": "string",
         "enum": [
-          "create_subscription"
+          "create_subscription",
+          "modify_subscription",
+          "wallet_topup"
         ],
         "x-enum-varnames": [
-          "CheckoutActionCreateSubscription"
+          "CheckoutActionCreateSubscription",
+          "CheckoutActionModifySubscription",
+          "CheckoutActionWalletTopup"
         ],
         "x-speakeasy-name-override": "CheckoutAction"
       },
@@ -26595,6 +26942,12 @@
         "properties": {
           "create_subscription_params": {
             "$ref": "#/components/schemas/types.CreateSubscriptionParams"
+          },
+          "modify_subscription_params": {
+            "$ref": "#/components/schemas/types.ModifySubscriptionParams"
+          },
+          "wallet_topup_params": {
+            "$ref": "#/components/schemas/types.WalletTopupParams"
           }
         },
         "x-speakeasy-name-override": "CheckoutConfiguration"
@@ -29855,6 +30208,9 @@
       "webhookDto.TransactionWebhookPayload": {
         "type": "object",
         "properties": {
+          "customer": {
+            "$ref": "#/components/schemas/CustomerResponse"
+          },
           "event_type": {
             "$ref": "#/components/schemas/types.WebhookEventName"
           },
