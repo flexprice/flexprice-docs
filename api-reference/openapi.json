@@ -4481,6 +4481,64 @@
         "x-codegen-request-body-name": "request"
       }
     },
+    "/events/lookup": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Get event",
+        "description": "Use when debugging a specific event (e.g. why it failed or how it was aggregated). Reads the meter-usage pipeline; includes processing status and step-by-step debug tracker when unprocessed. Uses ?id= query param because event IDs can contain \"/\".",
+        "operationId": "getEvent",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "description": "Event ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetEventByIDResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ]
+      }
+    },
     "/events/query": {
       "post": {
         "tags": [
@@ -4666,64 +4724,6 @@
           }
         ],
         "x-codegen-request-body-name": "request"
-      }
-    },
-    "/events/{id}": {
-      "get": {
-        "tags": [
-          "Events"
-        ],
-        "summary": "Get event",
-        "description": "Use when debugging a specific event (e.g. why it failed or how it was aggregated). Reads the meter-usage pipeline; includes processing status and step-by-step debug tracker when unprocessed.",
-        "operationId": "getEvent",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "Event ID",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GetEventByIDResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/errors.ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/errors.ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ]
       }
     },
     "/features": {
@@ -15179,20 +15179,6 @@
           }
         }
       },
-      "checkout.JSONBCheckoutPaymentProviderConfig": {
-        "type": "object",
-        "properties": {
-          "collection_method": {
-            "$ref": "#/components/schemas/types.CollectionMethod"
-          },
-          "max_mandate_limit": {
-            "type": "string"
-          },
-          "payment_method": {
-            "$ref": "#/components/schemas/types.PaymentMethodType"
-          }
-        }
-      },
       "checkout.JSONBCheckoutProviderResult": {
         "type": "object",
         "properties": {
@@ -21914,36 +21900,26 @@
       },
       "RegisterMarketplaceAgreementRequest": {
         "required": [
-          "customer_aws_account_id",
           "customer_id",
-          "dimension",
-          "license_arn",
           "plan_id",
-          "product_code",
           "provider",
           "subscription_id"
         ],
         "type": "object",
         "properties": {
-          "concurrent_agreements": {
-            "type": "boolean"
+          "aws": {
+            "$ref": "#/components/schemas/AWSMarketplaceAgreement"
           },
-          "customer_aws_account_id": {
-            "type": "string"
+          "azure": {
+            "$ref": "#/components/schemas/AzureMarketplaceAgreement"
           },
           "customer_id": {
             "type": "string"
           },
-          "dimension": {
-            "type": "string"
-          },
-          "license_arn": {
-            "type": "string"
+          "gcp": {
+            "$ref": "#/components/schemas/GCPMarketplaceAgreement"
           },
           "plan_id": {
-            "type": "string"
-          },
-          "product_code": {
             "type": "string"
           },
           "provider": {
@@ -23911,6 +23887,9 @@
             "type": "string",
             "description": "bonus_credits_to_add is an explicit override for the bonus credits granted alongside this\npurchase. When nil/omitted, the bonus is resolved from the tenant's\nbonus_credits_topup_config slabs (if enabled). When set, it must be greater than 0 and is\nused as-is, skipping slab resolution. To grant no bonus, omit this field entirely."
           },
+          "checkout": {
+            "$ref": "#/components/schemas/CheckoutParams"
+          },
           "credits_to_add": {
             "type": "string",
             "description": "credits_to_add is the number of credits to add to the wallet"
@@ -25630,6 +25609,24 @@
         },
         "x-speakeasy-name-override": "Bucket"
       },
+      "types.Duration": {
+        "type": "object",
+        "properties": {
+          "unit": {
+            "$ref": "#/components/schemas/types.DurationUnit"
+          },
+          "value": {
+            "type": "integer"
+          }
+        },
+        "enum": [
+          "3600000000000"
+        ],
+        "x-enum-varnames": [
+          "EntitlementGrantMinDuration"
+        ],
+        "x-speakeasy-name-override": "Duration"
+      },
       "types.Value": {
         "type": "object",
         "properties": {
@@ -26411,6 +26408,15 @@
           }
         }
       },
+      "types.AWSMarketplaceSyncConfig": {
+        "type": "object",
+        "properties": {
+          "region": {
+            "type": "string"
+          }
+        },
+        "x-speakeasy-name-override": "AWSMarketplaceSyncConfig"
+      },
       "types.AddonAssociationEntityType": {
         "type": "string",
         "enum": [
@@ -26558,14 +26564,16 @@
           "feature",
           "subscription",
           "subscription_line_item",
-          "group"
+          "group",
+          "entitlement_grant"
         ],
         "x-enum-varnames": [
           "AlertEntityTypeWallet",
           "AlertEntityTypeFeature",
           "AlertEntityTypeSubscription",
           "AlertEntityTypeSubscriptionLineItem",
-          "AlertEntityTypeGroup"
+          "AlertEntityTypeGroup",
+          "AlertEntityTypeEntitlementGrant"
         ],
         "x-speakeasy-name-override": "AlertEntityType"
       },
@@ -26779,7 +26787,9 @@
           "feature_wallet_balance",
           "subscription_spend",
           "subscription_line_item_spend",
-          "subscription_group_spend"
+          "subscription_group_spend",
+          "entitlement_grant_threshold",
+          "entitlement_grant_exhausted"
         ],
         "x-enum-varnames": [
           "AlertTypeLowOngoingBalance",
@@ -26787,7 +26797,9 @@
           "AlertTypeFeatureWalletBalance",
           "AlertTypeSubscriptionSpend",
           "AlertTypeSubscriptionLineItemSpend",
-          "AlertTypeSubscriptionGroupSpend"
+          "AlertTypeSubscriptionGroupSpend",
+          "AlertTypeEntitlementGrantThreshold",
+          "AlertTypeEntitlementGrantExhausted"
         ],
         "x-speakeasy-name-override": "AlertType"
       },
@@ -26814,6 +26826,9 @@
         "properties": {
           "amount": {
             "type": "number"
+          },
+          "cooldown": {
+            "$ref": "#/components/schemas/types.Duration"
           },
           "enabled": {
             "type": "boolean"
@@ -27440,6 +27455,34 @@
         ],
         "x-speakeasy-name-override": "DebugTrackerStatus"
       },
+      "types.DurationUnit": {
+        "type": "string",
+        "enum": [
+          "second",
+          "minute",
+          "hour",
+          "day"
+        ],
+        "x-enum-varnames": [
+          "DurationUnitSecond",
+          "DurationUnitMinute",
+          "DurationUnitHour",
+          "DurationUnitDay"
+        ],
+        "x-speakeasy-name-override": "DurationUnit"
+      },
+      "types.EntitlementAggregationMode": {
+        "type": "string",
+        "enum": [
+          "additive",
+          "parallel"
+        ],
+        "x-enum-varnames": [
+          "EntitlementAggregationModeAdditive",
+          "EntitlementAggregationModeParallel"
+        ],
+        "x-speakeasy-name-override": "EntitlementAggregationMode"
+      },
       "types.EntitlementEntityType": {
         "type": "string",
         "enum": [
@@ -27489,6 +27532,10 @@
               "$ref": "#/components/schemas/types.FilterCondition"
             }
           },
+          "has_grant_config": {
+            "type": "boolean",
+            "description": "HasGrantConfig filters on grant-config presence (grant_quota set or not)."
+          },
           "is_enabled": {
             "type": "boolean"
           },
@@ -27529,6 +27576,32 @@
           }
         },
         "x-speakeasy-name-override": "EntitlementFilter"
+      },
+      "types.EntitlementGrantDurationUnit": {
+        "type": "string",
+        "enum": [
+          "hour",
+          "day",
+          "week"
+        ],
+        "x-enum-varnames": [
+          "EntitlementGrantDurationUnitHour",
+          "EntitlementGrantDurationUnitDay",
+          "EntitlementGrantDurationUnitWeek"
+        ],
+        "x-speakeasy-name-override": "EntitlementGrantDurationUnit"
+      },
+      "types.EntitlementGrantMeasure": {
+        "type": "string",
+        "enum": [
+          "quantity",
+          "amount"
+        ],
+        "x-enum-varnames": [
+          "EntitlementGrantMeasureQuantity",
+          "EntitlementGrantMeasureAmount"
+        ],
+        "x-speakeasy-name-override": "EntitlementGrantMeasure"
       },
       "types.EntitlementUsageResetPeriod": {
         "type": "string",
@@ -28150,6 +28223,37 @@
           "type": "string"
         },
         "x-speakeasy-name-override": "Metadata"
+      },
+      "types.ModifySubscriptionLineItem": {
+        "type": "object",
+        "properties": {
+          "effective_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "line_item_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "string"
+          }
+        },
+        "x-speakeasy-name-override": "ModifySubscriptionLineItem"
+      },
+      "types.ModifySubscriptionParams": {
+        "type": "object",
+        "properties": {
+          "line_item_modifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/types.ModifySubscriptionLineItem"
+            }
+          },
+          "subscription_id": {
+            "type": "string"
+          }
+        },
+        "x-speakeasy-name-override": "ModifySubscriptionParams"
       },
       "types.PaginationResponse": {
         "type": "object",
@@ -28883,7 +28987,9 @@
           "paddle",
           "whop",
           "tabs",
-          "aws_marketplace"
+          "aws_marketplace",
+          "gcp_marketplace",
+          "azure_marketplace"
         ],
         "x-enum-comments": {
           "SecretProviderS3": "supports multiple connections per environment"
@@ -28902,7 +29008,9 @@
           "SecretProviderPaddle",
           "SecretProviderWhop",
           "SecretProviderTabs",
-          "SecretProviderAWSMarketplace"
+          "SecretProviderAWSMarketplace",
+          "SecretProviderGCPMarketplace",
+          "SecretProviderAzureMarketplace"
         ],
         "x-speakeasy-name-override": "SecretProvider"
       },
@@ -29098,6 +29206,10 @@
             "description": "TrialEndDueLTE, when set, restricts to subscriptions with trial_end not nil and trial_end <= trial_end_due_lte.\nUse with subscription_status trialing for trial-end cron processing.",
             "format": "date-time"
           },
+          "with_coupon_associations": {
+            "type": "boolean",
+            "description": "WithCouponAssociations eager-loads coupon associations and their coupons.\n\nKept separate from WithLineItems because the coupon_associations table has no\nindex leading with subscription_id, so Ent's edge load degrades to a full table\nscan. Only set it when the response actually surfaces the associations; the\nservice layer back-fills it from expand=\"coupon_associations\"."
+          },
           "with_line_items": {
             "type": "boolean",
             "description": "WithLineItems includes line items in the response.\n\nDeprecated: use expand=\"subscription_line_items\" instead. Retained for\nbackwards compatibility and for internal callers that need to force-disable\nline item loading (set to false). The service layer ORs this with the\nexpand check before invoking the repository."
@@ -29286,6 +29398,9 @@
       "types.SyncConfig": {
         "type": "object",
         "properties": {
+          "aws_marketplace": {
+            "$ref": "#/components/schemas/types.AWSMarketplaceSyncConfig"
+          },
           "customer": {
             "$ref": "#/components/schemas/types.EntitySyncConfig"
           },
@@ -29660,6 +29775,21 @@
         ],
         "x-speakeasy-name-override": "WalletStatus"
       },
+      "types.WalletTopupParams": {
+        "required": [
+          "wallet_id"
+        ],
+        "type": "object",
+        "properties": {
+          "wallet_id": {
+            "type": "string"
+          },
+          "wallet_transaction_id": {
+            "type": "string"
+          }
+        },
+        "x-speakeasy-name-override": "WalletTopupParams"
+      },
       "types.WalletTransactionFilter": {
         "type": "object",
         "properties": {
@@ -29819,6 +29949,7 @@
           "subscription.line_item_spend.threshold_recovered",
           "subscription.group_spend.threshold_reached",
           "subscription.group_spend.threshold_recovered",
+          "entitlement.grant.exhausted",
           "subscription.renewal.due",
           "invoice.communication.triggered",
           "credit_note.created",
@@ -29876,6 +30007,7 @@
           "WebhookEventSubscriptionLineItemSpendThresholdRecovered",
           "WebhookEventSubscriptionGroupSpendThresholdReached",
           "WebhookEventSubscriptionGroupSpendThresholdRecovered",
+          "WebhookEventEntitlementGrantExhausted",
           "WebhookEventSubscriptionRenewalDue",
           "WebhookEventInvoiceCommunicationTriggered",
           "WebhookEventCreditNoteCreated",
@@ -30194,6 +30326,9 @@
       "webhookDto.TransactionUpdatedWebhookPayload": {
         "type": "object",
         "properties": {
+          "customer": {
+            "$ref": "#/components/schemas/CustomerResponse"
+          },
           "event_type": {
             "$ref": "#/components/schemas/types.WebhookEventName"
           },
