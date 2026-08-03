@@ -1,0 +1,194 @@
+---
+title: "Overview"
+description: "Exportable React components from the Flexprice dashboard that work with any data source"
+---
+
+**Flexprice UI** (`@flexprice/flexprice-ui`) is a library of exportable React components extracted from the Flexprice dashboard. Use them to embed the same UI in your application without rebuilding it.
+
+Components are presentational: they do not fetch, authenticate, or route. UI and data stay separate. You can feed any component from:
+
+- Flexprice JavaScript SDK
+- Flexprice REST APIs
+- Your own backend
+- Your own APIs
+- Static JSON
+
+Use Flexprice as your billing platform, or use the UI alone with your own data source.
+
+Supported React environments include React, Next.js, Remix, Vite, and Astro (React).
+
+## Why use Flexprice UI
+
+Install the package and render dashboard-matched UI from your data instead of building screens from scratch.
+
+- Responsive, mobile-optimized layout
+- Dark mode
+- Theme customization via CSS variables
+- TypeScript types
+- Works with any backend
+- Compatible with SSR (Next.js App Router and Pages Router, Remix, Astro)
+
+As more Flexprice surfaces become exportable, they ship in this package and appear under **Exportable UI** in the docs.
+
+## Install
+
+<CodeGroup>
+```bash npm
+npm install @flexprice/flexprice-ui
+```
+
+```bash pnpm
+pnpm add @flexprice/flexprice-ui
+```
+
+```bash yarn
+yarn add @flexprice/flexprice-ui
+```
+</CodeGroup>
+
+### Peer dependencies
+
+`react` and `react-dom` (v18).
+
+### Stylesheet
+
+Import the stylesheet once in your app:
+
+```tsx
+import '@flexprice/flexprice-ui/style.css';
+```
+
+You can also override appearance with CSS variables, Tailwind, CSS Modules, or other styling approaches — see [Theming](#theming).
+
+## Ways to provide data
+
+Every component follows the same pattern: fetch data from a source you choose, map it into the presentational props the component expects, and render.
+
+### Option 1 — Flexprice SDK (recommended)
+
+```
+Frontend → Flexprice SDK → Flexprice APIs → Components
+```
+
+Best for existing Flexprice customers, live data, and automatic catalog updates.
+
+### Option 2 — Flexprice REST APIs
+
+```
+Frontend → Flexprice REST API → Components
+```
+
+Best for Server Components, a backend proxy, or custom authentication.
+
+### Option 3 — Your own backend
+
+```
+Frontend → Your backend → Flexprice → Components
+```
+
+Your backend can cache responses, add auth, transform data, or merge internal fields.
+
+### Option 4 — Your own APIs
+
+```
+Frontend → Your API → Components
+```
+
+If your APIs already expose the data you need, map them into each component's prop shape. No Flexprice API dependency is required.
+
+### Option 5 — Static JSON
+
+Best for documentation sites, marketing pages, and demos.
+
+### Which approach to use
+
+| Approach | Best for |
+| --- | --- |
+| **Flexprice SDK** | Existing Flexprice users, live data |
+| **Flexprice REST APIs** | Direct API control with live data |
+| **Backend proxy** | Auth, caching, or server-side transforms |
+| **Custom APIs** | Systems outside Flexprice |
+| **Static JSON** | Marketing sites, demos, documentation |
+
+Component pages document the exact prop shapes and any adapters for mapping Flexprice API responses.
+
+## Theming
+
+Override CSS variables on a wrapping element:
+
+```css
+.my-app {
+  --brand: 243 75% 59%;
+  --radius: 12px;
+}
+```
+
+Customize primary color, radius, fonts, buttons, shadows, spacing, and related tokens. Add the `dark` class to any ancestor to toggle dark mode:
+
+```tsx
+<div className="dark">
+  {/* Flexprice UI components */}
+</div>
+```
+
+Individual components may also accept theme-related props — see each component page.
+
+## Event callbacks
+
+Components expose callbacks for user actions (selection, checkout, contact sales, and similar). Wire them to analytics, [Checkout](/docs/checkout/overview), a payment provider, or your own flow. See each component page for the callbacks it supports.
+
+## Server-side rendering
+
+Components work with SSR in Next.js (App Router and Pages Router), Remix, and Astro. Fetch data on the server when you can, then pass it as props to avoid client-only waterfalls.
+
+## Typical integration flow
+
+<Steps>
+  <Step title="Install the package">
+    Add `@flexprice/flexprice-ui` and ensure `react` / `react-dom` are available as peer dependencies.
+  </Step>
+
+  <Step title="Import stylesheet and components">
+    Import `@flexprice/flexprice-ui/style.css` once, then import the components you need.
+  </Step>
+
+  <Step title="Choose a data source">
+    Pick Flexprice SDK, REST APIs, your backend, your own APIs, or static JSON — see [Ways to provide data](#ways-to-provide-data).
+  </Step>
+
+  <Step title="Fetch and map data">
+    Load records from your source and map them into each component's presentational props (adapters are documented on the component pages).
+  </Step>
+
+  <Step title="Pass props and render">
+    Pass the mapped data (and any callbacks) into the component and render it in your page or layout.
+  </Step>
+</Steps>
+
+## Future components
+
+The package is designed to expand beyond the current exports. Planned surfaces may include:
+
+- Checkout
+- Customer portal
+- Usage dashboard
+- Subscription details
+- Invoice viewer
+- Usage charts
+- Wallet and credits
+- Billing history
+
+New components follow the same pattern: install from `@flexprice/flexprice-ui`, load data from any source, map into props, and render.
+
+## See also
+
+Browse current exports under [Pricing Widget UI](/docs/exportable-ui/pricing-widget/pricing-widget) in the sidebar.
+
+<CardGroup cols={2}>
+  <Card icon="credit-card" href="/docs/checkout/overview" title="Checkout">
+    Hosted payment flow from plan selection to an active subscription.
+  </Card>
+  <Card icon="list-check" href="/docs/checkout/implementation-guide" title="Checkout Implementation Guide">
+    Backend session creation, redirect, webhooks, and go-live checklist.
+  </Card>
+</CardGroup>
