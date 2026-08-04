@@ -95,7 +95,7 @@ You can link a buyer's AWS agreement to a Flexprice subscription directly from t
 
 ### API Request
 
-**Endpoint:** `POST /api/v1/marketplace/agreements`
+**Endpoint:** `POST /v1/marketplace/agreements`
 
 **Headers:**
 ```http
@@ -157,8 +157,8 @@ Registration rejects the request if any of these do not hold:
 | The subscription exists and is **active** | `subscription is not active` |
 | `customer_id` matches the subscription's customer | `customer_id does not match subscription` |
 | `plan_id` matches the subscription's plan | `plan_id does not match subscription` |
-| The `license_arn` is not already registered to a different subscription | `license_arn already registered` |
-| The subscription is not already registered to a different `license_arn` | `subscription already mapped to a different license_arn` |
+| The `license_arn` is not already registered to a different subscription | `agreement identifier already registered` |
+| The subscription is not already registered to a different `license_arn` | `subscription already mapped to a different agreement identifier` |
 
 <Warning>
   Each agreement maps to exactly one subscription, and a subscription cannot be re-pointed to a different agreement. If a buyer re-subscribes and AWS issues a new `LicenseArn`, create a new Flexprice subscription for them rather than reusing the old one.
