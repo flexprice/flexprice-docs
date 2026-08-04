@@ -1,0 +1,62 @@
+---
+title: "Pricing Card"
+description: "Individual plan card for dashboards, billing pages, upgrade modals, and custom layouts"
+---
+
+Use **Pricing Card** to render a single plan anywhere in your product. Compose multiple cards yourself, or use the [Pricing Widget](/docs/exportable-ui/pricing-widget/pricing-widget) / [Pricing Table](/docs/exportable-ui/pricing-widget/pricing-table) for a full layout.
+
+## Supports
+
+- Feature list
+- Custom badges
+- Billing cadence
+- Usage pricing
+- Trial messaging
+- CTA buttons
+
+## Best used for
+
+- Dashboard
+- Billing page
+- Subscription selector
+- Upgrade modal
+- Checkout
+
+## Import
+
+```tsx
+import '@flexprice/flexprice-ui/style.css';
+import { PricingCard } from '@flexprice/flexprice-ui';
+```
+
+## Usage
+
+```tsx
+<PricingCard {...plan} useModernChrome onSelectPlan={handleSelect} />
+```
+
+Pass a presentational plan from the Flexprice SDK, REST, your backend, or static JSON. See [Ways to provide data](/docs/exportable-ui/overview#ways-to-provide-data).
+
+## Map Flexprice API data
+
+```ts
+import { adaptPlanToCard, filterAndSortPlans } from '@flexprice/flexprice-ui';
+
+const [plan] = filterAndSortPlans(plansWithData, 'USD', 'MONTHLY').map((p) =>
+  adaptPlanToCard(p, grants)
+);
+```
+
+## See also
+
+<CardGroup cols={2}>
+  <Card icon="book-open" href="/docs/exportable-ui/overview" title="Overview">
+    Install Flexprice UI, choose a data source, theme, and integrate components.
+  </Card>
+  <Card icon="puzzle-piece" href="/docs/exportable-ui/pricing-widget/pricing-widget" title="Pricing Widget">
+    Full pricing selector with billing toggle, plan grid, and CTAs.
+  </Card>
+  <Card icon="table" href="/docs/exportable-ui/pricing-widget/pricing-table" title="Pricing Table">
+    Comparison table for multiple plans, features, and entitlements.
+  </Card>
+</CardGroup>

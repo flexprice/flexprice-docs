@@ -1,0 +1,72 @@
+---
+title: "Pricing Table"
+description: "Comparison table for showcasing multiple plans, features, and entitlements"
+---
+
+Use **Pricing Table** to show a comparison table of multiple plans. Prefer the [Pricing Widget](/docs/exportable-ui/pricing-widget/pricing-widget) when you want the full selector (toggle, grid, comparison) in one component.
+
+## Supports
+
+- Unlimited plans
+- Feature comparison
+- Usage limits and included entitlements
+- Custom pricing units
+- Custom CTA
+- Recommended plan highlighting
+- Billing period and currency controls
+
+## Best used for
+
+- Pricing pages
+- Documentation
+- Sales pages
+
+## Import
+
+```tsx
+import '@flexprice/flexprice-ui/style.css';
+import { PricingTable, type Plan } from '@flexprice/flexprice-ui';
+```
+
+## Usage
+
+```tsx
+const plans: Plan[] = /* fetch + map */;
+
+<PricingTable
+  plans={plans}
+  billingPeriod={period}
+  onBillingPeriodChange={setPeriod}
+  billingPeriodOptions={[{ label: 'Monthly', value: 'MONTHLY' }]}
+  currency={currency}
+  onCurrencyChange={setCurrency}
+  currencyOptions={[{ label: 'USD', value: 'USD' }]}
+  onSelectPlan={(planId) => router.push(`/checkout/${planId}`)}
+/>
+```
+
+Wire `onSelectPlan` to [Checkout](/docs/checkout/checkout-sessions) or your own flow. See [Ways to provide data](/docs/exportable-ui/overview#ways-to-provide-data) for SDK, API, backend, and static JSON options.
+
+## Map Flexprice API data
+
+```ts
+import { adaptPlanToCard, filterAndSortPlans } from '@flexprice/flexprice-ui';
+
+const plans = filterAndSortPlans(plansWithData, 'USD', 'MONTHLY').map((p) =>
+  adaptPlanToCard(p, grants)
+);
+```
+
+## See also
+
+<CardGroup cols={2}>
+  <Card icon="book-open" href="/docs/exportable-ui/overview" title="Overview">
+    Install Flexprice UI, choose a data source, theme, and integrate components.
+  </Card>
+  <Card icon="puzzle-piece" href="/docs/exportable-ui/pricing-widget/pricing-widget" title="Pricing Widget">
+    Full pricing selector with billing toggle, plan grid, and CTAs.
+  </Card>
+  <Card icon="rectangle-list" href="/docs/exportable-ui/pricing-widget/pricing-card" title="Pricing Card">
+    Single plan card for dashboards, modals, and custom layouts.
+  </Card>
+</CardGroup>
