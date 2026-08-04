@@ -1,0 +1,100 @@
+---
+title: 'Overview'
+description: 'Sell your product through Flexprice supported marketplaces and meter each buyer usage back to them from Flexprice'
+tag: 'Beta'
+---
+
+Cloud marketplaces let you list your product where your buyers already have a billing relationship and a committed spend. The buyer subscribes through the marketplace, the marketplace bills them on their existing cloud invoice, and it pays you out. What the marketplace cannot do is work out how much to charge. That comes from your own metering.
+
+Flexprice is that metering. You model pricing once as a plan, link each buyer's marketplace agreement to a Flexprice subscription, and Flexprice reports the billable amount to the marketplace on a schedule. That amount matches the invoice for the same subscription and period, so the marketplace bills exactly what you charge.
+
+## How it works
+
+Every marketplace integration follows the same three stages.
+
+<Steps>
+  <Step title="Connect the marketplace">
+    Create your listing on the marketplace, grant Flexprice permission to meter on your behalf, and save the connection in Flexprice. Done once per marketplace.
+  </Step>
+
+  <Step title="Register each buyer's agreement">
+    When a buyer subscribes, the marketplace hands your application an identifier for them. Register it against a Flexprice customer, plan, and active subscription. Done once per buyer.
+  </Step>
+
+  <Step title="Usage reports automatically">
+    Flexprice computes each mapped subscription's usage and reports it on a schedule. You do not call Flexprice again for that buyer unless their subscription changes.
+  </Step>
+</Steps>
+
+## Supported marketplaces
+
+<CardGroup cols={3}>
+  <Card icon="aws" href="/integrations/marketplace-integration/aws/usage-reporting" title="AWS Marketplace">
+    Agreements identified by `LicenseArn`, metered through the AWS Marketplace Metering Service.
+  </Card>
+  <Card icon="google" href="/integrations/marketplace-integration/gcp/usage-reporting" title="GCP Marketplace">
+    Entitlements metered through the Service Control API.
+  </Card>
+  <Card icon="microsoft" href="/integrations/marketplace-integration/azure/usage-reporting" title="Azure Marketplace">
+    SaaS subscriptions metered through the Marketplace Metering Service.
+  </Card>
+</CardGroup>
+
+## What Flexprice reports
+
+The reported amount already accounts for usage-based charges across every meter on the subscription, commitment amounts, and overage rates.
+
+It is sent in **cents** against a **single** usage dimension on your marketplace listing. With that dimension priced at `$0.01` per unit, the marketplace multiplies it back into the exact amount, down to the cent. This is why each provider's setup page tells you to create exactly one dimension at that price: your real pricing lives in the Flexprice plan, not in the marketplace listing.
+
+<Note>
+  Flexprice reports usage to the marketplace on a recurring schedule.
+</Note>
+
+## When the marketplace agreement ends
+
+Flexprice is not notified when a buyer cancels or unsubscribes on the marketplace. Subscribe to your product's marketplace notifications in your own application, detect the cancellation there, and cancel the buyer's Flexprice subscription. Each provider's usage reporting page describes the notification source to use.
+
+Cancelling the Flexprice subscription triggers a **final usage flush** immediately, rather than on the regular reporting schedule:
+
+1. Any usage still unreported for that buyer is reported.
+2. Usage for the final window, from the last reported point up to the cancellation time, is computed and reported.
+3. The buyer's marketplace mappings are deactivated, so nothing further is reported for that subscription.
+
+The mappings are only deactivated once every report above succeeded. If any report fails, the mappings stay active and the regular reporting schedule keeps retrying the outstanding records.
+
+### Cancel with the correct timestamp
+
+Cancel with `cancellation_type: "immediate"` and set `cancel_at` to the timestamp the **marketplace** recorded for the cancellation.
+
+```json
+{
+  "cancellation_type": "immediate",
+  "cancel_at": "2026-08-03T11:47:29Z",
+  "reason": "buyer unsubscribed on marketplace"
+}
+```
+
+<Warning>
+  Flexprice always reports the final window against `cancel_at`. If you omit it, or set it to the time you process the cancellation rather than the time the marketplace recorded, the final report can fall outside the window the marketplace still accepts. Always pass the marketplace's own cancellation timestamp.
+</Warning>
+
+<Note>
+  Only `immediate` cancellation runs the flush. `end_of_period` and `scheduled_date` leave the subscription active until the scheduled moment and do not report final usage.
+</Note>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card icon="plug" href="/integrations/marketplace-integration/aws/connection-setup" title="AWS Marketplace">
+    Listing, IAM role, agreement registration, and usage reporting.
+  </Card>
+  <Card icon="plug" href="/integrations/marketplace-integration/gcp/connection-setup" title="GCP Marketplace">
+    Listing, Workload Identity Federation, entitlement registration, and usage reporting.
+  </Card>
+  <Card icon="plug" href="/integrations/marketplace-integration/azure/connection-setup" title="Azure Marketplace">
+    Offer, Entra app credentials, subscription registration, and usage reporting.
+  </Card>
+  <Card icon="refresh" href="/api-reference/subscriptions/cancel-subscription" title="Cancel Subscription API">
+    Cancellation types and how `cancel_at` is interpreted.
+  </Card>
+</CardGroup>

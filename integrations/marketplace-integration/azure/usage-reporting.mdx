@@ -31,6 +31,10 @@ The amount is reported in cents against your single metered dimension. With the 
   Azure only accepts a usage quantity greater than zero. When a subscription's computed amount for a period rounds to zero cents, Flexprice does not send a usage event for it. This is expected: there is nothing to bill, and the subscription is not left in an error state.
 </Note>
 
+<Info>
+  Flexprice reports usage to Azure on a recurring schedule. Do not expect usage to appear in Azure immediately after it happens in Flexprice.
+</Info>
+
 ## Retries and Failures
 
 Reporting recovers from transient failures on its own.
@@ -47,6 +51,28 @@ Reporting recovers from transient failures on its own.
   If the app on your offer's Technical Configuration does not match the credentials on your Flexprice connection, Azure rejects every report with a `401`. Confirm the tenant ID and application ID on the offer match the app whose credentials you gave Flexprice. See [Set Up Authentication](/integrations/marketplace-integration/azure/connection-setup#step-2-set-up-authentication-for-flexprice-to-meter-on-your-behalf).
 </Warning>
 
+## Handling Marketplace Lifecycle Events
+
+Flexprice does not learn about Azure-side changes to a buyer's subscription. You handle these.
+
+| Event on Azure | What you must do in Flexprice |
+|----------------|-------------------------------|
+| Buyer unsubscribes | Cancel the buyer's Flexprice subscription, see [Final Usage When a Buyer Unsubscribes](#final-usage-when-a-buyer-unsubscribes) |
+| Buyer's SaaS subscription is suspended or expires | Cancel the buyer's Flexprice subscription |
+| Buyer re-subscribes with a new SaaS subscription | Create a new Flexprice subscription and register the new one |
+
+<Warning>
+  If a buyer unsubscribes on Azure and you leave their Flexprice subscription active, Flexprice keeps computing usage for it and attempting to report it to Azure. Cancel the Flexprice subscription to stop this.
+</Warning>
+
+To detect these events, subscribe to your offer's webhook in your own application. Flexprice does not subscribe to it.
+
+## Final Usage When a Buyer Unsubscribes
+
+Azure keeps accepting usage for an unsubscribed SaaS subscription as long as the usage covers time **before** the subscription was cancelled, and is submitted inside the 24 hour limit above.
+
+See [When the Marketplace Agreement Ends](/integrations/marketplace-integration/overview#when-the-marketplace-agreement-ends) for how the final usage flush works and how to cancel correctly.
+
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |
@@ -54,7 +80,7 @@ Reporting recovers from transient failures on its own.
 | No usage in Azure at all | Agreement never registered | Confirm registration succeeded, see [Agreement Registration](/integrations/marketplace-integration/azure/agreement-registration) |
 | Every report rejected with a `401` | The app on the offer's Technical Configuration does not match the connected credentials | Confirm the tenant ID and application ID on the offer match your Flexprice connection |
 | Reports stopped working after months of success | Client secret expired | Generate a new client secret and update your Flexprice connection |
-| Usage appears late | Expected: reporting is scheduled, not real time | None, see [Reporting Cadence](#reporting-cadence) |
+| Usage appears late | Expected: reporting is scheduled, not real time | None |
 | Azure bills the wrong amount | Dimension not priced at `$0.01` per unit, or the plan's recurring price is not `$0` | Correct the pricing on your Azure plan |
 | Usage still reporting after cancellation | Flexprice subscription still active | Cancel the Flexprice subscription |
 

@@ -23,6 +23,10 @@ That means the reported amount already accounts for:
 
 The amount is reported in cents against your single usage metric. With the metric priced at `$0.01` per unit, GCP multiplies it back into the exact amount, down to the cent. See [Create Your GCP Marketplace Listing](/integrations/marketplace-integration/gcp/connection-setup#step-1-create-your-gcp-marketplace-listing).
 
+<Info>
+  Flexprice reports usage to GCP on a recurring schedule. Do not expect usage to appear in GCP immediately after it happens in Flexprice.
+</Info>
+
 ## Retries and Failures
 
 Reporting recovers from transient failures on its own.
@@ -37,8 +41,8 @@ Flexprice does not learn about GCP-side changes to a buyer's subscription. You h
 
 | Event on GCP | What you must do in Flexprice |
 |--------------|-------------------------------|
-| Buyer cancels or unsubscribes | Cancel or end the buyer's Flexprice subscription |
-| Buyer's entitlement expires | Cancel or end the buyer's Flexprice subscription |
+| Buyer cancels or unsubscribes | Cancel the buyer's Flexprice subscription, see [Final Usage When an Entitlement Is Cancelled](#final-usage-when-an-entitlement-is-cancelled) |
+| Buyer's entitlement expires | Cancel the buyer's Flexprice subscription |
 | Buyer re-subscribes with a new entitlement | Create a new Flexprice subscription and register the new entitlement |
 
 <Warning>
@@ -46,6 +50,16 @@ Flexprice does not learn about GCP-side changes to a buyer's subscription. You h
 </Warning>
 
 To detect these events, subscribe to your product's Procurement API notifications in your own application. Flexprice does not subscribe to them.
+
+## Final Usage When an Entitlement Is Cancelled
+
+GCP gives a window of about **one hour** after the cancellation to submit usage for a cancelled entitlement.
+
+<Warning>
+  Use the timestamp from the Procurement API notification, not the time you process it. GCP requires the final report to end **strictly before** the cancellation it recorded, and rejects usage reported at or after that instant. Flexprice reports against `cancel_at`, so a `cancel_at` later than the real cancellation loses the final usage.
+</Warning>
+
+See [When the Marketplace Agreement Ends](/integrations/marketplace-integration/overview#when-the-marketplace-agreement-ends) for how the final usage flush works and how to cancel correctly.
 
 ## Troubleshooting
 
