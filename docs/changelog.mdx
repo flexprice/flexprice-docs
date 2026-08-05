@@ -4,6 +4,127 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="August 3rd 2026">
+  ## Bulk event ingestion
+
+  A new bulk ingestion path lets you submit many events in a single request with batching, deduplication, meter processing, and optional post-insert usage alerts.
+
+  * **Batched submission**: Multiple events are ingested together and empty batches are handled without error
+  * **Redis deduplication**: New configuration options control deduplication and post-insert processing so retried batches do not double-count
+  * **Post-insert alerts**: Usage alert evaluation can now run immediately after bulk inserts to keep threshold notifications timely
+
+  <br />
+
+  <Card icon="code" horizontal={true} href="/api-reference/introduction" title="Bulk event ingestion - API Reference" />
+
+  <br />
+
+  ## Wallet top-up via checkout with mandate autocharge
+
+  Wallets can now be topped up through a hosted checkout flow, and subsequent top-ups can be charged automatically against a saved payment mandate.
+
+  * **Checkout top-up**: Kick off a wallet top-up from a checkout session instead of only through direct payment APIs
+  * **Autocharge from mandate**: Once a mandate is on file, auto top-ups charge without another manual approval
+  * **Cooloff on the dashboard**: The wallet auto top-up modal now accepts a cooloff duration and unit so repeat charges are spaced out
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/wallet/auto-top-up" title="Wallet auto top-up - Documentation" />
+
+  <br />
+
+  ## Customer subscriptions API
+
+  A new endpoint returns the full list of subscriptions for a customer in one call, replacing manual filtering on the subscriptions list.
+
+  * **Single call**: Fetch all subscriptions attached to a customer without paging through the global subscriptions list
+  * **Consistent shape**: Response matches the standard subscription payload used elsewhere in the API
+
+  <br />
+
+  <Card icon="code" horizontal={true} href="/api-reference/endpoint/customer" title="Customers - API Reference" />
+
+  <br />
+
+  ## Daily invoice draft and recompute schedule
+
+  A new Temporal schedule runs a daily pass that creates draft invoices and recomputes existing drafts so upcoming charges stay current without manual triggers.
+
+  * **Draft creation**: Draft invoices are opened on schedule for subscriptions that need them
+  * **Recompute**: Existing drafts are recomputed against the latest usage, entitlements, and price sync state
+  * **Cron consolidation**: HTTP cron handlers duplicated by Temporal schedules were removed, so scheduling now lives in one place
+
+  <br />
+
+  ## Backdating terminated subscription line items
+
+  You can now edit the end date of an already-terminated recurring line item on a subscription to correct historical billing without recreating the subscription.
+
+  * **Backdated end date**: Move a terminated line item's end date earlier or later within its subscription window
+  * **Preserves termination**: Replacing a backdated line item keeps its existing termination date instead of overwriting it
+  * **One-time guardrails**: Invalid forward-dating or backdating of one-time items is now rejected
+
+  <br />
+
+  ## Revenue feature toggle
+
+  A new platform configuration flag controls whether the Revenue area of the dashboard is available in a deployment.
+
+  * **Configurable in platform config**: Turn Revenue on or off through platform configuration; it remains enabled by default
+  * **Dynamic UI**: Revenue navigation, command palette entries, and routes appear only when the feature is on
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Subscription overage minimum is now `1`, so a single unit of overage is billable
+      * Cost sheet requests now accept property filters, matching the filtering available elsewhere in analytics
+      * Addon prices and quantities can be overridden per subscription, and the override is applied inside the persistence transaction
+      * Grouped invoicing now honors per-subscription price and quantity overrides
+      * Coupon associations with zero duration are excluded, so no-op coupons no longer appear on invoices
+      * Price sync indexes were tuned to reduce the time spent syncing plan prices
+      * Bulk event publish uses a batched producer path to cut Kafka publish overhead on the hot ingest path
+      * ClickHouse `max_open_conns` now applies as configured, replacing the silent no-op that pinned the pool at defaults
+      * Temporal client SDK metrics are exported for monitoring worker and workflow health
+      * Signup can be disabled through platform configuration, redirecting new sign-up attempts to login with a localized message
+      * AWS Marketplace connection setup now generates a deterministic External ID and shows clearer error messaging
+      * `formatPayableAmount` preserves precision on sub-cent amounts across invoice and payment displays
+      * Node.js 22 is now the runtime for the dashboard build and application
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Coupon add and remove now honor the requested start and end dates, falling back to the current UTC time only when unspecified
+      * Wallet balance calculations fall back to the most recently cached balance when real-time computation is canceled or times out
+      * Wallet balance calculations now respect the shorter of the request deadline and the configured service timeout
+      * Currency selection in the detailed cost analytics response was returning the wrong currency in some cases
+      * Service-account requests without sufficient permissions now stop with HTTP `403` and a clearer error message
+      * API key authentication now identifies the correct account owner
+      * Whop webhook events are verified against the signature header before processing
+      * Addon idempotency is preserved when the same addon request is retried
+      * Cache reads treat unmarshal errors as a miss instead of surfacing a corrupt entry
+      * Billing usage calculations now consistently use subscription entitlement data
+      * Invoice and subscription screens refresh related information more consistently after updates
+      * Billing-period date formatting is correct across time zones
+      * Portaled comboboxes are clickable inside modal sheets, so selects inside drawers register clicks again
+      * Modal sheets no longer close when focus returns to their trigger
+      * The "Add Customer" drawer no longer closes on clicks inside it, and the customer form starts fresh when creating a new customer
+      * Date pickers hard-refresh their internal state and enforce min and max limits more consistently
+      * Event debugger passes the event ID as a URL-safe query parameter
+      * `cel-go` bumped to `v0.29.0` to address GHSA-gcjh-h69q-9w9g
+    </Accordion>
+
+    <Accordion title="API">
+      * New `POST /v1/events/bulk` path for bulk event ingestion with deduplication and optional post-insert alerting
+      * New endpoint to fetch all subscriptions for a customer in a single call
+      * Subscription line item edit now accepts an updated end date for already-terminated recurring items
+      * Supabase auth tokens now include an `environment_id` claim
+      * New `clickhouse.tls_skip_verify` option skips TLS certificate and hostname verification for self-signed development ClickHouse; defaults `false`
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
 <Update label="July 27th 2026">
   ## GCP Marketplace integration
 
