@@ -1,0 +1,65 @@
+---
+title: "Wallet balance types"
+description: "How Current Balance and Ongoing Balance differ, when each is used, and which webhook events reference them."
+---
+
+A Flexprice wallet exposes two distinct balance values: **Current Balance** and **Ongoing Balance**. They answer different questions and are used by different parts of the platform. Knowing which one you are reading prevents alert misconfiguration and surprises when reconciling usage against credits.
+
+## At a glance
+
+| | **Current Balance** | **Ongoing Balance** |
+|--|--|--|
+| What it reflects | Settled credits in the wallet | Real-time balance after pending and in-period activity |
+| Includes wallet credits | Yes | Yes |
+| Includes pending invoice amounts | No | Yes |
+| Includes current period usage | No | Yes |
+| Updates on top-up or manual debit | Yes | Yes |
+| Updates on metered usage events | No (until the period closes) | Yes (continuously) |
+| Best for | Accounting, audit, settlement views | Entitlement checks, low-balance alerts, auto top-up |
+
+## Current Balance
+
+Current Balance is the settled credit balance of the wallet. It changes when a transaction completes — for example, a top-up is paid, a manual debit is applied, or an invoice that draws from the wallet is finalized. It does not move while usage is accumulating during a billing period.
+
+Use Current Balance when you need a stable, audit-friendly number — for example in finance exports, reconciliation reports, or the wallet ledger.
+
+## Ongoing Balance
+
+Ongoing Balance is the real-time view of what the wallet has left after accounting for activity that has not yet settled. It starts from the Current Balance and subtracts:
+
+- **Pending invoice amounts** — invoices that are finalized but not yet paid and will draw from the wallet.
+- **Current period usage** — usage events ingested in the active billing period that will be billed against the wallet.
+
+Ongoing Balance is what powers entitlement decisions, [low balance alerts](/docs/wallet/low-balance-alert), and [auto top-up](/docs/wallet/auto-top-up). It is the number to read when you want to answer "does this customer have enough balance to perform this action right now?".
+
+<Info>
+  Ongoing Balance is computed from real-time usage in ClickHouse. See [Real-time balances and alerting](/docs/getting-started/architecture#real-time-balances-and-alerting) for how freshness is guaranteed.
+</Info>
+
+## Which balance triggers alerts
+
+Different alert and webhook events read different balances. Pick the event that matches the behavior you want.
+
+| Event | Balance evaluated | Triggers when |
+|--|--|--|
+| `wallet.ongoing_balance.dropped` | Ongoing Balance | Ongoing Balance drops below a configured alert threshold |
+| `wallet.ongoing_balance.recovered` | Ongoing Balance | Ongoing Balance rises back above the threshold that previously triggered a `dropped` event |
+| `feature.wallet_balance.alert` | Feature-scoped wallet balance | A feature-scoped wallet crosses a configured threshold (above or below), per [feature alert settings](/docs/product-catalogue/features/wallet-balance-alert) |
+
+<Check>
+  For a generic "wallet is running low" notification, use `wallet.ongoing_balance.dropped` and pair it with `wallet.ongoing_balance.recovered` to close out the alert state. Use `feature.wallet_balance.alert` when you need per-feature thresholds inside a wallet.
+</Check>
+
+## Reading balances
+
+Both values are returned by the wallet read APIs and surfaced in the customer dashboard. When you build internal dashboards, gate actions on Ongoing Balance; when you build accounting views, prefer Current Balance.
+
+<Warning>
+  Do not configure low-balance alerts against Current Balance — it will not move during a billing period, so the alert will fire late or not at all. Configure thresholds against Ongoing Balance using [Wallet Sentinel Alerts](/docs/wallet/low-balance-alert).
+</Warning>
+
+<Card icon="bell" horizontal={true} href="/docs/wallet/low-balance-alert" title="Low Balance Alert" />
+
+<Card icon="refresh" horizontal={true} href="/docs/wallet/auto-top-up" title="Auto Top-Up" />
+
+<Card icon="book-open" horizontal={true} href="/docs/wallet/transactions" title="Wallet Transactions" />
