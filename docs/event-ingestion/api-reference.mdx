@@ -152,6 +152,25 @@ x-api-key: <your_api_key>
 - **Example**: `"2025-08-22T07:05:49.441Z"`
 - **Default**: Server time if omitted
 
+## Query time ranges
+
+Read endpoints that filter events over a window, including `POST /v1/events/analytics`, `GET /v1/events`, and meter usage queries, accept `start_time` and `end_time` as ISO 8601 UTC timestamps.
+
+The comparison is:
+
+```
+start_time <= event.timestamp < end_time
+```
+
+- `start_time` is **inclusive** — an event whose `timestamp` equals `start_time` is included.
+- `end_time` is **exclusive** — an event whose `timestamp` equals `end_time` is not included.
+
+This lets you page contiguous windows without double-counting the boundary. For example, `[10:00, 11:00)` followed by `[11:00, 12:00)` covers two hours with each event counted exactly once.
+
+<Info>
+  Each endpoint applies its own default when the fields are omitted. `POST /v1/events/analytics/monitoring` defaults to the last 24 hours and rejects a request that supplies only one of the two. Other analytics and event-listing endpoints fall back to their own recent-window defaults. To make windows explicit, always send both `start_time` and `end_time`.
+</Info>
+
 ## Examples
 
 ### Basic Event (Count Aggregation)
