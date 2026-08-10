@@ -4,6 +4,96 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="August 10th 2026">
+  ## Subscription creation via checkout
+
+  Subscriptions can now be created behind a hosted checkout flow, so a subscription only activates once the customer has completed payment.
+
+  * **Payment-gated create**: Start a subscription through a checkout session and Flexprice defers activation until the checkout is paid
+  * **Unified checkout actions**: Subscription create shares the same checkout session action pipeline used for wallet top-ups and addon attachments
+  * **Configurable behavior**: New checkout configuration fields control payment gating on subscription create requests
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/checkout/pay-first-checkout" title="Pay-first checkout - Documentation" />
+
+  <br />
+
+  ## Addon attachment via checkout
+
+  Addons can now be attached to a subscription through a checkout session, matching the payment-first flow used for new subscriptions.
+
+  * **Payment-gated attach**: Addon activation waits until the checkout session is paid, then the addon is applied to the target subscription
+  * **Proration preserved**: Line-item proration continues to work when the addon lands mid-cycle after checkout completes
+  * **Checkout DTOs**: Addon attach requests accept the same checkout session fields as subscription create
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/checkout/overview" title="Checkout - Documentation" />
+
+  <br />
+
+  ## Draft invoice discount management
+
+  Draft invoices now expose a first-class way to apply and recalculate discounts through the standard update endpoint, replacing the earlier dedicated recalculate route.
+
+  * **`apply_discount` flag**: Set `apply_discount` on an `UpdateInvoice` request to recompute coupon and credit adjustments against the current line items
+  * **Single locked path**: Updates run inside one locked transaction that gates discount recalculation on the new flag, keeping totals consistent
+  * **Tax reset on removal**: Removing a discount association now clears stale tax lines and clamps any negative amount-remaining values
+  * **Endpoint consolidation**: The separate `POST /invoices/:id/apply-discount` and recalculate-discount endpoints have been removed in favor of `UpdateInvoice`
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/invoices/managing" title="Managing invoices - Documentation" />
+
+  <br />
+
+  ## Credit note idempotency
+
+  Credit note creation now guarantees safe retries with deterministic idempotency keys and database-level uniqueness.
+
+  * **Deterministic keys**: Idempotency keys are derived from stable request content, so client retries collapse to a single credit note
+  * **DB-level uniqueness**: `idempotency_key` is enforced by a unique constraint, closing races between concurrent create calls
+  * **Draft retry coverage**: Draft retries and `process_credit_note` calls now participate in idempotency deduplication
+  * **Cache-hit safety**: Idempotent cache hits no longer re-publish webhooks or re-run finalization
+
+  <br />
+
+  <Card icon="code" horizontal={true} href="/api-reference/introduction" title="Credit notes - API Reference" />
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * ClickHouse client now supports the HTTP wire protocol — deployments behind TLS-terminating load balancers on port 8443 no longer fail with `unexpected packet [72] from server`
+      * Credit note finalize and void recalculations run inside the same transaction as the state change and propagate their errors instead of being swallowed
+      * Credit note finalize now locks the invoice row and re-checks refund capacity before committing, preventing over-refund on concurrent finalizes
+      * Export job timeouts have been extended to accommodate larger tenants
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Coupon redemption limits are now enforced on the subscription modify path, matching the checks already applied on create
+      * Coupon `max_redemptions` is capped at creation time so unbounded values can no longer be persisted
+      * On-off invoice generation now respects coupon max redemption counts
+      * Credit note recalculation ordering and capacity-check typing have been corrected, and a same-credit-note double-finalize race has been closed
+      * Webhook delivery via Svix now uses a stable idempotency key so retried deliveries deduplicate correctly
+      * Billing calculations use higher decimal precision, and max-credit adjustments on invoices now clamp correctly
+      * Failure response codes returned by validations have been aligned with the documented set
+    </Accordion>
+
+    <Accordion title="Security">
+      * HTTP client and file-import paths now reject cross-origin redirects, closing SSRF vectors through retryable and OTel HTTP clients
+      * Chargebee webhooks fail closed on signature or decrypt failures, return JSON `401` bodies, and log rejections with request context; the Chargebee connection create endpoint now requires basic auth
+      * Payment create uses a deterministic, tenant-scoped idempotency key that includes `payment_method_id` and intent fields, and idempotency conflicts are distinguished from other constraint errors
+      * Credit note create locks the target invoice row before validating amounts, and void refetches state to avoid stale reads
+      * Bulk ingest now enforces a per-request cap and API responses include a standard set of security headers
+      * The dashboard no longer exposes an API catalog discovery surface
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
 <Update label="August 3rd 2026">
   ## Bulk event ingestion
 
