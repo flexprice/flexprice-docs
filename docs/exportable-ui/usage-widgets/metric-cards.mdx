@@ -1,0 +1,87 @@
+---
+title: "Metric Cards"
+description: "Grid of revenue, cost, margin, and custom usage metrics"
+---
+
+import { MetricCardsPreview } from '/snippets/metric-cards-preview.jsx';
+
+Use **Metric Cards** to show a row of headline numbers: revenue, cost, margin, margin percent, and any custom metrics you define. Part of [Usage Widgets](/docs/exportable-ui/usage-widgets/usage-widgets).
+
+<Tabs>
+  <Tab title="Preview">
+    <MetricCardsPreview />
+  </Tab>
+  <Tab title="Code">
+    ```tsx
+    <MetricCards
+      metrics={[
+        { id: 'revenue', titleKey: 'revenue', value: 12500, currency: 'USD' },
+        { id: 'cost', titleKey: 'cost', value: 4200, currency: 'USD' },
+      ]}
+    />
+    ```
+  </Tab>
+</Tabs>
+
+## Supports
+
+- Revenue, cost, margin, and margin percent cards
+- Custom metrics (any name and value you pass in)
+- Currency formatting per card
+- Percent formatting
+- Change indicators (up / down)
+- Loading skeleton state
+
+## Best used for
+
+- Usage dashboards
+- Customer portal overview
+- Account summary pages
+
+## Import
+
+```tsx
+import '@flexprice/flexprice-ui/style.css';
+import { MetricCards, type MetricCardItem } from '@flexprice/flexprice-ui';
+```
+
+## Usage
+
+```tsx
+const metrics: MetricCardItem[] = [
+  { id: 'revenue', titleKey: 'revenue', value: 12500, currency: 'USD' },
+  { id: 'cost', titleKey: 'cost', value: 4200, currency: 'USD' },
+  { id: 'margin', titleKey: 'margin', value: 8300, currency: 'USD', showChangeIndicator: true },
+  { id: 'margin-percent', titleKey: 'marginPercent', value: 66.4, isPercent: true, showChangeIndicator: true },
+];
+
+<MetricCards metrics={metrics} />
+```
+
+`titleKey` is one of `revenue`, `cost`, `margin`, `marginPercent`, `cpm`, or `custom`. For `custom`, also pass `customLabel` with the display name. See [Ways to provide data](/docs/exportable-ui/overview#ways-to-provide-data) for SDK, API, backend, and static JSON options.
+
+## Map Flexprice API data
+
+```ts
+import { adaptMetricCards } from '@flexprice/flexprice-ui';
+
+const metrics = adaptMetricCards(costAnalytics, customAnalytics, {
+  show_revenue_metric: true,
+  show_cost_metrics: true,
+  show_custom_metrics: true,
+});
+```
+
+## See also
+
+<CardGroup cols={2}>
+  <Card icon="puzzle-piece" href="/docs/exportable-ui/usage-widgets/usage-widgets" title="Usage Widgets">
+    Overview of all four usage components.
+  </Card>
+  <Card icon="chart-line" href="/docs/exportable-ui/usage-widgets/usage-trend-chart" title="Usage Trend Chart">
+    Line chart of usage over time, one series per feature.
+  </Card>
+  <Card icon="table-list" href="/docs/exportable-ui/usage-widgets/usage-breakdown" title="Usage Breakdown">
+    Grouped, sortable table of usage and cost by feature.
+  </Card>
+</CardGroup>

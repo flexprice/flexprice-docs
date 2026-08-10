@@ -1,34 +1,59 @@
 ---
 title: "Overview"
-description: "Exportable React components from the Flexprice dashboard that work with any data source"
+description: "Production-ready billing UI, pulled straight from the Flexprice dashboard, that renders from any data source"
 ---
 
-**Flexprice UI** (`@flexprice/flexprice-ui`) is a library of exportable React components extracted from the Flexprice dashboard. Use them to embed the same UI in your application without rebuilding it.
+Building billing UI from scratch means re-solving problems Flexprice already solved: currency formatting, entitlement states, empty states, dark mode, responsive layout. **Flexprice UI** (`@flexprice/flexprice-ui`) skips that work. It's the actual React components from the Flexprice dashboard, published as an installable library, so your pricing page, usage dashboard, and billing screens match a production system on day one instead of a first draft.
 
-Components are presentational: they do not fetch, authenticate, or route. UI and data stay separate. You can feed any component from:
+Every component is presentational: no fetching, no auth, no routing baked in. You own the data. Feed a component from the Flexprice SDK, the REST API, your own backend, or a plain JSON file, and it renders identically either way.
 
-- Flexprice JavaScript SDK
-- Flexprice REST APIs
-- Your own backend
-- Your own APIs
-- Static JSON
+<CardGroup cols={4}>
+  <Card icon="palette" title="Themeable">
+    One CSS variable away from your brand.
+  </Card>
+  <Card icon="moon" title="Dark mode built in">
+    Every component ships a light and dark treatment.
+  </Card>
+  <Card icon="code" title="Full TypeScript">
+    Typed props and adapters, no `any`.
+  </Card>
+  <Card icon="server" title="SSR-ready">
+    Works in Next.js, Remix, and Astro.
+  </Card>
+</CardGroup>
 
-Use Flexprice as your billing platform, or use the UI alone with your own data source.
+## Components
 
-Supported React environments include React, Next.js, Remix, Vite, and Astro (React).
+<Tabs>
+  <Tab title="Pricing">
+    | Component | Description |
+    | --- | --- |
+    | [Pricing Table](/docs/exportable-ui/pricing-widget/pricing-table) | Comparison grid of multiple plans, with billing period and currency controls. |
+    | [Pricing Card](/docs/exportable-ui/pricing-widget/pricing-card) | A single plan: price, entitlements, and a CTA. Compose your own layout with it. |
+  </Tab>
+  <Tab title="Usage">
+    | Component | Description |
+    | --- | --- |
+    | [Metric Cards](/docs/exportable-ui/usage-widgets/metric-cards) | Headline numbers: revenue, cost, margin, and custom metrics. |
+    | [Usage Trend Chart](/docs/exportable-ui/usage-widgets/usage-trend-chart) | Line chart of usage over time, one series per feature. |
+    | [Usage Breakdown](/docs/exportable-ui/usage-widgets/usage-breakdown) | Grouped, sortable table of usage and cost by feature. |
+    | [Usage Quota](/docs/exportable-ui/usage-widgets/usage-quota) | Progress bars showing usage against each plan limit. |
+  </Tab>
+  <Tab title="Credits">
+    | Component | Description |
+    | --- | --- |
+    | [Credit Balance](/docs/exportable-ui/credits-widgets/credit-balance) | Wallet balance card: credits, monetary value, and status. |
+    | [Credit History](/docs/exportable-ui/credits-widgets/credit-history) | Paginated wallet transaction history, with multi-wallet support. |
+  </Tab>
+</Tabs>
 
-## Why use Flexprice UI
+Every component page has a live, interactive **Preview** you can toggle between light and dark, right next to the **Code** that produces it.
 
-Install the package and render dashboard-matched UI from your data instead of building screens from scratch.
+<Card icon="file-text" title="Feed this to an LLM" href="/llms-full.txt">
+  The full Flexprice documentation, including every component on this page, as one plain-text file at `/llms-full.txt`. Open it to copy the raw text, or paste the link into an AI tool that can fetch URLs.
+</Card>
 
-- Responsive, mobile-optimized layout
-- Dark mode
-- Theme customization via CSS variables
-- TypeScript types
-- Works with any backend
-- Compatible with SSR (Next.js App Router and Pages Router, Remix, Astro)
-
-As more Flexprice surfaces become exportable, they ship in this package and appear under **Exportable UI** in the docs.
+As more Flexprice surfaces become exportable, they ship here under the same pattern: install, bring your own data, render.
 
 ## Install
 
@@ -114,16 +139,25 @@ Component pages document the exact prop shapes and any adapters for mapping Flex
 
 ## Theming
 
-Override CSS variables on a wrapping element:
+Every component renders inside an element carrying the `flexprice-ui` class, and that element is
+where the theme tokens are declared. Override them with a selector that **matches that element** —
+`--primary` is the accent hook:
 
 ```css
-.my-app {
-  --brand: 243 75% 59%;
-  --radius: 12px;
+.my-app .flexprice-ui {
+  --primary: 243 75% 59%;
 }
 ```
 
-Customize primary color, radius, fonts, buttons, shadows, spacing, and related tokens. Add the `dark` class to any ancestor to toggle dark mode:
+<Warning>
+  Setting these variables on a wrapping *ancestor* has no effect. The package declares them on
+  `.flexprice-ui` itself, so an ancestor rule loses the cascade and the components render
+  unchanged. Target `.flexprice-ui` (or an element that also carries the class).
+</Warning>
+
+Values are HSL channels — `243 75% 59%`, not `hsl(243 75% 59%)` or `#4f46e5`.
+
+Add the `dark` class to any ancestor to toggle dark mode:
 
 ```tsx
 <div className="dark">
@@ -167,31 +201,4 @@ Components work with SSR in Next.js (App Router and Pages Router), Remix, and As
 
 ## Future components
 
-The package is designed to expand beyond the current exports. Planned surfaces may include:
-
-- Checkout
-- Customer portal
-- Usage dashboard
-- Subscription details
-- Invoice viewer
-- Usage charts
-- Wallet and credits
-- Billing history
-
-New components follow the same pattern: install from `@flexprice/flexprice-ui`, load data from any source, map into props, and render.
-
-## See also
-
-Current pricing exports:
-
-<CardGroup cols={2}>
-  <Card icon="puzzle-piece" href="/docs/exportable-ui/pricing-widget/pricing-widget" title="Pricing Widget">
-    Full pricing selector with billing toggle, plan grid, and CTAs.
-  </Card>
-  <Card icon="table" href="/docs/exportable-ui/pricing-widget/pricing-table" title="Pricing Table">
-    Comparison table for multiple plans, features, and entitlements.
-  </Card>
-  <Card icon="rectangle-list" href="/docs/exportable-ui/pricing-widget/pricing-card" title="Pricing Card">
-    Single plan card for dashboards, modals, and custom layouts.
-  </Card>
-</CardGroup>
+The package is designed to expand beyond the current exports. Planned surfaces include invoices, subscription details, and the full customer portal. New components follow the same pattern: install from `@flexprice/flexprice-ui`, load data from any source, map into props, and render.

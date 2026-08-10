@@ -3,7 +3,31 @@ title: "Pricing Table"
 description: "Comparison table for showcasing multiple plans, features, and entitlements"
 ---
 
-Use **Pricing Table** to show a comparison table of multiple plans. Prefer the [Pricing Widget](/docs/exportable-ui/pricing-widget/pricing-widget) when you want the full selector (toggle, grid, comparison) in one component.
+import { PricingTablePreview } from '/snippets/pricing-table-preview.jsx';
+
+Use **Pricing Table** to show a comparison table of multiple plans, with billing period and currency controls built in.
+
+<Tabs>
+  <Tab title="Preview">
+    <PricingTablePreview />
+  </Tab>
+  <Tab title="Code">
+    ```tsx
+    const plans: Plan[] = /* fetch + map */;
+
+    <PricingTable
+      plans={plans}
+      billingPeriod={period}
+      onBillingPeriodChange={setPeriod}
+      billingPeriodOptions={[{ label: 'Monthly', value: 'MONTHLY' }]}
+      currency={currency}
+      onCurrencyChange={setCurrency}
+      currencyOptions={[{ label: 'USD', value: 'USD' }]}
+      onSelectPlan={(planId) => router.push(`/checkout/${planId}`)}
+    />
+    ```
+  </Tab>
+</Tabs>
 
 ## Supports
 
@@ -62,9 +86,6 @@ const plans = filterAndSortPlans(plansWithData, 'USD', 'MONTHLY').map((p) =>
 <CardGroup cols={2}>
   <Card icon="book-open" href="/docs/exportable-ui/overview" title="Overview">
     Install Flexprice UI, choose a data source, theme, and integrate components.
-  </Card>
-  <Card icon="puzzle-piece" href="/docs/exportable-ui/pricing-widget/pricing-widget" title="Pricing Widget">
-    Full pricing selector with billing toggle, plan grid, and CTAs.
   </Card>
   <Card icon="rectangle-list" href="/docs/exportable-ui/pricing-widget/pricing-card" title="Pricing Card">
     Single plan card for dashboards, modals, and custom layouts.

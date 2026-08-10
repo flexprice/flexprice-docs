@@ -1,0 +1,79 @@
+---
+title: "Credit Balance"
+description: "Wallet balance card showing current credits and monetary value"
+---
+
+import { CreditBalancePreview } from '/snippets/credit-balance-preview.jsx';
+
+Use **Credit Balance** to show a customer's current wallet balance: credits, monetary value, and wallet status. Part of [Credits Widgets](/docs/exportable-ui/credits-widgets/credits-widgets).
+
+<Tabs>
+  <Tab title="Preview">
+    <CreditBalancePreview />
+  </Tab>
+  <Tab title="Code">
+    ```tsx
+    <CreditBalance
+      wallet={{ id: 'wallet_1', name: 'Main Wallet', status: 'active', creditBalance: 4200, balance: 42, currency: 'USD' }}
+    />
+    ```
+  </Tab>
+</Tabs>
+
+## Supports
+
+- Credit balance and monetary value
+- Wallet status (active, frozen, closed)
+- Empty state when there is no wallet
+- Loading skeleton state
+
+## Best used for
+
+- Customer portal overview
+- Billing page
+- Account settings
+
+## Import
+
+```tsx
+import '@flexprice/flexprice-ui/style.css';
+import { CreditBalance, type CreditBalanceData } from '@flexprice/flexprice-ui';
+```
+
+## Usage
+
+```tsx
+const wallet: CreditBalanceData = {
+  id: 'wallet_1',
+  name: 'Main Wallet',
+  status: 'active',
+  creditBalance: 4200,
+  balance: 42,
+  currency: 'USD',
+};
+
+<CreditBalance wallet={wallet} />
+```
+
+Pass `wallet={null}` to render the empty state (no wallet set up yet). See [Ways to provide data](/docs/exportable-ui/overview#ways-to-provide-data) for SDK, API, backend, and static JSON options.
+
+## Map Flexprice API data
+
+```ts
+import { adaptCreditBalance } from '@flexprice/flexprice-ui';
+
+const wallet = adaptCreditBalance(walletFromList, realtimeWalletBalance);
+```
+
+`realtimeWalletBalance` is optional. When provided, its real-time balance fields take precedence over the wallet list snapshot.
+
+## See also
+
+<CardGroup cols={2}>
+  <Card icon="puzzle-piece" href="/docs/exportable-ui/credits-widgets/credits-widgets" title="Credits Widgets">
+    Overview of both credits components.
+  </Card>
+  <Card icon="clock-rotate-left" href="/docs/exportable-ui/credits-widgets/credit-history" title="Credit History">
+    Transaction history table with pagination and multi-wallet selection.
+  </Card>
+</CardGroup>
