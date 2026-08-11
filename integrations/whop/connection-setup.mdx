@@ -25,6 +25,7 @@ Before you start, have:
 | **API Key** | Whop Dashboard → **Developer** → **API Keys** → **Create** → select **Admin** role | Authenticating all Whop API calls from Flexprice |
 | **Company ID** | View your business profile on Whop → click the three-dot menu (**...**) → **Copy ID** | Your Whop business identifier (`biz_...`) |
 | **Product ID** *(optional)* | Whop Dashboard → **Products** | Which Whop product invoices are grouped under - leave blank and Flexprice creates one automatically |
+| **Webhook Secret** | Whop Dashboard → **Settings** → **Webhooks** → your endpoint | Verifies incoming Whop webhooks - required to create the connection |
 
 ## How to connect your Whop account
 
@@ -83,10 +84,14 @@ For Flexprice to mark invoices as paid when payment is completed through Whop, r
     | `invoice_paid` | Marks the Flexprice invoice as paid when payment completes |
     | `payment_succeeded` | Enables Charge Automatically for future invoices |
   </Step>
+
+  <Step title="Copy the Secret and paste it into Flexprice">
+    Whop shows a **Secret** for the endpoint you just created. Copy it and paste it into the **Webhook Secret** field in the Flexprice connection drawer before saving.
+  </Step>
 </Steps>
 
 <Warning>
-Without the webhook configured, invoices synced to Whop will not automatically mark as paid in Flexprice and Charge Automatically will not activate.
+The webhook secret is required. Flexprice will not create a Whop connection without it.
 </Warning>
 
 ## Troubleshooting
