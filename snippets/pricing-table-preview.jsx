@@ -10,6 +10,12 @@ export const PricingTablePreview = () => {
       line: 'rgb(229 231 235)',
       lineStrong: 'rgb(209 213 219)',
       success: 'hsl(142 76% 36%)',
+      iconMail: 'rgb(2 132 199)',
+      iconMessage: 'rgb(124 58 237)',
+      iconPhone: 'rgb(5 150 105)',
+      iconZap: 'rgb(217 119 6)',
+      iconGauge: 'rgb(79 70 229)',
+      iconSparkles: 'rgb(5 150 105)',
     },
     dark: {
       surfaceCanvas: 'rgb(24 24 24)',
@@ -21,17 +27,100 @@ export const PricingTablePreview = () => {
       line: 'rgb(41 41 46)',
       lineStrong: 'rgb(53 53 59)',
       success: 'hsl(142 55% 52%)',
+      iconMail: 'rgb(56 169 232)',
+      iconMessage: 'rgb(161 118 245)',
+      iconPhone: 'rgb(46 200 148)',
+      iconZap: 'rgb(232 154 60)',
+      iconGauge: 'rgb(138 130 255)',
+      iconSparkles: 'rgb(46 200 148)',
     },
   }
   const [mode, setMode] = useState('light')
   const t = FP_THEME[mode]
   const [hideFilters, setHideFilters] = useState(false)
   const [period, setPeriod] = useState('monthly')
+
+  // Same shape the real component takes: { type, name }. Icons are picked the same way the real
+  // PricingCard does — METERED entitlements get a name-matched icon, everything else a sparkle.
   const plans = [
-    { name: 'Starter', monthly: 0, yearly: 0, entitlements: ['3 seats', 'API access'] },
-    { name: 'Pro', monthly: 49, yearly: 470, entitlements: ['20 seats', 'API access', '100K events / mo'] },
-    { name: 'Business', monthly: 199, yearly: 1910, entitlements: ['Unlimited seats', 'Priority support'] },
+    {
+      name: 'Starter',
+      monthly: 0,
+      yearly: 0,
+      entitlements: [
+        { type: 'STATIC', name: '3 seats' },
+        { type: 'BOOLEAN', name: 'API access' },
+      ],
+    },
+    {
+      name: 'Pro',
+      monthly: 49,
+      yearly: 470,
+      entitlements: [
+        { type: 'STATIC', name: '20 seats' },
+        { type: 'METERED', name: 'API requests' },
+        { type: 'METERED', name: 'Email sends' },
+      ],
+    },
+    {
+      name: 'Business',
+      monthly: 199,
+      yearly: 1910,
+      entitlements: [
+        { type: 'BOOLEAN', name: 'Unlimited seats' },
+        { type: 'METERED', name: 'Voice minutes' },
+        { type: 'BOOLEAN', name: 'Priority support' },
+      ],
+    },
   ]
+
+  function entitlementIcon(type, name) {
+    const n = name.toLowerCase()
+    if (type === 'METERED') {
+      if (n.includes('email') || n.includes('mail')) {
+        return (
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={t.iconMail} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect width="20" height="16" x="2" y="4" rx="2" />
+            <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+          </svg>
+        )
+      }
+      if (n.includes('sms') || n.includes('chat') || n.includes('message')) {
+        return (
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={t.iconMessage} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+        )
+      }
+      if (n.includes('phone') || n.includes('call') || n.includes('minute')) {
+        return (
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={t.iconPhone} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+          </svg>
+        )
+      }
+      if (n.includes('api') || n.includes('request') || n.includes('agent')) {
+        return (
+          <svg width="13" height="13" viewBox="0 0 24 24" fill={t.iconZap} stroke={t.iconZap} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+          </svg>
+        )
+      }
+      return (
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={t.iconGauge} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m12 14 4-4" />
+          <path d="M3.34 19a10 10 0 1 1 17.32 0" />
+        </svg>
+      )
+    }
+    // Filled (not stroke-only) so it reads as a clear glyph instead of a faint outline that can
+    // look like a stray dot next to the text.
+    return (
+      <svg width="13" height="13" viewBox="0 0 24 24" fill={t.iconSparkles} stroke="none">
+        <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.582a.5.5 0 0 1 0 .963L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+      </svg>
+    )
+  }
 
   return (
     <div>
@@ -157,14 +246,14 @@ export const PricingTablePreview = () => {
               >
                 View plan
               </button>
-              <ul style={{ listStyle: 'none', margin: '14px 0 0', padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ margin: '14px 0 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {plan.entitlements.map((e) => (
-                  <li key={e} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: t.contentTertiary }}>
-                    <span style={{ color: t.success }}>✓</span>
-                    {e}
-                  </li>
+                  <div key={e.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: t.contentTertiary }}>
+                    {entitlementIcon(e.type, e.name)}
+                    {e.name}
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           ))}
         </div>

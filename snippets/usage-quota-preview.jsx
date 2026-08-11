@@ -11,6 +11,7 @@ export const UsageQuotaPreview = () => {
       line: 'rgb(229 231 235)',
       destructive: 'hsl(0 84.2% 60.2%)',
       brand: 'hsl(201 77% 15%)',
+      accent: 'rgb(79 70 229)',
     },
     dark: {
       surfaceCanvas: 'rgb(24 24 24)',
@@ -23,30 +24,38 @@ export const UsageQuotaPreview = () => {
       line: 'rgb(41 41 46)',
       destructive: 'hsl(0 65% 55%)',
       brand: 'hsl(356 56% 60%)',
+      accent: 'rgb(138 130 255)',
     },
   }
   const [mode, setMode] = useState('light')
   const t = FP_THEME[mode]
-  const [used, setUsed] = useState(720)
-  const [limit, setLimit] = useState(1000)
+  // Same scale as the example app's demo fixture (src/demoData.ts): API calls, 842.3K / 1M.
+  const [used, setUsed] = useState(842300)
+  const [limit, setLimit] = useState(1000000)
   const [unlimited, setUnlimited] = useState(false)
+  const [playgroundOpen, setPlaygroundOpen] = useState(false)
 
   const percentage = unlimited ? 0 : Math.min(Math.ceil((used / limit) * 100), 100)
   const isOverLimit = !unlimited && used > limit
 
+  const sliderStyle = { width: '100%', marginTop: 6, accentColor: t.accent }
+  const labelStyle = { fontSize: 12, color: t.contentMuted, display: 'block' }
+
   return (
     <div>
+      {/* Preview: the real component only. No playground controls in here, so there's never a
+          question of whether something on screen is part of UsageQuota or not. */}
       <div
         style={{
           position: 'relative',
           border: `1px solid ${t.line}`,
           borderRadius: 12,
           background: t.surfaceCanvas,
-          padding: '80px 40px',
+          padding: '64px 40px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          minHeight: 420,
+          minHeight: 340,
         }}
       >
         <button
@@ -79,13 +88,14 @@ export const UsageQuotaPreview = () => {
             </svg>
           )}
         </button>
-        <div style={{ border: `1px solid ${t.line}`, borderRadius: 12, overflow: 'hidden', background: t.surface, width: 340 }}>
+
+        <div style={{ border: `1px solid ${t.line}`, borderRadius: 12, overflow: 'hidden', background: t.surface, width: '100%', maxWidth: 340 }}>
           <div style={{ padding: 20, borderBottom: `1px solid ${t.line}` }}>
             <h3 style={{ margin: 0, fontSize: 15, fontWeight: 500, color: t.content }}>Usage Quota</h3>
           </div>
           <div style={{ padding: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ fontSize: 13, color: t.content }}>API Calls</span>
+              <span style={{ fontSize: 13, color: t.content }}>API calls</span>
               <span style={{ fontSize: 13, color: t.contentMuted }}>
                 {used.toLocaleString()} / {unlimited ? 'Unlimited' : limit.toLocaleString()}
               </span>
@@ -103,29 +113,56 @@ export const UsageQuotaPreview = () => {
           </div>
         </div>
       </div>
-      <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 340 }}>
-        <label style={{ fontSize: 12, color: t.contentMuted }}>
-          Used: {used.toLocaleString()}
-          <input type="range" min="0" max="1500" value={used} onChange={(e) => setUsed(Number(e.target.value))} style={{ width: '100%', marginTop: 4 }} />
-        </label>
-        <label style={{ fontSize: 12, color: t.contentMuted }}>
-          Limit: {limit.toLocaleString()}
-          <input
-            type="range"
-            min="100"
-            max="2000"
-            step="100"
-            value={limit}
-            disabled={unlimited}
-            onChange={(e) => setLimit(Number(e.target.value))}
-            style={{ width: '100%', marginTop: 4, opacity: unlimited ? 0.4 : 1 }}
-          />
-        </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: t.contentMuted }}>
-          <input type="checkbox" checked={unlimited} onChange={(e) => setUnlimited(e.target.checked)} />
-          Unlimited
-        </label>
-      </div>
+
+      {/* Playground: collapsed by default, visually and structurally separate from the preview
+          above (own box, own border) so it never reads as part of the component itself. */}
+      <details open={playgroundOpen} onToggle={(e) => setPlaygroundOpen(e.target.open)} style={{ marginTop: 12 }}>
+        <style>{`summary::-webkit-details-marker { display: none; }`}</style>
+        <summary
+          style={{
+            listStyle: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '10px 12px',
+            border: `1px solid ${t.line}`,
+            borderRadius: 8,
+            background: t.surface,
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={t.contentMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            {playgroundOpen ? <path d="m18 15-6-6-6 6" /> : <path d="m6 9 6 6 6-6" />}
+          </svg>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <span style={{ fontSize: 13, fontWeight: 500, color: t.content }}>Try it yourself</span>
+            <span style={{ fontSize: 11, color: t.contentMuted, fontWeight: 400 }}>Preview controls</span>
+          </div>
+        </summary>
+        <div style={{ marginTop: 10, border: `1px solid ${t.line}`, borderRadius: 10, background: t.surfaceMuted, padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <label style={labelStyle}>
+            Used: {used.toLocaleString()}
+            <input type="range" min="0" max="1500000" step="1000" value={used} onChange={(e) => setUsed(Number(e.target.value))} style={sliderStyle} />
+          </label>
+          <label style={labelStyle}>
+            Limit: {limit.toLocaleString()}
+            <input
+              type="range"
+              min="100000"
+              max="2000000"
+              step="50000"
+              value={limit}
+              disabled={unlimited}
+              onChange={(e) => setLimit(Number(e.target.value))}
+              style={{ ...sliderStyle, opacity: unlimited ? 0.4 : 1 }}
+            />
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: t.contentMuted }}>
+            <input type="checkbox" checked={unlimited} onChange={(e) => setUnlimited(e.target.checked)} style={{ accentColor: t.accent }} />
+            Unlimited
+          </label>
+        </div>
+      </details>
     </div>
   )
 }
