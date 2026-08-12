@@ -263,7 +263,7 @@ Run these **before opening a PR**. Both use Node 22 (mintlify does not support N
 ```bash
 PATH="/opt/homebrew/opt/node@22/bin:$PATH" \
   /opt/homebrew/opt/node@22/bin/node \
-  /opt/homebrew/lib/node_modules/mintlify/node_modules/@mintlify/cli/bin/index.js \
+  /opt/homebrew/lib/node_modules/mint/index.js \
   broken-links
 ```
 
@@ -276,7 +276,7 @@ PATH="/opt/homebrew/opt/node@22/bin:$PATH" \
 ```bash
 PATH="/opt/homebrew/opt/node@22/bin:$PATH" \
   /opt/homebrew/opt/node@22/bin/node \
-  /opt/homebrew/lib/node_modules/mintlify/node_modules/@mintlify/cli/bin/index.js \
+  /opt/homebrew/lib/node_modules/mint/index.js \
   validate
 ```
 
@@ -288,7 +288,7 @@ PATH="/opt/homebrew/opt/node@22/bin:$PATH" \
 ```bash
 PATH="/opt/homebrew/opt/node@22/bin:$PATH" \
   /opt/homebrew/opt/node@22/bin/node \
-  /opt/homebrew/lib/node_modules/mintlify/node_modules/@mintlify/cli/bin/index.js \
+  /opt/homebrew/lib/node_modules/mint/index.js \
   dev --port 3333
 ```
 
@@ -308,6 +308,7 @@ The `.claude/launch.json` in this repo is configured to use this exact path. Use
 | Present tense: "Alerts trigger on…" | Future: "Alerts will trigger on…" |
 | Second-person: "You can configure…" | First-person: "We allow you to…" |
 
+- **No em dashes**: never use `—` in docs content. Split the sentence, or use a comma, colon, or parentheses instead. Applies to prose, callouts, tables, and bullet lists.
 - **No marketing adjectives**: skip "powerful", "flexible", "seamless", "robust", "easy"
 - **Name the mechanism**: say what the API field or UI element is called
 - **One idea per sentence**: split compound sentences
@@ -320,6 +321,7 @@ The `.claude/launch.json` in this repo is configured to use this exact path. Use
 - [ ] File is in the right directory (`docs/<section>/`)
 - [ ] Frontmatter has `title` and `description`
 - [ ] Page is added to `docs.json` in the correct group
+- [ ] No em dashes: `grep -n "—" docs/path/to/page.mdx` returns nothing
 - [ ] No `<Frame>` blocks reference images that don't exist in the repo
 - [ ] `mint broken-links` passes with no new errors
 - [ ] `mint validate` passes (the pre-existing `Callout.tsx` warning is acceptable)
