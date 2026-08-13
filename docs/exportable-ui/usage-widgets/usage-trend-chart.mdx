@@ -1,0 +1,96 @@
+---
+title: "Usage Trend Chart"
+description: "Line chart of usage over time, one series per feature or event source"
+---
+
+import { UsageTrendChartPreview } from '/snippets/usage-trend-chart-preview.jsx';
+
+Use **Usage Trend Chart** to plot usage over time. Each series draws its own line, so you can compare multiple features or event sources on the same chart. Part of [Usage Widgets](/docs/exportable-ui/usage-widgets/usage-widgets).
+
+<Tabs>
+  <Tab title="Preview">
+    <UsageTrendChartPreview />
+  </Tab>
+  <Tab title="Code">
+    ```tsx
+    <UsageTrendChart
+      series={[
+        {
+          id: 'feat_api_calls',
+          name: 'API Calls',
+          points: [
+            { timestamp: '2026-01-01T00:00:00Z', usage: 320 },
+            { timestamp: '2026-01-02T00:00:00Z', usage: 410 },
+          ],
+        },
+      ]}
+      label="Usage Trend"
+    />
+    ```
+  </Tab>
+</Tabs>
+
+## Supports
+
+- Multiple series (one line per feature or source)
+- Custom time ranges (pass whatever window of points you want)
+- Zoom and reset
+- Loading skeleton state
+- Empty state when there is no data
+
+## Best used for
+
+- Usage dashboards
+- Customer portal usage tab
+- Account health pages
+
+## Import
+
+```tsx
+import '@flexprice/ui/style.css';
+import { UsageTrendChart, type UsageTrendSeries } from '@flexprice/ui';
+```
+
+## Usage
+
+```tsx
+const series: UsageTrendSeries[] = [
+  {
+    id: 'feat_api_calls',
+    name: 'API Calls',
+    points: [
+      { timestamp: '2026-01-01T00:00:00Z', usage: 320 },
+      { timestamp: '2026-01-02T00:00:00Z', usage: 410 },
+      { timestamp: '2026-01-03T00:00:00Z', usage: 380 },
+    ],
+  },
+];
+
+<UsageTrendChart series={series} label="Usage Trend" />
+```
+
+Filtering by feature (include or exclude a list of feature IDs) is handled before the data reaches the component: filter your `series` array, or filter at the adapter step below. See [Ways to provide data](/docs/exportable-ui/overview#ways-to-provide-data) for SDK, API, backend, and static JSON options.
+
+## Map Flexprice API data
+
+```ts
+import { adaptUsageTrendSeries } from '@flexprice/ui';
+
+const series = adaptUsageTrendSeries(analytics.items, { feature_filter_mode: 'all' });
+```
+
+Pass `feature_filter_mode: 'include_list'` or `'exclude_list'` with `feature_ids` to filter which features appear.
+
+## See also
+
+<CardGroup cols={2}>
+  <Card icon="puzzle-piece" href="/docs/exportable-ui/usage-widgets/usage-widgets" title="Usage Widgets">
+    Overview of all four usage components.
+  </Card>
+  <Card icon="chart-simple" href="/docs/exportable-ui/usage-widgets/metric-cards" title="Metric Cards">
+    Grid of revenue, cost, margin, and custom usage metrics.
+  </Card>
+  <Card icon="table-list" href="/docs/exportable-ui/usage-widgets/usage-breakdown" title="Usage Breakdown">
+    Grouped, sortable table of usage and cost by feature.
+  </Card>
+</CardGroup>

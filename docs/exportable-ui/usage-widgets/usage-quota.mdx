@@ -1,0 +1,76 @@
+---
+title: "Usage Quota"
+description: "Progress bars showing current usage against plan limits for each metered feature"
+---
+
+import { UsageQuotaPreview } from '/snippets/usage-quota-preview.jsx';
+
+Use **Usage Quota** to show a customer how much of each metered feature they've used against its plan limit, as a set of progress bars. Part of [Usage Widgets](/docs/exportable-ui/usage-widgets/usage-widgets).
+
+<Tabs>
+  <Tab title="Preview">
+    <UsageQuotaPreview />
+  </Tab>
+  <Tab title="Code">
+    ```tsx
+    <UsageQuota
+      items={[{ id: 'feat_api_calls', name: 'API Calls', currentUsage: 720, limit: 1000, isUnlimited: false }]}
+    />
+    ```
+  </Tab>
+</Tabs>
+
+## Supports
+
+- One progress bar per metered feature
+- Unlimited features (rendered without a limit)
+- Over-limit styling
+- Empty state when there is nothing to show
+
+## Best used for
+
+- Customer portal overview
+- Account settings / usage tab
+- Upgrade prompts near a limit
+
+## Import
+
+```tsx
+import '@flexprice/ui/style.css';
+import { UsageQuota, type UsageQuotaItem } from '@flexprice/ui';
+```
+
+## Usage
+
+```tsx
+const items: UsageQuotaItem[] = [
+  { id: 'feat_api_calls', name: 'API Calls', currentUsage: 8200, limit: 10000, isUnlimited: false },
+  { id: 'feat_storage', name: 'Storage', currentUsage: 42, limit: null, isUnlimited: true },
+];
+
+<UsageQuota items={items} />
+```
+
+Only metered features have a quota to show: filter your data to metered entitlements before mapping into `items`. See [Ways to provide data](/docs/exportable-ui/overview#ways-to-provide-data) for SDK, API, backend, and static JSON options.
+
+## Map Flexprice API data
+
+```ts
+import { adaptUsageQuotaItems } from '@flexprice/ui';
+
+const items = adaptUsageQuotaItems(usageSummary.features);
+```
+
+## See also
+
+<CardGroup cols={2}>
+  <Card icon="puzzle-piece" href="/docs/exportable-ui/usage-widgets/usage-widgets" title="Usage Widgets">
+    Overview of all four usage components.
+  </Card>
+  <Card icon="table-list" href="/docs/exportable-ui/usage-widgets/usage-breakdown" title="Usage Breakdown">
+    Grouped, sortable table of usage and cost by feature.
+  </Card>
+  <Card icon="chart-simple" href="/docs/exportable-ui/usage-widgets/metric-cards" title="Metric Cards">
+    Grid of revenue, cost, margin, and custom usage metrics.
+  </Card>
+</CardGroup>

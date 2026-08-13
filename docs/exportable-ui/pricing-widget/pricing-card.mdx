@@ -3,7 +3,20 @@ title: "Pricing Card"
 description: "Individual plan card for dashboards, billing pages, upgrade modals, and custom layouts"
 ---
 
-Use **Pricing Card** to render a single plan anywhere in your product. Compose multiple cards yourself, or use the [Pricing Widget](/docs/exportable-ui/pricing-widget/pricing-widget) / [Pricing Table](/docs/exportable-ui/pricing-widget/pricing-table) for a full layout.
+import { PricingCardPreview } from '/snippets/pricing-card-preview.jsx';
+
+Use **Pricing Card** to render a single plan anywhere in your product. Compose multiple cards yourself, or use [Pricing Table](/docs/exportable-ui/pricing-widget/pricing-table) for a ready-made grid.
+
+<Tabs>
+  <Tab title="Preview">
+    <PricingCardPreview />
+  </Tab>
+  <Tab title="Code">
+    ```tsx
+    <PricingCard {...plan} useModernChrome onSelectPlan={handleSelect} />
+    ```
+  </Tab>
+</Tabs>
 
 ## Supports
 
@@ -25,8 +38,8 @@ Use **Pricing Card** to render a single plan anywhere in your product. Compose m
 ## Import
 
 ```tsx
-import '@flexprice/flexprice-ui/style.css';
-import { PricingCard } from '@flexprice/flexprice-ui';
+import '@flexprice/ui/style.css';
+import { PricingCard } from '@flexprice/ui';
 ```
 
 ## Usage
@@ -40,7 +53,7 @@ Pass a presentational plan from the Flexprice SDK, REST, your backend, or static
 ## Map Flexprice API data
 
 ```ts
-import { adaptPlanToCard, filterAndSortPlans } from '@flexprice/flexprice-ui';
+import { adaptPlanToCard, filterAndSortPlans } from '@flexprice/ui';
 
 const [plan] = filterAndSortPlans(plansWithData, 'USD', 'MONTHLY').map((p) =>
   adaptPlanToCard(p, grants)
@@ -52,9 +65,6 @@ const [plan] = filterAndSortPlans(plansWithData, 'USD', 'MONTHLY').map((p) =>
 <CardGroup cols={2}>
   <Card icon="book-open" href="/docs/exportable-ui/overview" title="Overview">
     Install Flexprice UI, choose a data source, theme, and integrate components.
-  </Card>
-  <Card icon="puzzle-piece" href="/docs/exportable-ui/pricing-widget/pricing-widget" title="Pricing Widget">
-    Full pricing selector with billing toggle, plan grid, and CTAs.
   </Card>
   <Card icon="table" href="/docs/exportable-ui/pricing-widget/pricing-table" title="Pricing Table">
     Comparison table for multiple plans, features, and entitlements.

@@ -1,0 +1,107 @@
+---
+title: "Credit History"
+description: "Wallet transaction history table with pagination and multi-wallet selection"
+---
+
+import { CreditHistoryPreview } from '/snippets/credit-history-preview.jsx';
+
+Use **Credit History** to show a customer's wallet transactions: credits added, credits spent, and the reason for each. Part of [Credits Widgets](/docs/exportable-ui/credits-widgets/credits-widgets).
+
+<Tabs>
+  <Tab title="Preview">
+    <CreditHistoryPreview />
+  </Tab>
+  <Tab title="Code">
+    ```tsx
+    const [page, setPage] = useState(1);
+
+    <CreditHistory
+      transactions={transactions}
+      page={page}
+      pageSize={10}
+      totalItems={total}
+      onPageChange={setPage}
+    />
+    ```
+  </Tab>
+</Tabs>
+
+## Supports
+
+- Credit and debit transactions, with reason labels
+- Pending-transaction styling
+- Multiple wallets, with a selector shown when there is more than one
+- Pagination
+- Loading skeleton state
+- Empty state when there are no transactions
+
+## Best used for
+
+- Customer portal billing tab
+- Account settings
+- Wallet detail pages
+
+## Import
+
+```tsx
+import '@flexprice/ui/style.css';
+import { CreditHistory, type CreditTransaction } from '@flexprice/ui';
+```
+
+## Usage
+
+Pagination is fully controlled: the component has no dependency on a router or URL, so you own the current page in your own state and pass it back in.
+
+```tsx
+const [page, setPage] = useState(1);
+
+const transactions: CreditTransaction[] = [
+  { id: 'txn_1', type: 'credit', amount: 100, creditAmount: 100, reason: 'FREE_CREDIT_GRANT', createdAt: '2026-01-01T00:00:00Z' },
+  { id: 'txn_2', type: 'debit', amount: 20, creditAmount: 20, reason: 'INVOICE_PAYMENT', createdAt: '2026-01-05T00:00:00Z' },
+];
+
+<CreditHistory
+  transactions={transactions}
+  page={page}
+  pageSize={10}
+  totalItems={total}
+  onPageChange={setPage}
+/>
+```
+
+For accounts with more than one wallet, also pass `wallets`, `selectedWalletId`, and `onSelectWallet`:
+
+```tsx
+<CreditHistory
+  transactions={transactions}
+  wallets={[{ id: 'wallet_1', label: 'Main Wallet' }, { id: 'wallet_2', label: 'Backup Wallet' }]}
+  selectedWalletId={selectedWalletId}
+  onSelectWallet={setSelectedWalletId}
+  page={page}
+  pageSize={10}
+  totalItems={total}
+  onPageChange={setPage}
+/>
+```
+
+See [Ways to provide data](/docs/exportable-ui/overview#ways-to-provide-data) for SDK, API, backend, and static JSON options.
+
+## Map Flexprice API data
+
+```ts
+import { adaptCreditTransactions, adaptWalletOptions } from '@flexprice/ui';
+
+const transactions = adaptCreditTransactions(walletTransactions.items);
+const wallets = adaptWalletOptions(walletList);
+```
+
+## See also
+
+<CardGroup cols={2}>
+  <Card icon="puzzle-piece" href="/docs/exportable-ui/credits-widgets/credits-widgets" title="Credits Widgets">
+    Overview of both credits components.
+  </Card>
+  <Card icon="wallet" href="/docs/exportable-ui/credits-widgets/credit-balance" title="Credit Balance">
+    Wallet balance card showing current credits and monetary value.
+  </Card>
+</CardGroup>

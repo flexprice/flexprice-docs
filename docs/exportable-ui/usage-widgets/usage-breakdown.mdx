@@ -1,0 +1,81 @@
+---
+title: "Usage Breakdown"
+description: "Grouped, sortable table of usage and cost by feature"
+---
+
+import { UsageBreakdownPreview } from '/snippets/usage-breakdown-preview.jsx';
+
+Use **Usage Breakdown** to show a detailed, sortable table of usage and cost per feature, with optional grouping. Part of [Usage Widgets](/docs/exportable-ui/usage-widgets/usage-widgets).
+
+<Tabs>
+  <Tab title="Preview">
+    <UsageBreakdownPreview />
+  </Tab>
+  <Tab title="Code">
+    ```tsx
+    <UsageBreakdown
+      rows={[
+        { id: 'feat_api_calls', name: 'API Calls', totalUsage: 8200, unit: 'calls', totalCost: 41, currency: 'USD' },
+        { id: 'feat_storage', name: 'Storage', totalUsage: 42, unit: 'GB', totalCost: 12.5, currency: 'USD' },
+      ]}
+    />
+    ```
+  </Tab>
+</Tabs>
+
+## Supports
+
+- Sort by total usage or total cost
+- Grouping (features roll up under a group, with an ungrouped bucket for the rest)
+- Expand / collapse all groups
+- Custom units per row
+- Loading skeleton state
+- Empty state when there is no data
+
+## Best used for
+
+- Usage dashboards
+- Customer portal usage tab
+- Cost analysis pages
+
+## Import
+
+```tsx
+import '@flexprice/ui/style.css';
+import { UsageBreakdown, type UsageBreakdownRow } from '@flexprice/ui';
+```
+
+## Usage
+
+```tsx
+const rows: UsageBreakdownRow[] = [
+  { id: 'feat_api_calls', name: 'API Calls', groupId: 'grp_core', groupName: 'Core', totalUsage: 8200, unit: 'calls', totalCost: 41, currency: 'USD' },
+  { id: 'feat_storage', name: 'Storage', totalUsage: 42, unit: 'GB', totalCost: 12.5, currency: 'USD' },
+];
+
+<UsageBreakdown rows={rows} />
+```
+
+Rows without a `groupId` render in an "ungrouped" bucket. See [Ways to provide data](/docs/exportable-ui/overview#ways-to-provide-data) for SDK, API, backend, and static JSON options.
+
+## Map Flexprice API data
+
+```ts
+import { adaptUsageBreakdownRows } from '@flexprice/ui';
+
+const rows = adaptUsageBreakdownRows(analytics.items);
+```
+
+## See also
+
+<CardGroup cols={2}>
+  <Card icon="puzzle-piece" href="/docs/exportable-ui/usage-widgets/usage-widgets" title="Usage Widgets">
+    Overview of all four usage components.
+  </Card>
+  <Card icon="chart-simple" href="/docs/exportable-ui/usage-widgets/metric-cards" title="Metric Cards">
+    Grid of revenue, cost, margin, and custom usage metrics.
+  </Card>
+  <Card icon="chart-line" href="/docs/exportable-ui/usage-widgets/usage-trend-chart" title="Usage Trend Chart">
+    Line chart of usage over time, one series per feature.
+  </Card>
+</CardGroup>
