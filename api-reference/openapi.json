@@ -1250,65 +1250,6 @@
         "x-codegen-request-body-name": "request"
       }
     },
-    "/costs/analytics-v2": {
-      "post": {
-        "tags": [
-          "Costs"
-        ],
-        "summary": "Get combined revenue and cost analytics (V2)",
-        "description": "Use when you need the same revenue/cost/ROI analytics but computed from the costsheet usage-tracking pipeline (e.g. for consistency with usage-based cost data).",
-        "operationId": "getDetailedCostAnalyticsV2",
-        "requestBody": {
-          "description": "Combined analytics request (start_time/end_time optional - defaults to last 7 days)",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GetCostAnalyticsRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GetDetailedCostAnalyticsResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/errors.ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/errors.ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "ApiKeyAuth": []
-          }
-        ],
-        "x-codegen-request-body-name": "request"
-      }
-    },
     "/costs/search": {
       "post": {
         "tags": [
@@ -8906,7 +8847,7 @@
           "Subscriptions"
         ],
         "summary": "Add addon to subscription",
-        "description": "Use when adding an optional product or add-on to an existing subscription (e.g. extra storage or support tier).",
+        "description": "Deprecated: use POST /subscriptions/{id}/modify/execute with type \"addon\" and action \"add\", which also supports previewing the proration charge first.\nUse when adding an optional product or add-on to an existing subscription (e.g. extra storage or support tier).",
         "operationId": "addSubscriptionAddon",
         "requestBody": {
           "description": "Add Addon Request",
@@ -8951,6 +8892,7 @@
             }
           }
         },
+        "deprecated": true,
         "security": [
           {
             "ApiKeyAuth": []
@@ -8963,7 +8905,7 @@
           "Subscriptions"
         ],
         "summary": "Remove addon from subscription",
-        "description": "Use when removing an add-on from a subscription (e.g. downgrade or opt-out).",
+        "description": "Deprecated: use POST /subscriptions/{id}/modify/execute with type \"addon\" and action \"remove\", which also supports previewing the proration credit first.\nUse when removing an add-on from a subscription (e.g. downgrade or opt-out).",
         "operationId": "removeSubscriptionAddon",
         "requestBody": {
           "description": "Remove Addon Request",
@@ -9008,6 +8950,7 @@
             }
           }
         },
+        "deprecated": true,
         "security": [
           {
             "ApiKeyAuth": []
@@ -9835,7 +9778,7 @@
           "Subscriptions"
         ],
         "summary": "Execute a plan change (v2, swap in place)",
-        "description": "Change a subscription's plan in place. Subscription id, billing anchor and period bounds are preserved; line items are sliced and settled in one transaction.",
+        "description": "Change a subscription's plan in place. Subscription id, billing anchor and period bounds are preserved; line items are sliced and settled in one transaction.\n\nchange_at controls timing. Omitted or 'immediate' applies the change now. 'end_of_period' records a pending schedule that executes at the subscription's current period end: the response returns is_scheduled, schedule_id and scheduled_at instead of a completed change, and nothing is swapped or billed until the boundary.\n\nscheduled_at is resolved from the subscription's current period end at request time. If that period end is already in the past (a backdated start date, a resumed pause, or worker downtime can all leave a subscription behind), the change is due immediately and fires on the next billing scan rather than a period away \u2014 inspect scheduled_at to see this.\n\nOnly one plan change may be pending per subscription; request a second one and this returns 400. Cancel the existing schedule via POST /subscriptions/schedules/{schedule_id}/cancel first. Pending schedules are listable via GET /subscriptions/{id}/schedules.",
         "operationId": "executeSubscriptionPlanChangeV2",
         "parameters": [
           {
@@ -9871,7 +9814,7 @@
             }
           },
           "400": {
-            "description": "Invalid request, or a change this endpoint cannot make (interval, currency, hierarchy, phases, paused)",
+            "description": "Invalid request, a change this endpoint cannot make (interval, currency, hierarchy, phases, paused), a deferred change with proration, or a plan change already scheduled",
             "content": {
               "application/json": {
                 "schema": {
@@ -10226,7 +10169,7 @@
           "Subscriptions"
         ],
         "summary": "Execute subscription modification",
-        "description": "Execute a mid-cycle subscription modification (inheritance, quantity change, grouped invoicing, trial end, coupon, or tax).",
+        "description": "Execute a mid-cycle subscription modification (inheritance, quantity change, grouped invoicing, trial end, coupon, tax, or addon add/remove).",
         "operationId": "executeSubscriptionModify",
         "parameters": [
           {
@@ -10307,7 +10250,7 @@
           "Subscriptions"
         ],
         "summary": "Preview subscription modification",
-        "description": "Preview the impact of a mid-cycle subscription modification (inheritance, quantity change, grouped invoicing, trial end, coupon, or tax) without committing changes.",
+        "description": "Preview the impact of a mid-cycle subscription modification (inheritance, quantity change, grouped invoicing, trial end, coupon, tax, or addon add/remove) without committing changes.",
         "operationId": "previewSubscriptionModify",
         "parameters": [
           {
@@ -17789,6 +17732,9 @@
           "feature_type": {
             "$ref": "#/components/schemas/types.FeatureType"
           },
+          "grant_allocation_behavior": {
+            "$ref": "#/components/schemas/types.EntitlementGrantAllocationBehavior"
+          },
           "grant_duration_unit": {
             "$ref": "#/components/schemas/types.EntitlementGrantDurationUnit"
           },
@@ -19605,6 +19551,9 @@
           "feature_type": {
             "$ref": "#/components/schemas/types.FeatureType"
           },
+          "grant_allocation_behavior": {
+            "$ref": "#/components/schemas/types.EntitlementGrantAllocationBehavior"
+          },
           "grant_duration_unit": {
             "$ref": "#/components/schemas/types.EntitlementGrantDurationUnit"
           },
@@ -19842,6 +19791,9 @@
         ],
         "type": "object",
         "properties": {
+          "addon_params": {
+            "$ref": "#/components/schemas/SubModifyAddonParams"
+          },
           "checkout": {
             "$ref": "#/components/schemas/CheckoutParams"
           },
@@ -20908,6 +20860,9 @@
           "line_item_id": {
             "type": "string",
             "description": "price_id used to match the line item"
+          },
+          "subscription_line_item_id": {
+            "type": "string"
           }
         }
       },
@@ -22539,6 +22494,23 @@
           }
         }
       },
+      "SubModifyAddonParams": {
+        "required": [
+          "action"
+        ],
+        "type": "object",
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/SubscriptionModificationAction"
+          },
+          "add": {
+            "$ref": "#/components/schemas/AddAddonToSubscriptionRequest"
+          },
+          "remove": {
+            "$ref": "#/components/schemas/RemoveAddonRequest"
+          }
+        }
+      },
       "SubModifyCouponAction": {
         "type": "string",
         "enum": [
@@ -22854,6 +22826,9 @@
         ],
         "type": "object",
         "properties": {
+          "change_at": {
+            "$ref": "#/components/schemas/types.ScheduleType"
+          },
           "entity_policies": {
             "$ref": "#/components/schemas/SubscriptionChangeEntityPolicies"
           },
@@ -22896,11 +22871,22 @@
           "from_plan": {
             "$ref": "#/components/schemas/PlanSummary"
           },
+          "is_scheduled": {
+            "type": "boolean",
+            "description": "IsScheduled is true when the change was deferred to the period end instead\nof being applied immediately."
+          },
           "metadata": {
             "type": "object",
             "additionalProperties": {
               "type": "string"
             }
+          },
+          "schedule_id": {
+            "type": "string"
+          },
+          "scheduled_at": {
+            "type": "string",
+            "format": "date-time"
           },
           "subscription": {
             "$ref": "#/components/schemas/SubscriptionResponse"
@@ -23142,6 +23128,17 @@
           }
         }
       },
+      "SubscriptionModificationAction": {
+        "type": "string",
+        "enum": [
+          "add",
+          "remove"
+        ],
+        "x-enum-varnames": [
+          "SubscriptionModificationActionAdd",
+          "SubscriptionModificationActionRemove"
+        ]
+      },
       "SubscriptionModifyResponse": {
         "type": "object",
         "properties": {
@@ -23164,7 +23161,8 @@
           "grouped_invoicing",
           "trial_end",
           "coupon",
-          "tax"
+          "tax",
+          "addon"
         ],
         "x-enum-varnames": [
           "SubscriptionModifyTypeInheritance",
@@ -23172,7 +23170,8 @@
           "SubscriptionModifyTypeGroupedInvoicing",
           "SubscriptionModifyTypeTrialEnd",
           "SubscriptionModifyTypeCoupon",
-          "SubscriptionModifyTypeTax"
+          "SubscriptionModifyTypeTax",
+          "SubscriptionModifyTypeAddon"
         ]
       },
       "SubscriptionPhaseCreateRequest": {
@@ -24679,6 +24678,9 @@
           "config_value": {
             "type": "object",
             "additionalProperties": true
+          },
+          "grant_allocation_behavior": {
+            "$ref": "#/components/schemas/types.EntitlementGrantAllocationBehavior"
           },
           "grant_duration_unit": {
             "$ref": "#/components/schemas/types.EntitlementGrantDurationUnit"
@@ -28197,17 +28199,31 @@
         },
         "x-speakeasy-name-override": "EntitlementFilter"
       },
+      "types.EntitlementGrantAllocationBehavior": {
+        "type": "string",
+        "enum": [
+          "first_usage",
+          "unit_start"
+        ],
+        "x-enum-varnames": [
+          "EntitlementGrantAllocationBehaviorFirstUsage",
+          "EntitlementGrantAllocationBehaviorUnitStart"
+        ],
+        "x-speakeasy-name-override": "EntitlementGrantAllocationBehavior"
+      },
       "types.EntitlementGrantDurationUnit": {
         "type": "string",
         "enum": [
           "hour",
           "day",
-          "week"
+          "week",
+          "subscription_period"
         ],
         "x-enum-varnames": [
           "EntitlementGrantDurationUnitHour",
           "EntitlementGrantDurationUnitDay",
-          "EntitlementGrantDurationUnitWeek"
+          "EntitlementGrantDurationUnitWeek",
+          "EntitlementGrantDurationUnitSubscriptionPeriod"
         ],
         "x-speakeasy-name-override": "EntitlementGrantDurationUnit"
       },
@@ -28614,7 +28630,8 @@
           "item",
           "item_price",
           "price",
-          "invoice_line_item"
+          "invoice_line_item",
+          "subscription_line_item"
         ],
         "x-enum-varnames": [
           "IntegrationEntityTypeCustomer",
@@ -28627,7 +28644,8 @@
           "IntegrationEntityTypeItem",
           "IntegrationEntityTypeItemPrice",
           "IntegrationEntityTypePrice",
-          "IntegrationEntityTypeInvoiceLineItem"
+          "IntegrationEntityTypeInvoiceLineItem",
+          "IntegrationEntityTypeSubscriptionLineItem"
         ],
         "x-speakeasy-name-override": "IntegrationEntityType"
       },
@@ -28816,6 +28834,9 @@
         "properties": {
           "normalize_fixed_to": {
             "$ref": "#/components/schemas/types.BillingPeriod"
+          },
+          "service_period_custom_fields": {
+            "$ref": "#/components/schemas/types.ServicePeriodCustomFields"
           }
         },
         "x-speakeasy-name-override": "InvoiceSyncSettings"
@@ -29659,6 +29680,18 @@
           "SecretTypeIntegration"
         ],
         "x-speakeasy-name-override": "SecretType"
+      },
+      "types.ServicePeriodCustomFields": {
+        "type": "object",
+        "properties": {
+          "end_field_id": {
+            "type": "string"
+          },
+          "start_field_id": {
+            "type": "string"
+          }
+        },
+        "x-speakeasy-name-override": "ServicePeriodCustomFields"
       },
       "types.SortCondition": {
         "type": "object",
@@ -30935,6 +30968,9 @@
           "email": {
             "type": "string"
           },
+          "environment_id": {
+            "type": "string"
+          },
           "external_id": {
             "type": "string"
           },
@@ -31086,6 +31122,9 @@
             "type": "string",
             "format": "date-time"
           },
+          "environment_id": {
+            "type": "string"
+          },
           "finalized_at": {
             "type": "string",
             "format": "date-time"
@@ -31185,7 +31224,7 @@
             "$ref": "#/components/schemas/types.WebhookEventName"
           },
           "invoice": {
-            "$ref": "#/components/schemas/webhookDto.Invoice"
+            "$ref": "#/components/schemas/InvoiceResponse"
           }
         }
       },
