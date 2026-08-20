@@ -1,0 +1,228 @@
+---
+title: 'Manage Roles'
+description: 'Manage the roles assigned to a user account in your organization'
+---
+
+Roles decide what a user can read and write in Flexprice. A `super_admin` manages the roles of any other user in the same organization, which is how you promote a member to write access or downgrade them to read-only. Role changes apply to user accounts only. 
+
+<Info>
+Service account roles are fixed when the account is created.
+</Info>
+
+## Roles for User Accounts
+
+| Role | Grants |
+|------|--------|
+| `super_admin` | Every action on every resource |
+| `all_writer` | Read and write on every resource |
+| `all_reader` | Read on every resource |
+
+<Note>The `event_ingestor` and `event_reader` roles are reserved for service accounts and cannot be assigned to a user account.</Note>
+
+## Who Can Change Roles
+
+Two rules govern every role change:
+
+- Only a `super_admin` can change another user's roles.
+- Nobody can change their own roles, including a `super_admin`.
+
+## Expire API Keys First
+
+An API key copies its owner's roles at the moment it is created and never re-reads them. If a user's roles changed while their keys stayed active, those keys would keep operating under the old roles.
+
+Flexprice rejects the role change instead of silently rewriting the keys. Expire the user's active API keys, then change the role.
+
+<Warning>
+**Active API keys block role changes**
+
+The request returns `400` while the target user holds any active API key in any environment. The response lists the keys you need to expire.
+</Warning>
+
+## Updating Roles
+
+Send the complete role set you want the user to end up with. The list replaces their existing roles rather than adding to them.
+
+<CodeGroup>
+```bash cURL
+curl --request PUT \
+  --url https://api.cloud.flexprice.io/v1/users/{id}/roles \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: <api-key>' \
+  --data '{
+  "roles": ["all_writer"]
+}'
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.cloud.flexprice.io/v1/users/usr_abc123/roles', {
+  method: 'PUT',
+  headers: {
+    'Content-Type': 'application/json',
+    'x-api-key': '<api-key>'
+  },
+  body: JSON.stringify({
+    roles: ['all_writer']
+  })
+});
+```
+
+```python Python
+import requests
+
+response = requests.put(
+    'https://api.cloud.flexprice.io/v1/users/usr_abc123/roles',
+    headers={
+        'Content-Type': 'application/json',
+        'x-api-key': '<api-key>'
+    },
+    json={
+        'roles': ['all_writer']
+    }
+)
+```
+</CodeGroup>
+
+### Request Fields
+
+<ParamField path="roles" type="array" required>
+  The complete set of roles the user should hold. Must contain at least one role.
+
+  Available roles for user accounts:
+  - `super_admin` - Every action on every resource
+  - `all_writer` - Read and write on every resource
+  - `all_reader` - Read on every resource
+</ParamField>
+
+### Response
+
+```json
+{
+  "id": "usr_abc123",
+  "email": "teammate@example.com",
+  "type": "user",
+  "roles": ["all_writer"],
+  "tenant": {
+    "id": "tenant_xyz789",
+    "name": "Acme Inc",
+    "status": "published",
+    "created_at": "2025-01-14T10:00:00Z",
+    "updated_at": "2025-01-14T10:00:00Z"
+  }
+}
+```
+
+The user's new roles take effect on their next request. They do not need to sign out and back in.
+
+## Error Responses
+
+### Target Has Active API Keys
+
+Status `400`, code `validation_error`. Delete the listed keys and retry.
+
+```json
+{
+  "code": "validation_error",
+  "message": "Expire this user's existing API keys before changing their role",
+  "http_status_code": 400,
+  "details": {
+    "id": "usr_abc123",
+    "active_api_key_count": 2,
+    "active_api_keys": {
+      "env_prod123": {
+        "env_name": "Production",
+        "api_keys": [
+          { "id": "sec_aaa111", "key_name": "billing-service-key" }
+        ]
+      },
+      "env_stg456": {
+        "env_name": "Staging",
+        "api_keys": [
+          { "id": "sec_bbb222", "key_name": "ci-key" }
+        ]
+      }
+    }
+  }
+}
+```
+
+The `active_api_keys` object is keyed by environment ID. Each entry carries the environment's display name and the keys held in it.
+
+### Caller Is Not a Super Admin
+
+Status `403`, code `permission_denied`.
+
+```json
+{
+  "code": "permission_denied",
+  "message": "Ask a tenant super_admin to update this user's roles",
+  "http_status_code": 403
+}
+```
+
+### Changing Your Own Roles
+
+Status `403`, code `permission_denied`. Ask another `super_admin` to make the change.
+
+```json
+{
+  "code": "permission_denied",
+  "message": "Ask another super_admin to change your roles",
+  "http_status_code": 403
+}
+```
+
+### Target Is a Service Account
+
+Status `400`, code `validation_error`.
+
+```json
+{
+  "code": "validation_error",
+  "message": "Service account roles are fixed at creation and cannot be changed",
+  "http_status_code": 400
+}
+```
+
+To change what a service account can do, create a replacement service account with the role set you want and move your integration to a key from the new account. See [Creating a Service Account](/docs/rbac/service-accounts/create).
+
+### Role Not Valid for a User Account
+
+Status `400`, code `validation_error`. `event_ingestor` and `event_reader` belong to service accounts.
+
+```json
+{
+  "code": "validation_error",
+  "message": "Role 'event_ingestor' cannot be assigned to a 'user' account",
+  "http_status_code": 400
+}
+```
+
+## Best Practices
+
+<Check>
+**Run automation on service accounts, not user accounts**
+Give scripts, integrations, and scheduled jobs their own service account and use its API key. A workflow tied to user's account stops working when their roles change or their account no longer exists.
+</Check>
+
+<Check>
+**Plan the key rotation before changing a role**
+
+Changing a role expires nothing on its own, but you must delete the user's active keys to proceed. Know which services use those keys before you start.
+</Check>
+
+<Check>
+**Grant `all_reader` for review-only access**
+
+Members who only need to inspect billing data do not need write access.
+</Check>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Available Roles" icon="list" href="/docs/rbac/overview">
+    See all roles and what they permit →
+  </Card>
+  <Card title="Manage API Keys" icon="key" href="/docs/rbac/api">
+    Create and rotate API keys →
+  </Card>
+</CardGroup>

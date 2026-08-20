@@ -33,8 +33,10 @@ When you create a service account, you assign it one or more roles. Each role gr
 
 Your standard user accounts for people. These accounts:
 - Can log in to the dashboard
-- Have full access to all Flexprice resources
-- API keys from user accounts have full access
+- Hold one of the organization-wide roles: `super_admin`, `all_writer`, or `all_reader`
+- API keys from user accounts inherit the roles the user held when the key was created
+
+A `super_admin` can change another user's roles at any time. See [Managing Roles](/docs/rbac/manage-roles).
 
 ### Service Accounts
 
@@ -43,8 +45,23 @@ Automated accounts for your services and integrations. These accounts:
 - Must have at least one role assigned
 - Access Flexprice only through API keys
 - API keys from service accounts have restricted access based on assigned roles
+- Have fixed roles: a service account's roles cannot be changed after creation
+
+<Check>
+**Run automation on service accounts**
+
+Give scripts, integrations, and scheduled jobs their own service account and use its API key. A workflow tied to user's account stops working when their roles change or their account no longer exists.
+</Check>
 
 ## Available Roles
+
+| Role | Account Type | Grants |
+|------|--------------|--------|
+| `super_admin` | User and service account | Every action on every resource |
+| `all_writer` | User account | Read and write on every resource |
+| `all_reader` | User account | Read on every resource |
+| `event_ingestor` | Service account | Send events |
+| `event_reader` | Service account | Read events |
 
 ### super_admin
 
@@ -54,13 +71,38 @@ For services that need unrestricted access to every Flexprice resource.
 - Perform any action on any resource (read, write, delete)
 
 **Cannot do:**
-- Nothing — this role grants `*` permissions on `*` resources
+- Nothing. This role grants `*` permissions on `*` resources
 
 **Use for:** Internal automation, migrations, or admin tooling that needs the same access as a user account. Treat the API key like a root credential.
 
 <Warning>
 Only assign `super_admin` when no narrower role works. Rotate keys frequently and store them in a secret manager.
 </Warning>
+
+### all_writer
+
+For teammates who manage billing configuration day to day.
+
+**Can do:**
+- Read every resource
+- Write to every resource
+
+**Cannot do:**
+- Change any user's roles, which requires `super_admin`
+
+**Use for:** People who create plans, manage customers, and issue invoices.
+
+### all_reader
+
+For teammates who review billing data without changing it.
+
+**Can do:**
+- Read every resource
+
+**Cannot do:**
+- Create, update, or delete anything
+
+**Use for:** Finance reviewers, support staff checking a customer's usage, read-only dashboards backed by a person's account.
 
 ### event_ingestor
 
@@ -150,9 +192,9 @@ When a service account tries to access a resource it doesn't have permission for
 ```
 
 **What this means**: The API key doesn't have the required permission. You need to:
-1. Check which role the service account has
+1. Check which role the account behind the key has
 2. Verify that role includes the permission you need
-3. If needed, assign a different role to the service account
+3. For a service account, create a replacement account with the role set you need, because service account roles are fixed at creation. For a user account, ask a `super_admin` to [update the user's roles](/docs/rbac/manage-roles)
 4. Generate a new API key (permissions are set when the key is created)
 
 ## Getting Started
@@ -271,6 +313,9 @@ Use environment variables or secret management systems. Never commit API keys to
 <CardGroup cols={2}>
   <Card title="Create Service Account" icon="user-plus" href="/docs/rbac/service-accounts/create">
     Learn how to create service accounts →
+  </Card>
+  <Card title="Managing Roles" icon="user-shield" href="/docs/rbac/manage-roles">
+    Change the roles of a user in your organization →
   </Card>
   <Card title="Manage API Keys" icon="key" href="/docs/rbac/api">
     Learn how to generate and manage API keys →
