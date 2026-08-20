@@ -75,11 +75,15 @@ You can enable auto top-up when creating a new wallet:
     Configure the following settings:
     - **Threshold**: Enter the minimum ongoing balance amount that triggers auto top-up
     - **Top-Up Amount**: Enter the number of credits to add when triggered
+    - **Cooloff** (optional): Turn on **Wait before next auto top-up**, then set a duration and unit so the wallet is not auto-recharged again until that window ends
     - **Invoicing Mode**: Toggle the switch to choose between:
       - **Direct Credit**: Credits added immediately
       - **Invoiced**: Invoice created, credits added after payment
     <Frame>
       ![Configure Auto Top-Up](/public/images/docs/Wallet/auto-top-up/configure.png)
+    </Frame>
+    <Frame>
+      ![Cooloff duration and unit](/public/images/docs/Wallet/auto-top-up/cooldown.png)
     </Frame>
   </Step>
   
@@ -107,6 +111,7 @@ You can modify auto top-up configuration for existing wallets:
     Configure the following settings:
     - **Threshold**: Enter the minimum ongoing balance amount that triggers auto top-up
     - **Top-Up Amount**: Enter the number of credits to add when triggered
+    - **Cooloff** (optional): Duration and unit to wait after a successful auto top-up before another may run
     - **Invoicing Mode**: Toggle the switch to choose between:
       - **Direct Credit**: Credits added immediately
       - **Invoiced**: Invoice created, credits added after payment
@@ -138,6 +143,38 @@ Determines how credits are added:
 
 - **Direct Credit** (`invoicing: false`): Credits are immediately added to the wallet
 - **Invoiced** (`invoicing: true`): An invoice is created, and credits are added after payment successful
+
+### Cooloff
+
+Optional wait after a **successful** auto top-up before another auto top-up may run. Evaluations during the window are skipped (not queued). Manual credit, debit, and top-up are never blocked by cooloff.
+
+Without cooloff, **direct** mode can top up repeatedly in the same evaluation until ongoing balance is above the threshold. With cooloff set, the wallet gets at most one successful auto top-up per window.
+
+There is no timer when the window ends. The next top-up waits for a normal re-evaluation (usage, debit, or payment complete).
+
+Set `cooldown` on the wallet's `auto_topup` object:
+
+```json
+{
+  "enabled": true,
+  "threshold": "50",
+  "amount": "100",
+  "invoicing": false,
+  "cooldown": {
+    "value": 1,
+    "unit": "day"
+  }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `cooldown.value` | Positive integer |
+| `cooldown.unit` | `second`, `minute`, `hour`, or `day` |
+
+Omit `cooldown` to leave it unset. On update, omit or send `null` to keep the current value; send `{ "value": 0, "unit": "second" }` to clear cooloff.
+
+A pending auto top-up transaction also blocks another auto top-up until it completes or is voided. In invoiced mode, an unpaid `WALLET_AUTO_TOPUP` invoice does the same.
 
 ## Auto Top-Up Workflow
 
@@ -222,6 +259,8 @@ When `invoicing: true` is configured, an invoice is created and credits are adde
 
 💡 **Match Top-Up Amount to Usage**: Set top-up amounts that align with typical customer usage. Too small may trigger frequently; too large may tie up unnecessary funds.
 
+💡 **Use Cooloff for Direct Mode**: If the top-up amount is smaller than the gap to threshold, turn cooloff on so direct mode does not recharge in a tight loop.
+
 💡 **Consider Invoicing Mode**: Use direct top-up for trusted customers with reliable payment methods. Use invoiced mode when you need payment confirmation before adding credits.
 
 💡 **Monitor Transaction History**: Regularly review auto top-up transactions to understand patterns and optimize configuration.
@@ -236,10 +275,14 @@ When `invoicing: true` is configured, an invoice is created and credits are adde
 **Possible Causes:**
 - Auto top-up is disabled
 - Ongoing balance is above threshold
+- Cooloff is still active after the last successful auto top-up
+- A pending auto top-up transaction (or unpaid `WALLET_AUTO_TOPUP` invoice) is blocking the wallet
 
 **Solutions:**
 - Verify auto top-up is enabled in wallet settings
 - Check real-time balance vs. threshold value
+- Wait for cooloff to end, then trigger a new evaluation (usage, debit, or payment)
+- Complete, pay, or void the in-flight auto top-up before expecting another
 
 ### Credits Not Added (Invoiced Mode)
 
