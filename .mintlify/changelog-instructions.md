@@ -110,7 +110,7 @@ New entries go immediately after the closing `---` of the frontmatter, before al
   <br />
 
   <Frame>
-    <img src="/public/images/docs/Category/screenshot.png" alt="Descriptive alt text" style={{ borderRadius: '0.5rem' }} />
+    <img src="/images/docs/Category/screenshot.png" alt="Descriptive alt text" style={{ borderRadius: '0.5rem' }} />
   </Frame>
 
   <br />
@@ -324,11 +324,13 @@ Everything inside `<Update>` uses **2-space indentation**. Accordion bullets use
 
 ### Images
 
-Only include a `<Frame>` if a relevant screenshot actually exists. Format:
+Only include a `<Frame>` if a relevant screenshot actually exists — search the `images/docs/` tree in `flexprice-docs` for a file matching the feature or category before deciding. Never fabricate a path or guess a filename; if nothing matches, omit the `<Frame>` entirely.
+
+Mintlify serves a file at exactly its path relative to the repo root — there is no folder-stripping. The `src` must match the real path of the file you found, character for character (including case and spacing). Format (assuming the file lives at `images/docs/Category/filename.png`):
 
 ```mdx
   <Frame>
-    <img src="/public/images/docs/Category/filename.png" alt="Descriptive alt text" style={{ borderRadius: '0.5rem' }} />
+    <img src="/images/docs/Category/filename.png" alt="Descriptive alt text" style={{ borderRadius: '0.5rem' }} />
   </Frame>
 ```
 
@@ -344,6 +346,8 @@ Two types:
 ```
 
 Always `horizontal={true}` (JSX boolean). Title format: `"Feature name - Documentation"` or `"Endpoint name - API Reference"`.
+
+Before using an `href`, verify the target actually exists — for a Documentation card, confirm the page exists under `docs/` in `flexprice-docs`; for an API Reference card, confirm the endpoint exists in the API reference pages under `api-reference/`. Never guess a path. If no matching page or endpoint can be found, omit the `<Card>` rather than link to something that may not resolve.
 
 ---
 

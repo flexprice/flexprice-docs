@@ -35,7 +35,7 @@ flexprice-docs/
 │   ├── webhook/             ← Webhook reference
 │   ├── event-ingestion/     ← Event & metering docs
 │   └── ...
-├── public/images/docs/      ← Screenshots referenced from docs
+├── images/docs/             ← Screenshots referenced from docs
 ├── docs.json                ← Navigation config (Mintlify v2)
 └── .claude/skills/          ← This skills directory
 ```
@@ -190,7 +190,7 @@ Use `horizontal={true}` for inline card links at the bottom of a page.
 
 ```mdx
 <Frame>
-  ![Alt text](/public/images/docs/Section/Page/image.png)
+  ![Alt text](/images/docs/section/page/image.png)
 </Frame>
 ```
 
@@ -336,5 +336,5 @@ The `.claude/launch.json` in this repo is configured to use this exact path. Use
 
 ## Known Pre-Existing Issues (Do Not Fix Unless Asked)
 
-- **81 broken image links** across 29 files — all missing `/public/images/` screenshot assets. These exist in `main` and are not blocking.
+- **81 broken image links** across 29 files — all missing `/images/` screenshot assets. These exist in `main` and are not blocking.
 - **`components/Callout.tsx` react import warning** — flagged by `mint validate`, pre-existing, not fixable from docs content.
