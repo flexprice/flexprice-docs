@@ -47,6 +47,8 @@ The changelog label date is the **end date** of the range (e.g., `April 6th 2026
 
 **IMPORTANT**: Use `git -C <path>` to run git from outside the repo directory. Do NOT `cd` into repos — shell state does not persist between commands.
 
+Keep both code repos on their current branches with all local changes intact. Fetch updates `upstream/main` without changing the checked-out files, use that ref for commit queries and source-code reads.
+
 ```bash
 # Backend — use upstream/main (the canonical source of truth, NOT origin/main which is the fork)
 git -C ../flexprice fetch upstream && \
@@ -97,6 +99,8 @@ A typical entry has **3–6 major features** and then the accordion section. Onl
 ### 5. Deep-Dive Into Major Features
 
 For each major feature, read source code to understand what was built — commit messages alone are not enough.
+
+For backend and frontend source, list files with `git -C <repo> ls-tree -r --name-only upstream/main` and read them with `git -C <repo> show upstream/main:<path>`. Here, `<path>` is relative to the code repo. Read from this fetched ref, not the current working tree, which may contain older code or unfinished changes.
 
 ```
 ../flexprice/internal/api/         → HTTP handlers, request/response structs
