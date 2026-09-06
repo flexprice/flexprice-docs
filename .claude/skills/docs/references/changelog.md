@@ -37,7 +37,7 @@ This is the complete reference for writing Flexprice changelog entries. It conta
   <br />
 
   <Frame>
-    <img src="/public/images/docs/Category/screenshot.png" alt="Descriptive alt text" style={{ borderRadius: '0.5rem' }} />
+    <img src="/images/docs/Category/screenshot.png" alt="Descriptive alt text" style={{ borderRadius: '0.5rem' }} />
   </Frame>
 
   <br />
@@ -140,16 +140,16 @@ Place `<br />` on its own line (with 2-space indentation inside the Update block
 
 ### Images in `<Frame>`
 
-Only include if a relevant screenshot exists in `flexprice-docs/public/images/docs/`.
+Only include if a relevant screenshot exists in `flexprice-docs/images/docs/`.
 
 ```mdx
   <Frame>
-    <img src="/public/images/docs/Groups/create-feature-with-grouping.png" alt="Create feature with group" style={{ borderRadius: '0.5rem' }} />
+    <img src="/images/docs/groups/create-feature-with-grouping.png" alt="Create feature with group" style={{ borderRadius: '0.5rem' }} />
   </Frame>
 ```
 
 Notes:
-- Path is relative to the docs root: `/public/images/docs/...`
+- Path is relative to the docs root: `/images/docs/...`
 - Always include `style={{ borderRadius: '0.5rem' }}` (JSX double-brace syntax)
 - Always include descriptive `alt` text
 - `width` and `height` attributes are optional
