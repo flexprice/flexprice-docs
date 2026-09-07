@@ -3,7 +3,7 @@ title: "Custom currency"
 description: "Define your own currencies, price your catalogue in them, and let Flexprice settle invoices in fiat"
 ---
 
-Custom currency lets you define currencies of your own, such as credits or tokens, and use them across your catalogue. You configure prices and send usage in your currency, and Flexprice issues the invoice in a fiat settlement currency.
+Custom currency lets you price your catalogue in a unit of your own, such as credits or tokens. You configure prices and send usage in your currency, and Flexprice issues the invoice in a fiat settlement currency.
 
 **Benefits:**
 
@@ -23,7 +23,7 @@ Define the currencies you need for your environment in the `custom_currency_conf
 {
   "custom_currencies": {
     "fpc": {
-      "name": "Fineprint Credits",
+      "name": "FinePrint Credits",
       "symbol": "FPC",
       "fiat_conversion_factors": { "usd": "0.10", "inr": "8.50" }
     }
@@ -59,12 +59,16 @@ Invoices are denominated in the `default_fiat_currency` you configure. The amoun
 ```json
 {
   "currency": "usd",
-  "subtotal": "15.00",
-  "amount_due": "15.00",
+  "subtotal": "15",
+  "total": "15",
+  "amount_due": "15",
   "custom_currency": {
     "code": "fpc",
-    "rate": "0.10",
+    "rate": "0.1",
     "subtotal": "150",
+    "total_discount": "0",
+    "total_tax": "0",
+    "total_prepaid_credits_applied": "0",
     "total": "150",
     "amount_due": "150"
   }
@@ -75,8 +79,8 @@ The conversion factor is recorded when the invoice is finalized. Changing a fact
 
 ## Use cases
 
-**Operating entirely in your own unit.** If you already track consumption internally in credits, configure that as your currency and send usage in it. You maintain no exchange logic and convert nothing before sending it to Flexprice. Pricing, metering, entitlements, and reporting all stay in the unit you already use, and Flexprice handles conversion and settlement.
+If you already track consumption internally in credits, configure that as your currency and send usage in it directly, no exchange logic on your side, no conversion before sending it to Flexprice. Pricing, metering, entitlements, and reporting all stay in the unit you already use. Flexprice handles conversion and settlement.
 
-**Selling credits to customers.** Publish prices in credits so customers see one unit across your catalogue, while invoices and payments settle in the currency you collect and report in.
+You can also use it to sell credits to customers: publish prices in credits so customers see one unit across your catalogue, while invoices and payments settle in the currency you collect and report in.
 
 <Card icon="gear" horizontal={true} href="/docs/settings/settings" title="Settings" />
