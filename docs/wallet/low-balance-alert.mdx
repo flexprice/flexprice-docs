@@ -31,6 +31,18 @@ Each level can be configured with:
 
 Alerts are turned on or off for a wallet using **Enable Alerts** (`alert_enabled` in the API).
 
+## Threshold Type: Absolute or Percentage
+
+Each threshold level can be set as an **Absolute** amount in the wallet's currency, or as a **Percentage**. This choice applies to all three levels together; Critical, Warning, and Info cannot mix threshold types.
+
+A percentage threshold compares against credits granted during the customer's current billing period. If the customer has no active subscription, Flexprice uses the wallet's total lifetime credits granted instead.
+
+Select **Absolute** or **Percentage** above the Critical, Warning, and Info cards. Switching between the two keeps both sets of values, so you can enter Percentage thresholds, switch back to check your Absolute thresholds, and switch again without losing either set. Only the active type is saved when you click **Save Changes**.
+
+<Warning>
+  Percentage thresholds apply only to ongoing balance alerts, the real-time balance that accounts for current usage (see [Auto Top-Up](/docs/wallet/auto-top-up) for how ongoing balance is calculated). If your alert also needs to evaluate the wallet's raw credit balance, use Absolute: that evaluation does not run while Percentage is selected.
+</Warning>
+
 ## Configuring Wallet Sentinel Alerts
 
 <Steps>
@@ -56,7 +68,8 @@ Alerts are turned on or off for a wallet using **Enable Alerts** (`alert_enabled
   </Step>
 
   <Step title="Configure Thresholds">
-    - Set **Critical**, **Warning**, and **Info** thresholds. For each level set **Threshold Value** and **Condition** (e.g. **Below** — alert when balance is below the threshold).
+    - Choose **Absolute** or **Percentage** as the threshold type.
+    - Set **Critical**, **Warning**, and **Info** thresholds. For each level set **Threshold Value** and **Condition** (e.g. **Below**, alert when balance is below the threshold).
     - Use **Remove** to drop a level you don't need. 
     - Click **Save Changes** to apply.
     <Frame>
