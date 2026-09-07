@@ -1,0 +1,86 @@
+---
+title: "Custom currency"
+description: "Define your own currencies, price your catalogue in them, and let Flexprice settle invoices in fiat"
+---
+
+Custom currency lets you price your catalogue in a unit of your own, such as credits or tokens. You configure prices and send usage in your currency, and Flexprice issues the invoice in a fiat settlement currency.
+
+**Benefits:**
+
+- **No conversion logic on your side**: price, meter, and report in your own unit. Flexprice converts once, at invoicing.
+- **Unchanged settlement**: invoices are denominated in fiat, so payment providers, accounting exports, and ledger integrations are unaffected.
+- **Defined once, used everywhere**: a currency is configured in one place and available to **prices**, **subscriptions**, **wallets**, **addons**, and **coupons**.
+
+<Note>
+  Custom currency and [pricing units](/docs/product-catalogue/custom-pricing/pricing-unit) address different problems. A pricing unit applies to a single price and is converted when that price is created. A custom currency is defined once and applies to every entity created in it, including subscriptions and wallets.
+</Note>
+
+## Configure
+
+Define the currencies you need for your environment in the `custom_currency_config` setting. See [Settings](/docs/settings/settings#custom-currency-configuration) for the full schema and validation rules.
+
+```json
+{
+  "custom_currencies": {
+    "fpc": {
+      "name": "FinePrint Credits",
+      "symbol": "FPC",
+      "fiat_conversion_factors": { "usd": "0.10", "inr": "8.50" }
+    }
+  },
+  "default_fiat_currency": "usd"
+}
+```
+
+## Conversion factors
+
+A conversion factor states how much fiat **one unit** of your currency is worth.
+
+```text
+fiat amount = custom amount × conversion factor
+```
+
+With `"usd": "0.10"`, one credit is worth \$0.10, so 150 credits invoice as \$15.00.
+
+## What to make sure
+
+<Check>
+  Give every custom currency a factor for the same fiat currencies. If one currency defines `inr` and another does not, the configuration is rejected.
+</Check>
+
+- **Currency codes are immutable.** Prices, subscriptions, and wallets store the code as their currency. Supplying a different code adds a currency rather than renaming the existing one.
+- **A subscription bills in one currency.** A plan can carry charges in both a custom currency and fiat. A subscription bills only the charges matching its own currency.
+- **Names and symbols are safe to change.** They are read at display time and are not stored on any entity.
+
+## Invoicing
+
+Invoices are denominated in the `default_fiat_currency` you configure. The amounts in your currency are retained on the invoice and on each line item, so both are available on the API response and in the dashboard.
+
+```json
+{
+  "currency": "usd",
+  "subtotal": "15",
+  "total": "15",
+  "amount_due": "15",
+  "custom_currency": {
+    "code": "fpc",
+    "rate": "0.1",
+    "subtotal": "150",
+    "total_discount": "0",
+    "total_tax": "0",
+    "total_prepaid_credits_applied": "0",
+    "total": "150",
+    "amount_due": "150"
+  }
+}
+```
+
+The conversion factor is recorded when the invoice is finalized. Changing a factor afterwards does not affect invoices that are already finalized.
+
+## Use cases
+
+If you already track consumption internally in credits, configure that as your currency and send usage in it directly, no exchange logic on your side, no conversion before sending it to Flexprice. Pricing, metering, entitlements, and reporting all stay in the unit you already use. Flexprice handles conversion and settlement.
+
+You can also use it to sell credits to customers: publish prices in credits so customers see one unit across your catalogue, while invoices and payments settle in the currency you collect and report in.
+
+<Card icon="gear" horizontal={true} href="/docs/settings/settings" title="Settings" />

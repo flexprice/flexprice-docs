@@ -21,6 +21,7 @@ Flexprice supports the following setting keys:
 - **Invoice Configuration** (`invoice_config`) — Controls invoice number generation and due date calculation
 - **Wallet Balance Alert Configuration** (`wallet_balance_alert_config`) —  Wallet balance alert thresholds configurations per tenant per environment
 - **Bonus Credits Topup Configuration** (`bonus_credits_topup_config`) — Slab-based bonus credit rules applied automatically to purchased wallet top-ups
+- **Custom Currency Configuration** (`custom_currency_config`): currencies of your own that the catalogue can be priced in, and the fiat currency invoices are denominated in
 
 ---
 
@@ -246,6 +247,73 @@ See [Top-Up Wallet](/docs/wallet/top-up#bonus-credits-on-top-up) for how slabs r
 - **New settings:** `enabled` required, boolean. If `enabled` is `true`, `slabs` required, non-empty.
 - **Slab constraints:** `operator` must be `gte`; `threshold` ≥ 0; `bonus.type` one of `flat`, `percentage`; `bonus.value` ≥ 0; `expiration_duration` and `expiration_duration_unit` must both be set or both omitted; slabs must be sorted strictly descending by `threshold`.
 - **Updates:** Partial updates allowed; only provided fields validated; omitted fields unchanged.
+
+## Custom Currency Configuration
+
+**Key:** `custom_currency_config`
+
+Defines currencies of your own, such as credits, and the fiat currency invoices are denominated in. Prices, subscriptions, wallets, addons, and coupons can then be created in a configured currency, or in any of the fiat currencies listed in its conversion factors.
+
+### Schema
+
+```json
+{
+  "custom_currencies": {
+    "<code>": {
+      "name": string,
+      "symbol": string,
+      "fiat_conversion_factors": { "<fiat code>": string }
+    }
+  },
+  "default_fiat_currency": string
+}
+```
+
+- **`custom_currencies`**: Optional. Map keyed by currency code. When empty, only Flexprice's supported fiat currencies are accepted, therefore a custom code must be configured here before anything can be created in it.
+  - **`name`**: Required. Display name, for example `FinePrint Credits`.
+  - **`symbol`**: Required. Shown wherever an amount in this currency is displayed.
+    - **`fiat_conversion_factors`**: Required, at least one entry. Decimal string > 0 per fiat currency. The factor is how much fiat one unit of this currency is worth, so `"usd": "0.10"` means one unit is \$0.10.
+- **`default_fiat_currency`**: Required when `custom_currencies` is non-empty. The currency every invoice is issued in.
+
+### Example
+
+```json
+{
+  "custom_currencies": {
+    "fpc": {
+      "name": "FinePrint Credits",
+      "symbol": "FPC",
+      "fiat_conversion_factors": { "usd": "0.10", "inr": "8.50" }
+    }
+  },
+  "default_fiat_currency": "usd"
+}
+```
+
+### Default Values
+
+When creating a new setting via API, defaults are:
+
+```json
+{
+  "custom_currencies": {},
+  "default_fiat_currency": ""
+}
+```
+
+### What Happens When Configured
+
+- **Currencies are restricted**: Creating a price, subscription, wallet, addon, or coupon in a currency that is neither a configured code nor one of the mapped fiat currencies is rejected. The error names both sets.
+- **Invoices are issued in fiat**: Every invoice uses `default_fiat_currency`, with the pre-conversion amounts kept on the invoice and its line items in a `custom_currency` object.
+- **The rate is frozen at finalization**: Editing a factor afterwards does not change an invoice that is already finalized.
+
+### Validation
+
+- **Factors:** Every factor must be a positive decimal. Codes are case-insensitive and stored lowercase.
+- **Default currency:** Required when `custom_currencies` is non-empty, and cannot itself be a custom currency code. Every custom currency must define a factor for it.
+- **Matching fiat currencies:** Every custom currency must define factors for the same fiat currencies. If one defines `inr` and another does not, the update is rejected.
+
+---
 
 ## API Endpoints
 
