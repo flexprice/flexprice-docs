@@ -1,7 +1,7 @@
 ---
 title: "Troubleshoot Failed or Missing Data Exports in Flexprice"
 sidebarTitle: "Troubleshooting"
-description: "Fix scheduled export tasks that do not run, files that never reach the S3 bucket, export timeouts, No Data Found results and invalid AWS credential errors"
+description: "Fix scheduled export tasks that do not run, files that never reach the S3 bucket, export timeouts, header-only CSV files and invalid AWS credential errors"
 ---
 
 Most export failures come from one of four causes: the task is disabled, the destination settings do not match the bucket, the credentials no longer work, or the time window is too large. The Runs tab on the task shows which one applies. Each section below starts from the symptom and ends with the fix.
@@ -46,7 +46,7 @@ If the run shows as completed, the file was written. Use the **Download** button
 - A very high-volume entity type, usually `events`, at a daily interval
 - Slow uploads to the destination
 
-Any run that exceeds 15 minutes fails with a timeout.
+Any run that exceeds 60 minutes fails with a timeout.
 
 **Fix**
 
@@ -71,9 +71,9 @@ Any run that exceeds 15 minutes fails with a timeout.
 3. For temporary credentials, generate a new session token and update the connection. Permanent IAM user keys avoid this.
 4. Confirm the IAM user or role still exists and still has the export policy attached.
 
-## Why does a run report No Data Found?
+## Why does the exported file contain only a header row?
 
-There were no records of that entity type inside the run's time window. Check the window on the run record against when the data was created, and re-run with a custom time range if it was outside.
+There were no records of that entity type inside the run's time window. Flexprice still writes the CSV with its header row and marks the run as completed, so downstream loaders see a stable schema. Check the window on the run record against when the data was created, and re-run with a custom time range if it was outside.
 
 ## Recommendations
 
@@ -87,7 +87,7 @@ Run a manual export before relying on the schedule. It surfaces connection, perm
 <Check>
 **Match the interval to the volume**
 
-Use `hourly` for events and other high-volume data, and `daily` for invoices, credit top-ups and credit usage. Smaller windows keep runs well under the 15-minute limit.
+Use `hourly` for events and other high-volume data, and `daily` for invoices, credit top-ups and credit usage. Smaller windows keep runs well under the 60-minute limit.
 
 </Check>
 

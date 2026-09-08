@@ -26,7 +26,7 @@ You need a destination connection. Connections hold the credentials and are reus
   </Step>
 
   <Step title="Choose the entity type">
-    Pick one of `invoice`, `events`, `credit_topups` or `credit_usage`. The columns each one produces are listed on [Data Types and Schemas](/docs/data-exports/data-types). To export more than one type, create one task per type.
+    Pick one of `invoice`, `events`, `credit_topups`, `credit_usage` or `usage_analytics`. The columns each one produces are listed on [Data Types and Schemas](/docs/data-exports/data-types). To export more than one type, create one task per type.
   </Step>
 
   <Step title="Choose the interval">
@@ -45,27 +45,27 @@ You need a destination connection. Connections hold the credentials and are reus
 The same task can be created through the API:
 
 ```bash
-POST /api/v1/tasks/scheduled
-Content-Type: application/json
-Authorization: Bearer {token}
-
-{
-  "connection_id": "conn_01HK8DBMBN87CY36DEFY62PEXBT",
-  "entity_type": "invoice",
-  "interval": "daily",
-  "enabled": true,
-  "job_config": {
-    "bucket": "flexprice-exports",
-    "region": "us-west-2",
-    "key_prefix": "invoices/",
-    "endpoint_url": "",
-    "compression": "gzip",
-    "encryption": "AES256"
-  }
-}
+curl --request POST \
+  --url https://api.cloud.flexprice.io/v1/tasks/scheduled \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: <api-key>' \
+  --data '{
+    "connection_id": "conn_01HK8DBMBN87CY36DEFY62PEXBT",
+    "entity_type": "invoice",
+    "interval": "daily",
+    "enabled": true,
+    "job_config": {
+      "bucket": "flexprice-exports",
+      "region": "us-west-2",
+      "key_prefix": "production/",
+      "endpoint_url": "",
+      "compression": "gzip",
+      "encryption": "AES256"
+    }
+  }'
 ```
 
-`entity_type` accepts `invoice`, `events`, `credit_topups` or `credit_usage`. `endpoint_url` is only needed for S3-compatible storage.
+`entity_type` accepts `invoice`, `events`, `credit_topups`, `credit_usage` or `usage_analytics`. `endpoint_url` is only needed for S3-compatible storage.
 
 <Check>
   Trigger a manual export straight after creating a task. It confirms the connection, permissions and destination settings before the first scheduled run.
@@ -88,22 +88,21 @@ Click a task in the list to open its details page. It shows the task's status, e
 Toggle the task's enabled state from the details page. Disabling stops future scheduled runs without deleting the configuration. Through the API:
 
 ```bash
-PATCH /api/v1/tasks/scheduled/{task_id}
-Content-Type: application/json
-Authorization: Bearer {token}
-
-{
-  "enabled": false
-}
+curl --request PUT \
+  --url https://api.cloud.flexprice.io/v1/tasks/scheduled/{task_id} \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: <api-key>' \
+  --data '{ "enabled": false }'
 ```
 
-The same endpoint updates any other task field, such as `interval` or `job_config`.
+`enabled` is the only field this endpoint accepts. To change the entity type, interval, connection or destination settings, create a new task and disable the old one.
 
 ### List tasks
 
 ```bash
-GET /api/v1/tasks/scheduled?entity_type=invoice&status=published
-Authorization: Bearer {token}
+curl --request GET \
+  --url 'https://api.cloud.flexprice.io/v1/tasks/scheduled?entity_type=invoice&status=published' \
+  --header 'x-api-key: <api-key>'
 ```
 
 Both query parameters are optional.
@@ -128,17 +127,18 @@ Leave the time range empty and Flexprice exports the current interval window for
 | daily         | 16 October 2025         | 16 October 00:00 to 17 October 00:00     |
 
 ```bash
-POST /api/v1/tasks/scheduled/{task_id}/run
-Authorization: Bearer {token}
+curl --request POST \
+  --url https://api.cloud.flexprice.io/v1/tasks/scheduled/{task_id}/run \
+  --header 'x-api-key: <api-key>'
 ```
 
 ```json
 {
   "workflow_id": "task_export_01HK8DBMBN87CY36DEFY62PEXBT",
-  "message": "Manual export triggered successfully",
+  "message": "Force run triggered successfully",
   "start_time": "2025-10-16T10:00:00Z",
   "end_time": "2025-10-16T11:00:00Z",
-  "mode": "manual"
+  "mode": "force run"
 }
 ```
 
@@ -147,20 +147,20 @@ Authorization: Bearer {token}
 Set a start and end time to export any period, for example to backfill history:
 
 ```bash
-POST /api/v1/tasks/scheduled/{task_id}/run
-Content-Type: application/json
-Authorization: Bearer {token}
-
-{
-  "start_time": "2025-10-01T00:00:00Z",
-  "end_time": "2025-10-15T23:59:59Z"
-}
+curl --request POST \
+  --url https://api.cloud.flexprice.io/v1/tasks/scheduled/{task_id}/run \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: <api-key>' \
+  --data '{
+    "start_time": "2025-10-01T00:00:00Z",
+    "end_time": "2025-10-15T23:59:59Z"
+  }'
 ```
 
 ```json
 {
   "workflow_id": "task_export_01HK8DBMBN87CY36DEFY62PEXBT",
-  "message": "Manual export triggered successfully",
+  "message": "Force run triggered successfully",
   "start_time": "2025-10-01T00:00:00Z",
   "end_time": "2025-10-15T23:59:59Z",
   "mode": "custom"
@@ -168,13 +168,13 @@ Authorization: Bearer {token}
 ```
 
 <Warning>
-  Both times must be RFC 3339 timestamps and the end time must be after the start time. Exports that run longer than 15 minutes fail with a timeout, so split a large backfill into several shorter ranges.
+  Both times must be RFC 3339 timestamps, given together. The end time must be after the start time and no later than now, and the range can cover at most 365 days. Exports that run longer than 60 minutes fail with a timeout, so split a large backfill into several shorter ranges.
 </Warning>
 
 ### How manual exports behave
 
 - **The schedule is unaffected**: the next scheduled run happens at its normal time and covers its normal window
 - **Runs in parallel**: a manual export can run while a scheduled run is in progress
-- **Tracked separately**: it appears in the Runs tab with mode `manual` or `custom`
+- **Tracked separately**: it appears in the Runs tab with mode `force run` (automatic window) or `custom` (explicit time range)
 - **Same settings**: it writes to the same bucket, prefix, compression and encryption as the scheduled runs
 - **Starts within seconds**: the response returns a `workflow_id` you can match against the Runs tab

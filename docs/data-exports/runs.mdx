@@ -15,7 +15,7 @@ Every execution of a scheduled task, whether scheduled or manual, is recorded as
 | Field           | Meaning                                                                           |
 | --------------- | --------------------------------------------------------------------------------- |
 | **Status**      | Whether the run is in progress, completed or failed                               |
-| **Mode**        | `scheduled`, `manual` (automatic window) or `custom` (explicit time range)        |
+| **Mode**        | For manual exports, `force run` (automatic window) or `custom` (explicit time range) |
 | **Time range**  | The start and end of the window the run exported                                  |
 | **File**        | File name, size and the destination path once the run completes                   |
 | **Error**       | The failure reason when a run fails. See [Troubleshooting](/docs/data-exports/troubleshooting) |
@@ -23,8 +23,9 @@ Every execution of a scheduled task, whether scheduled or manual, is recorded as
 Fetch the same history through the API:
 
 ```bash
-GET /api/v1/tasks?scheduled_task_id={task_id}&task_type=EXPORT
-Authorization: Bearer {token}
+curl --request GET \
+  --url 'https://api.cloud.flexprice.io/v1/tasks?scheduled_task_id={task_id}&task_type=EXPORT' \
+  --header 'x-api-key: <api-key>'
 ```
 
 ## Download a file from the dashboard
@@ -53,11 +54,11 @@ Each completed run also records the direct object URL in the destination. Files 
 {entity_type}-{start_time}-{end_time}.csv
 ```
 
-Times use the `YYMMDDHHMMSS` format in UTC, so `251016100000` is 16 October 2025 at 10:00:00. Files are written under the task's key prefix when one is set:
+Times use the `YYMMDDHHMMSS` format in UTC, so `251016100000` is 16 October 2025 at 10:00:00. Files are written into a folder named after the entity type, under the task's key prefix when one is set:
 
 ```
-{key_prefix}/invoice-251016100000-251016110000.csv
-{key_prefix}/events-251016000000-251017000000.csv.gz
+{key_prefix}/invoice/invoice-251016100000-251016110000.csv
+{key_prefix}/events/events-251016000000-251017000000.csv.gz
 ```
 
 ## When a run fails
@@ -69,7 +70,8 @@ Failed runs show the reason in the run record. The common ones and their fixes:
 | **Connection Failed** | Invalid or expired credentials               | Update the credentials on the connection                   |
 | **Bucket Not Found**  | Bucket does not exist, or region is wrong    | Check the bucket name and region on the task               |
 | **Permission Denied** | IAM policy is missing a required action      | Grant `s3:PutObject`, `s3:GetObject` and `s3:ListBucket`   |
-| **No Data Found**     | Nothing in the time window                   | Check the window, or that data exists for that period      |
-| **Timeout**           | The export ran longer than 15 minutes        | Re-run with a shorter custom time range                    |
+| **Timeout**           | The export ran longer than 60 minutes        | Re-run with a shorter custom time range                    |
+
+A window with no records is not a failure. The run completes and writes a CSV containing only the header row.
 
 To fill the gap left by a failed run, trigger a manual export with a custom time range covering that window. Step-by-step diagnosis for each error is on [Troubleshooting](/docs/data-exports/troubleshooting).
