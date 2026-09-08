@@ -62,12 +62,6 @@ Attach this policy to the IAM user or role whose keys you entered. Replace `your
         "arn:aws:s3:::your-bucket-name/*",
         "arn:aws:s3:::your-bucket-name"
       ]
-    },
-    {
-      "Sid": "HeadObject",
-      "Effect": "Allow",
-      "Action": "s3:HeadObject",
-      "Resource": "*"
     }
   ]
 }
@@ -77,7 +71,7 @@ Attach this policy to the IAM user or role whose keys you entered. Replace `your
   Attach the policy before creating the connection. Flexprice validates the credentials when the connection is saved.
 </Warning>
 
-`s3:PutObject` writes the export files. `s3:GetObject` and `s3:ListBucket` let Flexprice verify the upload and serve the **Download** button. Grant nothing beyond these.
+`s3:PutObject` writes the export files. `s3:GetObject` and `s3:ListBucket` let Flexprice verify the upload, including the HeadObject call it makes after each write, and serve the **Download** button. Grant nothing beyond these.
 
 ## Destination settings
 
@@ -94,7 +88,7 @@ These fields are set on each scheduled task, not on the connection, so two tasks
 
 ### Key prefix
 
-Files are written as `{key_prefix}/{entity_type}-{start}-{end}.csv`. Use the prefix to separate environments and entity types, for example `production/invoices/` and `staging/events/`. File naming is described on [Data Types and Schemas](/docs/data-exports/data-types#file-naming).
+Files are written as `{key_prefix}/{entity_type}/{entity_type}-{start}-{end}.csv`. Flexprice always adds the entity type as a folder, so a prefix only needs to separate environments or purposes, for example `production/` and `staging/`. File naming is described on [Data Types and Schemas](/docs/data-exports/data-types#file-naming).
 
 ### Endpoint URL
 
@@ -115,7 +109,7 @@ The credentials on the connection must be the provider's keys, and the region mu
 | `none`   | `.csv`    | Plain CSV, readable without any tooling     |
 | `gzip`   | `.csv.gz` | Roughly 70 to 80 percent smaller files      |
 
-Enable GZIP for the `events` entity type and for any task whose runs approach the 15-minute timeout. Leave it off when a downstream system reads the files directly and cannot decompress.
+Enable GZIP for the `events` entity type and for any task whose runs approach the 60-minute timeout. Leave it off when a downstream system reads the files directly and cannot decompress.
 
 ### Encryption
 
@@ -154,7 +148,7 @@ Object-level logging records every write Flexprice makes, which gives you an ind
 
 ### Where do the files land in my bucket?
 
-Under the task's key prefix, named `{entity_type}-{start}-{end}.csv`, with `.gz` appended when compression is on. With no prefix they land at the bucket root.
+In a folder named after the entity type under the task's key prefix: `{key_prefix}/{entity_type}/{entity_type}-{start}-{end}.csv`, with `.gz` appended when compression is on. With no prefix, the entity type folder sits at the bucket root, for example `invoice/invoice-251016100000-251016110000.csv`.
 
 ### Can I use one connection for several tasks?
 

@@ -4,7 +4,7 @@ sidebarTitle: "Data Types and Schemas"
 description: "Column-by-column schemas and sample CSV rows for the invoice, events, credit top-up and credit usage exports, plus how exported files are named"
 ---
 
-Flexprice exports four entity types. Each scheduled task exports one of them. Every export is a CSV file with a header row, and the columns below are the same for every destination.
+Flexprice exports five entity types. Each scheduled task exports one of them. Every export is a CSV file with a header row, and the columns below are the same for every destination.
 
 | Entity type       | One row per                              | Scope of each run                                   |
 | ----------------- | ---------------------------------------- | --------------------------------------------------- |
@@ -12,6 +12,7 @@ Flexprice exports four entity types. Each scheduled task exports one of them. Ev
 | **events**        | Ingested usage event                     | Events inside the run's time window                  |
 | **credit_topups** | Completed credit wallet top-up           | Top-ups inside the run's time window                 |
 | **credit_usage**  | Customer                                 | Snapshot of every customer's balances at run time    |
+| **usage_analytics** | Customer, feature and source combination | Usage and cost aggregated over the run's time window |
 
 Use the entity type key in the first column as the `entity_type` value when you create a scheduled task through the API.
 
@@ -35,11 +36,15 @@ Feature usage events after ingestion, with the customer, subscription, price, me
 **Sample row:**
 
 ```csv
-id,tenant_id,environment_id,external_customer_id,customer_id,subscription_id,sub_line_item_id,price_id,meter_id,feature_id,event_name,source,timestamp,ingested_at,period_id,qty_total,properties,unique_hash
-event_01K8D3HHYJVAC90K3X8R0YZA5N,tenant_01K0F7AQCZR5THSG9MHEZE8VKR,env_01K0F7AQEQFTV06P178C1KTR6X,cus_TIciSJDL8QS8OU,cust_01K8D2PERMJ6TX8ATP9C8WCP1Z,subs_01K8D3BJ78M7F0FCPFBBXJWJPG,subs_line_01K8D2Q72ESN6FPP72RA2SWWQR,price_01K42Q7VQEDETDGSA80A8WRJ2Y,meter_01K42Q6R916Q4KB9MC6S46PWQ2,feat_01K42Q6R941C3QS6Q59CGGSPFB,api_call,onboarding,2025-10-25T07:15:20Z,1970-01-01T00:00:00Z,1761376322000,20,"{""api_calls"":20}",baae5efc04d556dc97407d259169b46390946ec4330c974304e70b037aebadcb
+id,tenant_id,environment_id,external_customer_id,customer_id,subscription_id,sub_line_item_id,price_id,meter_id,feature_id,event_name,source,timestamp,ingested_at,period_id,qty_total,provisional_usage_charges,properties,unique_hash
+event_01K8D3HHYJVAC90K3X8R0YZA5N,tenant_01K0F7AQCZR5THSG9MHEZE8VKR,env_01K0F7AQEQFTV06P178C1KTR6X,cus_TIciSJDL8QS8OU,,,,,meter_01K42Q6R916Q4KB9MC6S46PWQ2,,api_call,onboarding,2025-10-25T07:15:20Z,2025-10-25T07:15:21Z,,20,,"{""api_calls"":20}",baae5efc04d556dc97407d259169b46390946ec4330c974304e70b037aebadcb
 ```
 
-`timestamp` is the event time you sent. `properties` is the event's properties object encoded as a CSV string. `qty_total` is the quantity the meter derived from the event.
+`timestamp` is the event time you sent and `ingested_at` is when Flexprice received it. `properties` is the event's properties object encoded as a CSV string. `qty_total` is the quantity the meter derived from the event.
+
+<Note>
+  The exporter reads from the meter usage table, which does not carry `customer_id`, `subscription_id`, `sub_line_item_id`, `price_id`, `feature_id`, `period_id` or `provisional_usage_charges`. Those columns are present in the header and left empty in every row, so the schema stays stable for downstream loaders. Use `external_customer_id` and `meter_id` to join to other data.
+</Note>
 
 ## Credit top-ups
 
@@ -77,6 +82,38 @@ Acme Corporation,cust_ext_123abc,cust_01K4CGWJ4493R9V2Y5PZW7CNRZ,146.00,146.00,1
 <Note>
   Customers with no wallets are included with a balance of zero and `number_of_wallets` set to 0.
 </Note>
+
+When you create a credit usage task in the dashboard you can add customer or wallet metadata fields as extra columns. They are appended after the columns above, under the column name you choose.
+
+## Usage analytics
+
+Usage and cost aggregated per customer, feature and event source over the run's time window. Use it to reconcile what customers consumed against what they were charged without re-aggregating raw events.
+
+**Header row:**
+
+```csv
+customer_name,customer_id,customer_external_id,start_time,end_time,feature_name,feature_id,feature_group_name,event_name,event_count,aggregation_field,total_usage,total_cost,currency,source
+```
+
+| Column                | Description                                                              |
+| --------------------- | ------------------------------------------------------------------------ |
+| `customer_name`       | Customer name                                                            |
+| `customer_id`         | Flexprice customer ID                                                    |
+| `customer_external_id`| Customer external ID                                                     |
+| `start_time`          | Start of the run's time window, RFC 3339 in UTC                          |
+| `end_time`            | End of the run's time window, RFC 3339 in UTC                            |
+| `feature_name`        | Feature name                                                             |
+| `feature_id`          | Flexprice feature ID                                                     |
+| `feature_group_name`  | Name of the feature group the feature belongs to, if any                 |
+| `event_name`          | Event name the feature's meter listens for                               |
+| `event_count`         | Number of events in the window                                           |
+| `aggregation_field`   | The event property the meter aggregates, if the meter uses one           |
+| `total_usage`         | Aggregated usage for the window, as a decimal string                     |
+| `total_cost`          | Cost of that usage at the customer's subscribed price, as a decimal string |
+| `currency`            | Currency of `total_cost`                                                 |
+| `source`              | Event source the row is grouped by                                       |
+
+As with credit usage, customer metadata fields chosen in the dashboard are appended after these columns.
 
 ## File naming
 
