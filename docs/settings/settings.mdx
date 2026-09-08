@@ -262,14 +262,14 @@ Defines currencies of your own, such as credits, and the fiat currency invoices 
     "<code>": {
       "name": string,
       "symbol": string,
-      "fiat_conversion_factors": { "<fiat code>": string }
+      "fiat_conversion_factors": { "<fiat_code>": string }
     }
   },
   "default_fiat_currency": string
 }
 ```
 
-- **`custom_currencies`**: Optional. Map keyed by currency code. When empty, only Flexprice's supported fiat currencies are accepted, therefore a custom code must be configured here before anything can be created in it.
+- **`custom_currencies`**: Optional. Map keyed by a 3-character currency code. When empty, only Flexprice's supported fiat currencies are accepted, therefore a custom code must be configured here before anything can be created in it.
   - **`name`**: Required. Display name, for example `FinePrint Credits`.
   - **`symbol`**: Required. Shown wherever an amount in this currency is displayed.
     - **`fiat_conversion_factors`**: Required, at least one entry. Decimal string > 0 per fiat currency. The factor is how much fiat one unit of this currency is worth, so `"usd": "0.10"` means one unit is \$0.10.
@@ -309,7 +309,8 @@ When creating a new setting via API, defaults are:
 
 ### Validation
 
-- **Factors:** Every factor must be a positive decimal. Codes are case-insensitive and stored lowercase.
+- **Codes:** Exactly 3 characters. Case-insensitive and stored lowercase, so two codes differing only in case collide.
+- **Factors:** Every factor must be a positive decimal.
 - **Default currency:** Required when `custom_currencies` is non-empty, and cannot itself be a custom currency code. Every custom currency must define a factor for it.
 - **Matching fiat currencies:** Every custom currency must define factors for the same fiat currencies. If one defines `inr` and another does not, the update is rejected.
 
