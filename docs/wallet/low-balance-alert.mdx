@@ -3,13 +3,13 @@ title: "Low Balance Alert"
 description: "Configure Wallet Sentinel Alerts to get notified when a customer's wallet balance crosses configurable Info, Warning, or Critical thresholds."
 ---
 
-Wallet Sentinel Alerts in Flexprice let you monitor wallet balance with **three alert levels** so you can act before balance becomes critical. You can enable or disable alerts per wallet and set a custom threshold and trigger condition for each level.
+Wallet Sentinel Alerts in Flexprice let you monitor wallet balance with **three alert levels** so you can act before balance becomes critical. You can enable or disable alerts per wallet and set a custom threshold for each level.
 
 **Benefits:**
 
 - **Proactive management** — Get notified at Info and Warning levels before balance reaches critical
 - **Granular control** — Separate thresholds for informational, warning, and critical states
-- **Flexible conditions** — Trigger when balance is above or below a value (e.g. "below" for low balance)
+- **Absolute or percentage** — Set thresholds as a fixed amount or as a share of granted credits
 - **Per-wallet settings** — Enable or disable alerts and configure thresholds per wallet
 
 ## Alert Levels
@@ -20,16 +20,15 @@ Wallet Sentinel Alerts in Flexprice let you monitor wallet balance with **three 
 | **Warning** | Early warning level before critical |
 | **Critical** | Critical alert level requiring immediate action |
 
-Each level can be configured with:
+Each level takes a single **threshold value**. An alert fires when the wallet balance falls below that value, so each row reads **Balance below**. Set the value as a fixed amount in the wallet's currency or as a percentage — see [Threshold Type: Absolute or Percentage](#threshold-type-absolute-or-percentage).
 
-- A **threshold value** (in the wallet’s currency, e.g. USD)
-- A **trigger condition** (e.g. **below** — alert when balance is below the threshold).
+Leave a level's field empty to skip it. Thresholds must ascend from Critical to Info: Critical below Warning, Warning below Info.
+
+Alerts are turned on or off for a wallet using **Enable wallet alerts** (`alert_enabled` in the API).
 
 <Note>
-  Flexprice supports two conditions for thresholds: **Below** and **Above**.
+  The API's `condition` field still accepts `"below"` and `"above"`, but wallet balance alerts are evaluated on a falling balance and the dashboard always saves `"below"`. A wallet stored with `"above"` is rewritten to `"below"` the next time you save its alert settings.
 </Note>
-
-Alerts are turned on or off for a wallet using **Enable Alerts** (`alert_enabled` in the API).
 
 ## Threshold Type: Absolute or Percentage
 
@@ -37,10 +36,12 @@ Each threshold level can be set as an **Absolute** amount in the wallet's curren
 
 A percentage threshold compares against credits granted during the customer's current billing period. If the customer has no active subscription, Flexprice uses the wallet's total lifetime credits granted instead.
 
-Select **Absolute** or **Percentage** above the Critical, Warning, and Info cards. Switching between the two keeps both sets of values, so you can enter Percentage thresholds, switch back to check your Absolute thresholds, and switch again without losing either set. Only the active type is saved when you click **Save Changes**.
+Use the **Threshold type** control above the Critical, Warning, and Info rows. Switching between the two keeps both sets of values, so you can enter Percentage thresholds, switch back to check your Absolute thresholds, and switch again without losing either set. Only the active type is saved when you click **Save Changes**.
+
+In Absolute mode the input shows the wallet's currency symbol; in Percentage mode it shows a `%` suffix. Percentage values must be between 0 and 100 — a value outside that range is reported when you save rather than being adjusted for you.
 
 <Frame>
-  ![Percentage threshold type selected, showing the ongoing-balance warning](/images/docs/wallet/low-balance-alert/percentage-threshold-type.png)
+  ![Percentage threshold type selected, with each level shown as a percentage](/images/docs/wallet/low-balance-alert/percentage-threshold-type.png)
 </Frame>
 
 <Warning>
@@ -65,16 +66,16 @@ Select **Absolute** or **Percentage** above the Critical, Warning, and Info card
   </Step>
 
   <Step title="Enable Alerts">
-    In the **Wallet Alert Settings** dialog, turn **Enable Alerts** **on** to activate monitoring against your configured thresholds
+    In the **Wallet Alert Settings** dialog, turn **Enable wallet alerts** **on** to activate monitoring against your configured thresholds. The threshold rows stay visible while alerts are off so you can see what enabling them will apply.
     <Frame>
       ![Enable Alert Settings](/images/docs/wallet/low-balance-alert/enable-alert-settings.png)
     </Frame>
   </Step>
 
   <Step title="Configure Thresholds">
-    - Choose **Absolute** or **Percentage** as the threshold type.
-    - Set **Critical**, **Warning**, and **Info** thresholds. For each level set **Threshold Value** and **Condition** (e.g. **Below**, alert when balance is below the threshold).
-    - Use **Remove** to drop a level you don't need. 
+    - Choose **Absolute** or **Percentage** under **Threshold type**.
+    - Enter a value for **Critical**, **Warning**, and **Info**. Each fires when the balance falls below the value you enter.
+    - Leave a level's field empty to skip it.
     - Click **Save Changes** to apply.
     <Frame>
       ![Configure Alert Settings](/images/docs/wallet/low-balance-alert/configure-alert-settings.png)
@@ -99,15 +100,15 @@ Once configured and enabled, the sentinel will:
 
 ### Viewing Current Configuration
 
-Open the customer’s **Wallet** tab, click the **three-dot menu (⋮)** → **Alert Settings**. The dialog shows **Enable Alerts** and all threshold levels (Critical, Warning, Info) with their values and conditions.
+Open the customer’s **Wallet** tab, click the **three-dot menu (⋮)** → **Alert Settings**. The dialog shows **Enable wallet alerts**, the selected **Threshold type**, and all three threshold levels (Critical, Warning, Info) with their values.
 
-### Changing Thresholds or Condition
+### Changing Thresholds
 
-In the **Alert Settings** dialog box, adjust **Enable Alerts**, any threshold value, or condition per level, then click **Save Changes** to apply.
+In the **Alert Settings** dialog box, adjust **Enable wallet alerts**, the **Threshold type**, or any threshold value, then click **Save Changes** to apply.
 
 ### Disabling Alerts
 
-Set **Enable Alerts** to **off** in the **Alert Settings** dialog and click **Save Changes** (or set `alert_enabled` to `false` via API).
+Set **Enable wallet alerts** to **off** in the **Alert Settings** dialog and click **Save Changes** (or set `alert_enabled` to `false` via API).
 
 <Warning>
   The wallet will no longer generate real time balance alerts until you enable them again.
@@ -117,7 +118,7 @@ Set **Enable Alerts** to **off** in the **Alert Settings** dialog and click **Sa
 
 ### SaaS and Usage-Based Billing
 
-- **Low balance warnings** — Info at 5, Warning at 0, Critical below 0 so you can top up before going negative
+- **Low balance warnings** — Critical at 0, Warning at 5, Info at 10 so you get early notice and can top up before going negative
 - **Prepaid credits** — Notify when credits are running low at multiple levels to avoid running out of credits unexpectedly
 - **Service Continuity**: Prevent service interruptions due to insufficient funds
 
@@ -140,7 +141,7 @@ Set **Enable Alerts** to **off** in the **Alert Settings** dialog and click **Sa
 
 💡 **Use all three levels** — Use Info for early notice, Warning for action soon, Critical for immediate action
 
-💡 **Match condition to goal** — Use **below** for “low balance” alerts; use **above** if you want alerts when balance exceeds a cap
+💡 **Pick the right threshold type** — Use Absolute for a fixed floor in the wallet's currency; use Percentage when the meaningful floor scales with how many credits the customer was granted
 
 💡 **Review periodically** — Adjust thresholds based on usage patterns and top-up behavior
 
