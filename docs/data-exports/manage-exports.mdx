@@ -1,0 +1,180 @@
+---
+title: "Schedule Automated Data Exports and Run Manual Exports"
+sidebarTitle: "Create and Manage Exports"
+description: "Create a scheduled export task, pause or update it, and trigger a manual export over the current window or a custom time range from the dashboard or API"
+---
+
+A scheduled task is the unit of configuration for exports. It ties one entity type to one destination connection at one interval. You create it once, and Flexprice runs it every hour or every day until you disable it. Manual exports run against an existing scheduled task, so create the task first even if you only need a one-off export.
+
+## Before you start
+
+You need a destination connection. Connections hold the credentials and are reused across tasks. Create one by following [Export data to Amazon S3](/docs/data-exports/destinations/amazon-s3), then come back here.
+
+## Create a scheduled export
+
+<Frame>
+  ![Create Export Task](/images/docs/data-exports/amazon-s3/create-export-task.png)
+</Frame>
+
+<Steps>
+  <Step title="Open Data Exports and click Create">
+    Go to **Data Exports** in the dashboard and click the button to create a new export task.
+  </Step>
+
+  <Step title="Select a connection">
+    Choose the destination connection to write to. Each task can use a different connection.
+  </Step>
+
+  <Step title="Choose the entity type">
+    Pick one of `invoice`, `events`, `credit_topups` or `credit_usage`. The columns each one produces are listed on [Data Types and Schemas](/docs/data-exports/data-types). To export more than one type, create one task per type.
+  </Step>
+
+  <Step title="Choose the interval">
+    `hourly` runs at 15 minutes past every hour and exports the previous hour. `daily` runs at 00:15 and exports the previous day. See [how exports run](/docs/data-exports/overview#how-exports-run) for the buffer rules.
+  </Step>
+
+  <Step title="Fill in the destination settings">
+    Bucket, region, key prefix, endpoint URL, compression and encryption are destination-specific. The Amazon S3 fields are described on [Export data to Amazon S3](/docs/data-exports/destinations/amazon-s3#destination-settings).
+  </Step>
+
+  <Step title="Enable and save">
+    Leave the task enabled to start exports at the next interval boundary. A disabled task keeps its configuration but does not run.
+  </Step>
+</Steps>
+
+The same task can be created through the API:
+
+```bash
+POST /api/v1/tasks/scheduled
+Content-Type: application/json
+Authorization: Bearer {token}
+
+{
+  "connection_id": "conn_01HK8DBMBN87CY36DEFY62PEXBT",
+  "entity_type": "invoice",
+  "interval": "daily",
+  "enabled": true,
+  "job_config": {
+    "bucket": "flexprice-exports",
+    "region": "us-west-2",
+    "key_prefix": "invoices/",
+    "endpoint_url": "",
+    "compression": "gzip",
+    "encryption": "AES256"
+  }
+}
+```
+
+`entity_type` accepts `invoice`, `events`, `credit_topups` or `credit_usage`. `endpoint_url` is only needed for S3-compatible storage.
+
+<Check>
+  Trigger a manual export straight after creating a task. It confirms the connection, permissions and destination settings before the first scheduled run.
+</Check>
+
+## Manage a scheduled task
+
+<Frame>
+  ![Export Tasks List](/images/docs/data-exports/amazon-s3/export-tasks-list.png)
+</Frame>
+
+Click a task in the list to open its details page. It shows the task's status, entity type, interval and connection, the destination settings, and when the task was created and last updated. The **Runs** tab on the same page holds the execution history, described on [Runs and Downloads](/docs/data-exports/runs).
+
+<Frame>
+  ![Export Details](/images/docs/data-exports/amazon-s3/export-details.png)
+</Frame>
+
+### Pause or resume a task
+
+Toggle the task's enabled state from the details page. Disabling stops future scheduled runs without deleting the configuration. Through the API:
+
+```bash
+PATCH /api/v1/tasks/scheduled/{task_id}
+Content-Type: application/json
+Authorization: Bearer {token}
+
+{
+  "enabled": false
+}
+```
+
+The same endpoint updates any other task field, such as `interval` or `job_config`.
+
+### List tasks
+
+```bash
+GET /api/v1/tasks/scheduled?entity_type=invoice&status=published
+Authorization: Bearer {token}
+```
+
+Both query parameters are optional.
+
+## Run a manual export
+
+A manual export runs immediately, outside the schedule, using the task's connection and destination settings. Use it to test a new task, backfill a period, or answer an urgent data request.
+
+Open the task's details page and click **Manual Export**.
+
+<Frame>
+  ![Manual Export Modal](/images/docs/data-exports/amazon-s3/force-run-modal.png)
+</Frame>
+
+### Automatic time range
+
+Leave the time range empty and Flexprice exports the current interval window for the task:
+
+| Task interval | Time now                | Window exported                          |
+| ------------- | ----------------------- | ---------------------------------------- |
+| hourly        | 10:30                   | 10:00 to 11:00                           |
+| daily         | 16 October 2025         | 16 October 00:00 to 17 October 00:00     |
+
+```bash
+POST /api/v1/tasks/scheduled/{task_id}/run
+Authorization: Bearer {token}
+```
+
+```json
+{
+  "workflow_id": "task_export_01HK8DBMBN87CY36DEFY62PEXBT",
+  "message": "Manual export triggered successfully",
+  "start_time": "2025-10-16T10:00:00Z",
+  "end_time": "2025-10-16T11:00:00Z",
+  "mode": "manual"
+}
+```
+
+### Custom time range
+
+Set a start and end time to export any period, for example to backfill history:
+
+```bash
+POST /api/v1/tasks/scheduled/{task_id}/run
+Content-Type: application/json
+Authorization: Bearer {token}
+
+{
+  "start_time": "2025-10-01T00:00:00Z",
+  "end_time": "2025-10-15T23:59:59Z"
+}
+```
+
+```json
+{
+  "workflow_id": "task_export_01HK8DBMBN87CY36DEFY62PEXBT",
+  "message": "Manual export triggered successfully",
+  "start_time": "2025-10-01T00:00:00Z",
+  "end_time": "2025-10-15T23:59:59Z",
+  "mode": "custom"
+}
+```
+
+<Warning>
+  Both times must be RFC 3339 timestamps and the end time must be after the start time. Exports that run longer than 15 minutes fail with a timeout, so split a large backfill into several shorter ranges.
+</Warning>
+
+### How manual exports behave
+
+- **The schedule is unaffected**: the next scheduled run happens at its normal time and covers its normal window
+- **Runs in parallel**: a manual export can run while a scheduled run is in progress
+- **Tracked separately**: it appears in the Runs tab with mode `manual` or `custom`
+- **Same settings**: it writes to the same bucket, prefix, compression and encryption as the scheduled runs
+- **Starts within seconds**: the response returns a `workflow_id` you can match against the Runs tab

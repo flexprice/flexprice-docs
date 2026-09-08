@@ -1,0 +1,75 @@
+---
+title: "Monitor Export Runs and Download Exported CSV Files"
+sidebarTitle: "Runs and Downloads"
+description: "Read the execution history of a scheduled export task, download any run's CSV file from the dashboard, and locate exported files in your bucket"
+---
+
+Every execution of a scheduled task, whether scheduled or manual, is recorded as a run. The Runs tab on the task's details page lists them with their status, time window, file details and any error. Every completed run can be downloaded from the dashboard, whichever destination it was written to.
+
+<Frame>
+  ![Runs History](/images/docs/data-exports/amazon-s3/runs-history.png)
+</Frame>
+
+## What a run record contains
+
+| Field           | Meaning                                                                           |
+| --------------- | --------------------------------------------------------------------------------- |
+| **Status**      | Whether the run is in progress, completed or failed                               |
+| **Mode**        | `scheduled`, `manual` (automatic window) or `custom` (explicit time range)        |
+| **Time range**  | The start and end of the window the run exported                                  |
+| **File**        | File name, size and the destination path once the run completes                   |
+| **Error**       | The failure reason when a run fails. See [Troubleshooting](/docs/data-exports/troubleshooting) |
+
+Fetch the same history through the API:
+
+```bash
+GET /api/v1/tasks?scheduled_task_id={task_id}&task_type=EXPORT
+Authorization: Bearer {token}
+```
+
+## Download a file from the dashboard
+
+<Steps>
+  <Step title="Open the Runs tab">
+    Go to the scheduled task and click the **Runs** tab.
+  </Step>
+
+  <Step title="Find the completed run">
+    Locate the run whose time window you want. Only completed runs have a file.
+  </Step>
+
+  <Step title="Click Download">
+    Click **Download** next to the run to save the CSV, or the `.csv.gz` file when compression is enabled.
+  </Step>
+</Steps>
+
+Downloads work for Flexprice-managed connections and for your own bucket. You do not need access to the AWS console to retrieve a file.
+
+## Find a file in your bucket
+
+Each completed run also records the direct object URL in the destination. Files are named after the entity type and the time window:
+
+```
+{entity_type}-{start_time}-{end_time}.csv
+```
+
+Times use the `YYMMDDHHMMSS` format in UTC, so `251016100000` is 16 October 2025 at 10:00:00. Files are written under the task's key prefix when one is set:
+
+```
+{key_prefix}/invoice-251016100000-251016110000.csv
+{key_prefix}/events-251016000000-251017000000.csv.gz
+```
+
+## When a run fails
+
+Failed runs show the reason in the run record. The common ones and their fixes:
+
+| Error                 | Cause                                        | Fix                                                        |
+| --------------------- | -------------------------------------------- | ---------------------------------------------------------- |
+| **Connection Failed** | Invalid or expired credentials               | Update the credentials on the connection                   |
+| **Bucket Not Found**  | Bucket does not exist, or region is wrong    | Check the bucket name and region on the task               |
+| **Permission Denied** | IAM policy is missing a required action      | Grant `s3:PutObject`, `s3:GetObject` and `s3:ListBucket`   |
+| **No Data Found**     | Nothing in the time window                   | Check the window, or that data exists for that period      |
+| **Timeout**           | The export ran longer than 15 minutes        | Re-run with a shorter custom time range                    |
+
+To fill the gap left by a failed run, trigger a manual export with a custom time range covering that window. Step-by-step diagnosis for each error is on [Troubleshooting](/docs/data-exports/troubleshooting).
