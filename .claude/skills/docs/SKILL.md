@@ -113,10 +113,10 @@ flexprice-front/src/pages/      → Dashboard page components
 flexprice-front/src/components/ → Shared UI components
 flexprice-front/src/api/        → API client hooks and types
 flexprice-docs/docs/            → Existing documentation pages
-flexprice-docs/public/images/   → Screenshots for changelog
+flexprice-docs/images/docs/     → Screenshots for changelog
 ```
 
-- **Check for screenshots** in `flexprice-docs/public/images/docs/` — if relevant images exist, include them in a `<Frame>`
+- **Check for screenshots** in `flexprice-docs/images/docs/` — if relevant images exist, include them in a `<Frame>`
 - **Check for existing docs** — look in `flexprice-docs/docs/` for a matching page; if found, link it with a `<Card>`
 
 ### 6. Write the Changelog Entry
@@ -135,7 +135,7 @@ Read `references/changelog.md` for the full annotated MDX template. Structural s
   <br />
 
   <Frame>
-    <img src="/public/images/docs/..." alt="..." style={{ borderRadius: '0.5rem' }} />
+    <img src="/images/docs/..." alt="..." style={{ borderRadius: '0.5rem' }} />
   </Frame>
 
   <br />

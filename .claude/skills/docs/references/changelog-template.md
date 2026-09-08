@@ -33,10 +33,10 @@
   <br />
 
   {/* OPTIONAL: Screenshot — only include if a relevant image exists in the docs repo.
-      Path format: /public/images/docs/<Category>/<image-name>.png
+      Path format: /images/docs/<Category>/<image-name>.png
       Always use style={{ borderRadius: '0.5rem' }} */}
   <Frame>
-    <img src="/public/images/docs/Category/screenshot.png" alt="Descriptive alt text" style={{ borderRadius: '0.5rem' }} />
+    <img src="/images/docs/Category/screenshot.png" alt="Descriptive alt text" style={{ borderRadius: '0.5rem' }} />
   </Frame>
 
   <br />

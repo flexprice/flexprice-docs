@@ -275,7 +275,7 @@ PATH="/opt/homebrew/opt/node@22/bin:$PATH" \
 
 - **Pass**: no broken links in your new file — proceed to PR
 - **Fail**: fix every broken link reported in your file; pre-existing broken links in other files are not your responsibility
-- The most common cause: referencing a screenshot path in `<Frame>` that doesn't exist in `public/images/`
+- The most common cause: referencing a screenshot path in `<Frame>` that doesn't exist in `images/`
 
 ### Validate build structure
 
