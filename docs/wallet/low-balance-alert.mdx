@@ -20,7 +20,7 @@ Wallet Sentinel Alerts in Flexprice let you monitor wallet balance with **three 
 | **Warning** | Early warning level before critical |
 | **Critical** | Critical alert level requiring immediate action |
 
-Each level takes a single **threshold value**. An alert fires when the wallet balance falls below that value, so each row reads **Balance below**. Set the value as a fixed amount in the wallet's currency or as a percentage — see [Threshold Type: Absolute or Percentage](#threshold-type-absolute-or-percentage).
+Each level takes a single **threshold value**. An alert fires when the wallet balance falls below that value, so each row reads **Balance below**. Set the value as a fixed amount in the customer's wallet currency or as a percentage of granted credits — see [Threshold Types](#threshold-types).
 
 Leave a level's field empty to skip it. Thresholds must ascend from Critical to Info: Critical below Warning, Warning below Info.
 
@@ -30,23 +30,45 @@ Alerts are turned on or off for a wallet using **Enable wallet alerts** (`alert_
   The API's `condition` field still accepts `"below"` and `"above"`, but wallet balance alerts are evaluated on a falling balance and the dashboard always saves `"below"`. A wallet stored with `"above"` is rewritten to `"below"` the next time you save its alert settings.
 </Note>
 
-## Threshold Type: Absolute or Percentage
+## Threshold Types
 
-Each threshold level can be set as an **Absolute** amount in the wallet's currency, or as a **Percentage**. This choice applies to all three levels together; Critical, Warning, and Info cannot mix threshold types.
+Every threshold is read either as an **Absolute** amount or as a **Percentage**. Set this with the **Threshold type** control above the Critical, Warning, and Info rows. The choice applies to all three levels together — Critical, Warning, and Info cannot mix types.
 
-A percentage threshold compares against credits granted during the customer's current billing period. If the customer has no active subscription, Flexprice uses the wallet's total lifetime credits granted instead.
+| | Absolute | Percentage |
+|---|---|---|
+| **A threshold of `10` means** | 10 in the customer's wallet currency | 10% of granted credits |
+| **Measured against** | The wallet balance itself | Credits granted in the current billing period |
+| **Input shows** | The wallet's currency symbol | A `%` suffix |
+| **Accepted values** | Any amount, including negative | `0` to `100` |
+| **Alerts evaluated** | Credit balance and ongoing balance | Ongoing balance only |
 
-Use the **Threshold type** control above the Critical, Warning, and Info rows. Switching between the two keeps both sets of values, so you can enter Percentage thresholds, switch back to check your Absolute thresholds, and switch again without losing either set. Only the active type is saved when you click **Save Changes**.
+### Absolute Thresholds
 
-In Absolute mode the input shows the wallet's currency symbol; in Percentage mode it shows a `%` suffix. Percentage values must be between 0 and 100 — a value outside that range is reported when you save rather than being adjusted for you.
+Thresholds are fixed amounts in the customer's wallet currency. On a USD wallet, a Critical threshold of `10` fires when the balance falls below $10.
+
+Use Absolute when the level you care about is a fixed figure — a hard floor before service is interrupted, or the point at which someone should top up. Negative values are allowed, so a post-paid wallet can alert on how far below zero it has gone.
+
+Absolute is the default: a wallet or tenant configuration saved without a threshold type is read as Absolute.
+
+### Percentage Thresholds
+
+Thresholds are a share of the credits granted during the customer's current billing period. A Critical threshold of `10` fires when the balance falls below 10% of those granted credits. If the customer has no active subscription, Flexprice uses the wallet's total lifetime credits granted instead.
+
+Use Percentage when the meaningful floor scales with the customer — 20% left means the same thing to a customer granted 500 credits and one granted 50,000, where a fixed amount would not.
+
+Values must be between 0 and 100. A value outside that range is reported when you save rather than being adjusted for you.
 
 <Frame>
   ![Percentage threshold type selected, with each level shown as a percentage](/images/docs/wallet/low-balance-alert/percentage-threshold-type.png)
 </Frame>
 
-<Warning>
-  Percentage thresholds apply only to ongoing balance alerts, the real-time balance that accounts for current usage (see [Auto Top-Up](/docs/wallet/auto-top-up) for how ongoing balance is calculated). If your alert also needs to evaluate the wallet's raw credit balance, use Absolute: that evaluation does not run while Percentage is selected.
-</Warning>
+<Note>
+  Percentage thresholds are evaluated against **ongoing balance** only — the real-time balance that accounts for current usage (see [Auto Top-Up](/docs/wallet/auto-top-up) for how ongoing balance is calculated). Credit balance alerts do not run while Percentage is selected. Use Absolute if you need the wallet's raw credit balance evaluated as well.
+</Note>
+
+### Switching Between Types
+
+Switching keeps both sets of values. You can enter Percentage thresholds, switch back to check your Absolute thresholds, and switch again without losing either set. Only the active type is saved when you click **Save Changes**.
 
 ## Configuring Wallet Sentinel Alerts
 
