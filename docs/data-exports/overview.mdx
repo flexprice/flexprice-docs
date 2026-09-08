@@ -1,0 +1,67 @@
+---
+title: "Data Exports: Send Flexprice Billing Data to Cloud Storage"
+sidebarTitle: "Overview"
+description: "Schedule hourly or daily exports of invoices, events and credit data from Flexprice to Amazon S3, or trigger a manual export on demand"
+---
+
+Data exports copy your Flexprice data to storage you control, as CSV files, on a schedule you choose. You create a connection to a destination, create a scheduled task that says what to export and how often, and Flexprice writes a file for every interval. You can also trigger a manual export at any time and download every file from the Flexprice dashboard.
+
+**What you can do with exports:**
+
+- **Back up billing data**: keep an hourly or daily copy of invoices, events and credit activity outside Flexprice
+- **Feed a warehouse**: load the CSV files into Snowflake, BigQuery, Redshift or any tool that reads from object storage
+- **Backfill history**: run a manual export over a custom time range
+- **Audit every run**: each execution is recorded with its status, time range and file
+
+## How exports run
+
+A scheduled task exports one entity type to one destination at one interval. Every run covers exactly one interval window and writes one file.
+
+| Interval   | Runs at                    | Cron          | Window exported                 |
+| ---------- | -------------------------- | ------------- | ------------------------------- |
+| **hourly** | 15 minutes past every hour | `15 * * * *`  | The previous full hour          |
+| **daily**  | 00:15 every day            | `15 0 * * *`  | The previous full calendar day  |
+
+<Info>
+**Why the 15-minute buffer?**
+
+Runs start 15 minutes after the interval boundary so that all data for the window has been ingested and processed. An hourly run at 10:15 exports data from 9:00 to 10:00.
+
+</Info>
+
+Manual exports run outside the schedule and do not change it. They can use the current interval window or a custom time range. See [Create and Manage Exports](/docs/data-exports/manage-exports).
+
+## What you can export
+
+| Entity type       | Contents                                                               |
+| ----------------- | ---------------------------------------------------------------------- |
+| **invoice**       | Finalized invoices, without line items, taxes or payments              |
+| **events**        | Feature usage events with customer, subscription and meter references  |
+| **credit_topups** | Completed credit wallet top-ups with balance before and after          |
+| **credit_usage**  | Current and real-time credit balance per customer across all wallets   |
+
+Column-level schemas and sample rows are on [Data Types and Schemas](/docs/data-exports/data-types).
+
+## Supported destinations
+
+| Destination                                                   | Authentication                                   | File format        | Status    |
+| ------------------------------------------------------------- | ------------------------------------------------ | ------------------ | --------- |
+| [Amazon S3](/docs/data-exports/destinations/amazon-s3)        | Flexprice-managed bucket, or your own AWS keys   | CSV, optional GZIP | Available |
+| S3-compatible storage (MinIO, DigitalOcean Spaces, Backblaze) | Your own keys plus a custom endpoint URL         | CSV, optional GZIP | Available |
+
+S3-compatible providers use the Amazon S3 destination with the endpoint URL field set. They do not need a separate connection type.
+
+## Where to find exports in the dashboard
+
+Exports live under **Data Exports** in the Flexprice dashboard. The page lists every scheduled task with its entity type, interval, connection and status.
+
+<Frame>
+  ![Data Exports page](/images/docs/data-exports/amazon-s3/s3-export-page.png)
+</Frame>
+
+## Next steps
+
+<Card icon="cloud" horizontal={true} href="/docs/data-exports/destinations/amazon-s3" title="Connect Amazon S3" />
+<Card icon="calendar" horizontal={true} href="/docs/data-exports/manage-exports" title="Create and Manage Exports" />
+<Card icon="table" horizontal={true} href="/docs/data-exports/data-types" title="Data Types and Schemas" />
+<Card icon="list-check" horizontal={true} href="/docs/data-exports/runs" title="Runs and Downloads" />
