@@ -4,6 +4,498 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="September 7th 2026">
+  ## Customer portal payments and saved cards
+
+  Customers can now pay invoices, top up wallets, and manage saved cards from the customer portal.
+
+  * **Payments and top-ups**: Pay outstanding invoices through a payment link, top up through checkout or a saved card, and configure auto top-up
+  * **Saved cards**: Add, remove, and choose a default payment method through supported gateways
+  * **Gateway support**: Available actions adapt to connected providers, with checkout and auto charge through Chargebee and Razorpay, and saved-card management through Chargebee
+  * **Portal updates**: The Overview tab brings together wallet balance, payment methods, and subscriptions; payment flows open in a new tab and refresh the portal on completion
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/customers/customer-portal" title="Customer portal - Documentation" />
+
+  <br />
+
+  ## Gateway refunds
+
+  Refund credit notes can now return money through Razorpay or Chargebee, with each refund tracked in a settlement ledger.
+
+  * **Refund destination**: Set `refund_target` to `BACK_TO_SOURCE` to refund the original payment; `PREPAID_WALLET` remains the default
+  * **Status tracking**: Gateway webhooks update refund status, and duplicate deliveries cannot settle the same refund twice
+  * **Wallet fallback**: Failed gateway refunds can be retried into the wallet, and paid invoice voids use the same refund ledger
+
+  <br />
+
+  ## Invoice line item editing
+
+  Invoice line items can now be added, updated, or removed, with totals recalculated after each edit.
+
+  * **Draft editing**: Update amounts, quantities, descriptions, and service periods; descriptions and periods also appear on the PDF
+  * **Finalized invoices**: Editing line items or applying discounts voids the original and creates a linked draft replacement
+  * **Manual edit protection**: Edited invoices are marked with `is_manually_edited` so automated recomputation cannot overwrite them; line item updates create a new item ID
+
+  <br />
+
+  <Card icon="code" horizontal={true} href="/api-reference/invoices/execute-invoice-modification" title="Execute invoice modification - API Reference" />
+
+  <br />
+
+  ## Percentage-based wallet alerts
+
+  Wallet alerts now support percentage thresholds alongside absolute balances.
+
+  * **Percentage thresholds**: Set `alert_threshold_type: percentage` and a threshold from 0 to 100 for ongoing balance alerts
+  * **Calculation**: Evaluates `100 × ongoing balance / sum of completed credit amounts`, using credits since the earliest current period start across active or trialing subscriptions. Without those subscriptions, it uses wallet history; a zero base skips evaluation
+  * **More webhook states**: Balance alerts now emit warning and info transitions, plus recovery events when the balance returns to `ok`
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/wallet/low-balance-alert" title="Low balance alerts - Documentation" />
+
+  <br />
+
+  ## Mixed-cadence prices on subscription create
+
+  You can now select compatible shorter-cadence prices when creating a subscription through the API or dashboard.
+
+  * **Price selection**: `include_price_ids` selects specific plan prices. Omit it to include matching-cadence and one-time prices, or pass an empty list to include none
+  * **Dashboard controls**: The "Also available on this plan" section adds shorter-cadence charges with the usual price overrides, commitments, coupons, and quantity controls
+  * **Addon compatibility**: Addon dialogs filter charges by the subscription's cadence and currency
+
+  <br />
+
+  ## Chargebee invoice sync improvements
+
+  Synced invoices now use the Chargebee invoice number and can serve Chargebee's own PDF.
+
+  * **Invoice matching**: The original Flexprice invoice number is preserved in metadata, and payment IDs are recorded in Chargebee notes
+  * **Pending collections**: ACH and SEPA payments stay pending while processing, avoiding premature invoice voids
+  * **Itemized checkout**: Checkout shows individual line items and handles zero-decimal currencies correctly
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/integrations/chargebee/invoice-sync" title="Chargebee invoice sync - Documentation" />
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Subscription spend and entitlement grant alerts now default to off; set `alert_enabled: true` in `subscription_alert_config` and `entitlement_alert_config` to continue evaluation
+      * Off-session auto top-ups default to a one-hour cooloff when none is configured
+      * Team settings now support removing members
+      * CSV imports show a sample file and a 5 MB limit; imports continue to use S3 on GCS deployments
+      * Wallet top-ups support per-currency minimums through `min_topup_amount_per_currency` (default `USD: 1`); end-customer credits always wait for payment
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Customer search includes archived customers when requested or when no status filter is set
+      * Invoice reads bypass stale cached data, and smaller webhook payloads avoid delivery size limits
+      * Subscription line item updates lock rows before writing, and clearing commitment buckets removes stale values
+      * Mixed-cadence billing aligns charge windows to the billing anchor and removes stray trailing line items
+      * Subscription creation includes one-time prices again, and addon filtering respects `billing_period_count`
+      * Portal payments handle missing `customer_not_present` settings correctly; currency display, saved-card payments, and return URLs were fixed
+    </Accordion>
+
+    <Accordion title="Security">
+      * ClickHouse and integration HTTP clients require TLS 1.2 or later
+      * Redis certificate verification is configurable: set `redis.tls_skip_verify: false` and `redis.tls_server_name` to enable it; skip-verify still defaults to `true`
+      * Containers run as non-root, file permissions were tightened, and published images are signed
+      * CI permissions and action pinning were hardened, integer bounds checks were added, and vulnerable dependencies were updated
+    </Accordion>
+
+    <Accordion title="API">
+      * New portal invoice payment, wallet top-up, auto top-up, payment method, and integration discovery endpoints
+      * New refund list, get, and retry endpoints; refund webhooks emit `refund.created`, `refund.succeeded`, and `refund.failed`
+      * New `POST /invoices/{id}/modify/execute` endpoint for line item edits
+      * Chargebee connections accept `gateway_account_id` to choose where new cards are stored
+      * Portal wallet top-up `idempotency_key` is optional; checkout configuration replaces `customer_present` with `customer_not_present`
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
+<Update label="August 31st 2026">
+  ## Inclusive and exclusive tax
+
+  Taxes can now be included in the price or added on top, and customers can be marked tax exempt.
+
+  * **Tax behavior**: Set `tax_behavior` to `inclusive` or `exclusive`. Subscription defaults are exclusive for USD and CAD, and inclusive for other currencies
+  * **Exempt customers**: Set `tax_treatment: exempt` to skip tax and remove included tax from the total, starting with the next invoice
+  * **Invoice breakdown**: `tax_summary` shows inclusive and exclusive totals and explains why no tax was charged
+  * **Percentage-only rates**: `percentage_value` is now required; `fixed_value` has been removed
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/taxes/overview" title="Taxes - Documentation" />
+
+  <br />
+
+  ## Price-level usage bucketing
+
+  Usage windows can now be configured on individual prices, so the same meter can power charges with different bucket sizes.
+
+  * **Price configuration**: Set `bucket_size` on usage prices with `MAX` or `SUM` aggregation; existing meter-level buckets remain supported and prevent setting a second bucket on the price
+  * **Versioned updates**: Changing the bucket creates a new price or line item version; use `none` to clear it
+  * **Dashboard support**: Charge tables and price dialogs now show bucket sizes, with validation for window commitments
+
+  <br />
+
+  ## Mixed-cadence charges on a subscription
+
+  Subscriptions can now include shorter-cadence charges, such as monthly prices on a quarterly subscription.
+
+  * **Compatibility**: Billing period and count must match exactly, or the price's effective months must divide the subscription's. Daily and weekly prices require an exact match; one-time prices remain supported
+  * **Separate billing windows**: A quarterly invoice with monthly charges gets three line items, with usage and pricing tiers reset per month
+  * **Threshold billing**: Auto-invoice threshold checks use the same billing windows
+
+  <br />
+
+  ## Entitlement grant proration on addon changes
+
+  Adding or removing an addon mid-cycle now adjusts its entitlement quota for the time remaining.
+
+  * **Proportional grants**: Applies to features whose entitlements all use additive, subscription-period grants
+  * **Quota updates**: Adding an addon grants the remaining period's share; removing it revokes the unused share
+  * **Proration control**: Set `proration_behavior: none` to add the full quota
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/features/entitlement-grants" title="Entitlement grants - Documentation" />
+
+  <br />
+
+  ## Google Cloud Storage support
+
+  Invoice PDFs and exports can now use Google Cloud Storage. CSV Box imports still require S3.
+
+  * **Provider selection**: Set `storage.provider` to `s3` or `gcs`, or use cloud auto-detection
+  * **Cloud credentials**: GCS supports Workload Identity and application default credentials; S3 exports support static keys or AWS role credentials
+  * **GCS exports**: Require Flexprice-managed buckets and a signer service account with token creator permissions for signed URLs
+  * **Configuration change**: `sync_config.s3` is now `sync_config.storage`
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/getting-started/self-hosting-guide" title="Self-hosting - Documentation" />
+
+  <br />
+
+  ## Versioned database migrations
+
+  Postgres schema changes now use versioned SQL migrations through dbmate, replacing Ent auto-migration.
+
+  * **Existing databases**: Run `make migrate-adopt url="postgres://..."` before upgrading to chart 1.4.0; add `dry=1` to preview adoption
+  * **Deployment controls**: Helm uses `migration.steps.dbmate` instead of `migration.steps.ent`; ECS migrations run only with `DB_MIGRATIONS_ENABLED=true`
+  * **Migration checks**: Unadopted databases and invalid indexes block migration, and checksums protect applied files from edits
+
+  <br />
+
+  ## Usage syncs report
+
+  A new Usage Syncs page under Tools shows which subscription usage records have synced to cloud marketplaces.
+
+  * **Provider status**: See AWS, GCP, and Azure syncs alongside usage amounts and billing periods
+  * **Filters**: Find records by customer, subscription, or period
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/integrations/marketplace-integration/overview" title="Marketplace integrations - Documentation" />
+
+  <br />
+
+  ## Remove users from a tenant
+
+  Tenant super admins can now remove users through the API.
+
+  * **User removal**: Removes a human user from the tenant and auth provider; service accounts retain their existing delete endpoint
+  * **Access protection**: Self-removal, cross-tenant removal, and removal of the last human user are blocked
+
+  <br />
+
+  <Card icon="code" horizontal={true} href="/api-reference/users/remove-user-from-tenant" title="Remove user from tenant - API Reference" />
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * CSV event imports now use a tenant-scoped CSV Box `upload_id` instead of a caller-supplied URL
+      * Free credit top-ups support a per-transaction limit through `wallet_topup_config.free_credit_limit_per_transaction` (default `0`, unlimited)
+      * Meter usage records can optionally publish to an analytics Kafka topic
+      * Meter lookup caching reduces database load, and Temporal startup retries transient failures
+      * Wallet balance alert webhooks include the customer's `external_id`
+      * Addon dialogs support price overrides and commitments; charge menus support editing and termination, and commitments can run daily
+      * Helm supports separate consumer deployments and an optional Bento collector
+      * Single-tenant deployments can show SSO login through `VITE_SSO_TENANT_ID`
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Credit grant expiry respects the subscription's timezone
+      * Price overrides preserve bucket sizes and validate commitment windows
+      * Subscription creation for tax-exempt customers succeeds; their tax associations are skipped instead of rejected
+      * Long charge amounts no longer hide row actions, and pagination stays stable while loading
+      * Kafka topics default to three partitions when unspecified; Helm migration jobs retain logs
+      * Tenant-scoped user administration no longer requires environment selection
+    </Accordion>
+
+    <Accordion title="Security">
+      * User removal now enforces tenant boundaries and prevents auth-provider path injection
+      * Dashboard prototype-pollution issues were fixed, and CI permissions were tightened
+      * Backend and dashboard pull requests now run additional security scans, with grouped weekly dependency updates
+    </Accordion>
+
+    <Accordion title="API">
+      * New `POST /users/{id}/remove` endpoint
+      * `POST /tasks` requires `upload_id` and `file_provider: csvbox`; `file_url` was removed, and only CSV event imports are supported
+      * Addon filters accept `addon_statuses` (default `active`) and `active_at`
+      * Meter-level `bucket_size` is deprecated in favor of price-level configuration
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
+<Update label="August 24th 2026">
+  ## Scheduled plan changes and billing anchor control
+
+  Plan change v2 now supports changes at period end and more control over the billing anchor.
+
+  * **Scheduled changes**: Set `change_at: end_of_period` to queue a plan change; pending changes can be listed and cancelled
+  * **Billing anchor**: Keep the current anchor or use `billing_period_behaviour: anchor_at_effect` to start a new period when the change takes effect
+  * **Conflict handling**: Choose whether a new request rejects or supersedes an existing scheduled change
+  * **Grant updates**: Plan grants and entitlements switch at the change instant, preserving addon-sourced grants
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/subscriptions/upgrade-and-downgrade" title="Upgrade and downgrade - Documentation" />
+
+  <br />
+
+  ## Permission-aware dashboard
+
+  Dashboard actions and pages now respect each user's role.
+
+  * **Action permissions**: Users without write access see disabled controls with an explanation
+  * **Page access**: Restricted routes show a 403 page, and saving or resetting settings requires Super Admin
+  * **Immediate access checks**: Permissions load at login without needing a page refresh
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/rbac/overview" title="RBAC - Documentation" />
+
+  <br />
+
+  ## Zoho Books invoice sync improvements
+
+  Zoho Books sync now supports GST details, custom fields, customer updates, and invoice approval.
+
+  * **GST support**: Customer tax details and price HSN/SAC codes sync to Zoho, with place of supply determining IGST versus CGST and SGST
+  * **Custom fields**: Map customer and invoice metadata, plus service period dates, to Zoho custom fields
+  * **Approval flow**: Optionally submit invoices for approval before marking them paid; pending or rejected approvals leave payment unrecorded in Zoho
+  * **Customer updates**: Changes to a Flexprice customer update the linked Zoho contact
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/integrations/zohobooks/connection-setup" title="Zoho Books - Documentation" />
+
+  <br />
+
+  ## Recalculate finalized invoices
+
+  Finalized subscription invoices can now be recalculated in one step.
+
+  * **Automatic replacement**: Recalculation validates and voids the original, then creates a replacement linked through `recalculated_invoice_id`
+  * **Dashboard action**: Recalculate Invoice is available on finalized invoices; drafts and invoices with an existing replacement do not qualify
+
+  <br />
+
+  ## HubSpot deal line item sync
+
+  HubSpot deal line items now stay aligned with subscription changes.
+
+  * **Ongoing reconciliation**: Creates, updates, and removes deal line items after quantity changes, addon changes, and completed checkouts
+  * **Billing details**: Synced items include billing dates, frequency, discounts, and descriptions
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * The dashboard supports Pylon in-app chat with verified user identity
+      * Prices can expand feature reporting units, and plans can report unsynced subscription counts
+      * Checkout records declined payment attempts without closing the payment; invoices finalize only after successful payment
+      * Draft invoice finalization runs every 30 minutes and stops retrying invalid-state failures
+      * OpenTelemetry adds optional HTTP metrics, replica identifiers, and cache tracing
+      * Helm adds KEDA autoscaling, configurable Kafka topics, and dashboard builds from a pinned ref
+      * Helm removes Sentry and Pyroscope integrations in favor of OpenTelemetry exception capture
+      * Postgres and ClickHouse schema baselines simplify fresh installations
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Invoice previews include coupon discounts, and recomputation no longer duplicates coupon applications or PDF discount lines
+      * Usage queries respect timezones and stop when the subscription's customer cannot be resolved
+      * Tabs invoice sync matches by billing period start, falling back to issue date for one-off and credit invoices
+      * SAML tokens validate correctly, and background role polling failures no longer sign users out
+      * User search requires read permission instead of Super Admin
+      * Meter aggregation fields trim whitespace, and migration index creation is safe to repeat
+    </Accordion>
+
+    <Accordion title="Security">
+      * Account creation requires an email verified by the auth provider
+      * Dashboard routes now send security headers to restrict framing, content sniffing, and referrer exposure
+    </Accordion>
+
+    <Accordion title="API">
+      * Plan change v2 accepts scheduling, billing anchor, and conflict options; new schedule list, get, and cancel endpoints
+      * `expand=features` on prices and `expand=price_sync_status` on plans
+      * New `POST /users/chat/verify` and `POST /usage-records/search` endpoints
+      * Zoho invoice sync settings accept approval and custom field configuration
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
+<Update label="August 17th 2026">
+  ## Role-based access for dashboard users
+
+  Tenant super admins can now assign roles from Team settings to control what users can read and change.
+
+  * **User roles**: Choose `super_admin`, `all_writer`, or `all_reader`; service accounts have a separate role catalog
+  * **Role management**: The Edit roles action replaces a user's roles, with active API keys listed when they block a change
+  * **Grant restrictions**: Admins can grant only permissions they hold, and invitations require Super Admin
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/rbac/manage-roles" title="Manage roles - Documentation" />
+
+  <br />
+
+  ## SAML single sign-on
+
+  Self-managed deployments can now connect a SAML identity provider such as Okta, Azure AD, or Google Workspace.
+
+  * **Tenant settings**: Super admins configure the identity provider, default role, and SSO enforcement from the dashboard
+  * **Account provisioning**: Users are created on their first SSO login with the configured role
+  * **Recovery access**: Enforced SSO blocks password login for regular users while keeping super admins exempt
+  * **Deployment setup**: Enable `auth.saml.enabled` with Redis and an auth signing secret; tenant login links show the SSO button
+
+  <br />
+
+  ## Plan change v2: swap plans in place
+
+  Subscriptions can now switch plans while keeping the same subscription ID, billing anchor, and period boundaries.
+
+  * **Preview and apply**: Preview prorated charges or credits before applying the change
+  * **Addon handling**: Choose which attached addons to carry over or drop
+  * **Change event**: `subscription.plan_changed` replaces the cancel and create events used by the earlier flow
+  * **Supported changes**: Interval, currency, hierarchy, and phased changes continue to use the existing endpoints
+
+  <br />
+
+  <Card icon="code" horizontal={true} href="/api-reference/subscriptions/execute-a-plan-change-v2-swap-in-place" title="Execute a plan change (v2) - API Reference" />
+
+  <br />
+
+  ## Addon changes through subscription modification
+
+  Addon attachment and removal now use the subscription modification flow, so you can preview charges or credits first.
+
+  * **Preview support**: Review proration, affected line items, and invoices before applying a change
+  * **Checkout support**: Responses include checkout details when payment is required
+  * **Endpoint migration**: The existing addon create and delete endpoints are deprecated in favor of modification endpoints
+
+  <br />
+
+  ## Stripe product sync
+
+  Stripe invoices and payment links can now show product-backed, itemized charges.
+
+  * **Price sync**: Creates a Stripe product for each Flexprice price when outbound price sync is enabled
+  * **Itemized payments**: Invoice and checkout lines use synced products where available
+  * **Dashboard toggle**: Enable Prices in the Stripe connection drawer; outbound price sync is off by default
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/integrations/stripe/invoice-sync" title="Stripe invoice sync - Documentation" />
+
+  <br />
+
+  ## Exportable usage and credits widgets
+
+  The `@flexprice/ui` package now includes six widgets for embedding usage and credit information in your app.
+
+  * **Usage widgets**: `UsageQuota`, `MetricCards`, `UsageTrendChart`, and `UsageBreakdown`
+  * **Credit widgets**: `CreditBalance` and `CreditHistory`, with wallet switching and transaction history
+  * **Bring your own data**: Widgets accept props, with adapters for portal responses and built-in loading and empty states
+  * **Package rename**: `@flexprice/flexprice-ui` is now `@flexprice/ui`, with the bundle reduced from 17.5 MB to 1.35 MB
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/exportable-ui/overview" title="Exportable UI - Documentation" />
+
+  <br />
+
+  ## Entitlement grant allocation
+
+  Entitlement grants can now cover a full subscription period or align usage windows to fixed intervals.
+
+  * **Full-period grants**: `grant_duration_unit: subscription_period` opens a grant without waiting for usage; omit duration value and allocation behavior for this unit
+  * **Window alignment**: Choose `first_usage` (default) or `unit_start` to anchor windows to usage or intervals within the billing period
+  * **Multi-unit windows**: Supports intervals such as six-hour buckets, calculated in the subscription's timezone
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/features/entitlement-grants" title="Entitlement grants - Documentation" />
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Stripe Checkout promo discounts are reflected on Flexprice invoices, with payments matching the captured amount
+      * Child subscription coupons apply to grouped invoices, and line item coupons can target a subscription line item
+      * Zoho sync includes discounts before tax and marks already-paid invoices as paid after sync
+      * Invoice webhooks include `environment_id`, and subscription webhooks include the customer
+      * Kafka consumers support Kafka 4 offset commits, with configurable retention (default `168h`)
+      * Onboarding is now a two-step flow, with refreshed login and dark theme styling
+      * Dashboard refresh actions preserve filters, and tiered pricing forms allow editing the final tier's upper bound
+      * Usage charges no longer offer one-time billing; legacy one-time values load as monthly
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Concurrent wallet transactions no longer corrupt balances, and void refunds cannot exceed the amount paid
+      * API key issuance and role updates are atomic, and alert transitions stay in order during concurrent evaluations
+      * Subscription creation no longer freezes when applying a line item discount
+      * Zoho item and invoice sync no longer sends per-line tax IDs
+      * Deleting a setting works again after it was deleted and recreated, and archiving a missing setting reports not found
+      * Nested dropdowns work inside dialogs, and searchable pickers no longer share unrelated results
+      * Helm topology selectors and Kafka broker configuration were corrected
+    </Accordion>
+
+    <Accordion title="Security">
+      * Event ingestion enforces request size limits, and outbound requests reject unsafe URLs and destinations
+      * Payment validation, OAuth redirects, login responses, tenant isolation, and QuickBooks queries were hardened
+      * Payment updates no longer accept client-set amounts; deletion is restricted to initiated, pending, or failed payments
+      * Environment selection, API key issuance, portal session creation, and workflow monitoring enforce caller permissions
+      * Whop requires a webhook signing secret, webhook verification fails closed, and the portal no longer issues already-expired session tokens
+      * Vulnerable `dompurify` and `nanoid` dependencies were updated
+    </Accordion>
+
+    <Accordion title="API">
+      * New `PUT /users/{id}/roles` endpoint; `GET /rbac/roles` accepts `user_type`
+      * New SAML metadata, login, and assertion endpoints under `/auth/saml/{tenant}`
+      * New plan change v2 preview and execute endpoints under `/subscriptions/{id}/change/v2`
+      * Subscription modification accepts `type: "addon"`; `POST /subscriptions/addon` and `DELETE /subscriptions/addon` are deprecated
+      * Payment creation accepts `gateway_options.stripe.tax_id_collection_enabled`; customer responses include `environment_id`
+      * `GET /taxes/rates` returns `items` and `pagination`
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
 <Update label="August 10th 2026">
   ## Subscription creation via checkout
 
