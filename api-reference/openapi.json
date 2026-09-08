@@ -2619,6 +2619,17 @@
             }
           }
         ],
+        "requestBody": {
+          "description": "Finalize options",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FinalizeCreditNoteRequest"
+              }
+            }
+          },
+          "required": false
+        },
         "responses": {
           "200": {
             "description": "OK",
@@ -2688,7 +2699,8 @@
           {
             "ApiKeyAuth": []
           }
-        ]
+        ],
+        "x-codegen-request-body-name": "request"
       }
     },
     "/creditnotes/{id}/void": {
@@ -5973,7 +5985,7 @@
           "Invoices"
         ],
         "summary": "Execute invoice modification",
-        "description": "Execute a modification on a draft invoice. Currently supports line item changes: add (bulk), update (one line item per call; the edit is versioned, so the line item id changes), and remove (bulk, soft delete). Totals are recalculated from the remaining line items; a manual edit marks the invoice as manually edited, which disables recompute.",
+        "description": "Execute a modification on a draft or finalized invoice. Supports line item changes: add (bulk), update (one line item per call; the edit is versioned, so the line item id changes), and remove (bulk, soft delete). Totals are recalculated from the remaining line items; a manual edit marks the invoice as manually edited, which disables recompute. Modifying a FINALIZED invoice voids it and recreates it as a draft copy carrying all current data (description, billing period, due date, metadata, line items); the modification lands on the copy and the response returns the new draft \u2014 chain subsequent calls to the returned invoice id; a call that still targets the voided original is rejected with an error naming the replacement.",
         "operationId": "executeInvoiceModify",
         "parameters": [
           {
@@ -8691,6 +8703,311 @@
         ]
       }
     },
+    "/refunds": {
+      "get": {
+        "tags": [
+          "Refunds"
+        ],
+        "summary": "List refunds",
+        "description": "Use to see where refunded money actually went and whether it has settled. Filter by invoice_ids to get every settlement row for one invoice.",
+        "operationId": "listRefunds",
+        "parameters": [
+          {
+            "name": "invoice_ids",
+            "in": "query",
+            "description": "Filter by invoice IDs",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "payment_ids",
+            "in": "query",
+            "description": "Filter by payment IDs",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "credit_note_ids",
+            "in": "query",
+            "description": "Filter by credit note IDs",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "refund_statuses",
+            "in": "query",
+            "description": "Filter by refund status",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "refund_destinations",
+            "in": "query",
+            "description": "Filter by refund destination",
+            "style": "form",
+            "explode": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "gateway",
+            "in": "query",
+            "description": "Filter by payment gateway",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "only_settled",
+            "in": "query",
+            "description": "Only refunds that have settled",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Limit",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Offset",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListRefundsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "x-scope": "read"
+      }
+    },
+    "/refunds/{id}": {
+      "get": {
+        "tags": [
+          "Refunds"
+        ],
+        "summary": "Get refund",
+        "description": "Use to inspect a single refund: its destination, settled amount and failure reason.",
+        "operationId": "getRefund",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Refund ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "x-scope": "read"
+      }
+    },
+    "/refunds/{id}/retry": {
+      "post": {
+        "tags": [
+          "Refunds"
+        ],
+        "summary": "Retry refund",
+        "description": "Use when a refund failed or is stuck pending. A failed gateway refund is retried into the customer's wallet; an already-settled refund is rejected.",
+        "operationId": "retryRefund",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Refund ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/errors.ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "ApiKeyAuth": []
+          }
+        ],
+        "x-scope": "write"
+      }
+    },
     "/secrets/api/keys": {
       "get": {
         "tags": [
@@ -9587,10 +9904,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/AddonAssociationResponse"
-                  }
+                  "$ref": "#/components/schemas/ListAddonAssociationsResponse"
                 }
               }
             }
@@ -13058,7 +13372,7 @@
         "x-codegen-request-body-name": "request"
       }
     },
-    "/v1/subscription-schedules": {
+    "/subscriptions/schedules": {
       "get": {
         "tags": [
           "Subscriptions"
@@ -13114,7 +13428,7 @@
         }
       }
     },
-    "/v1/subscription-schedules/{id}": {
+    "/subscriptions/schedules/{schedule_id}": {
       "get": {
         "tags": [
           "Subscriptions"
@@ -13124,7 +13438,7 @@
         "operationId": "getSubscriptionSchedule",
         "parameters": [
           {
-            "name": "id",
+            "name": "schedule_id",
             "in": "path",
             "description": "Schedule ID",
             "required": true,
@@ -13147,7 +13461,7 @@
         }
       }
     },
-    "/v1/subscriptions/schedules/{schedule_id}/cancel": {
+    "/subscriptions/schedules/{schedule_id}/cancel": {
       "post": {
         "tags": [
           "Subscriptions"
@@ -13192,7 +13506,7 @@
         "x-codegen-request-body-name": "request"
       }
     },
-    "/v1/subscriptions/{subscription_id}/schedules": {
+    "/subscriptions/{id}/schedules": {
       "get": {
         "tags": [
           "Subscriptions"
@@ -13202,7 +13516,7 @@
         "operationId": "listSubscriptionSchedules",
         "parameters": [
           {
-            "name": "subscription_id",
+            "name": "id",
             "in": "path",
             "description": "Subscription ID",
             "required": true,
@@ -14420,7 +14734,7 @@
           "Webhook Events"
         ],
         "summary": "invoice.communication.triggered",
-        "description": "Fired when an invoice communication (e.g. email notification) is triggered. Doc-only for parsing.",
+        "description": "Fired when an invoice communication (e.g. email notification) is triggered. `invoice.line_items` omits line items with neither an amount nor a quantity (period fan-out emits one per window whether or not usage landed in it), and `invoice.subscription.plan.prices` carries only the prices this invoice references, not the plan's full catalogue. Doc-only for parsing.",
         "responses": {
           "200": {
             "description": "Webhook payload",
@@ -14441,7 +14755,7 @@
           "Webhook Events"
         ],
         "summary": "invoice.create.drafted",
-        "description": "Fired when a new invoice is created in draft state. Doc-only for parsing.",
+        "description": "Fired when a new invoice is created in draft state. `invoice.line_items` omits line items with neither an amount nor a quantity (period fan-out emits one per window whether or not usage landed in it), and `invoice.subscription.plan.prices` carries only the prices this invoice references, not the plan's full catalogue. Doc-only for parsing.",
         "responses": {
           "200": {
             "description": "Webhook payload",
@@ -14462,7 +14776,7 @@
           "Webhook Events"
         ],
         "summary": "invoice.payment.overdue",
-        "description": "Fired when an invoice payment is overdue past the due date. Doc-only for parsing.",
+        "description": "Fired when an invoice payment is overdue past the due date. `invoice.line_items` omits line items with neither an amount nor a quantity (period fan-out emits one per window whether or not usage landed in it), and `invoice.subscription.plan.prices` carries only the prices this invoice references, not the plan's full catalogue. Doc-only for parsing.",
         "responses": {
           "200": {
             "description": "Webhook payload",
@@ -14483,7 +14797,7 @@
           "Webhook Events"
         ],
         "summary": "invoice.update",
-        "description": "Fired when an invoice is updated. Doc-only for parsing.",
+        "description": "Fired when an invoice is updated. `invoice.line_items` omits line items with neither an amount nor a quantity (period fan-out emits one per window whether or not usage landed in it), and `invoice.subscription.plan.prices` carries only the prices this invoice references, not the plan's full catalogue. Doc-only for parsing.",
         "responses": {
           "200": {
             "description": "Webhook payload",
@@ -14504,7 +14818,7 @@
           "Webhook Events"
         ],
         "summary": "invoice.update.finalized",
-        "description": "Fired when an invoice is finalized and locked for payment. Doc-only for parsing.",
+        "description": "Fired when an invoice is finalized and locked for payment. `invoice.line_items` omits line items with neither an amount nor a quantity (period fan-out emits one per window whether or not usage landed in it), and `invoice.subscription.plan.prices` carries only the prices this invoice references, not the plan's full catalogue. Doc-only for parsing.",
         "responses": {
           "200": {
             "description": "Webhook payload",
@@ -14525,7 +14839,7 @@
           "Webhook Events"
         ],
         "summary": "invoice.update.payment",
-        "description": "Fired when an invoice payment status changes. Doc-only for parsing.",
+        "description": "Fired when an invoice payment status changes. `invoice.line_items` omits line items with neither an amount nor a quantity (period fan-out emits one per window whether or not usage landed in it), and `invoice.subscription.plan.prices` carries only the prices this invoice references, not the plan's full catalogue. Doc-only for parsing.",
         "responses": {
           "200": {
             "description": "Webhook payload",
@@ -14546,7 +14860,7 @@
           "Webhook Events"
         ],
         "summary": "invoice.update.voided",
-        "description": "Fired when an invoice is voided (e.g. order cancelled or duplicate). Doc-only for parsing.",
+        "description": "Fired when an invoice is voided (e.g. order cancelled or duplicate). `invoice.line_items` omits line items with neither an amount nor a quantity (period fan-out emits one per window whether or not usage landed in it), and `invoice.subscription.plan.prices` carries only the prices this invoice references, not the plan's full catalogue. Doc-only for parsing.",
         "responses": {
           "200": {
             "description": "Webhook payload",
@@ -14659,6 +14973,69 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/webhookDto.PaymentWebhookPayload"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhook-events/refund.created": {
+      "post": {
+        "tags": [
+          "Webhook Events"
+        ],
+        "summary": "refund.created",
+        "description": "Fired when a refund is planned against an invoice, before the money moves. Doc-only for parsing.",
+        "responses": {
+          "200": {
+            "description": "Webhook payload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/webhookDto.RefundWebhookPayload"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhook-events/refund.failed": {
+      "post": {
+        "tags": [
+          "Webhook Events"
+        ],
+        "summary": "refund.failed",
+        "description": "Fired when a refund fails. A gateway refund that fails is retried into the customer's wallet. Doc-only for parsing.",
+        "responses": {
+          "200": {
+            "description": "Webhook payload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/webhookDto.RefundWebhookPayload"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhook-events/refund.succeeded": {
+      "post": {
+        "tags": [
+          "Webhook Events"
+        ],
+        "summary": "refund.succeeded",
+        "description": "Fired when a refund settles, to the original payment gateway or to a wallet. Doc-only for parsing.",
+        "responses": {
+          "200": {
+            "description": "Webhook payload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/webhookDto.RefundWebhookPayload"
                 }
               }
             }
@@ -15323,6 +15700,20 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AddonResponse"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/types.PaginationResponse"
+          }
+        }
+      },
+      "ListAddonAssociationsResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AddonAssociationResponse"
             }
           },
           "pagination": {
@@ -16132,8 +16523,19 @@
           "amount": {
             "type": "string"
           },
+          "description": {
+            "type": "string"
+          },
           "display_name": {
             "type": "string"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "period_start": {
+            "type": "string",
+            "format": "date-time"
           },
           "quantity": {
             "type": "string"
@@ -16793,14 +17195,32 @@
       },
       "ChangedInvoiceStatus": {
         "type": "string",
-        "description": "preview | issued | INITIATED | PENDING | PROCESSING | SUCCEEDED | OVERPAID | FAILED | REFUNDED | PARTIALLY_REFUNDED",
+        "description": "preview | issued | INITIATED | PENDING | PROCESSING | SUCCEEDED | OVERPAID | FAILED | REFUNDED | PARTIALLY_REFUNDED | VOIDED",
         "enum": [
           "preview",
-          "issued"
+          "issued",
+          "INITIATED",
+          "PENDING",
+          "PROCESSING",
+          "SUCCEEDED",
+          "OVERPAID",
+          "FAILED",
+          "REFUNDED",
+          "PARTIALLY_REFUNDED",
+          "VOIDED"
         ],
         "x-enum-varnames": [
           "ChangedInvoiceStatusPreview",
-          "ChangedInvoiceStatusWalletIssued"
+          "ChangedInvoiceStatusWalletIssued",
+          "ChangedInvoiceStatusInitiated",
+          "ChangedInvoiceStatusPending",
+          "ChangedInvoiceStatusProcessing",
+          "ChangedInvoiceStatusSucceeded",
+          "ChangedInvoiceStatusOverpaid",
+          "ChangedInvoiceStatusFailed",
+          "ChangedInvoiceStatusRefunded",
+          "ChangedInvoiceStatusPartiallyRefunded",
+          "ChangedInvoiceStatusVoided"
         ]
       },
       "ChangedLineItem": {
@@ -17933,6 +18353,9 @@
           },
           "reason": {
             "$ref": "#/components/schemas/types.CreditNoteReason"
+          },
+          "refund_target": {
+            "$ref": "#/components/schemas/types.RefundTarget"
           }
         }
       },
@@ -20336,6 +20759,14 @@
           }
         }
       },
+      "FinalizeCreditNoteRequest": {
+        "type": "object",
+        "properties": {
+          "refund_target": {
+            "$ref": "#/components/schemas/types.RefundTarget"
+          }
+        }
+      },
       "GCPMarketplaceAgreement": {
         "required": [
           "account_id",
@@ -21447,7 +21878,7 @@
           },
           "line_item_id": {
             "type": "string",
-            "description": "LineItemID and Update are required for action 'update' (one line item per call;\nthe update is versioned, so the item id changes after each edit)."
+            "description": "Required for action 'update' (one line item per call; edits are versioned, so the id changes)."
           },
           "line_item_ids": {
             "minItems": 1,
@@ -21886,6 +22317,20 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/PaymentResponse"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/types.PaginationResponse"
+          }
+        }
+      },
+      "ListRefundsResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RefundResponse"
             }
           },
           "pagination": {
@@ -22773,6 +23218,111 @@
             "type": "string",
             "description": "proration_date is the date used for proration calculations",
             "format": "date-time"
+          }
+        }
+      },
+      "RefundResponse": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "string"
+          },
+          "attempt": {
+            "type": "integer"
+          },
+          "cancelled_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "credit_note_id": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "environment_id": {
+            "type": "string"
+          },
+          "failed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "failure_reason": {
+            "type": "string"
+          },
+          "gateway_idempotency_token": {
+            "type": "string"
+          },
+          "gateway_metadata": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "gateway_refund_id": {
+            "type": "string"
+          },
+          "gateway_tracking_id": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "idempotency_key": {
+            "type": "string"
+          },
+          "initiated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "invoice_id": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/types.Metadata"
+          },
+          "payment_gateway": {
+            "type": "string"
+          },
+          "payment_id": {
+            "type": "string"
+          },
+          "refund_destination": {
+            "$ref": "#/components/schemas/types.RefundDestination"
+          },
+          "refund_destination_id": {
+            "type": "string"
+          },
+          "refund_reason": {
+            "$ref": "#/components/schemas/types.RefundReason"
+          },
+          "refund_status": {
+            "$ref": "#/components/schemas/types.RefundStatus"
+          },
+          "settled_amount": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/types.Status"
+          },
+          "succeeded_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_by": {
+            "type": "string"
           }
         }
       },
@@ -25347,8 +25897,19 @@
           "amount": {
             "type": "string"
           },
+          "description": {
+            "type": "string"
+          },
           "display_name": {
             "type": "string"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "period_start": {
+            "type": "string",
+            "format": "date-time"
           },
           "quantity": {
             "type": "string"
@@ -28542,6 +29103,9 @@
           "recurring_credit_grant",
           "onetime_credit_grant"
         ],
+        "x-enum-comments": {
+          "ApplicationReasonFirstTimeRecurringCreditGrant": "#nosec G101 -- enum value name, not a secret"
+        },
         "x-enum-varnames": [
           "ApplicationReasonFirstTimeRecurringCreditGrant",
           "ApplicationReasonRecurringCreditGrant",
@@ -30152,6 +30716,70 @@
         },
         "x-speakeasy-name-override": "QueryFilter"
       },
+      "types.RefundDestination": {
+        "type": "string",
+        "enum": [
+          "GATEWAY",
+          "WALLET",
+          "OUT_OF_BAND"
+        ],
+        "x-enum-varnames": [
+          "RefundDestinationGateway",
+          "RefundDestinationWallet",
+          "RefundDestinationOutOfBand"
+        ],
+        "x-speakeasy-name-override": "RefundDestination"
+      },
+      "types.RefundReason": {
+        "type": "string",
+        "enum": [
+          "DUPLICATE",
+          "FRAUDULENT",
+          "REQUESTED_BY_CUSTOMER",
+          "ORDER_CHANGE",
+          "SERVICE_ISSUE",
+          "OTHER"
+        ],
+        "x-enum-varnames": [
+          "RefundReasonDuplicate",
+          "RefundReasonFraudulent",
+          "RefundReasonRequestedByCustomer",
+          "RefundReasonOrderChange",
+          "RefundReasonServiceIssue",
+          "RefundReasonOther"
+        ],
+        "x-speakeasy-name-override": "RefundReason"
+      },
+      "types.RefundStatus": {
+        "type": "string",
+        "enum": [
+          "PENDING",
+          "PROCESSING",
+          "SUCCEEDED",
+          "FAILED",
+          "CANCELLED"
+        ],
+        "x-enum-varnames": [
+          "RefundStatusPending",
+          "RefundStatusProcessing",
+          "RefundStatusSucceeded",
+          "RefundStatusFailed",
+          "RefundStatusCancelled"
+        ],
+        "x-speakeasy-name-override": "RefundStatus"
+      },
+      "types.RefundTarget": {
+        "type": "string",
+        "enum": [
+          "PREPAID_WALLET",
+          "BACK_TO_SOURCE"
+        ],
+        "x-enum-varnames": [
+          "RefundTargetPrepaidWallet",
+          "RefundTargetBackToSource"
+        ],
+        "x-speakeasy-name-override": "RefundTarget"
+      },
       "types.RejectedEventReason": {
         "type": "string",
         "enum": [
@@ -30379,7 +31007,9 @@
           "azure_marketplace"
         ],
         "x-enum-comments": {
+          "SecretProviderAzureMarketplace": "#nosec G101 -- provider enum value, not a secret",
           "SecretProviderGCS": "supports multiple connections per environment, service-account JSON creds",
+          "SecretProviderQuickBooks": "#nosec G101 -- enum value name, not a secret",
           "SecretProviderS3": "supports multiple connections per environment"
         },
         "x-enum-varnames": [
@@ -31519,6 +32149,9 @@
           "payment.failed",
           "payment.success",
           "payment.pending",
+          "refund.created",
+          "refund.succeeded",
+          "refund.failed",
           "customer.created",
           "customer.updated",
           "customer.deleted",
@@ -31578,6 +32211,9 @@
           "WebhookEventPaymentFailed",
           "WebhookEventPaymentSuccess",
           "WebhookEventPaymentPending",
+          "WebhookEventRefundCreated",
+          "WebhookEventRefundSucceeded",
+          "WebhookEventRefundFailed",
           "WebhookEventCustomerCreated",
           "WebhookEventCustomerUpdated",
           "WebhookEventCustomerDeleted",
@@ -31804,6 +32440,89 @@
           }
         }
       },
+      "webhookDto.CouponApplication": {
+        "type": "object",
+        "properties": {
+          "applied_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "coupon_association_id": {
+            "type": "string"
+          },
+          "coupon_id": {
+            "type": "string"
+          },
+          "coupon_snapshot": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "currency": {
+            "type": "string"
+          },
+          "discount_percentage": {
+            "type": "string"
+          },
+          "discount_type": {
+            "$ref": "#/components/schemas/types.CouponType"
+          },
+          "discounted_amount": {
+            "type": "string"
+          },
+          "final_price": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "invoice_line_item_id": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "original_price": {
+            "type": "string"
+          },
+          "subscription_id": {
+            "type": "string"
+          }
+        }
+      },
+      "webhookDto.CouponAssociation": {
+        "type": "object",
+        "properties": {
+          "coupon_id": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "subscription_id": {
+            "type": "string"
+          },
+          "subscription_line_item_id": {
+            "type": "string"
+          }
+        }
+      },
       "webhookDto.CreditNote": {
         "type": "object",
         "properties": {
@@ -32026,8 +32745,24 @@
           "amount_remaining": {
             "type": "string"
           },
+          "billing_period": {
+            "type": "string"
+          },
           "billing_reason": {
             "type": "string"
+          },
+          "billing_sequence": {
+            "type": "integer"
+          },
+          "coupon_applications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/webhookDto.CouponApplication"
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
           },
           "currency": {
             "type": "string"
@@ -32036,6 +32771,9 @@
             "$ref": "#/components/schemas/webhookDto.Customer"
           },
           "customer_id": {
+            "type": "string"
+          },
+          "description": {
             "type": "string"
           },
           "due_date": {
@@ -32050,6 +32788,9 @@
             "format": "date-time"
           },
           "id": {
+            "type": "string"
+          },
+          "idempotency_key": {
             "type": "string"
           },
           "invoice_number": {
@@ -32097,8 +32838,30 @@
           "subtotal": {
             "type": "string"
           },
+          "tax_summary": {
+            "$ref": "#/components/schemas/TaxSummary"
+          },
+          "taxes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/webhookDto.TaxApplied"
+            }
+          },
           "total": {
             "type": "string"
+          },
+          "total_discount": {
+            "type": "string"
+          },
+          "total_prepaid_credits_applied": {
+            "type": "string"
+          },
+          "total_tax": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
           },
           "voided_at": {
             "type": "string",
@@ -32109,13 +32872,43 @@
       "webhookDto.InvoiceLineItem": {
         "type": "object",
         "properties": {
+          "adjusted_entitlement_quantity": {
+            "type": "string"
+          },
           "amount": {
+            "type": "string"
+          },
+          "commitment_info": {
+            "$ref": "#/components/schemas/types.CommitmentInfo"
+          },
+          "currency": {
             "type": "string"
           },
           "display_name": {
             "type": "string"
           },
+          "entity_id": {
+            "type": "string"
+          },
+          "entity_type": {
+            "type": "string"
+          },
           "id": {
+            "type": "string"
+          },
+          "invoice_level_discount": {
+            "type": "string"
+          },
+          "line_item_discount": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/types.Metadata"
+          },
+          "meter_display_name": {
+            "type": "string"
+          },
+          "meter_id": {
             "type": "string"
           },
           "period_end": {
@@ -32129,10 +32922,25 @@
           "plan_display_name": {
             "type": "string"
           },
+          "prepaid_credits_applied": {
+            "type": "string"
+          },
           "price_id": {
             "type": "string"
           },
+          "price_type": {
+            "type": "string"
+          },
+          "price_unit": {
+            "type": "string"
+          },
+          "price_unit_amount": {
+            "type": "string"
+          },
           "quantity": {
+            "type": "string"
+          },
+          "subscription_line_item_id": {
             "type": "string"
           }
         }
@@ -32144,7 +32952,27 @@
             "$ref": "#/components/schemas/types.WebhookEventName"
           },
           "invoice": {
-            "$ref": "#/components/schemas/InvoiceResponse"
+            "$ref": "#/components/schemas/webhookDto.Invoice"
+          }
+        }
+      },
+      "webhookDto.Meter": {
+        "type": "object",
+        "properties": {
+          "aggregation": {
+            "$ref": "#/components/schemas/meter.Aggregation"
+          },
+          "event_name": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "reset_usage": {
+            "$ref": "#/components/schemas/types.ResetUsage"
           }
         }
       },
@@ -32207,6 +33035,178 @@
           },
           "payment": {
             "$ref": "#/components/schemas/webhookDto.Payment"
+          }
+        }
+      },
+      "webhookDto.Plan": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "lookup_key": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/types.Metadata"
+          },
+          "name": {
+            "type": "string"
+          },
+          "prices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/webhookDto.Price"
+            }
+          }
+        }
+      },
+      "webhookDto.Price": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "string"
+          },
+          "billing_cadence": {
+            "$ref": "#/components/schemas/types.BillingCadence"
+          },
+          "billing_model": {
+            "$ref": "#/components/schemas/types.BillingModel"
+          },
+          "billing_period": {
+            "$ref": "#/components/schemas/types.BillingPeriod"
+          },
+          "billing_period_count": {
+            "type": "integer"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "display_amount": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "display_price_unit_amount": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "invoice_cadence": {
+            "$ref": "#/components/schemas/types.InvoiceCadence"
+          },
+          "lookup_key": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/price.JSONBMetadata"
+          },
+          "meter": {
+            "$ref": "#/components/schemas/webhookDto.Meter"
+          },
+          "meter_id": {
+            "type": "string"
+          },
+          "price_unit": {
+            "type": "string"
+          },
+          "price_unit_amount": {
+            "type": "string"
+          },
+          "tier_mode": {
+            "$ref": "#/components/schemas/types.BillingTier"
+          },
+          "tiers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/price.PriceTier"
+            }
+          },
+          "transform_quantity": {
+            "$ref": "#/components/schemas/price.JSONBTransformQuantity"
+          },
+          "type": {
+            "$ref": "#/components/schemas/types.PriceType"
+          }
+        }
+      },
+      "webhookDto.Refund": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "string"
+          },
+          "attempt": {
+            "type": "integer"
+          },
+          "credit_note_id": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "failed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "failure_reason": {
+            "type": "string"
+          },
+          "gateway_refund_id": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "invoice_id": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/types.Metadata"
+          },
+          "payment_gateway": {
+            "type": "string"
+          },
+          "payment_id": {
+            "type": "string"
+          },
+          "refund_destination": {
+            "$ref": "#/components/schemas/types.RefundDestination"
+          },
+          "refund_destination_id": {
+            "type": "string"
+          },
+          "refund_reason": {
+            "$ref": "#/components/schemas/types.RefundReason"
+          },
+          "refund_status": {
+            "$ref": "#/components/schemas/types.RefundStatus"
+          },
+          "settled_amount": {
+            "type": "string"
+          },
+          "succeeded_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "webhookDto.RefundWebhookPayload": {
+        "type": "object",
+        "properties": {
+          "event_type": {
+            "$ref": "#/components/schemas/types.WebhookEventName"
+          },
+          "refund": {
+            "$ref": "#/components/schemas/webhookDto.Refund"
           }
         }
       },
@@ -32304,6 +33304,12 @@
             "type": "string",
             "format": "date-time"
           },
+          "coupon_associations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/webhookDto.CouponAssociation"
+            }
+          },
           "currency": {
             "type": "string"
           },
@@ -32328,6 +33334,12 @@
           "id": {
             "type": "string"
           },
+          "line_items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/webhookDto.SubscriptionLineItem"
+            }
+          },
           "lookup_key": {
             "type": "string"
           },
@@ -32339,6 +33351,9 @@
           },
           "pause_status": {
             "$ref": "#/components/schemas/types.PauseStatus"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/webhookDto.Plan"
           },
           "plan_id": {
             "type": "string"
@@ -32360,6 +33375,76 @@
           "trial_start": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "webhookDto.SubscriptionLineItem": {
+        "type": "object",
+        "properties": {
+          "billing_period": {
+            "$ref": "#/components/schemas/types.BillingPeriod"
+          },
+          "billing_period_count": {
+            "type": "integer"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "entity_id": {
+            "type": "string"
+          },
+          "entity_type": {
+            "$ref": "#/components/schemas/types.SubscriptionLineItemEntityType"
+          },
+          "id": {
+            "type": "string"
+          },
+          "invoice_cadence": {
+            "$ref": "#/components/schemas/types.InvoiceCadence"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "meter_display_name": {
+            "type": "string"
+          },
+          "meter_id": {
+            "type": "string"
+          },
+          "plan_display_name": {
+            "type": "string"
+          },
+          "price": {
+            "$ref": "#/components/schemas/webhookDto.Price"
+          },
+          "price_id": {
+            "type": "string"
+          },
+          "price_type": {
+            "$ref": "#/components/schemas/types.PriceType"
+          },
+          "price_unit": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "subscription_id": {
+            "type": "string"
           }
         }
       },
@@ -32404,6 +33489,65 @@
           },
           "subscription": {
             "$ref": "#/components/schemas/webhookDto.Subscription"
+          }
+        }
+      },
+      "webhookDto.TaxApplied": {
+        "type": "object",
+        "properties": {
+          "applied_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "tax_amount": {
+            "type": "string"
+          },
+          "tax_behavior": {
+            "$ref": "#/components/schemas/types.TaxBehavior"
+          },
+          "tax_rate": {
+            "$ref": "#/components/schemas/webhookDto.TaxRate"
+          },
+          "tax_rate_id": {
+            "type": "string"
+          },
+          "taxable_amount": {
+            "type": "string"
+          }
+        }
+      },
+      "webhookDto.TaxRate": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "percentage_value": {
+            "type": "string"
+          },
+          "tax_rate_type": {
+            "$ref": "#/components/schemas/types.TaxRateType"
           }
         }
       },
