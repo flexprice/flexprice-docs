@@ -1,0 +1,134 @@
+---
+title: "Exported Data Types and CSV Schemas in Flexprice Exports"
+sidebarTitle: "Data Types and Schemas"
+description: "Column-by-column schemas and sample CSV rows for the invoice, events, credit top-up and credit usage exports, plus how exported files are named"
+---
+
+Flexprice exports five entity types. Each scheduled task exports one of them. Every export is a CSV file with a header row, and the columns below are the same for every destination.
+
+| Entity type       | One row per                              | Scope of each run                                   |
+| ----------------- | ---------------------------------------- | --------------------------------------------------- |
+| **invoice**       | Finalized invoice                        | Invoices inside the run's time window                |
+| **events**        | Ingested usage event                     | Events inside the run's time window                  |
+| **credit_topups** | Completed credit wallet top-up           | Top-ups inside the run's time window                 |
+| **credit_usage**  | Customer                                 | Snapshot of every customer's balances at run time    |
+| **usage_analytics** | Customer, feature and source combination | Usage and cost aggregated over the run's time window |
+
+Use the entity type key in the first column as the `entity_type` value when you create a scheduled task through the API.
+
+## Invoices
+
+Finalized invoices. Line items, taxes and payment records are not included. Use the `id` column to fetch those through the invoice API.
+
+**Sample row:**
+
+```csv
+id,tenant_id,environment_id,customer_id,subscription_id,invoice_number,invoice_type,invoice_status,payment_status,currency,amount_due,amount_paid,amount_remaining,subtotal,total,total_discount,total_tax,adjustment_amount,refunded_amount,billing_sequence,description,due_date,paid_at,voided_at,finalized_at,billing_period,period_start,period_end,invoice_pdf_url,billing_reason,metadata,idempotency_key,version,status,created_by,updated_by,created_at,updated_at
+inv_01K76TCFSQX6JY5C43WT2G1EE8,tenant_01K0F7AQCZR5THSG9MHEZE8VKR,env_01K0F7AQEQFTV06P178C1KTR6X,cust_01K4CGWJ4493R9V2Y5PZW7CNRZ,subs_01K4M3DVXZNFRN50P9T5EKB9HV,INV-202510-00079,SUBSCRIPTION,FINALIZED,PENDING,usd,10,0,10,10,10,0,0,0,0,2,Invoice for subscription subs_01K4M3DVXZNFRN50P9T5EKB9HV,2025-10-09T05:47:27Z,,,2025-10-10T10:24:09Z,MONTHLY,2025-09-08T05:47:27Z,2025-10-08T05:47:27Z,https://pay.stripe.com/invoice/...,SUBSCRIPTION_CYCLE,"{""stripe_hosted_invoice_url"":""...""}",subscription_invoice-ff29843f8cde4859,3,published,d95842bc-7d6c-4a4e-8dc9-eb9d0780d9f3,d95842bc-7d6c-4a4e-8dc9-eb9d0780d9f3,2025-10-10T10:24:08Z,2025-10-10T10:24:12Z
+```
+
+Amount columns (`amount_due`, `amount_paid`, `subtotal`, `total` and the rest) are decimal strings in the invoice's `currency`. Timestamps are RFC 3339 in UTC. The `metadata` column is a JSON object encoded as a CSV string.
+
+## Events
+
+Feature usage events after ingestion, with the customer, subscription, price, meter and feature they were attributed to.
+
+**Sample row:**
+
+```csv
+id,tenant_id,environment_id,external_customer_id,customer_id,subscription_id,sub_line_item_id,price_id,meter_id,feature_id,event_name,source,timestamp,ingested_at,period_id,qty_total,provisional_usage_charges,properties,unique_hash
+event_01K8D3HHYJVAC90K3X8R0YZA5N,tenant_01K0F7AQCZR5THSG9MHEZE8VKR,env_01K0F7AQEQFTV06P178C1KTR6X,cus_TIciSJDL8QS8OU,,,,,meter_01K42Q6R916Q4KB9MC6S46PWQ2,,api_call,onboarding,2025-10-25T07:15:20Z,2025-10-25T07:15:21Z,,20,,"{""api_calls"":20}",baae5efc04d556dc97407d259169b46390946ec4330c974304e70b037aebadcb
+```
+
+`timestamp` is the event time you sent and `ingested_at` is when Flexprice received it. `properties` is the event's properties object encoded as a CSV string. `qty_total` is the quantity the meter derived from the event.
+
+<Note>
+  The exporter reads from the meter usage table, which does not carry `customer_id`, `subscription_id`, `sub_line_item_id`, `price_id`, `feature_id`, `period_id` or `provisional_usage_charges`. Those columns are present in the header and left empty in every row, so the schema stays stable for downstream loaders. Use `external_customer_id` and `meter_id` to join to other data.
+</Note>
+
+## Credit top-ups
+
+Completed credit wallet top-ups. Pending or failed top-ups are not exported.
+
+**Sample row:**
+
+```csv
+topup_id,external_id,name,wallet_id,amount,credit_balance_before,credit_balance_after,reference_id,transaction_reason,created_at
+wt_01K9X5HJKM9PQR2ST3UV4WXY6Z,cust_ext_123abc,Acme Corporation,wallet_01K9X5HJKM9PQR2ST3UV4WXY6Z,500.00,1000.00,1500.00,topup_ref_abc123,Manual credit top-up for Q1 usage,2025-10-15T14:30:00Z
+```
+
+`external_id` and `name` identify the customer who owns the wallet. `amount` is the credit amount added, and the two balance columns show the wallet's credit balance immediately before and after the top-up.
+
+## Credit usage
+
+A snapshot of every customer's current and real-time credit balances, aggregated across all of that customer's wallets, as they are when the run executes.
+
+**Sample row:**
+
+```csv
+name,customer_external_id,customer_id,current_balance,real_time_balance,number_of_wallets
+Acme Corporation,cust_ext_123abc,cust_01K4CGWJ4493R9V2Y5PZW7CNRZ,146.00,146.00,1
+```
+
+| Column                 | Description                                                                 |
+| ---------------------- | --------------------------------------------------------------------------- |
+| `name`                 | Customer name                                                               |
+| `customer_external_id` | Customer external ID                                                        |
+| `customer_id`          | Flexprice customer ID                                                       |
+| `current_balance`      | Sum of current credit balances across all wallets, as a decimal string      |
+| `real_time_balance`    | Sum of real-time balances including pending charges, as a decimal string    |
+| `number_of_wallets`    | Number of wallets the customer has                                          |
+
+<Note>
+  Customers with no wallets are included with a balance of zero and `number_of_wallets` set to 0.
+</Note>
+
+When you create a credit usage task in the dashboard you can add customer or wallet metadata fields as extra columns. They are appended after the columns above, under the column name you choose.
+
+## Usage analytics
+
+Usage and cost aggregated per customer, feature and event source over the run's time window. Use it to reconcile what customers consumed against what they were charged without re-aggregating raw events.
+
+**Header row:**
+
+```csv
+customer_name,customer_id,customer_external_id,start_time,end_time,feature_name,feature_id,feature_group_name,event_name,event_count,aggregation_field,total_usage,total_cost,currency,source
+```
+
+| Column                | Description                                                              |
+| --------------------- | ------------------------------------------------------------------------ |
+| `customer_name`       | Customer name                                                            |
+| `customer_id`         | Flexprice customer ID                                                    |
+| `customer_external_id`| Customer external ID                                                     |
+| `start_time`          | Start of the run's time window, RFC 3339 in UTC                          |
+| `end_time`            | End of the run's time window, RFC 3339 in UTC                            |
+| `feature_name`        | Feature name                                                             |
+| `feature_id`          | Flexprice feature ID                                                     |
+| `feature_group_name`  | Name of the feature group the feature belongs to, if any                 |
+| `event_name`          | Event name the feature's meter listens for                               |
+| `event_count`         | Number of events in the window                                           |
+| `aggregation_field`   | The event property the meter aggregates, if the meter uses one           |
+| `total_usage`         | Aggregated usage for the window, as a decimal string                     |
+| `total_cost`          | Cost of that usage at the customer's subscribed price, as a decimal string |
+| `currency`            | Currency of `total_cost`                                                 |
+| `source`              | Event source the row is grouped by                                       |
+
+As with credit usage, customer metadata fields chosen in the dashboard are appended after these columns.
+
+## File naming
+
+Every run writes one file named after its entity type and time window:
+
+```
+{entity_type}-{start_time}-{end_time}.csv
+```
+
+Times use the `YYMMDDHHMMSS` format in UTC. With GZIP compression enabled the extension is `.csv.gz`. Examples:
+
+```
+invoice-251016100000-251016110000.csv
+events-251016000000-251017000000.csv.gz
+credit_usage-251223110000-251223120000.csv
+```
+
+Where the file lands inside your bucket depends on the destination's key prefix. See [Export data to Amazon S3](/docs/data-exports/destinations/amazon-s3).

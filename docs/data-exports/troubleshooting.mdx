@@ -1,0 +1,106 @@
+---
+title: "Troubleshoot Failed or Missing Data Exports in Flexprice"
+sidebarTitle: "Troubleshooting"
+description: "Fix scheduled export tasks that do not run, files that never reach the S3 bucket, export timeouts, header-only CSV files and invalid AWS credential errors"
+---
+
+Most export failures come from one of four causes: the task is disabled, the destination settings do not match the bucket, the credentials no longer work, or the time window is too large. The Runs tab on the task shows which one applies. Each section below starts from the symptom and ends with the fix.
+
+## Why is my scheduled task not running?
+
+**Likely causes**
+
+- The task is disabled
+- The connection failed validation
+- The export service is temporarily unavailable
+
+**Fix**
+
+1. Open the task and confirm it is enabled. A disabled task keeps its configuration but never runs.
+2. Check the connection's status on the connection page. Re-enter the credentials if it shows as invalid.
+3. Trigger a manual export. If the manual run succeeds, the task and connection are fine and the next scheduled run will happen at the normal time.
+4. If the manual run also fails, note the error on the run record and follow the matching section below.
+
+## Why are files not appearing in my bucket?
+
+**Likely causes**
+
+- Bucket name or region on the task does not match the bucket
+- The IAM policy does not allow writes
+- The key prefix contains a typo, so files land in an unexpected folder
+
+**Fix**
+
+1. Compare the bucket name on the task with the bucket in the AWS console. Names are case-sensitive.
+2. Confirm the region on the task is the region the bucket was created in.
+3. Confirm the IAM policy grants `s3:PutObject`, `s3:GetObject` and `s3:ListBucket` on the bucket. The full policy is on [Export data to Amazon S3](/docs/data-exports/destinations/amazon-s3#iam-policy).
+4. Check the key prefix for typos and stray slashes, then search the bucket for the file name shown on the run record.
+
+If the run shows as completed, the file was written. Use the **Download** button on the run to retrieve it while you locate it in the bucket.
+
+## Why do exports time out?
+
+**Likely causes**
+
+- A custom time range covering months of data
+- A very high-volume entity type, usually `events`, at a daily interval
+- Slow uploads to the destination
+
+Any run that exceeds 60 minutes fails with a timeout.
+
+**Fix**
+
+1. Split a large backfill into several manual exports with shorter custom time ranges.
+2. Switch high-volume tasks from `daily` to `hourly` so each run covers less data.
+3. Enable GZIP compression on the task to reduce upload size.
+4. If a single hour still times out, contact support with the task ID and the run's time window.
+
+## Why do I get an invalid credentials error?
+
+**Likely causes**
+
+- The AWS access key was rotated or deleted
+- The Access Key ID or Secret Access Key was entered incorrectly
+- A temporary session token expired
+- The IAM user or role no longer exists
+
+**Fix**
+
+1. Check the key in the AWS IAM console under the user's security credentials.
+2. Update the connection in Flexprice with the current Access Key ID and Secret Access Key.
+3. For temporary credentials, generate a new session token and update the connection. Permanent IAM user keys avoid this.
+4. Confirm the IAM user or role still exists and still has the export policy attached.
+
+## Why does the exported file contain only a header row?
+
+There were no records of that entity type inside the run's time window. Flexprice still writes the CSV with its header row and marks the run as completed, so downstream loaders see a stable schema. Check the window on the run record against when the data was created, and re-run with a custom time range if it was outside.
+
+## Recommendations
+
+<Check>
+**Test every new task with a manual export**
+
+Run a manual export before relying on the schedule. It surfaces connection, permission and destination errors immediately instead of at the next interval boundary.
+
+</Check>
+
+<Check>
+**Match the interval to the volume**
+
+Use `hourly` for events and other high-volume data, and `daily` for invoices, credit top-ups and credit usage. Smaller windows keep runs well under the 60-minute limit.
+
+</Check>
+
+<Check>
+**Review the Runs tab regularly**
+
+Check for failed runs and fill any gap with a manual export over the missed window.
+
+</Check>
+
+<Check>
+**Name connections by environment and purpose**
+
+Names like "Production invoice exports" or "Staging events backup" make it clear which connection a task uses when you have several.
+
+</Check>

@@ -1,0 +1,167 @@
+---
+title: "Export Flexprice Data to Amazon S3 or S3-Compatible Storage"
+sidebarTitle: "Amazon S3"
+description: "Connect Flexprice to an Amazon S3 or S3-compatible bucket, grant the IAM permissions it needs, and configure bucket, prefix, compression and encryption"
+---
+
+Flexprice writes export files to Amazon S3 as CSV, one file per run, into a bucket and key prefix you choose. You can use a bucket that Flexprice manages, with no AWS account needed, or your own bucket with your own credentials. Any storage that speaks the S3 API works through the same destination by setting a custom endpoint URL.
+
+## Prerequisites
+
+For your own bucket you need:
+
+- An AWS account with access to S3 and IAM
+- An S3 bucket, already created, in the region you want the files in
+- An IAM user or role with the policy below attached
+- That user's Access Key ID and Secret Access Key
+
+For a Flexprice-managed bucket there are no prerequisites.
+
+## Create an S3 connection
+
+A connection stores the credentials. Create it once and reuse it across as many export tasks as you need. Go to **Data Exports**, open the connections section and create a new connection.
+
+<Frame>
+  ![Create S3 Connection](/images/docs/data-exports/amazon-s3/create-connection.png)
+</Frame>
+
+### Option 1: Flexprice-managed bucket
+
+Choose the managed option and give the connection a name. Flexprice writes files to a bucket it owns, encrypted at rest, and you retrieve them with the **Download** button on each run. Choose this when you do not want to manage AWS infrastructure or you need exports working immediately.
+
+<Note>
+  Files in a Flexprice-managed bucket are only reachable through the Flexprice dashboard and API. To read them from your own tooling, use your own bucket.
+</Note>
+
+### Option 2: Your own bucket
+
+Provide the following:
+
+| Field                     | Required | Notes                                                                                                   |
+| ------------------------- | -------- | ------------------------------------------------------------------------------------------------------- |
+| **Connection name**       | Yes      | A label such as "Production S3 export"                                                                   |
+| **AWS Access Key ID**     | Yes      | Starts with `AKIA` for permanent IAM user keys, or `ASIA` for temporary credentials                      |
+| **AWS Secret Access Key** | Yes      | Encrypted at rest and never returned by the API                                                          |
+| **AWS Session Token**     | No       | Only for temporary credentials from an assumed role. Leave empty for permanent keys                       |
+
+Temporary credentials expire, and the connection stops working when they do. Use a dedicated IAM user with permanent keys for scheduled exports.
+
+### IAM policy
+
+Attach this policy to the IAM user or role whose keys you entered. Replace `your-bucket-name` with the bucket name.
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "FlexPriceS3ExportAccess",
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:GetObject", "s3:ListBucket"],
+      "Resource": [
+        "arn:aws:s3:::your-bucket-name/*",
+        "arn:aws:s3:::your-bucket-name"
+      ]
+    }
+  ]
+}
+```
+
+<Warning>
+  Attach the policy before creating the connection. Flexprice validates the credentials when the connection is saved.
+</Warning>
+
+`s3:PutObject` writes the export files. `s3:GetObject` and `s3:ListBucket` let Flexprice verify the upload, including the HeadObject call it makes after each write, and serve the **Download** button. Grant nothing beyond these.
+
+## Destination settings
+
+These fields are set on each scheduled task, not on the connection, so two tasks on the same connection can write to different buckets or prefixes. The full task creation flow is on [Create and Manage Exports](/docs/data-exports/manage-exports).
+
+| Field            | Required | Default  | Description                                                              |
+| ---------------- | -------- | -------- | ------------------------------------------------------------------------ |
+| **Bucket**       | Yes      |          | Name of the bucket. It must already exist                                |
+| **Region**       | Yes      |          | The bucket's region, for example `us-west-2` or `ap-south-1`             |
+| **Key prefix**   | No       | none     | Folder path inside the bucket, for example `production/invoices/`        |
+| **Endpoint URL** | No       | AWS S3   | Custom endpoint for S3-compatible storage                                |
+| **Compression**  | No       | `none`   | `none` or `gzip`                                                         |
+| **Encryption**   | No       | `AES256` | `AES256`, `aws:kms` or `aws:kms:dsse`                                    |
+
+### Key prefix
+
+Files are written as `{key_prefix}/{entity_type}/{entity_type}-{start}-{end}.csv`. Flexprice always adds the entity type as a folder, so a prefix only needs to separate environments or purposes, for example `production/` and `staging/`. File naming is described on [Data Types and Schemas](/docs/data-exports/data-types#file-naming).
+
+### Endpoint URL
+
+Leave empty for AWS S3. Set it to use any storage that implements the S3 API:
+
+| Provider             | Example endpoint                                 |
+| -------------------- | ------------------------------------------------ |
+| MinIO                | `https://minio.example.com`                      |
+| DigitalOcean Spaces  | `https://nyc3.digitaloceanspaces.com`            |
+| Backblaze B2         | `https://s3.us-west-002.backblazeb2.com`         |
+
+The credentials on the connection must be the provider's keys, and the region must be a value the provider accepts.
+
+### Compression
+
+| Option   | Extension | Effect                                      |
+| -------- | --------- | ------------------------------------------- |
+| `none`   | `.csv`    | Plain CSV, readable without any tooling     |
+| `gzip`   | `.csv.gz` | Roughly 70 to 80 percent smaller files      |
+
+Enable GZIP for the `events` entity type and for any task whose runs approach the 60-minute timeout. Leave it off when a downstream system reads the files directly and cannot decompress.
+
+### Encryption
+
+All options are server-side encryption applied by S3 when the object is written.
+
+| Option         | Keys managed by         | Use when                                          |
+| -------------- | ----------------------- | ------------------------------------------------- |
+| `AES256`       | S3                      | Default. No extra setup                           |
+| `aws:kms`      | Your AWS KMS key        | Compliance requires customer-managed keys         |
+| `aws:kms:dsse` | Your AWS KMS key, twice | Dual-layer encryption is mandated                 |
+
+## Recommendations
+
+<Check>
+**Use a dedicated bucket and IAM user**
+
+A bucket used only for Flexprice exports keeps lifecycle rules and access policies scoped to this data. A dedicated IAM user with the policy above and nothing else limits what a leaked key can reach. Rotate the key on your normal schedule and update the connection when you do.
+
+</Check>
+
+<Check>
+**Add a lifecycle rule**
+
+Exports accumulate one file per run. A lifecycle rule that moves objects to S3 Glacier after 90 days and deletes them after a year keeps costs flat without manual cleanup.
+
+</Check>
+
+<Check>
+**Enable CloudTrail on the bucket**
+
+Object-level logging records every write Flexprice makes, which gives you an independent audit trail of exports.
+
+</Check>
+
+## FAQ
+
+### Where do the files land in my bucket?
+
+In a folder named after the entity type under the task's key prefix: `{key_prefix}/{entity_type}/{entity_type}-{start}-{end}.csv`, with `.gz` appended when compression is on. With no prefix, the entity type folder sits at the bucket root, for example `invoice/invoice-251016100000-251016110000.csv`.
+
+### Can I use one connection for several tasks?
+
+Yes. The connection holds credentials only. Bucket, region, prefix, compression and encryption are set per task, so tasks on one connection can write to different buckets.
+
+### Can I download files without AWS console access?
+
+Yes. Every completed run has a **Download** button in the dashboard, for both Flexprice-managed and your own buckets. See [Runs and Downloads](/docs/data-exports/runs).
+
+### Does Flexprice delete files from my bucket?
+
+No. The IAM policy grants no delete permission. Every run writes a file named by its entity type and time window, so re-running the same window writes a file with the same name.
+
+### Can I export to storage other than S3?
+
+Any provider that implements the S3 API works through the endpoint URL field. Other destinations are not available yet. Contact support if you need one.
