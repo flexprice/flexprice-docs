@@ -161,28 +161,24 @@ Resolution order for a given wallet: Flexprice uses the wallet’s own alert set
 {
   "alert_enabled": boolean,
   "alert_threshold_type": "absolute" | "percentage",
-  "critical": { "threshold": string, "condition": "below" | "above" },
-  "warning":  { "threshold": string, "condition": "below" | "above" },
-  "info":     { "threshold": string, "condition": "below" | "above" }
+  "critical": { "threshold": string, "condition": "below" },
+  "warning":  { "threshold": string, "condition": "below" },
+  "info":     { "threshold": string, "condition": "below" }
 }
 ```
 
-- **`alert_enabled`** — Required. Boolean. Turn alerts on or off at tenant and environment level.
-- **`alert_threshold_type`** — Optional. Defaults to `"absolute"` when omitted. One threshold type applies to all three levels, so Critical, Warning and Info are always read the same way.
+- **`alert_enabled`**: Required. Boolean. Turn alerts on or off at tenant and environment level.
+- **`alert_threshold_type`**: Optional. Defaults to `"absolute"` when omitted. The threshold type applies to all three levels, so Critical, Warning and Info are always read the same way.
 
-  1. **`"absolute"`** — Thresholds are fixed amounts in the customer's wallet currency. On a USD wallet, `"10"` fires when the balance falls below $10. Negative values are allowed, so `"-5"` alerts a post-paid wallet that has gone $5 below zero. Both credit balance and ongoing balance alerts are evaluated.
-  2. **`"percentage"`** — Thresholds are a share of the credits granted during the customer's current billing period, so `"20"` fires at 20% of those credits. If the customer has no active subscription, the wallet's total lifetime credits granted is used instead. Values must be between `0` and `100`, and only ongoing balance alerts are evaluated.
+  1. **`"absolute"`**: Thresholds are fixed amounts denominated in the customer's wallet currency. On a USD wallet, a threshold of `10` triggers when the balance falls below \$10. Negative values are allowed, so `-5` triggers when a post-paid wallet has gone \$5 below zero.
+  2. **`"percentage"`**: Thresholds are specified as a percentage of the credits granted during the customer's current billing period. For example, a threshold of `20` triggers when the ongoing balance falls below 20% of the credits granted in that billing period. If the customer has no active subscription, the wallet's total lifetime credits granted is used as the reference amount. Values must be between 0 and 100.
 
-  See [Threshold Types](/docs/wallet/low-balance-alert#threshold-types) for the full comparison.
+  See [Threshold Types](/docs/wallet/low-balance-alert#threshold-types) for a full comparison of the available threshold types.
 
-- **`critical`**, **`warning`**, **`info`** — Optional. Each has:
+- **`critical`**, **`warning`**, **`info`**: Optional. Each has:
 
-  - **`threshold`** — String. Read as an amount or a percentage according to `alert_threshold_type`.
-  - **`condition`** — `"below"` or `"above"`. Wallet balance alerts use `"below"`.
-
-<Note>
-  A tenant default set with `alert_threshold_type: "percentage"` still applies only to ongoing balance alerts. See [Percentage Thresholds](/docs/wallet/low-balance-alert#percentage-thresholds) for what this means for wallets using this default.
-</Note>
+  - **`threshold`**: String. Read as an amount or a percentage according to `alert_threshold_type`.
+  - **`condition`**: `"below"`. Wallet balance alerts trigger on a falling balance.
 
 ### Default Value
 
@@ -198,7 +194,8 @@ When no custom value is stored (or after DELETE), the default is:
 ### Validation
 
 - If `alert_enabled` is `true`, at least one of `critical`, `warning`, or `info` must be present.
-- Threshold ordering: for `"below"`, critical < warning < info; for `"above"`, critical > warning > info (as applicable).
+- A critical threshold is required when a warning threshold is set.
+- Thresholds must ascend by severity: critical < warning < info.
 
 ### Alert behavior (same as per-wallet alerts)
 

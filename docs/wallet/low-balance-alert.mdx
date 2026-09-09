@@ -7,10 +7,44 @@ Wallet Sentinel Alerts in Flexprice let you monitor wallet balance with **three 
 
 **Benefits:**
 
-- **Proactive management** — Get notified at Info and Warning levels before balance reaches critical
-- **Granular control** — Separate thresholds for informational, warning, and critical states
-- **Absolute or percentage** — Set thresholds as a fixed amount or as a share of granted credits
-- **Per-wallet settings** — Enable or disable alerts and configure thresholds per wallet
+- **Proactive management**: Get notified at Info and Warning levels before balance reaches critical
+- **Granular control**: Separate thresholds for informational, warning, and critical states
+- **Absolute or percentage**: Set thresholds as a fixed amount or as a share of granted credits
+- **Per-wallet settings**: Enable or disable alerts and configure thresholds per wallet
+
+## Threshold Types
+
+Every threshold is read either as an **Absolute** amount or as a **Percentage**. The threshold type applies to all three levels together.
+
+| | Absolute | Percentage |
+|---|---|---|
+| **A threshold of `10` means** | 10 in the customer's wallet currency | 10% of granted credits |
+| **Measured against** | The wallet balance itself | Credits granted in the current billing period |
+| **Accepted values** | Any amount, including negative | 0 to 100 |
+
+### Absolute Thresholds
+
+Thresholds are fixed amounts denominated in the customer's wallet currency. On a USD wallet, a Critical threshold of `10` triggers when the balance falls below \$10.
+
+Use Absolute when the level you care about is a fixed figure, such as a hard floor before service is interrupted or the point at which someone should top up. Negative values are allowed, so a post-paid wallet can alert on how far below zero it has gone.
+
+Absolute is the default. A wallet or tenant configuration saved without a threshold type is read as Absolute.
+
+### Percentage Thresholds
+
+Thresholds are specified as a percentage of the credits granted during the customer's current billing period. A Critical threshold of `10` triggers when the ongoing balance falls below 10% of the credits granted in that billing period. If the customer has no active subscription, the wallet's total lifetime credits granted is used as the reference amount.
+
+Use Percentage when the meaningful floor scales with the customer. 20% left means the same thing to a customer granted 500 credits and one granted 50,000, where a fixed amount would not.
+
+Values must be between 0 and 100.
+
+<Frame>
+  ![Percentage threshold type selected, with each level shown as a percentage](/images/docs/wallet/low-balance-alert/percentage-threshold-type.png)
+</Frame>
+
+<Note>
+  Percentage thresholds are evaluated against [ongoing balance](/docs/wallet/balance-types#ongoing-balance), the real-time balance that accounts for current usage.
+</Note>
 
 ## Alert Levels
 
@@ -20,51 +54,11 @@ Wallet Sentinel Alerts in Flexprice let you monitor wallet balance with **three 
 | **Warning** | Early warning level before critical |
 | **Critical** | Critical alert level requiring immediate action |
 
-Each level takes a single **threshold value**. An alert fires when the wallet balance falls below that value, so each row reads **Balance below**. Set the value as a fixed amount in the customer's wallet currency or as a percentage of granted credits — see [Threshold Types](#threshold-types).
+Each level takes a single **threshold value**, read according to the configured [threshold type](#threshold-types). An alert triggers when the balance falls below that value.
 
-Leave a level's field empty to skip it. Thresholds must ascend from Critical to Info: Critical below Warning, Warning below Info.
+Configure only the levels you need, subject to two rules: a critical threshold is required when a warning threshold is set, and thresholds must ascend by severity, so critical is lower than warning and warning is lower than info.
 
 Alerts are turned on or off for a wallet using **Enable wallet alerts** (`alert_enabled` in the API).
-
-## Threshold Types
-
-Every threshold is read either as an **Absolute** amount or as a **Percentage**. Set this with the **Threshold type** control above the Critical, Warning, and Info rows. The choice applies to all three levels together — Critical, Warning, and Info cannot mix types.
-
-| | Absolute | Percentage |
-|---|---|---|
-| **A threshold of `10` means** | 10 in the customer's wallet currency | 10% of granted credits |
-| **Measured against** | The wallet balance itself | Credits granted in the current billing period |
-| **Input shows** | The wallet's currency symbol | A `%` suffix |
-| **Accepted values** | Any amount, including negative | `0` to `100` |
-| **Alerts evaluated** | Credit balance and ongoing balance | Ongoing balance only |
-
-### Absolute Thresholds
-
-Thresholds are fixed amounts in the customer's wallet currency. On a USD wallet, a Critical threshold of `10` fires when the balance falls below $10.
-
-Use Absolute when the level you care about is a fixed figure — a hard floor before service is interrupted, or the point at which someone should top up. Negative values are allowed, so a post-paid wallet can alert on how far below zero it has gone.
-
-Absolute is the default: a wallet or tenant configuration saved without a threshold type is read as Absolute.
-
-### Percentage Thresholds
-
-Thresholds are a share of the credits granted during the customer's current billing period. A Critical threshold of `10` fires when the balance falls below 10% of those granted credits. If the customer has no active subscription, Flexprice uses the wallet's total lifetime credits granted instead.
-
-Use Percentage when the meaningful floor scales with the customer — 20% left means the same thing to a customer granted 500 credits and one granted 50,000, where a fixed amount would not.
-
-Values must be between 0 and 100. A value outside that range is reported when you save rather than being adjusted for you.
-
-<Frame>
-  ![Percentage threshold type selected, with each level shown as a percentage](/images/docs/wallet/low-balance-alert/percentage-threshold-type.png)
-</Frame>
-
-<Note>
-  Percentage thresholds are evaluated against **ongoing balance** only — the real-time balance that accounts for current usage (see [Auto Top-Up](/docs/wallet/auto-top-up) for how ongoing balance is calculated). Credit balance alerts do not run while Percentage is selected. Use Absolute if you need the wallet's raw credit balance evaluated as well.
-</Note>
-
-### Switching Between Types
-
-Switching keeps both sets of values. You can enter Percentage thresholds, switch back to check your Absolute thresholds, and switch again without losing either set. Only the active type is saved when you click **Save Changes**.
 
 ## Configuring Wallet Sentinel Alerts
 
@@ -84,7 +78,7 @@ Switching keeps both sets of values. You can enter Percentage thresholds, switch
   </Step>
 
   <Step title="Enable Alerts">
-    In the **Wallet Alert Settings** dialog, turn **Enable wallet alerts** **on** to activate monitoring against your configured thresholds. The threshold rows stay visible while alerts are off so you can see what enabling them will apply.
+    In the **Wallet Alert Settings** dialog, turn **Enable wallet alerts** on to activate monitoring against your configured thresholds.
     <Frame>
       ![Enable Alert Settings](/images/docs/wallet/low-balance-alert/enable-alert-settings.png)
     </Frame>
@@ -92,8 +86,7 @@ Switching keeps both sets of values. You can enter Percentage thresholds, switch
 
   <Step title="Configure Thresholds">
     - Choose **Absolute** or **Percentage** under **Threshold type**.
-    - Enter a value for **Critical**, **Warning**, and **Info**. Each fires when the balance falls below the value you enter.
-    - Leave a level's field empty to skip it.
+    - Set a value for the levels you want. Each level triggers when its threshold is breached.
     - Click **Save Changes** to apply.
     <Frame>
       ![Configure Alert Settings](/images/docs/wallet/low-balance-alert/configure-alert-settings.png)
@@ -105,10 +98,10 @@ Switching keeps both sets of values. You can enter Percentage thresholds, switch
 
 Once configured and enabled, the sentinel will:
 
-- **Monitor balance** — Evaluate wallet balance against your thresholds (e.g. after top-ups, debits, and accounting for usage)
-- **Trigger by level** — Raise **Info**, **Warning**, or **Critical** alert based on which threshold is crossed
-- **Update state** — Reflect current state (e.g. ok, info, warning, in_alarm) on the wallet and in alert history
-- **Notify** — Send webhooks when alert state changes
+- **Monitor balance**: Evaluate wallet balance against your thresholds (e.g. after top-ups, debits, and accounting for usage)
+- **Trigger by level**: Raise **Info**, **Warning**, or **Critical** alert based on which threshold is crossed
+- **Update state**: Reflect current state (e.g. ok, info, warning, in_alarm) on the wallet and in alert history
+- **Notify**: Send webhooks when alert state changes
 
 <Info>
   Webhooks are sent when alert state changes (e.g. ok → warning, warning → in_alarm). Configure your webhook endpoint to receive these notifications.
@@ -118,7 +111,7 @@ Once configured and enabled, the sentinel will:
 
 ### Viewing Current Configuration
 
-Open the customer’s **Wallet** tab, click the **three-dot menu (⋮)** → **Alert Settings**. The dialog shows **Enable wallet alerts**, the selected **Threshold type**, and all three threshold levels (Critical, Warning, Info) with their values.
+Open the customer’s **Wallet** tab, click the **three-dot menu (⋮)** → **Alert Settings**. The dialog shows **Enable wallet alerts**, the selected **Threshold type**, and the threshold levels with their values.
 
 ### Changing Thresholds
 
@@ -136,31 +129,31 @@ Set **Enable wallet alerts** to **off** in the **Alert Settings** dialog and cli
 
 ### SaaS and Usage-Based Billing
 
-- **Low balance warnings** — Critical at 0, Warning at 5, Info at 10 so you get early notice and can top up before going negative
-- **Prepaid credits** — Notify when credits are running low at multiple levels to avoid running out of credits unexpectedly
+- **Low balance warnings**: Critical at 0, Warning at 5, Info at 10 so you get early notice and can top up before going negative
+- **Prepaid credits**: notify when credits are running low at multiple levels to avoid running out of credits unexpectedly
 - **Service Continuity**: Prevent service interruptions due to insufficient funds
 
 ### E-commerce Platforms
 
-- **Wallet monitoring** — Different severities for different teams or workflows
-- **Promotional or prepaid wallets** — Alerts when balance is low relative to typical usage
+- **Wallet monitoring**: different severities for different teams or workflows
+- **Promotional or prepaid wallets**: alerts when balance is low relative to typical usage
 - **Payment Processing**: Ensure sufficient funds for transactions
 
 ### API and Credit-Based Products
 
-- **Usage vs balance** — Early Info/Warning so support or automation can act before Critical
-- **Multi-wallet** — Per-wallet sentinel settings so each wallet has its own thresholds
+- **Usage vs balance**: early Info/Warning so support or automation can act before Critical
+- **Multi-wallet**: per-wallet sentinel settings so each wallet has its own thresholds
 - **Rate Limiting**: Prevent service disruption due to insufficient credits
 - **Customer Support**: Proactive customer communication
 
 ## Best Practices
 
-💡 **Set realistic thresholds** — Choose values that give enough time to top up (e.g. Warning above zero if you want to avoid negative balance)
+💡 **Set realistic thresholds**: choose values that give enough time to top up (e.g. Warning above zero if you want to avoid negative balance)
 
-💡 **Use all three levels** — Use Info for early notice, Warning for action soon, Critical for immediate action
+💡 **Use all three levels**: use Info for early notice, Warning for action soon, Critical for immediate action
 
-💡 **Pick the right threshold type** — Use Absolute for a fixed floor in the wallet's currency; use Percentage when the meaningful floor scales with how many credits the customer was granted
+💡 **Pick the right threshold type**: use Absolute for a fixed floor in the wallet's currency, and Percentage when the meaningful floor scales with how many credits the customer was granted
 
-💡 **Review periodically** — Adjust thresholds based on usage patterns and top-up behavior
+💡 **Review periodically**: adjust thresholds based on usage patterns and top-up behavior
 
-💡 **Combine with auto top-up** — Use sentinel alerts together with auto top-up so critical levels can trigger automatic top-up when configured
+💡 **Combine with auto top-up**: use sentinel alerts together with auto top-up so critical levels can trigger automatic top-up when configured
