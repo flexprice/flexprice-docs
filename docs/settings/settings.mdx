@@ -168,7 +168,7 @@ Resolution order for a given wallet: Flexprice uses the wallet’s own alert set
 ```
 
 - **`alert_enabled`** — Required. Boolean. Turn alerts on or off at tenant and environment level.
-- **`alert_threshold_type`** — Optional. Defaults to `"absolute"` when omitted. Applies to all three levels together; a config cannot mix threshold types across levels.
+- **`alert_threshold_type`** — Optional. Defaults to `"absolute"` when omitted. One threshold type applies to all three levels, so Critical, Warning and Info are always read the same way.
 
   1. **`"absolute"`** — Thresholds are fixed amounts in the customer's wallet currency. On a USD wallet, `"10"` fires when the balance falls below $10. Negative values are allowed, so `"-5"` alerts a post-paid wallet that has gone $5 below zero. Both credit balance and ongoing balance alerts are evaluated.
   2. **`"percentage"`** — Thresholds are a share of the credits granted during the customer's current billing period, so `"20"` fires at 20% of those credits. If the customer has no active subscription, the wallet's total lifetime credits granted is used instead. Values must be between `0` and `100`, and only ongoing balance alerts are evaluated.
@@ -178,7 +178,7 @@ Resolution order for a given wallet: Flexprice uses the wallet’s own alert set
 - **`critical`**, **`warning`**, **`info`** — Optional. Each has:
 
   - **`threshold`** — String. Read as an amount or a percentage according to `alert_threshold_type`.
-  - **`condition`** — `"below"` or `"above"`. The dashboard writes `"below"` for wallet balance alerts; `"above"` is accepted by the API only.
+  - **`condition`** — `"below"` or `"above"`. Wallet balance alerts use `"below"`.
 
 <Note>
   A tenant default set with `alert_threshold_type: "percentage"` still applies only to ongoing balance alerts. See [Percentage Thresholds](/docs/wallet/low-balance-alert#percentage-thresholds) for what this means for wallets using this default.
