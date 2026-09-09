@@ -1,0 +1,243 @@
+---
+title: "Portal API Reference"
+description: "Every endpoint available to an authenticated Customer Portal session under /v1/customer/portal"
+---
+
+The Customer Portal APIs are the customer-facing half of Flexprice. They authenticate with a portal session token rather than an API key, and every request is scoped to the one customer that token names. Use them if you build your own portal front end, or embed portal actions in your product.
+
+For how to obtain a token, see [Customer Portal](/docs/customers/customer-portal#generating-a-portal-session).
+
+## Authentication
+
+Send the session token in the `X-Session-Token` header:
+
+```bash
+curl --request GET \
+  --url https://api.cloud.flexprice.io/v1/customer/portal/info \
+  --header 'X-Session-Token: <session_token>'
+```
+
+| Property | Value |
+| -------- | ----- |
+| Base path | `/v1/customer/portal` |
+| Header | `X-Session-Token` |
+| Token lifetime | 1 hour |
+| Scope | One customer, in the tenant and environment the token was issued in |
+
+<Warning>
+The session token is a credential. Do not log it, put it in a URL you send to a third party, or hand it to a payment provider as a return URL. See how the portal builds return URLs in [Portal payments](/docs/customers/customer-portal/payments#returning-from-a-hosted-checkout).
+</Warning>
+
+<Note>
+A suspended tenant's portal endpoints stop serving requests, the same as the rest of the API.
+</Note>
+
+## Customer
+
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| `GET` | `/info` | The authenticated customer's profile |
+| `PUT` | `/info` | Update the customer's own profile fields |
+| `GET` | `/usage` | Usage summary for the customer |
+
+## Subscriptions
+
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| `POST` | `/subscriptions` | List the customer's subscriptions, paginated |
+| `GET` | `/subscriptions/{id}` | One subscription |
+
+## Invoices
+
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| `POST` | `/invoices` | List the customer's invoices, paginated |
+| `GET` | `/invoices/{id}` | One invoice with its line items |
+| `GET` | `/invoices/{id}/pdf` | Presigned URL for the invoice PDF. Pass `?url=true` |
+| `POST` | `/invoices/{id}/pay` | Start payment for an invoice |
+
+### Pay an invoice
+
+```bash
+curl --request POST \
+  --url https://api.cloud.flexprice.io/v1/customer/portal/invoices/inv_01H.../pay \
+  --header 'X-Session-Token: <session_token>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "idempotency_key": "portal-pay-inv_01H-1736180000",
+    "success_url": "https://portal.yourapp.com?checkout_return=1"
+  }'
+```
+
+```json
+{
+  "payment_id": "pay_01H...",
+  "invoice_id": "inv_01H...",
+  "status": "pending",
+  "amount": "149.00",
+  "currency": "USD",
+  "payment_action": { "type": "payment_link", "url": "https://provider.example.com/pay/xyz" }
+}
+```
+
+There is no amount field. The charge comes from the invoice, so a customer cannot part-pay.
+
+## Wallets
+
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| `POST` | `/wallets` | List the customer's wallets |
+| `GET` | `/wallets/{id}` | One wallet with its real-time balance |
+| `GET` | `/wallets/{id}/transactions` | Transaction history. Accepts `limit` and `offset` |
+| `POST` | `/wallets/{id}/top-up` | Top up a wallet |
+| `PUT` | `/wallets/{id}/auto-topup` | Configure automatic top-ups |
+
+### Top up a wallet
+
+```bash
+curl --request POST \
+  --url https://api.cloud.flexprice.io/v1/customer/portal/wallets/wal_01H.../top-up \
+  --header 'X-Session-Token: <session_token>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "credits_to_add": "100",
+    "idempotency_key": "portal-topup-wal_01H-1736180000",
+    "checkout": { "use_saved_method": false }
+  }'
+```
+
+```json
+{
+  "wallet_transaction": { "id": "wtx_01H...", "amount": "100.00", "credits": "100" },
+  "checkout_session": {
+    "id": "cs_01H...",
+    "checkout_status": "initiated",
+    "payment_provider": "chargebee",
+    "payment_action": { "type": "checkout_url", "url": "https://provider.example.com/checkout/xyz" },
+    "expires_at": "2026-01-06T18:00:00Z"
+  }
+}
+```
+
+`idempotency_key` is required. Omit `checkout` entirely to raise an invoice for the top-up instead of charging now. Credit reason, expiry and priority are pinned server-side and cannot be set from the portal.
+
+### Configure auto top-up
+
+```bash
+curl --request PUT \
+  --url https://api.cloud.flexprice.io/v1/customer/portal/wallets/wal_01H.../auto-topup \
+  --header 'X-Session-Token: <session_token>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "enabled": true,
+    "threshold": "20",
+    "amount": "100",
+    "cooldown": { "value": 6, "unit": "hour" }
+  }'
+```
+
+Send `cooldown` as `{ "value": 0, "unit": "hour" }` to clear a stored cooldown. `null` leaves the existing one in place.
+
+## Checkout sessions
+
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| `GET` | `/checkout-sessions/{id}` | Read a session's current status |
+| `POST` | `/checkout-sessions/{id}/cancel` | Abandon a session |
+
+```json
+{
+  "id": "cs_01H...",
+  "checkout_status": "completed",
+  "payment_provider": "chargebee",
+  "checkout_invoice_id": "inv_01H...",
+  "checkout_payment_id": "pay_01H...",
+  "expires_at": "2026-01-06T18:00:00Z",
+  "completed_at": "2026-01-06T17:31:04Z"
+}
+```
+
+| `checkout_status` | Meaning |
+| ----------------- | ------- |
+| `initiated` | Created, nothing attempted yet |
+| `pending` | In flight at the provider |
+| `completed` | The gateway is done. Credits and payment records follow from the webhook |
+| `failed` | Declined. Read `failure_reason` |
+| `expired` | Timed out before completion |
+
+<Info>
+`completed` means the gateway finished, not that the wallet transaction exists yet. It is written by the provider's webhook, which can land a moment later. Recheck the wallet rather than assuming the balance from the status.
+</Info>
+
+## Payment methods
+
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| `GET` | `/payment-methods` | Saved methods, grouped by provider. Accepts a `providers` filter |
+| `POST` | `/payment-methods` | Start a hosted card-capture session |
+| `POST` | `/payment-methods/delete` | Remove a saved method |
+| `POST` | `/payment-methods/default` | Promote a method to default at its provider |
+
+Delete and default both take `payment_provider` and `payment_method_id`. Adding returns a `SetupAction`, not a payment method, because nothing is stored until the customer completes the provider's form.
+
+```json
+{
+  "provider": "chargebee",
+  "action": { "type": "redirect", "url": "https://provider.example.com/setup/xyz" }
+}
+```
+
+<Warning>
+`action.url` is an unconstrained API string. Refuse any scheme that is not `http` or `https` before opening it.
+</Warning>
+
+## Integrations and configuration
+
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| `GET` | `/integrations` | Payment providers available to this session, with their capabilities |
+| `GET` | `/config` | The tenant's portal configuration, merged with the defaults |
+
+`/integrations` is derived from the tenant's published connections. Use it to decide which actions to render rather than hard-coding a provider. See the [capability matrix](/docs/customers/customer-portal/payments#provider-capabilities).
+
+## Analytics
+
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| `POST` | `/analytics/revenue` | Usage and revenue analytics for the customer |
+| `POST` | `/analytics/cost` | Cost analytics for the customer |
+
+<Warning>
+Cost analytics returns your cost to serve the customer and your margin on them. Do not render those figures in a customer-facing surface.
+</Warning>
+
+## Errors
+
+Portal errors carry a hint written for the customer. Common ones:
+
+| Message | Cause |
+| ------- | ----- |
+| `This invoice cannot be paid yet` | The invoice is still a draft |
+| `This invoice is already settled` | The invoice payment status is already succeeded |
+| `Contact support to activate this subscription` | The invoice's subscription is not in a collectable state |
+| `credits must be greater than zero` | A top-up of zero or a negative amount |
+| `top-up amount is below the minimum` | Under the tenant's per-currency floor. Details name the minimum |
+| `requested payment provider is not connected` | `payment_provider` names a gateway with no published connection |
+| `capability is required` | A provider resolution request without a named capability |
+
+## Related resources
+
+<CardGroup cols={2}>
+  <Card title="Customer Portal" icon="browser" href="/docs/customers/customer-portal">
+    Sessions, sections and the security model
+  </Card>
+  <Card title="Portal payments" icon="credit-card" href="/docs/customers/customer-portal/payments">
+    The flow behind each payment endpoint
+  </Card>
+  <Card title="Portal configuration" icon="sliders" href="/docs/customers/customer-portal/configuration">
+    The schema returned by /config
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference">
+    The full Flexprice API
+  </Card>
+</CardGroup>
