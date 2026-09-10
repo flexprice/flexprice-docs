@@ -18,17 +18,17 @@ Generate and **directly write** weekly changelog entries for Flexprice into `doc
 
 ## Repo Locations
 
-All repos live at `/Users/tsage/Desktop/flexprice/`:
+Run commands from the docs repo root. Paths below assume the backend and frontend repos are siblings.
 
 | Repo | Path | Purpose |
 |---|---|---|
-| Backend | `/Users/tsage/Desktop/flexprice/flexprice` | Go monolith — Gin, Ent ORM, Temporal, Kafka, ClickHouse |
-| Frontend | `/Users/tsage/Desktop/flexprice/flexprice-front` | React + Vite + TypeScript dashboard |
-| Docs | `/Users/tsage/Desktop/flexprice/flexprice-docs` | Mintlify MDX documentation site |
+| Backend | `../flexprice` | Go monolith — Gin, Ent ORM, Temporal, Kafka, ClickHouse |
+| Frontend | `../flexprice-front` | React + Vite + TypeScript dashboard |
+| Docs | `.` | Mintlify MDX documentation site |
 
 The changelog file is at:
 ```
-/Users/tsage/Desktop/flexprice/flexprice-docs/docs/changelog.mdx
+docs/changelog.mdx
 ```
 
 ---
@@ -47,38 +47,35 @@ The changelog label date is the **end date** of the range (e.g., `April 6th 2026
 
 **IMPORTANT**: Use `git -C <path>` to run git from outside the repo directory. Do NOT `cd` into repos — shell state does not persist between commands.
 
+Keep both code repos on their current branches with all local changes intact. Fetch updates `upstream/main` without changing the checked-out files, use that ref for commit queries and source-code reads.
+
 ```bash
-# Backend — use upstream/develop (the canonical source of truth, NOT origin/main which is the fork)
-git -C /Users/tsage/Desktop/flexprice/flexprice log \
-  remotes/upstream/develop \
+# Backend — use upstream/main (the canonical source of truth, NOT origin/main which is the fork)
+git -C ../flexprice fetch upstream && \
+git -C ../flexprice log \
+  remotes/upstream/main \
   --format="%h %ad %s" --date=short \
   --since="YYYY-MM-DD" --until="YYYY-MM-DD" \
   --no-merges 2>&1 | head -100
 
-# Frontend — use origin (flexprice-front is not a fork, origin IS upstream)
-git -C /Users/tsage/Desktop/flexprice/flexprice-front log \
+# Frontend — use upstream/main (production; origin is the personal fork)
+git -C ../flexprice-front fetch upstream && \
+git -C ../flexprice-front log remotes/upstream/main \
   --format="%h %ad %s" --date=short \
   --since="YYYY-MM-DD" --until="YYYY-MM-DD" \
   --no-merges 2>&1 | head -100
 ```
 
 **Key notes on the backend remote setup**:
-- `origin` = Tsage's personal fork (`subratsahilgupta/flexprice`) — often out of date, missing recent commits
-- `upstream` = the real flexprice org repo — use `remotes/upstream/develop` for the authoritative commit history
-- Always run backend git log against `remotes/upstream/develop`, not `origin/main`
-
-**If output is empty**, try `--all` to check all branches:
-```bash
-git -C /Users/tsage/Desktop/flexprice/flexprice log --all \
-  --format="%h %ad %s" --date=short \
-  --since="YYYY-MM-DD" --until="YYYY-MM-DD" 2>&1 | head -50
-```
+- `origin` = your personal fork — may be out of date, missing recent commits
+- `upstream` = the real flexprice org repo — use `remotes/upstream/main` for the production commit history
+- Always run backend git log against `remotes/upstream/main`, not `origin/main`
 
 Run both backend and frontend queries in **parallel** (single message, two tool calls) for speed.
 
 ### 3. Cross-Reference Against Prior Changelog
 
-Before writing, read the current top entry in `changelog.mdx` to avoid duplicating anything already published. Use the `Read` tool — anything already in the most recent `<Update>` block is off-limits.
+Before writing, read the current top entry in `docs/changelog.mdx` to avoid duplicating anything already published. Use the `Read` tool — anything already in the most recent `<Update>` block is off-limits.
 
 ### 4. Categorize Changes
 
@@ -103,21 +100,23 @@ A typical entry has **3–6 major features** and then the accordion section. Onl
 
 For each major feature, read source code to understand what was built — commit messages alone are not enough.
 
+For backend and frontend source, list files with `git -C <repo> ls-tree -r --name-only upstream/main` and read them with `git -C <repo> show upstream/main:<path>`. Here, `<path>` is relative to the code repo. Read from this fetched ref, not the current working tree, which may contain older code or unfinished changes.
+
 ```
-flexprice/internal/api/         → HTTP handlers, request/response structs
-flexprice/internal/service/     → Business logic, orchestration
-flexprice/internal/domain/      → Domain models, enums, constants
-flexprice/ent/schema/           → Database schema (Ent ORM)
-flexprice/internal/temporal/    → Background workflow definitions
-flexprice-front/src/pages/      → Dashboard page components
-flexprice-front/src/components/ → Shared UI components
-flexprice-front/src/api/        → API client hooks and types
-flexprice-docs/docs/            → Existing documentation pages
-flexprice-docs/images/docs/     → Screenshots for changelog
+../flexprice/internal/api/         → HTTP handlers, request/response structs
+../flexprice/internal/service/     → Business logic, orchestration
+../flexprice/internal/domain/      → Domain models, enums, constants
+../flexprice/ent/schema/           → Database schema (Ent ORM)
+../flexprice/internal/temporal/    → Background workflow definitions
+../flexprice-front/src/pages/      → Dashboard page components
+../flexprice-front/src/components/ → Shared UI components
+../flexprice-front/src/api/        → API client hooks and types
+docs/                              → Existing documentation pages
+images/docs/                       → Screenshots for changelog
 ```
 
-- **Check for screenshots** in `flexprice-docs/images/docs/` — if relevant images exist, include them in a `<Frame>`
-- **Check for existing docs** — look in `flexprice-docs/docs/` for a matching page; if found, link it with a `<Card>`
+- **Check for screenshots** in `images/docs/` — if relevant images exist, include them in a `<Frame>`
+- **Check for existing docs** — look in `docs/` for a matching page; if found, link it with a `<Card>`
 
 ### 6. Write the Changelog Entry
 
@@ -185,7 +184,7 @@ Read `references/changelog.md` for the full annotated MDX template. Structural s
 
 ### 7. Directly Write to the Changelog File
 
-**Do NOT save to a separate staging file.** Write directly to `changelog.mdx` by prepending the new `<Update>` block right after the frontmatter `---` line (line 6), before the first existing `<Update>`.
+**Do NOT save to a separate staging file.** Write directly to `docs/changelog.mdx` by prepending the new `<Update>` block right after the frontmatter `---` line (line 6), before the first existing `<Update>`.
 
 Use the `Edit` tool:
 - `old_string`: the closing `---` of the frontmatter + blank line + opening of the PREVIOUS top `<Update>` tag (e.g., `---\n\n<Update label="March 30th 2026">`)
@@ -198,7 +197,7 @@ Verify by reading the first ~100 lines of the file after saving.
 **Before opening a PR**, run the Mintlify broken-links checker from the docs repo root:
 
 ```bash
-cd /Users/tsage/Desktop/flexprice/flexprice-docs && mint broken-links
+cd ../flexprice-docs && mint broken-links
 ```
 
 - If it passes cleanly — proceed to the PR step.
@@ -210,7 +209,7 @@ The flexprice-docs repo has two remotes:
 - `upstream` = the production repo (`flexprice/flexprice-docs`) — always branch from here
 
 ```bash
-cd /Users/tsage/Desktop/flexprice/flexprice-docs
+cd ../flexprice-docs
 
 # Fetch latest production main
 git fetch upstream
