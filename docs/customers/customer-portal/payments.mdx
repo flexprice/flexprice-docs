@@ -7,7 +7,7 @@ The Customer Portal turns billing from a support conversation into a self-servic
 
 Every payment action follows the same shape: the portal asks the API to start the action, the API returns a `payment_action` describing what to do next, and the portal opens it. Credits and payment records are written by the provider's webhook once the money actually moves, never optimistically on the customer's screen.
 
-{/* IMAGE PLACEHOLDER: Portal Overview showing the wallet balance card with Add credits and Pay now, beside the saved payment methods list */}
+<Frame>![Portal Overview with the wallet balance and Add credits action above the saved payment methods list](/images/docs/customers/customer-portal/customer-portal-overview.png)</Frame>
 
 ## Prerequisites
 
@@ -127,7 +127,7 @@ The API rejects a payment and the portal disables the action when:
 - The invoice payment status is already `succeeded`, or a payment is already in flight
 - The invoice belongs to a subscription that is not in a state that allows collection. The portal shows a message asking the customer to contact support
 
-{/* IMAGE PLACEHOLDER: Invoices section with an overdue invoice row showing the Pay now action */}
+<Frame>![Invoices section with a pending invoice row and its action menu open on Pay now](/images/docs/customers/customer-portal/pay-now.png)</Frame>
 
 ## Topping up a wallet
 
@@ -204,7 +204,7 @@ Top-ups below the tenant's per-currency floor are rejected before the customer i
 
 If the customer already has a pending top-up session on the wallet, the API hands back the session already in flight rather than a conflict. The customer can complete the payment they started instead of being blocked by an abandoned tab.
 
-{/* IMAGE PLACEHOLDER: Add credits dialog showing the credit amount field, preset amounts, provider radio options and the "You'll be charged" line */}
+<Frame>![Add credits dialog showing the credit amount, the charge summary, the payment provider choice and the saved-card toggle](/images/docs/customers/customer-portal/add-credits-dialog.png)</Frame>
 
 ## Auto top-up
 
@@ -245,7 +245,7 @@ Auto top-up needs a saved card that can be charged off-session. The portal shows
 
 For the mandate rules behind unattended charging, see [Autopay mandates](/docs/checkout/autopay-mandates).
 
-{/* IMAGE PLACEHOLDER: Auto top-up card in the Credits section, showing the summary line and the expanded threshold, amount and cooloff fields */}
+<Frame>![Auto top-up dialog showing the enable toggle, threshold, top-up amount and the cooloff duration and unit](/images/docs/customers/customer-portal/auto-topup.png)</Frame>
 
 ## Saved payment methods
 
@@ -320,7 +320,7 @@ The setup URL is an API string. The portal refuses to open anything that is not 
 
 Setting a default requires the `set_default_method` capability. On a provider without it, the portal explains that a default card is not supported rather than offering an action that would fail.
 
-{/* IMAGE PLACEHOLDER: Payment methods card listing two saved cards with the Default badge and the row action menu open */}
+<Frame>![Payment methods listing two saved cards, one marked Default, with Set as default and Remove in the row menu](/images/docs/customers/customer-portal/payment-methods.png)</Frame>
 
 ## Returning from a hosted checkout
 
