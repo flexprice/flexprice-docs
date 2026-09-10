@@ -177,6 +177,45 @@ With an hourly meter and the configuration above, consider three windows in a si
 
 The billing engine picks the bucket whose `[start, end)` range contains the window start timestamp, then runs the standard commitment/overage/true-up calculation against that bucket's values.
 
+## Reporting Per-Bucket Usage
+
+[Get usage analytics](/api-reference/events/get-usage-analytics) (`POST /events/analytics`) returns commitment math at the line-item level by default. To see usage and commitment attribution per bucket, set `breakdown_bucket: true` in the request.
+
+```json
+{
+  "external_customer_id": "cust_123",
+  "feature_ids": ["feat_api_calls"],
+  "start_time": "2026-06-01T00:00:00Z",
+  "end_time": "2026-06-02T00:00:00Z",
+  "window_size": "HOUR",
+  "breakdown_bucket": true
+}
+```
+
+When `breakdown_bucket` is `true`, the response is augmented in two places:
+
+- **`items[].bucket_summaries`** — one entry per `commitment_time_buckets` configured on the line item, plus one row for out-of-bucket usage. Each summary carries the bucket's own price, commitment value, total usage in the request window, base charge, and the computed utilized, overage, and true-up amounts. Use this list for exact per-bucket cost.
+- **`items[].points[].buckets`** — for each time-series point, the list of buckets that window overlaps (each entry has `bucket_id` and `price_id`). A coarse window — for example `WindowSize: DAY` against an hourly bucket grid — can overlap multiple buckets, so this field is a list. It is an informational hint: the point's `cost` and `computed_*` totals mix every overlapped bucket and cannot be split per bucket. Read `bucket_summaries` when you need exact per-bucket numbers.
+
+<Note>
+`breakdown_bucket` requires `window_size` to be set and only produces data for items linked to a subscription line item that has `commitment_time_buckets`. For other items the augmentation is a no-op, so the flag is safe to send unconditionally.
+</Note>
+
+### Bucket summary fields
+
+| Field | Description |
+|-------|-------------|
+| `bucket_id` | Bucket ID, or empty for the out-of-bucket row. |
+| `subscription_line_item_id` | Line item the bucket is configured on. |
+| `price_id` | The bucket's price (or the line-item base price for the out-of-bucket row). |
+| `start`, `end` | Bucket time-of-day range, repeated from the configuration. |
+| `commitment_type`, `commitment_value` | Commitment in effect inside this bucket. |
+| `total_usage` | Sum of usage inside the bucket across the request window. |
+| `base_charge` | Pre-commitment usage cost at the bucket's price. |
+| `computed_utilized` | Portion of the commitment consumed by actual usage. |
+| `computed_overage` | Amount charged at `bucket_price × overage_factor` for usage above the commitment. |
+| `computed_true_up` | Shortfall billed when the bucket's `true_up_enabled` is `true` and usage falls below the commitment. |
+
 ## Updating Buckets
 
 On `PATCH` of a subscription line item, the `commitment_time_buckets` array replaces the existing array:
