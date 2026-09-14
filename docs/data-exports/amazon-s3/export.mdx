@@ -651,7 +651,7 @@ Configure S3 lifecycle policies to automatically archive or delete old exports:
 ```bash
 POST /api/v1/tasks/scheduled
 Content-Type: application/json
-Authorization: Bearer {token}
+x-api-key: {api_key}
 
 {
   "connection_id": "conn_01HK8DBMBN87CY36DEFY62PEXBT",
@@ -674,7 +674,7 @@ Authorization: Bearer {token}
 ```bash
 PATCH /api/v1/tasks/scheduled/{task_id}
 Content-Type: application/json
-Authorization: Bearer {token}
+x-api-key: {api_key}
 
 {
   "enabled": false
@@ -686,7 +686,7 @@ Authorization: Bearer {token}
 ```bash
 POST /api/v1/tasks/scheduled/{task_id}/run
 Content-Type: application/json
-Authorization: Bearer {token}
+x-api-key: {api_key}
 
 {
   "start_time": "2025-10-01T00:00:00Z",
@@ -698,14 +698,14 @@ Authorization: Bearer {token}
 
 ```bash
 GET /api/v1/tasks/scheduled?entity_type=invoice&status=published
-Authorization: Bearer {token}
+x-api-key: {api_key}
 ```
 
 ### Get Task Execution History
 
 ```bash
 GET /api/v1/tasks?scheduled_task_id={task_id}&task_type=EXPORT
-Authorization: Bearer {token}
+x-api-key: {api_key}
 ```
 
 ## Summary
