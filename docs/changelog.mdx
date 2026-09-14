@@ -4,6 +4,117 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="September 14th 2026">
+  ## Tenant custom currencies
+
+  You can now define your own currencies, price your catalogue in them, and have Flexprice settle invoices in fiat.
+
+  * **Configuration**: Define currencies in the `custom_currency_config` setting, each with a name, symbol, and a conversion factor per fiat currency, plus the `default_fiat_currency` invoices are denominated in
+  * **Where they apply**: Prices, subscriptions, wallets, and addons can be created in a configured custom currency or in a mapped fiat currency; anything else is rejected with the supported codes listed
+  * **Invoices**: Invoices and line items carry a `custom_currency` block alongside their fiat amounts, and the conversion factor is frozen at finalization so a later factor change cannot move a finalized invoice
+  * **Validation**: Codes are three characters and case insensitive, every currency needs a factor for the same set of fiat currencies, and the default fiat currency cannot also be a custom code
+  * **Dashboard**: Settings, Billing has a custom currency section for adding currencies and their conversion factors
+
+  <br />
+
+  <Card title="Custom currency - Documentation" icon="book-open" horizontal href="/docs/product-catalogue/custom-pricing/custom-currency">
+  </Card>
+
+  <br />
+
+  ## Payment-gated one-off invoices
+
+  A one-off invoice can now be held behind a hosted payment, joining the seat change and wallet top-up flows that already accept a `checkout` object.
+
+  - **How it works**: Pass `checkout` to `POST /invoices` and the invoice is created as a computed draft with a payment link attached; it finalizes only when the payment webhook lands
+  - **Provenance**: Gated invoices carry `source_type: checkout`, and edits, voids, and finalization are blocked while the session is still active
+  - **Guards**: The invoice type must be `ONE_OFF`, `amount_due` must be positive, and any `due_date` must be in the future so a draft nobody can pay yet is never marked overdue
+  - **Zero-amount handling**: An invoice that computes to zero, or one fully covered by prepaid credits, is voided and archived rather than gated, and the credits are returned
+
+  <br />
+
+  <Card title="Pay-first checkout - Documentation" icon="book-open" horizontal href="/docs/checkout/pay-first-checkout">
+  </Card>
+
+  <br />
+
+  ## Checkout session reconciliation and Razorpay payment links
+
+  Checkout sessions now reconcile against the payment provider when they are read, so a late or dropped webhook no longer leaves a paid session pending.
+
+  - **Reconciliation on read**: Reading a non-terminal session checks the provider and completes the session if the customer has paid; every transition still runs through the same completion path, so a concurrent webhook cannot double-apply it
+  - **Poll interval**: Session and portal payment reads return `next_poll_after_ms`, which starts at 2 seconds, widens to 5 seconds after 30 seconds, then settles at 10 seconds; zero means the session is finished
+  - **Razorpay checkout**: Razorpay is available as a checkout provider for payment links and can read payment state back, resolving payment link, invoice, order, and payment handles
+  - **Degradation**: A gateway that does not answer returns the stored state marked stale instead of an error
+
+  <br />
+
+  <Card title="Razorpay checkout - Documentation" icon="book-open" horizontal href="/docs/checkout/razorpay-checkout">
+  </Card>
+
+  <br />
+
+  ## Line item grouping on subscriptions
+
+  A charge whose cadence is shorter than its subscription can now bill as a single invoice line item instead of one per charge period.
+
+  * **Setting**: `line_item_grouping` on subscription create takes `per_charge_period`, the existing behaviour and the default, or `per_billing_period`
+  * **Presentation only**: Charges are still computed per charge period, so a monthly price on a quarterly subscription totals the same under either value and only the row count changes
+  * **Dashboard**: The create subscription form shows a toggle, and only when at least one attached charge actually splits; a cumulative commitment keeps its plan-level overage rows separate, which the form calls out
+
+  <br />
+
+  ## Percentage fee charges in the dashboard
+
+  Usage and recurring charges can now be entered as a percentage in the plan builder, for cases like a fee taken as a share of transaction value.
+
+  - **Entry and display**: Enter `2.5` rather than `0.025`, with the conversion done on the string to avoid floating point drift; price overrides and the subscription price table read the value back as a percentage
+  - **Storage**: This is a dashboard-level billing model. The charge is persisted as a `FLAT_FEE` price whose amount holds the decimal equivalent, tagged with `metadata.billing_model: percentage`. The API exposes no percentage billing model, and a price that is later switched to another billing model drops the tag
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Addon charges on a shorter cadence than their subscription now fan prorations out per charge period, so a mixed-cadence subscription no longer skips proration
+      * Scheduled exports resolve their destination from the job configuration, make the region optional for GCS, fail task creation when no export destination is configured, and stop retrying validation errors
+      * Usage analytics exports are no longer grouped by source, so commitment aggregates come out as one row
+      * Invoice configuration exposes a finalization delay in the dashboard, setting how long after creation an invoice waits before it finalizes
+      * Invoice details can hide zero-amount line items behind a toggle
+      * Tenant onboarding asks for an organization URL
+      * Addon quantity can be changed while a subscription is being created
+      * Zoho Books payment sync records a payment mode and a "Deposit To" account, and syncs global custom fields
+      * ClickHouse can be deployed as a replicated cluster backed by Keeper, and the worker autoscaler now also scales on memory
+      * Tax behaviour defaults to exclusive across tax associations
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Immediate subscription cancellation clamps to the period start and closes the open period instead of leaving it running
+      * Subscription cancellation checks line item dates before it cancels
+      * Credit expiry is held until the invoice is finalized, so credits are no longer expired against a draft
+      * Merged invoice line items keep fields that were previously dropped, and `parent_line_item_id` survives bulk line item creation
+      * Zoho invoices sync the correct billing period for one-time charges
+      * Razorpay customer creation is idempotent, so a retry no longer creates a second customer
+      * Paddle returns a 5xx on a missing object rather than a success, and no longer rewrites the catalogue on every invoice sync
+      * HubSpot invoice sync sends the right invoice fields
+      * The Add Credits dialog and the update toast are readable in dark mode
+      * The manual export date picker opens inside its dialog instead of behind it
+      * A slow sidebar navigation no longer overrides a faster click on a child item
+      * Every role checkbox stays clickable when Super Admin is selected
+      * A dialog opened from inside another dialog no longer closes the one beneath it
+    </Accordion>
+
+    <Accordion title="API">
+      * `POST /invoices` accepts a `checkout` object for one-off invoices, and invoices carry a read-only `source_type`
+      * Subscription create accepts `line_item_grouping` with `per_charge_period` or `per_billing_period`
+      * Invoice and invoice line item responses include a `custom_currency` denomination, and `custom_currency_config` is a new setting key
+      * Checkout session and customer portal payment reads return `next_poll_after_ms`
+      * Razorpay is selectable as the `payment_provider` on checkout sessions
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
 <Update label="September 7th 2026">
   ## Customer portal payments and saved cards
 
@@ -16,7 +127,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/customers/customer-portal" title="Customer portal - Documentation" />
+  <Card title="Customer portal - Documentation" icon="book-open" horizontal href="/docs/customers/customer-portal">
+  </Card>
 
   <br />
 
@@ -24,9 +136,9 @@ mode: "center"
 
   Refund credit notes can now return money through Razorpay or Chargebee, with each refund tracked in a settlement ledger.
 
-  * **Refund destination**: Set `refund_target` to `BACK_TO_SOURCE` to refund the original payment; `PREPAID_WALLET` remains the default
-  * **Status tracking**: Gateway webhooks update refund status, and duplicate deliveries cannot settle the same refund twice
-  * **Wallet fallback**: Failed gateway refunds can be retried into the wallet, and paid invoice voids use the same refund ledger
+  - **Refund destination**: Set `refund_target` to `BACK_TO_SOURCE` to refund the original payment; `PREPAID_WALLET` remains the default
+  - **Status tracking**: Gateway webhooks update refund status, and duplicate deliveries cannot settle the same refund twice
+  - **Wallet fallback**: Failed gateway refunds can be retried into the wallet, and paid invoice voids use the same refund ledger
 
   <br />
 
@@ -40,7 +152,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="code" horizontal={true} href="/api-reference/invoices/execute-invoice-modification" title="Execute invoice modification - API Reference" />
+  <Card title="Execute invoice modification - API Reference" icon="code" horizontal href="/api-reference/invoices/execute-invoice-modification">
+  </Card>
 
   <br />
 
@@ -54,7 +167,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/wallet/low-balance-alert" title="Low balance alerts - Documentation" />
+  <Card title="Low balance alerts - Documentation" icon="book-open" horizontal href="/docs/wallet/low-balance-alert">
+  </Card>
 
   <br />
 
@@ -62,9 +176,9 @@ mode: "center"
 
   You can now select compatible shorter-cadence prices when creating a subscription through the API or dashboard.
 
-  * **Price selection**: `include_price_ids` selects specific plan prices. Omit it to include matching-cadence and one-time prices, or pass an empty list to include none
-  * **Dashboard controls**: The "Also available on this plan" section adds shorter-cadence charges with the usual price overrides, commitments, coupons, and quantity controls
-  * **Addon compatibility**: Addon dialogs filter charges by the subscription's cadence and currency
+  - **Price selection**: `include_price_ids` selects specific plan prices. Omit it to include matching-cadence and one-time prices, or pass an empty list to include none
+  - **Dashboard controls**: The "Also available on this plan" section adds shorter-cadence charges with the usual price overrides, commitments, coupons, and quantity controls
+  - **Addon compatibility**: Addon dialogs filter charges by the subscription's cadence and currency
 
   <br />
 
@@ -78,7 +192,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/integrations/chargebee/invoice-sync" title="Chargebee invoice sync - Documentation" />
+  <Card title="Chargebee invoice sync - Documentation" icon="book-open" horizontal href="/integrations/chargebee/invoice-sync">
+  </Card>
 
   <br />
 
@@ -131,7 +246,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/taxes/overview" title="Taxes - Documentation" />
+  <Card title="Taxes - Documentation" icon="book-open" horizontal href="/docs/product-catalogue/taxes/overview">
+  </Card>
 
   <br />
 
@@ -149,9 +265,9 @@ mode: "center"
 
   Subscriptions can now include shorter-cadence charges, such as monthly prices on a quarterly subscription.
 
-  * **Compatibility**: Billing period and count must match exactly, or the price's effective months must divide the subscription's. Daily and weekly prices require an exact match; one-time prices remain supported
-  * **Separate billing windows**: A quarterly invoice with monthly charges gets three line items, with usage and pricing tiers reset per month
-  * **Threshold billing**: Auto-invoice threshold checks use the same billing windows
+  - **Compatibility**: Billing period and count must match exactly, or the price's effective months must divide the subscription's. Daily and weekly prices require an exact match; one-time prices remain supported
+  - **Separate billing windows**: A quarterly invoice with monthly charges gets three line items, with usage and pricing tiers reset per month
+  - **Threshold billing**: Auto-invoice threshold checks use the same billing windows
 
   <br />
 
@@ -165,7 +281,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/features/entitlement-grants" title="Entitlement grants - Documentation" />
+  <Card title="Entitlement grants - Documentation" icon="book-open" horizontal href="/docs/product-catalogue/features/entitlement-grants">
+  </Card>
 
   <br />
 
@@ -180,7 +297,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/getting-started/self-hosting-guide" title="Self-hosting - Documentation" />
+  <Card title="Self-hosting - Documentation" icon="book-open" horizontal href="/docs/getting-started/self-hosting-guide">
+  </Card>
 
   <br />
 
@@ -188,9 +306,9 @@ mode: "center"
 
   Postgres schema changes now use versioned SQL migrations through dbmate, replacing Ent auto-migration.
 
-  * **Existing databases**: Run `make migrate-adopt url="postgres://..."` before upgrading to chart 1.4.0; add `dry=1` to preview adoption
-  * **Deployment controls**: Helm uses `migration.steps.dbmate` instead of `migration.steps.ent`; ECS migrations run only with `DB_MIGRATIONS_ENABLED=true`
-  * **Migration checks**: Unadopted databases and invalid indexes block migration, and checksums protect applied files from edits
+  - **Existing databases**: Run `make migrate-adopt url="postgres://..."` before upgrading to chart 1.4.0; add `dry=1` to preview adoption
+  - **Deployment controls**: Helm uses `migration.steps.dbmate` instead of `migration.steps.ent`; ECS migrations run only with `DB_MIGRATIONS_ENABLED=true`
+  - **Migration checks**: Unadopted databases and invalid indexes block migration, and checksums protect applied files from edits
 
   <br />
 
@@ -198,12 +316,13 @@ mode: "center"
 
   A new Usage Syncs page under Tools shows which subscription usage records have synced to cloud marketplaces.
 
-  * **Provider status**: See AWS, GCP, and Azure syncs alongside usage amounts and billing periods
-  * **Filters**: Find records by customer, subscription, or period
+  - **Provider status**: See AWS, GCP, and Azure syncs alongside usage amounts and billing periods
+  - **Filters**: Find records by customer, subscription, or period
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/integrations/marketplace-integration/overview" title="Marketplace integrations - Documentation" />
+  <Card title="Marketplace integrations - Documentation" icon="book-open" horizontal href="/integrations/marketplace-integration/overview">
+  </Card>
 
   <br />
 
@@ -211,12 +330,13 @@ mode: "center"
 
   Tenant super admins can now remove users through the API.
 
-  * **User removal**: Removes a human user from the tenant and auth provider; service accounts retain their existing delete endpoint
-  * **Access protection**: Self-removal, cross-tenant removal, and removal of the last human user are blocked
+  - **User removal**: Removes a human user from the tenant and auth provider; service accounts retain their existing delete endpoint
+  - **Access protection**: Self-removal, cross-tenant removal, and removal of the last human user are blocked
 
   <br />
 
-  <Card icon="code" horizontal={true} href="/api-reference/users/remove-user-from-tenant" title="Remove user from tenant - API Reference" />
+  <Card title="Remove user from tenant - API Reference" icon="code" horizontal href="/api-reference/users/remove-user-from-tenant">
+  </Card>
 
   <br />
 
@@ -270,7 +390,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/subscriptions/upgrade-and-downgrade" title="Upgrade and downgrade - Documentation" />
+  <Card title="Upgrade and downgrade - Documentation" icon="book-open" horizontal href="/docs/subscriptions/upgrade-and-downgrade">
+  </Card>
 
   <br />
 
@@ -284,7 +405,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/rbac/overview" title="RBAC - Documentation" />
+  <Card title="RBAC - Documentation" icon="book-open" horizontal href="/docs/rbac/overview">
+  </Card>
 
   <br />
 
@@ -299,7 +421,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/integrations/zohobooks/connection-setup" title="Zoho Books - Documentation" />
+  <Card title="Zoho Books - Documentation" icon="book-open" horizontal href="/integrations/zohobooks/connection-setup">
+  </Card>
 
   <br />
 
@@ -316,8 +439,8 @@ mode: "center"
 
   HubSpot deal line items now stay aligned with subscription changes.
 
-  * **Ongoing reconciliation**: Creates, updates, and removes deal line items after quantity changes, addon changes, and completed checkouts
-  * **Billing details**: Synced items include billing dates, frequency, discounts, and descriptions
+  - **Ongoing reconciliation**: Creates, updates, and removes deal line items after quantity changes, addon changes, and completed checkouts
+  - **Billing details**: Synced items include billing dates, frequency, discounts, and descriptions
 
   <br />
 
@@ -369,7 +492,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/rbac/manage-roles" title="Manage roles - Documentation" />
+  <Card title="Manage roles - Documentation" icon="book-open" horizontal href="/docs/rbac/manage-roles">
+  </Card>
 
   <br />
 
@@ -388,14 +512,15 @@ mode: "center"
 
   Subscriptions can now switch plans while keeping the same subscription ID, billing anchor, and period boundaries.
 
-  * **Preview and apply**: Preview prorated charges or credits before applying the change
-  * **Addon handling**: Choose which attached addons to carry over or drop
-  * **Change event**: `subscription.plan_changed` replaces the cancel and create events used by the earlier flow
-  * **Supported changes**: Interval, currency, hierarchy, and phased changes continue to use the existing endpoints
+  - **Preview and apply**: Preview prorated charges or credits before applying the change
+  - **Addon handling**: Choose which attached addons to carry over or drop
+  - **Change event**: `subscription.plan_changed` replaces the cancel and create events used by the earlier flow
+  - **Supported changes**: Interval, currency, hierarchy, and phased changes continue to use the existing endpoints
 
   <br />
 
-  <Card icon="code" horizontal={true} href="/api-reference/subscriptions/execute-a-plan-change-v2-swap-in-place" title="Execute a plan change (v2) - API Reference" />
+  <Card title="Execute a plan change (v2) - API Reference" icon="code" horizontal href="/api-reference/subscriptions/execute-a-plan-change-v2-swap-in-place">
+  </Card>
 
   <br />
 
@@ -403,9 +528,9 @@ mode: "center"
 
   Addon attachment and removal now use the subscription modification flow, so you can preview charges or credits first.
 
-  * **Preview support**: Review proration, affected line items, and invoices before applying a change
-  * **Checkout support**: Responses include checkout details when payment is required
-  * **Endpoint migration**: The existing addon create and delete endpoints are deprecated in favor of modification endpoints
+  - **Preview support**: Review proration, affected line items, and invoices before applying a change
+  - **Checkout support**: Responses include checkout details when payment is required
+  - **Endpoint migration**: The existing addon create and delete endpoints are deprecated in favor of modification endpoints
 
   <br />
 
@@ -419,7 +544,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/integrations/stripe/invoice-sync" title="Stripe invoice sync - Documentation" />
+  <Card title="Stripe invoice sync - Documentation" icon="book-open" horizontal href="/integrations/stripe/invoice-sync">
+  </Card>
 
   <br />
 
@@ -427,14 +553,15 @@ mode: "center"
 
   The `@flexprice/ui` package now includes six widgets for embedding usage and credit information in your app.
 
-  * **Usage widgets**: `UsageQuota`, `MetricCards`, `UsageTrendChart`, and `UsageBreakdown`
-  * **Credit widgets**: `CreditBalance` and `CreditHistory`, with wallet switching and transaction history
-  * **Bring your own data**: Widgets accept props, with adapters for portal responses and built-in loading and empty states
-  * **Package rename**: `@flexprice/flexprice-ui` is now `@flexprice/ui`, with the bundle reduced from 17.5 MB to 1.35 MB
+  - **Usage widgets**: `UsageQuota`, `MetricCards`, `UsageTrendChart`, and `UsageBreakdown`
+  - **Credit widgets**: `CreditBalance` and `CreditHistory`, with wallet switching and transaction history
+  - **Bring your own data**: Widgets accept props, with adapters for portal responses and built-in loading and empty states
+  - **Package rename**: `@flexprice/flexprice-ui` is now `@flexprice/ui`, with the bundle reduced from 17.5 MB to 1.35 MB
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/exportable-ui/overview" title="Exportable UI - Documentation" />
+  <Card title="Exportable UI - Documentation" icon="book-open" horizontal href="/docs/exportable-ui/overview">
+  </Card>
 
   <br />
 
@@ -442,13 +569,14 @@ mode: "center"
 
   Entitlement grants can now cover a full subscription period or align usage windows to fixed intervals.
 
-  * **Full-period grants**: `grant_duration_unit: subscription_period` opens a grant without waiting for usage; omit duration value and allocation behavior for this unit
-  * **Window alignment**: Choose `first_usage` (default) or `unit_start` to anchor windows to usage or intervals within the billing period
-  * **Multi-unit windows**: Supports intervals such as six-hour buckets, calculated in the subscription's timezone
+  - **Full-period grants**: `grant_duration_unit: subscription_period` opens a grant without waiting for usage; omit duration value and allocation behavior for this unit
+  - **Window alignment**: Choose `first_usage` (default) or `unit_start` to anchor windows to usage or intervals within the billing period
+  - **Multi-unit windows**: Supports intervals such as six-hour buckets, calculated in the subscription's timezone
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/features/entitlement-grants" title="Entitlement grants - Documentation" />
+  <Card title="Entitlement grants - Documentation" icon="book-open" horizontal href="/docs/product-catalogue/features/entitlement-grants">
+  </Card>
 
   <br />
 
@@ -486,12 +614,12 @@ mode: "center"
     </Accordion>
 
     <Accordion title="API">
-      * New `PUT /users/{id}/roles` endpoint; `GET /rbac/roles` accepts `user_type`
-      * New SAML metadata, login, and assertion endpoints under `/auth/saml/{tenant}`
-      * New plan change v2 preview and execute endpoints under `/subscriptions/{id}/change/v2`
-      * Subscription modification accepts `type: "addon"`; `POST /subscriptions/addon` and `DELETE /subscriptions/addon` are deprecated
-      * Payment creation accepts `gateway_options.stripe.tax_id_collection_enabled`; customer responses include `environment_id`
-      * `GET /taxes/rates` returns `items` and `pagination`
+      - New `PUT /users/{id}/roles` endpoint; `GET /rbac/roles` accepts `user_type`
+      - New SAML metadata, login, and assertion endpoints under `/auth/saml/{tenant}`
+      - New plan change v2 preview and execute endpoints under `/subscriptions/{id}/change/v2`
+      - Subscription modification accepts `type: "addon"`; `POST /subscriptions/addon` and `DELETE /subscriptions/addon` are deprecated
+      - Payment creation accepts `gateway_options.stripe.tax_id_collection_enabled`; customer responses include `environment_id`
+      - `GET /taxes/rates` returns `items` and `pagination`
     </Accordion>
   </AccordionGroup>
 </Update>
@@ -507,7 +635,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/checkout/pay-first-checkout" title="Pay-first checkout - Documentation" />
+  <Card title="Pay-first checkout - Documentation" icon="book-open" horizontal href="/docs/checkout/pay-first-checkout">
+  </Card>
 
   <br />
 
@@ -515,13 +644,14 @@ mode: "center"
 
   Addons can now be attached to a subscription through a checkout session, matching the payment-first flow used for new subscriptions.
 
-  * **Payment-gated attach**: Addon activation waits until the checkout session is paid, then the addon is applied to the target subscription
-  * **Proration preserved**: Line-item proration continues to work when the addon lands mid-cycle after checkout completes
-  * **Checkout DTOs**: Addon attach requests accept the same checkout session fields as subscription create
+  - **Payment-gated attach**: Addon activation waits until the checkout session is paid, then the addon is applied to the target subscription
+  - **Proration preserved**: Line-item proration continues to work when the addon lands mid-cycle after checkout completes
+  - **Checkout DTOs**: Addon attach requests accept the same checkout session fields as subscription create
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/checkout/overview" title="Checkout - Documentation" />
+  <Card title="Checkout - Documentation" icon="book-open" horizontal href="/docs/checkout/overview">
+  </Card>
 
   <br />
 
@@ -529,14 +659,15 @@ mode: "center"
 
   Draft invoices now expose a first-class way to apply and recalculate discounts through the standard update endpoint, replacing the earlier dedicated recalculate route.
 
-  * **`apply_discount` flag**: Set `apply_discount` on an `UpdateInvoice` request to recompute coupon and credit adjustments against the current line items
-  * **Single locked path**: Updates run inside one locked transaction that gates discount recalculation on the new flag, keeping totals consistent
-  * **Tax reset on removal**: Removing a discount association now clears stale tax lines and clamps any negative amount-remaining values
-  * **Endpoint consolidation**: The separate `POST /invoices/:id/apply-discount` and recalculate-discount endpoints have been removed in favor of `UpdateInvoice`
+  - **`apply_discount` flag**: Set `apply_discount` on an `UpdateInvoice` request to recompute coupon and credit adjustments against the current line items
+  - **Single locked path**: Updates run inside one locked transaction that gates discount recalculation on the new flag, keeping totals consistent
+  - **Tax reset on removal**: Removing a discount association now clears stale tax lines and clamps any negative amount-remaining values
+  - **Endpoint consolidation**: The separate `POST /invoices/:id/apply-discount` and recalculate-discount endpoints have been removed in favor of `UpdateInvoice`
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/invoices/managing" title="Managing invoices - Documentation" />
+  <Card title="Managing invoices - Documentation" icon="book-open" horizontal href="/docs/invoices/managing">
+  </Card>
 
   <br />
 
@@ -551,7 +682,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="code" horizontal={true} href="/api-reference/introduction" title="Credit notes - API Reference" />
+  <Card title="Credit notes - API Reference" icon="code" horizontal href="/api-reference/introduction">
+  </Card>
 
   <br />
 
@@ -597,7 +729,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="code" horizontal={true} href="/api-reference/introduction" title="Bulk event ingestion - API Reference" />
+  <Card title="Bulk event ingestion - API Reference" icon="code" horizontal href="/api-reference/introduction">
+  </Card>
 
   <br />
 
@@ -611,7 +744,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/wallet/auto-top-up" title="Wallet auto top-up - Documentation" />
+  <Card title="Wallet auto top-up - Documentation" icon="book-open" horizontal href="/docs/wallet/auto-top-up">
+  </Card>
 
   <br />
 
@@ -624,7 +758,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="code" horizontal={true} href="/api-reference/endpoint/customer" title="Customers - API Reference" />
+  <Card title="Customers - API Reference" icon="code" horizontal href="/api-reference/endpoint/customer">
+  </Card>
 
   <br />
 
@@ -642,9 +777,9 @@ mode: "center"
 
   You can now edit the end date of an already-terminated recurring line item on a subscription to correct historical billing without recreating the subscription.
 
-  * **Backdated end date**: Move a terminated line item's end date earlier or later within its subscription window
-  * **Preserves termination**: Replacing a backdated line item keeps its existing termination date instead of overwriting it
-  * **One-time guardrails**: Invalid forward-dating or backdating of one-time items is now rejected
+  - **Backdated end date**: Move a terminated line item's end date earlier or later within its subscription window
+  - **Preserves termination**: Replacing a backdated line item keeps its existing termination date instead of overwriting it
+  - **One-time guardrails**: Invalid forward-dating or backdating of one-time items is now rejected
 
   <br />
 
@@ -718,12 +853,17 @@ mode: "center"
   <br />
 
   <Frame>
-    <img src="/images/docs/marketplace/gcp/gcp-connection-setup.png" alt="Connect to GCP Marketplace from the Flexprice dashboard" style={{ borderRadius: '0.5rem' }} />
+    <img
+      src="/images/docs/marketplace/gcp/gcp-connection-setup.png"
+      alt="Connect to GCP Marketplace from the Flexprice dashboard"
+      style={{ borderRadius: '0.5rem' }}
+    />
   </Frame>
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/integrations/marketplace-integration/gcp/connection-setup" title="GCP Marketplace - Documentation" />
+  <Card title="GCP Marketplace - Documentation" icon="book-open" horizontal href="/integrations/marketplace-integration/gcp/connection-setup">
+  </Card>
 
   <br />
 
@@ -737,12 +877,17 @@ mode: "center"
   <br />
 
   <Frame>
-    <img src="/images/docs/marketplace/azure/creat-conn.png" alt="Connect to Azure Marketplace from the Flexprice dashboard" style={{ borderRadius: '0.5rem' }} />
+    <img
+      src="/images/docs/marketplace/azure/creat-conn.png"
+      alt="Connect to Azure Marketplace from the Flexprice dashboard"
+      style={{ borderRadius: '0.5rem' }}
+    />
   </Frame>
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/integrations/marketplace-integration/azure/connection-setup" title="Azure Marketplace - Documentation" />
+  <Card title="Azure Marketplace - Documentation" icon="book-open" horizontal href="/integrations/marketplace-integration/azure/connection-setup">
+  </Card>
 
   <br />
 
@@ -757,7 +902,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/features/entitlement-grants" title="Entitlement grants - Documentation" />
+  <Card title="Entitlement grants - Documentation" icon="book-open" horizontal href="/docs/product-catalogue/features/entitlement-grants">
+  </Card>
 
   <br />
 
@@ -765,9 +911,9 @@ mode: "center"
 
   Customer onboarding now supports multiple named workflows instead of a single fixed sequence — pass a workflow name at customer creation to run a specific onboarding path.
 
-  * **`onboarding_workflow_name`**: New optional field on customer create resolves to a named entry in `custom_workflows`; unrecognized names fall back to the default onboarding actions
-  * **Default tenant name**: Onboarding configuration now accepts a default tenant name, used when provisioning a tenant during onboarding
-  * **Dashboard editor**: A new workflow card and action-set editor let you build and manage custom onboarding workflows from the settings area
+  - **`onboarding_workflow_name`**: New optional field on customer create resolves to a named entry in `custom_workflows`; unrecognized names fall back to the default onboarding actions
+  - **Default tenant name**: Onboarding configuration now accepts a default tenant name, used when provisioning a tenant during onboarding
+  - **Dashboard editor**: A new workflow card and action-set editor let you build and manage custom onboarding workflows from the settings area
 
   <br />
 
@@ -775,8 +921,8 @@ mode: "center"
 
   Subscription plans can now include one-time, non-recurring charges alongside their regular recurring line items.
 
-  * **Plan price resolution**: Subscription creation now fetches both the subscription's billing-period prices and any `ONETIME` billing-period prices configured on the plan
-  * **Entity type validation**: Subscription pricing now validates that only supported price entity types are used, rejecting unsupported combinations up front
+  - **Plan price resolution**: Subscription creation now fetches both the subscription's billing-period prices and any `ONETIME` billing-period prices configured on the plan
+  - **Entity type validation**: Subscription pricing now validates that only supported price entity types are used, rejecting unsupported combinations up front
 
   <br />
 
@@ -784,13 +930,14 @@ mode: "center"
 
   Flexprice invoices synced to Zoho Books are now marked paid in Zoho automatically once payment succeeds, closing the loop on the existing Zoho invoice sync.
 
-  * **Automatic dispatch**: When a Zoho-synced invoice's payment status becomes `succeeded`, a Temporal workflow marks the corresponding invoice as paid in Zoho Books
-  * **New Zoho client methods**: `GetInvoice` and `CreateCustomerPayment` support fetching invoice state and recording the payment directly against the Zoho customer
-  * **Non-syncable line items skipped**: Line items that Zoho can't represent are excluded from the outbound sync instead of failing the whole invoice
+  - **Automatic dispatch**: When a Zoho-synced invoice's payment status becomes `succeeded`, a Temporal workflow marks the corresponding invoice as paid in Zoho Books
+  - **New Zoho client methods**: `GetInvoice` and `CreateCustomerPayment` support fetching invoice state and recording the payment directly against the Zoho customer
+  - **Non-syncable line items skipped**: Line items that Zoho can't represent are excluded from the outbound sync instead of failing the whole invoice
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/integrations/zohobooks/connection-setup" title="Zoho Books - Documentation" />
+  <Card title="Zoho Books - Documentation" icon="book-open" horizontal href="/integrations/zohobooks/connection-setup">
+  </Card>
 
   <br />
 
@@ -798,9 +945,9 @@ mode: "center"
 
   Self-hosted deployments can now run Redis behind Sentinel for high availability and automatic failover, as an alternative to cluster mode.
 
-  * **Sentinel mode**: Setting `FLEXPRICE_REDIS_SENTINEL_MASTER_NAME` and `FLEXPRICE_REDIS_SENTINEL_ADDRS` switches the client to Sentinel mode, taking precedence over cluster and standalone
-  * **Replica read routing**: `FLEXPRICE_REDIS_ROUTE_READS_TO_REPLICAS` spreads reads across the master and replicas while keeping writes on the master
-  * **Fail-fast validation**: Sentinel master name and addresses must be configured together — a partial config now returns a clear startup error instead of silently falling back to standalone or losing HA
+  - **Sentinel mode**: Setting `FLEXPRICE_REDIS_SENTINEL_MASTER_NAME` and `FLEXPRICE_REDIS_SENTINEL_ADDRS` switches the client to Sentinel mode, taking precedence over cluster and standalone
+  - **Replica read routing**: `FLEXPRICE_REDIS_ROUTE_READS_TO_REPLICAS` spreads reads across the master and replicas while keeping writes on the master
+  - **Fail-fast validation**: Sentinel master name and addresses must be configured together — a partial config now returns a clear startup error instead of silently falling back to standalone or losing HA
 
   <br />
 
@@ -854,12 +1001,17 @@ mode: "center"
   <br />
 
   <Frame>
-    <img src="/images/docs/marketplace/aws/bills.png" alt="AWS Bills page showing a Marketplace charge reported by Flexprice" style={{ borderRadius: '0.5rem' }} />
+    <img
+      src="/images/docs/marketplace/aws/bills.png"
+      alt="AWS Bills page showing a Marketplace charge reported by Flexprice"
+      style={{ borderRadius: '0.5rem' }}
+    />
   </Frame>
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/integrations/marketplace-integration/aws/connection-setup" title="AWS Marketplace - Documentation" />
+  <Card title="AWS Marketplace - Documentation" icon="book-open" horizontal href="/integrations/marketplace-integration/aws/connection-setup">
+  </Card>
 
   <br />
 
@@ -867,13 +1019,14 @@ mode: "center"
 
   Parent subscriptions can now create their grouped-invoicing children in the same request instead of a separate step, with each child's first-period charges folded into the parent's opening invoice.
 
-  * **`grouped_invoicing_children_to_create`**: New field on subscription creation accepts child seat specs (plan, external customer, start date) to create alongside the parent; mutually exclusive with converting existing standalone subscriptions into the group
-  * **Unified opening invoice**: Each inline child's period-1 charges are folded into the parent's single opening invoice rather than generating a separate invoice per child
-  * **Aligned billing start**: Grouped-invoicing children created this way always start on the parent's billing date, keeping the group's billing periods in sync
+  - **`grouped_invoicing_children_to_create`**: New field on subscription creation accepts child seat specs (plan, external customer, start date) to create alongside the parent; mutually exclusive with converting existing standalone subscriptions into the group
+  - **Unified opening invoice**: Each inline child's period-1 charges are folded into the parent's single opening invoice rather than generating a separate invoice per child
+  - **Aligned billing start**: Grouped-invoicing children created this way always start on the parent's billing date, keeping the group's billing periods in sync
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/subscriptions/billing-workflows/grouped-invoicing" title="Grouped invoicing - Documentation" />
+  <Card title="Grouped invoicing - Documentation" icon="book-open" horizontal href="/docs/subscriptions/billing-workflows/grouped-invoicing">
+  </Card>
 
   <br />
 
@@ -900,9 +1053,9 @@ mode: "center"
 
   Wallet top-ups and onboarding-created wallets gain a dedicated expiry for bonus and initial credits, and purchased-credit invoices can be force-synced to Moyasar with connection-configured redirect URLs.
 
-  * **`bonus_credits_expiry_date_utc`**: Top-up requests can set an expiry for bonus credits that's independent of the purchase credits' own expiry
-  * **Onboarding wallet initial credits**: The onboarding workflow's wallet-creation action can now apply an optional expiration duration to the initial credits it loads
-  * **Moyasar redirect URLs**: `force_sync_invoice` on wallet top-ups now forwards the connection-configured success/cancel URLs to Moyasar, mirroring the existing Paddle pattern, and is configurable from the Moyasar connection drawer
+  - **`bonus_credits_expiry_date_utc`**: Top-up requests can set an expiry for bonus credits that's independent of the purchase credits' own expiry
+  - **Onboarding wallet initial credits**: The onboarding workflow's wallet-creation action can now apply an optional expiration duration to the initial credits it loads
+  - **Moyasar redirect URLs**: `force_sync_invoice` on wallet top-ups now forwards the connection-configured success/cancel URLs to Moyasar, mirroring the existing Paddle pattern, and is configurable from the Moyasar connection drawer
 
   <br />
 
@@ -946,7 +1099,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/subscriptions/how-to-configure-spend-alerts/what-are-spend-alerts" title="Spend alerts - Documentation" />
+  <Card title="Spend alerts - Documentation" icon="book-open" horizontal href="/docs/subscriptions/how-to-configure-spend-alerts/what-are-spend-alerts">
+  </Card>
 
   <br />
 
@@ -961,7 +1115,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/checkout/autopay-mandates" title="Autopay & Mandates - Documentation" />
+  <Card title="Autopay & Mandates - Documentation" icon="book-open" horizontal href="/docs/checkout/autopay-mandates">
+  </Card>
 
   <br />
 
@@ -1028,7 +1183,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/webhook/webhooks" title="Webhooks - Documentation" />
+  <Card title="Webhooks - Documentation" icon="book-open" horizontal href="/docs/webhook/webhooks">
+  </Card>
 
   <br />
 
@@ -1044,7 +1200,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/settings/settings" title="Settings - Documentation" />
+  <Card title="Settings - Documentation" icon="book-open" horizontal href="/docs/settings/settings">
+  </Card>
 
   <br />
 
@@ -1052,9 +1209,9 @@ mode: "center"
 
   You can now configure a default onboarding workflow that runs automatically whenever a new customer is created — provisioning a wallet, subscription, or custom action set without manual setup.
 
-  * **Action sets**: Define default actions (create wallet with an initial credit load, create subscription against a published plan) that fire on customer creation
-  * **Custom workflows**: Add named custom workflows alongside the default action set for different onboarding paths
-  * **Validation**: Wallet credit expiration and workflow name conflicts are validated before saving
+  - **Action sets**: Define default actions (create wallet with an initial credit load, create subscription against a published plan) that fire on customer creation
+  - **Custom workflows**: Add named custom workflows alongside the default action set for different onboarding paths
+  - **Validation**: Wallet credit expiration and workflow name conflicts are validated before saving
 
   <br />
 
@@ -1071,7 +1228,7 @@ mode: "center"
 
   A new endpoint resolves a customer's entitlements using your own external customer ID, making it easier to check feature access at the edge without an internal Flexprice lookup first.
 
-  * **New endpoint**: `GET /customers/external/{external_id}/entitlements` returns a customer's entitlements, with optional `feature_ids` and `subscription_ids` filters
+  - **New endpoint**: `GET /customers/external/{external_id}/entitlements` returns a customer's entitlements, with optional `feature_ids` and `subscription_ids` filters
 
   <br />
 
@@ -1123,7 +1280,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/checkout/checkout-sessions" title="Checkout Sessions API - Documentation" />
+  <Card title="Checkout Sessions API - Documentation" icon="book-open" horizontal href="/docs/checkout/checkout-sessions">
+  </Card>
 
   <br />
 
@@ -1138,7 +1296,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/customers/timezone-aware-billing" title="Customer Timezones - Documentation" />
+  <Card title="Customer Timezones - Documentation" icon="book-open" horizontal href="/docs/customers/timezone-aware-billing">
+  </Card>
 
   <br />
 
@@ -1146,19 +1305,24 @@ mode: "center"
 
   Metered features can now compute their per-event quantity from a CEL formula instead of a single event property — useful when the billable quantity is derived from multiple fields, needs a unit conversion, or needs to be rounded or clamped.
 
-  * **CEL math helpers**: Expressions support `max`, `min`, `abs`, `ceil`, `floor`, `round`, `pow`, `sqrt`, and `log` alongside standard arithmetic and comparison operators
-  * **Validation**: Expressions are only accepted on SUM, AVG, MAX, and LATEST aggregations, and a meter can't set both a field and an expression at the same time
-  * **Dashboard**: A "+ Custom Expression" toggle on feature creation swaps the aggregation field input for a CEL formula input, with inline help text and examples
+  - **CEL math helpers**: Expressions support `max`, `min`, `abs`, `ceil`, `floor`, `round`, `pow`, `sqrt`, and `log` alongside standard arithmetic and comparison operators
+  - **Validation**: Expressions are only accepted on SUM, AVG, MAX, and LATEST aggregations, and a meter can't set both a field and an expression at the same time
+  - **Dashboard**: A "+ Custom Expression" toggle on feature creation swaps the aggregation field input for a CEL formula input, with inline help text and examples
 
   <br />
 
   <Frame>
-    <img src="/images/docs/product-catalogue/features/custom-expression/switch-from-field-to-cel.png" alt="Aggregation section with the Custom expression toggle highlighted" style={{ borderRadius: '0.5rem' }} />
+    <img
+      src="/images/docs/product-catalogue/features/custom-expression/switch-from-field-to-cel.png"
+      alt="Aggregation section with the Custom expression toggle highlighted"
+      style={{ borderRadius: '0.5rem' }}
+    />
   </Frame>
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/features/custom-expression" title="Custom Expression - Documentation" />
+  <Card title="Custom Expression - Documentation" icon="book-open" horizontal href="/docs/product-catalogue/features/custom-expression">
+  </Card>
 
   <br />
 
@@ -1166,19 +1330,24 @@ mode: "center"
 
   Entitlements can now carry an arbitrary JSON `config_value`, so you can deliver feature flags, rate limits, or tenant settings to customers through the standard entitlements pipeline instead of a boolean or numeric limit.
 
-  * **Config feature type**: A new `config` feature type accepts a JSON object as its `config_value` when the feature is attached to a plan's entitlements
-  * **Dashboard JSON editor**: A JSON editor with syntax highlighting validates the config payload on entry, and a side sheet displays the full stored value from the plan's Entitlements tab
-  * **Customer entitlements**: Config values are returned on the customer's entitlements as soon as they subscribe to a plan that includes the feature
+  - **Config feature type**: A new `config` feature type accepts a JSON object as its `config_value` when the feature is attached to a plan's entitlements
+  - **Dashboard JSON editor**: A JSON editor with syntax highlighting validates the config payload on entry, and a side sheet displays the full stored value from the plan's Entitlements tab
+  - **Customer entitlements**: Config values are returned on the customer's entitlements as soon as they subscribe to a plan that includes the feature
 
   <br />
 
   <Frame>
-    <img src="/images/docs/product-catalogue/features/creating-a-feature/add-entitlement-feat-config.png" alt="Add Entitlement with Config feature JSON editor" style={{ borderRadius: '0.5rem' }} />
+    <img
+      src="/images/docs/product-catalogue/features/creating-a-feature/add-entitlement-feat-config.png"
+      alt="Add Entitlement with Config feature JSON editor"
+      style={{ borderRadius: '0.5rem' }}
+    />
   </Frame>
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/features/create" title="Creating a Feature - Documentation" />
+  <Card title="Creating a Feature - Documentation" icon="book-open" horizontal href="/docs/product-catalogue/features/create">
+  </Card>
 
   <br />
 
@@ -1186,14 +1355,15 @@ mode: "center"
 
   Settings are now organized into a single tabbed dashboard instead of scattered pages, covering team, billing, alerts, and customer portal configuration.
 
-  * **Team tab**: Manage tenant members and pending invites in one place, with an option to show pending invites alongside published members
-  * **Billing tab**: Configure invoice and subscription settings — auto-cancellation and invoice numbering — directly from the dashboard
-  * **Alerts tab**: Configure wallet balance alert thresholds from Settings instead of a separate page
-  * **Customer portal tab**: New tab for configuring customer-facing portal settings
+  - **Team tab**: Manage tenant members and pending invites in one place, with an option to show pending invites alongside published members
+  - **Billing tab**: Configure invoice and subscription settings — auto-cancellation and invoice numbering — directly from the dashboard
+  - **Alerts tab**: Configure wallet balance alert thresholds from Settings instead of a separate page
+  - **Customer portal tab**: New tab for configuring customer-facing portal settings
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/settings/settings" title="Settings - Documentation" />
+  <Card title="Settings - Documentation" icon="book-open" horizontal href="/docs/settings/settings">
+  </Card>
 
   <br />
 
@@ -1238,7 +1408,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/customers/timezone-aware-billing" title="Customer timezones - Documentation" />
+  <Card title="Customer timezones - Documentation" icon="book-open" horizontal href="/docs/customers/timezone-aware-billing">
+  </Card>
 
   <br />
 
@@ -1253,12 +1424,17 @@ mode: "center"
   <br />
 
   <Frame>
-    <img src="/images/docs/integrations/moyasar/setup-autopay.png" alt="Setup Autopay button on the customer page" style={{ borderRadius: '0.5rem' }} />
+    <img
+      src="/images/docs/integrations/moyasar/setup-autopay.png"
+      alt="Setup Autopay button on the customer page"
+      style={{ borderRadius: '0.5rem' }}
+    />
   </Frame>
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/integrations/moyasar/autopay" title="Moyasar autopay - Documentation" />
+  <Card title="Moyasar autopay - Documentation" icon="book-open" horizontal href="/integrations/moyasar/autopay">
+  </Card>
 
   <br />
 
@@ -1266,16 +1442,18 @@ mode: "center"
 
   The subscription details page now has a dedicated dashboard flow for applying and removing coupons and tax rates on individual line items, mid-cycle, without needing to call the API directly.
 
-  * **Apply/Remove dialogs**: New `ApplyCouponDialog`, `RemoveCouponDialog`, `ApplyTaxDialog`, and `RemoveTaxDialog` walk through a preview step showing affected resources before executing the change
-  * **Association tables**: New `CouponAssociationTable` and `TaxAssociationTable` components list active associations with valid-from/to ranges, filtered to active, published associations only
-  * **Line item actions**: Apply and remove coupon/tax actions are now available directly from each line item's dropdown menu
-  * **Coupon codes**: Coupons now require a human-readable `coupon_code` on creation, shown as a monospace badge on the coupon details page
+  - **Apply/Remove dialogs**: New `ApplyCouponDialog`, `RemoveCouponDialog`, `ApplyTaxDialog`, and `RemoveTaxDialog` walk through a preview step showing affected resources before executing the change
+  - **Association tables**: New `CouponAssociationTable` and `TaxAssociationTable` components list active associations with valid-from/to ranges, filtered to active, published associations only
+  - **Line item actions**: Apply and remove coupon/tax actions are now available directly from each line item's dropdown menu
+  - **Coupon codes**: Coupons now require a human-readable `coupon_code` on creation, shown as a monospace badge on the coupon details page
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/coupons/apply-discount-on-subscription" title="Apply coupons to subscriptions - Documentation" />
+  <Card title="Apply coupons to subscriptions - Documentation" icon="book-open" horizontal href="/docs/product-catalogue/coupons/apply-discount-on-subscription">
+  </Card>
 
-  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/taxes/apply" title="Apply taxes - Documentation" />
+  <Card title="Apply taxes - Documentation" icon="book-open" horizontal href="/docs/product-catalogue/taxes/apply">
+  </Card>
 
   <br />
 
@@ -1316,15 +1494,16 @@ mode: "center"
 
   Service accounts are now first-class users — create them, give them a display name, update them, and archive them through dedicated endpoints, with API keys scoped to the owning service account for clean audit trails.
 
-  * **Update endpoint**: New `PUT /v1/users/{id}` lets you rename a service account without touching its API keys
-  * **Soft-delete endpoint**: New `DELETE /v1/users/{id}` archives a service account — blocked while it still has active API keys to prevent orphaned credentials
-  * **User association on secrets**: API keys now record the `user_id` of the service account that owns them and can be filtered by user and expiry
-  * **`super_admin` role**: New built-in RBAC role with wildcard permissions for tenant-wide administrative access
-  * **Dashboard support**: Manage service accounts end-to-end from the dashboard — create, edit, and revoke from the settings area
+  - **Update endpoint**: New `PUT /v1/users/{id}` lets you rename a service account without touching its API keys
+  - **Soft-delete endpoint**: New `DELETE /v1/users/{id}` archives a service account — blocked while it still has active API keys to prevent orphaned credentials
+  - **User association on secrets**: API keys now record the `user_id` of the service account that owns them and can be filtered by user and expiry
+  - **`super_admin` role**: New built-in RBAC role with wildcard permissions for tenant-wide administrative access
+  - **Dashboard support**: Manage service accounts end-to-end from the dashboard — create, edit, and revoke from the settings area
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/rbac/service-accounts/create" title="Service accounts - Documentation" />
+  <Card title="Service accounts - Documentation" icon="book-open" horizontal href="/docs/rbac/service-accounts/create">
+  </Card>
 
   <br />
 
@@ -1332,13 +1511,14 @@ mode: "center"
 
   Subscription inheritance now enforces a strict one-parent-per-child rule across both create and modify flows — preventing the same customer from being inherited under two different parents.
 
-  * **Standalone child rejected**: Attempting to inherit a customer that already has a standalone subscription returns a validation error instead of silently creating conflicting hierarchies
-  * **Different-parent inheritance blocked**: A child already inherited under one parent cannot be re-inherited under a different parent
-  * **Same-parent re-inheritance allowed**: Re-running inheritance for an existing parent–child pair continues to work for adding new subscriptions to the relationship
+  - **Standalone child rejected**: Attempting to inherit a customer that already has a standalone subscription returns a validation error instead of silently creating conflicting hierarchies
+  - **Different-parent inheritance blocked**: A child already inherited under one parent cannot be re-inherited under a different parent
+  - **Same-parent re-inheritance allowed**: Re-running inheritance for an existing parent–child pair continues to work for adding new subscriptions to the relationship
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/subscriptions/customer-hierarchy" title="Customer hierarchy - Documentation" />
+  <Card title="Customer hierarchy - Documentation" icon="book-open" horizontal href="/docs/subscriptions/customer-hierarchy">
+  </Card>
 
   <br />
 
@@ -1346,8 +1526,8 @@ mode: "center"
 
   User signup now accepts a `metadata` object — attach attribution, referral source, or any custom signup context at account creation time and access it later through the user profile.
 
-  * **Signup form**: The dashboard signup flow captures structured metadata and forwards it to the auth API
-  * **API field**: The signup request accepts a `metadata` map alongside the existing identity fields
+  - **Signup form**: The dashboard signup flow captures structured metadata and forwards it to the auth API
+  - **API field**: The signup request accepts a `metadata` map alongside the existing identity fields
 
   <br />
 
@@ -1355,24 +1535,24 @@ mode: "center"
 
   <AccordionGroup>
     <Accordion title="Improvements">
-      * Event debugger now surfaces an `attributed-to-customer` step in the `meter_usage` pipeline view — making it easier to see which customer an event was attributed to and why
-      * Commitment time bucket editor adds validation and refined configuration controls for setting up multi-window commitments from the dashboard
-      * Subscription status filter expanded to include `DRAFT` and `TRIALING` states alongside published and active filters
-      * Optional display `name` field added to users — set it on create, edit it later, and see it returned in user responses
+      - Event debugger now surfaces an `attributed-to-customer` step in the `meter_usage` pipeline view — making it easier to see which customer an event was attributed to and why
+      - Commitment time bucket editor adds validation and refined configuration controls for setting up multi-window commitments from the dashboard
+      - Subscription status filter expanded to include `DRAFT` and `TRIALING` states alongside published and active filters
+      - Optional display `name` field added to users — set it on create, edit it later, and see it returned in user responses
     </Accordion>
 
     <Accordion title="Fixes">
-      * Wallet credit operations now return `409 Conflict` on duplicate idempotency keys instead of `500 Internal Server Error`
-      * Subscription inheritance no longer admits child customers with parent-type subscriptions, preventing nested parent relationships
+      - Wallet credit operations now return `409 Conflict` on duplicate idempotency keys instead of `500 Internal Server Error`
+      - Subscription inheritance no longer admits child customers with parent-type subscriptions, preventing nested parent relationships
     </Accordion>
 
     <Accordion title="API">
-      * New `PUT /v1/users/{id}` endpoint to update a service account's name
-      * New `DELETE /v1/users/{id}` endpoint to soft-delete a service account; blocked while active API keys exist
-      * `metadata` field accepted on the user signup request
-      * `breakdown_bucket` flag added to the meter usage detailed analytics request to opt into per-bucket breakdowns in the response
-      * Secret list filters now support `user_id` and `not_expired_at` for scoping API key queries to a specific service account or expiry window
-      * `name` field added to the user create, update, and response payloads
+      - New `PUT /v1/users/{id}` endpoint to update a service account's name
+      - New `DELETE /v1/users/{id}` endpoint to soft-delete a service account; blocked while active API keys exist
+      - `metadata` field accepted on the user signup request
+      - `breakdown_bucket` flag added to the meter usage detailed analytics request to opt into per-bucket breakdowns in the response
+      - Secret list filters now support `user_id` and `not_expired_at` for scoping API key queries to a specific service account or expiry window
+      - `name` field added to the user create, update, and response payloads
     </Accordion>
   </AccordionGroup>
 </Update>
@@ -2014,7 +2194,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="code" horizontal={true} href="/api-reference/introduction" title="API Reference" />
+  <Card title="API Reference" icon="code" horizontal href="/api-reference/introduction">
+  </Card>
 
   <br />
 
@@ -2098,7 +2279,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/invoices/overview" title="Invoices - Documentation" />
+  <Card title="Invoices - Documentation" icon="book-open" horizontal href="/docs/invoices/overview">
+  </Card>
 
   <br />
 
@@ -2112,7 +2294,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/subscriptions/view" title="Subscriptions - Documentation" />
+  <Card title="Subscriptions - Documentation" icon="book-open" horizontal href="/docs/subscriptions/view">
+  </Card>
 
   <br />
 
@@ -2177,7 +2360,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/integrations/paddle/connection-setup" title="Paddle connection setup - Documentation" />
+  <Card title="Paddle connection setup - Documentation" icon="book-open" horizontal href="/integrations/paddle/connection-setup">
+  </Card>
 
   <br />
 
@@ -2191,7 +2375,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/plans/create" title="Creating a plan - Documentation" />
+  <Card title="Creating a plan - Documentation" icon="book-open" horizontal href="/docs/product-catalogue/plans/create">
+  </Card>
 
   <br />
 
@@ -2205,7 +2390,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/event-ingestion/sending-events" title="Sending events - Documentation" />
+  <Card title="Sending events - Documentation" icon="book-open" horizontal href="/docs/event-ingestion/sending-events">
+  </Card>
 
   <br />
 
@@ -2281,8 +2467,9 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/groups/feature-grouping" title="Feature grouping - Documentation" />
- 
+  <Card title="Feature grouping - Documentation" icon="book-open" horizontal href="/docs/product-catalogue/groups/feature-grouping">
+  </Card>
+
   <br />
  
   **Other changes**
@@ -2306,8 +2493,9 @@ mode: "center"
  
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/settings/settings" title="Settings - Documentation" />
- 
+  <Card title="Settings - Documentation" icon="book-open" horizontal href="/docs/settings/settings">
+  </Card>
+
   <br />
  
   ## Custom dashboard theming
@@ -2341,8 +2529,9 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/plans/clone" title="Cloning a plan - Documentation" />
- 
+  <Card title="Cloning a plan - Documentation" icon="book-open" horizontal href="/docs/product-catalogue/plans/clone">
+  </Card>
+
   <br />
  
   ## Multiple billing periods
@@ -2355,8 +2544,9 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/plans/create" title="Creating a plan - Documentation" />
- 
+  <Card title="Creating a plan - Documentation" icon="book-open" horizontal href="/docs/product-catalogue/plans/create">
+  </Card>
+
   <br />
  
   ## Price grouping
@@ -2373,8 +2563,9 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/groups/charges-grouping" title="Charges grouping - Documentation" />
- 
+  <Card title="Charges grouping - Documentation" icon="book-open" horizontal href="/docs/product-catalogue/groups/charges-grouping">
+  </Card>
+
   <br />
 </Update>
 
@@ -2395,7 +2586,8 @@ mode: "center"
 
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/wallet/low-balance-alert" title="Low balance alert - Documentation" />
+  <Card title="Low balance alert - Documentation" icon="book-open" horizontal href="/docs/wallet/low-balance-alert">
+  </Card>
 
   <br />
  
@@ -2407,8 +2599,9 @@ mode: "center"
  
   <br />
 
-  <Card icon="code" horizontal={true} href="/api-reference/introduction" title="API Reference" />
- 
+  <Card title="API Reference" icon="code" horizontal href="/api-reference/introduction">
+  </Card>
+
   <br />
  
   **Other changes**
@@ -2429,8 +2622,9 @@ mode: "center"
  
   <br />
 
-  <Card icon="code" horizontal={true} href="/api-reference/subscriptions/update-subscription" title="Update subscription - API Reference" />
- 
+  <Card title="Update subscription - API Reference" icon="code" horizontal href="/api-reference/subscriptions/update-subscription">
+  </Card>
+
   <br />
  
   ## Commitment duration
@@ -2442,8 +2636,9 @@ mode: "center"
  
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/subscriptions/commitment/overview" title="Commitment - Documentation" />
- 
+  <Card title="Commitment - Documentation" icon="book-open" horizontal href="/docs/subscriptions/commitment/overview">
+  </Card>
+
   <br />
  
   ## Multiple instance add-ons
@@ -2453,8 +2648,10 @@ mode: "center"
   * **Flexible add-on instances**: Support for multiple instances of the same add-on per subscription
  
   <br />
-  <Card icon="code" horizontal={true} href="/api-reference/addons/create-addon" title="Create add-ons - API Reference" />
- 
+
+  <Card title="Create add-ons - API Reference" icon="code" horizontal href="/api-reference/addons/create-addon">
+  </Card>
+
   <br />
  
   ## Custom analytics
@@ -2496,8 +2693,9 @@ mode: "center"
  
   <br />
 
-  <Card icon="code" horizontal={true} href="/api-reference/credit-grants/update-credit-grant" title="Update credit grant - API Reference" />
- 
+  <Card title="Update credit grant - API Reference" icon="code" horizontal href="/api-reference/credit-grants/update-credit-grant">
+  </Card>
+
   <br />
  
   ## Prepaid and postpaid wallets
@@ -2508,8 +2706,9 @@ mode: "center"
  
   <br />
 
-  <Card icon="book-open" horizontal={true} href="/docs/wallet/prepaid-and-promotional" title="Prepaid & promotional credits - Documentation" />
- 
+  <Card title="Prepaid & promotional credits - Documentation" icon="book-open" horizontal href="/docs/wallet/prepaid-and-promotional">
+  </Card>
+
   <br />
  
   ## Backdated pricing
@@ -2545,7 +2744,8 @@ mode: "center"
 
   Added a new API to fetch a subscription by ID with a minimal response and optional expand parameters.
 
-  <Card icon="code" horizontal={true} href="/api-reference/subscriptions/get-subscription-v2" title="Get Subscription - API Reference" />
+  <Card title="Get Subscription - API Reference" icon="code" horizontal href="/api-reference/subscriptions/get-subscription-v2">
+  </Card>
 
   <br />
 
@@ -2602,7 +2802,8 @@ mode: "center"
 
   * **S3 exports**: Managed exports and downloadable reports for billing and credit usage
 
-  <Card icon="book-open" horizontal={true} href="/docs/data-exports/amazon-s3/export" title="S3 Export - Documentation" />
+  <Card title="S3 Export - Documentation" icon="book-open" horizontal href="/docs/data-exports/amazon-s3/export">
+  </Card>
 
   <br />
 
@@ -2661,7 +2862,8 @@ mode: "center"
   * **Eligibility**: Credit eligibility now strictly applies only to completed transactions
   * **Advisory locking**: Wallet operations are protected with advisory locking to reduce race conditions under concurrency
 
-  <Card icon="code" horizontal={true} href="/api-reference/wallets/get-wallet-balance" title="Get Wallet Balance - API Reference" />
+  <Card title="Get Wallet Balance - API Reference" icon="code" horizontal href="/api-reference/wallets/get-wallet-balance">
+  </Card>
 
   <br />
 
@@ -2714,7 +2916,8 @@ mode: "center"
   * **Invoice and usage**: Improved invoice processing alignment with feature usage tracking
   * **Workflows**: Strengthened workflow reliability with improved Temporal identity handling and timeout tuning
 
-  <Card icon="book-open" horizontal={true} href="/docs/data-exports/amazon-s3/export" title="S3 Export - Documentation" />
+  <Card title="S3 Export - Documentation" icon="book-open" horizontal href="/docs/data-exports/amazon-s3/export">
+  </Card>
 
   <br />
 
