@@ -24,11 +24,13 @@ Every threshold is read either as an **Absolute** amount or as a **Percentage**.
 
 ### Absolute Thresholds
 
-Thresholds are fixed amounts denominated in the customer's wallet currency. On a USD wallet, a Critical threshold of `10` triggers when the balance falls below \$10.
+Thresholds are fixed amounts denominated in the customer's wallet currency. On a USD denominated wallet, a Critical threshold of `10` triggers when the balance falls below \$10.
 
-Use Absolute when the level you care about is a fixed figure, such as a hard floor before service is interrupted or the point at which someone should top up. Negative values are allowed, so a post-paid wallet can alert on how far below zero it has gone.
+Use **Absolute** when the threshold you care about is a specific fixed value, such as a minimum balance before service is interrupted or the level at which a top-up should be triggered. Negative values are allowed, so a post-paid wallet can alert on how far below zero it has gone.
 
+<Info>
 Absolute is the default. A wallet or tenant configuration saved without a threshold type is read as Absolute.
+</Info>
 
 ### Percentage Thresholds
 
@@ -42,9 +44,9 @@ Values must be between 0 and 100.
   ![Percentage threshold type selected, with each level shown as a percentage](/images/docs/wallet/low-balance-alert/percentage-threshold-type.png)
 </Frame>
 
-<Note>
-  Percentage thresholds are evaluated against [ongoing balance](/docs/wallet/balance-types#ongoing-balance), the real-time balance that accounts for current usage.
-</Note>
+<Info>
+  Percentage thresholds are calculated by expressing the [ongoing balance](/docs/wallet/balance-types#ongoing-balance) as a percentage of the credits granted for the current billing period. The ongoing balance reflects the real-time balance after accounting for current usage.
+</Info>
 
 ## Alert Levels
 
