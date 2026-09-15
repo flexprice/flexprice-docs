@@ -29,9 +29,11 @@ flexprice-docs/
 │   ├── webhook/             ← Webhook reference
 │   ├── event-ingestion/     ← Event & metering docs
 │   └── ...
+├── integrations/            ← Integrations tab: one folder per provider, plus introduction.mdx landing page
 ├── images/docs/             ← Screenshots referenced from docs
+├── images/integrations/logos/ ← Brand SVG icons for the integrations landing page
 ├── docs.json                ← Navigation config (Mintlify v2)
-└── .claude/skills/          ← This skills directory
+└── .claude/skills/          ← This skills directory (docs-writing/scripts/brand_icon.py builds integration icons)
 ```
 
 The docs site is at `https://docs.flexprice.io`. The `docs.json` at repo root controls all navigation.
@@ -254,6 +256,61 @@ The navigation lives in `navigation.tabs[0].groups` (the Documentation tab). Str
 
 ---
 
+## Integrations Tab
+
+The header tab named **Integrations** (the third tab in `docs.json`) follows the layout Lago uses for its integrations docs. Keep this structure when adding or moving an integration.
+
+### Sidebar structure
+
+The tab has one top-level group, `Integrations`, and everything sits inside it:
+
+```
+Integrations                      <- single top-level group, icon "plug"
+  integrations/introduction       <- landing page, always first
+  Payments                        <- category sub-group, no icon
+    Stripe                        <- provider sub-group, no icon
+      integrations/stripe/connection-setup
+      integrations/stripe/...
+    Razorpay, Paddle, Nomod, Moyasar, Whop, Chargebee
+  Accounting
+    QuickBooks, Zoho Books, Tabs
+  Marketplaces
+    integrations/marketplace-integration/overview
+    AWS, GCP, Azure
+```
+
+**Rules:**
+- A provider is a sub-group named after the product, inside exactly one category sub-group. Never add a provider as a top-level group.
+- The first page in every provider group is `connection-setup`. Feature pages (`payment-links`, `customer-sync`, `invoice-sync`, `integration-workflow`) follow in workflow order.
+- Categories today are Payments, Accounting, and Marketplaces. A provider that collects payment for invoices belongs in Payments even if it also syncs catalog or customer data (Chargebee is the example). Add a new category only when a provider fits none of them, and add it to the landing page in the same change.
+- No `icon` on category or provider sub-groups. The only icon in the tab is on the top-level group.
+- Page paths stay under `integrations/<provider>/`. Moving a page between categories changes only `docs.json`, never the file path, so no redirects are needed.
+
+### Landing page: `integrations/introduction.mdx`
+
+Every provider in the sidebar has one card on the landing page, in a `## <Category> integrations` section that mirrors the sidebar categories. A new provider is not done until its card exists.
+
+Card template (one line per card, the icon is a file path):
+
+```mdx
+  <Card title="Provider" icon="/images/integrations/logos/provider.svg" href="/integrations/provider/connection-setup">
+    One sentence naming what the connection syncs or collects.
+  </Card>
+```
+
+**Icon rules:**
+- Icons are brand SVG files stored in `images/integrations/logos/<slug>.svg` and referenced by path in the `icon` prop. Never use Font Awesome names, `<img>` tags, or inline `<svg>` JSX on this page. Use the vendor's real mark (vendor site, press kit, or Simple Icons). Do not draw or approximate a logo.
+- File format: a 32x32 frame, `<rect rx="8">`, with the mark scaled to 16 to 20 px and centred. The frame is light grey `#F3F4F6` with the coloured mark, unless the vendor's own icon is a white mark on a brand colour (Stripe, QuickBooks, Paddle), in which case use that colour as the frame.
+- Generate the file with the helper instead of hand-editing: `python3 .claude/skills/docs-writing/scripts/brand_icon.py logo.svg <slug> -o images/integrations/logos/<slug>.svg [--bg #HEX] [--size 18] [--fill #HEX]`. It strips XML headers, style blocks, and class attributes, prefixes ids with the slug, frames the mark, and refuses to write anything malformed. Run a large source through `npx --yes svgo -p 1 --multipass` first if it is over about 20 KB.
+- Slugs are lowercase with hyphens and match the card title: `zoho-books`, `aws-marketplace`.
+- Card text follows the editorial voice: present tense, no marketing adjectives, one sentence.
+
+### Page frontmatter
+
+Integration pages use only `title` and `description`. Do not add `tag: 'Beta'` or any other `tag` field unless product explicitly asks for a badge; it renders in the sidebar next to the page name and was removed from the marketplace pages on 2026-09-15 because nothing in the backend gated them.
+
+---
+
 ## Validation Commands
 
 Run these **before opening a PR**. Both use Node 22 (mintlify does not support Node 25+).
@@ -327,6 +384,7 @@ The `.claude/launch.json` in this repo is configured to use this exact path. Use
 - [ ] `mint validate` passes (the pre-existing `Callout.tsx` warning is acceptable)
 - [ ] Dev server renders the page correctly (check heading hierarchy, code block syntax, table alignment)
 - [ ] Internal links use `/docs/...` paths (not relative `../` paths)
+- [ ] Integration pages: provider group sits under a category in the Integrations tab, a card exists on `integrations/introduction.mdx` pointing at a brand SVG in `images/integrations/logos/`, and the frontmatter has no `tag` field
 
 ---
 
