@@ -271,9 +271,7 @@ Integrations                      <- single top-level group, icon "plug"
     Stripe                        <- provider sub-group, no icon
       integrations/stripe/connection-setup
       integrations/stripe/...
-    Razorpay, Paddle, Nomod, Moyasar, Whop
-  Billing platforms
-    Chargebee
+    Razorpay, Paddle, Nomod, Moyasar, Whop, Chargebee
   Accounting
     QuickBooks, Zoho Books, Tabs
   Marketplaces
@@ -284,7 +282,7 @@ Integrations                      <- single top-level group, icon "plug"
 **Rules:**
 - A provider is a sub-group named after the product, inside exactly one category sub-group. Never add a provider as a top-level group.
 - The first page in every provider group is `connection-setup`. Feature pages (`payment-links`, `customer-sync`, `invoice-sync`, `integration-workflow`) follow in workflow order.
-- Categories today are Payments, Billing platforms, Accounting, and Marketplaces. Add a new category only when a provider fits none of them, and add it to the landing page in the same change.
+- Categories today are Payments, Accounting, and Marketplaces. A provider that collects payment for invoices belongs in Payments even if it also syncs catalog or customer data (Chargebee is the example). Add a new category only when a provider fits none of them, and add it to the landing page in the same change.
 - No `icon` on category or provider sub-groups. The only icon in the tab is on the top-level group.
 - Page paths stay under `integrations/<provider>/`. Moving a page between categories changes only `docs.json`, never the file path, so no redirects are needed.
 
