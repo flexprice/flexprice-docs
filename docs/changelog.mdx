@@ -28,11 +28,10 @@ mode: "center"
 
   ## Payment-gated one-off invoices
 
-  One-off invoices can now be created behind a hosted checkout session, and checkout sessions can be cancelled and polled for their result.
+  One-off invoices can now be created behind a hosted checkout session, and checkout sessions can be polled for their result.
 
   * **Checkout on create**: Pass a `checkout` object to `POST /invoices`. The invoice stays draft with no invoice number, the response carries the payment URL in `checkout_session.payment_action.url`, and the invoice finalizes when the payment webhook lands. If the session expires, the invoice is voided and archived
   * **Guards**: Invoices created this way carry `source_type: checkout` and cannot be finalized or voided by another caller while the session is active. Zero-amount invoices, including invoices fully covered by prepaid credits, are rejected
-  * **Cancel endpoint**: `POST /checkout/sessions/{id}/cancel` ends an in-flight session and cleans up the draft records created for it. Completed sessions cannot be cancelled
   * **Reconciliation on read**: `GET /checkout/sessions/{id}` checks non-terminal Razorpay sessions against the gateway and completes them when the customer has paid, covering late or dropped webhooks. Responses include `terminal`, `next_poll_after_ms`, `stale`, and a `payment` block, so clients poll until `terminal` is true. Chargebee sessions continue to reconcile through webhooks
 
   <br />
@@ -48,21 +47,6 @@ mode: "center"
   * **Grouping modes**: Set `line_item_grouping` on `POST /subscriptions` to `per_charge_period` (default) or `per_billing_period`. A monthly charge on a quarterly subscription bills as three line items or one, with the same total either way
   * **Merged rows**: Quantities are summed across windows, so five seats over three months bills as 15 seat-months at the unit price. Plan-level overage rows from cumulative commitments are not merged
   * **Dashboard**: The create subscription form shows an invoice line items toggle whenever a charge is shorter than the billing period; the setting is written at create time
-
-  <br />
-
-  ## Tax behavior in the dashboard
-
-  Tax behavior, tax treatment, and the invoice tax breakdown are now available in the dashboard, and the default behavior is exclusive for every currency.
-
-  * **Default change**: Tax associations created without a `tax_behavior` now default to `exclusive` regardless of currency. Previously USD and CAD defaulted to exclusive and other currencies to inclusive. Associations stored without a behavior read back as exclusive
-  * **Tax associations**: Choose exclusive or inclusive when applying a tax rate, and see the behavior in tax association tables
-  * **Tax treatment**: Mark a customer as taxable or exempt when creating a customer or from the customer information tab
-  * **Invoice breakdown**: Invoice and subscription preview line item tables show inclusive tax, exclusive tax, total tax, and the reason when no tax was charged
-
-  <br />
-
-  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/taxes/overview" title="Taxes - Documentation" />
 
   <br />
 
@@ -84,7 +68,7 @@ mode: "center"
       * Paddle invoice sync builds charges as non-catalog prices, so syncing an invoice no longer adds prices to the Paddle catalog; plan change invoices with credit lines are charged as one net amount labelled with the plan change
       * Scheduled export creation fails immediately when the destination cannot be resolved, GCS destinations no longer require a region, and export validation errors are not retried
       * Addon quantities can be set while adding addons during subscription creation
-      * The invoice edit page uses the invoice details as the editing surface, with inline row editing for line items and a clear action on the calendar
+      * The invoice edit page uses the invoice details as the editing surface, with inline row editing for line items, a clear action on the calendar, and the reapply coupon action below the line items table
       * Wallet alert settings now include a Currency or Percentage unit selector in the wallet dialog and tenant settings; balance alerts always evaluate a falling balance
       * Tenant onboarding requires an organization URL
       * Helm chart supports a replicated ClickHouse cluster through `clickhouse.altinity.replicasCount` and `clickhouse.altinity.keeper.hosts`, spreads replicas across nodes by default, and the worker HPA honors `targetMemoryUtilizationPercentage`
@@ -98,19 +82,20 @@ mode: "center"
       * Proration for line items on a different cadence from the subscription is computed against the line item's own period, fixing skipped or inflated proration on multi-cadence addons and calendar stubs
       * Opening invoices generated at subscription start use the `SUBSCRIPTION_CREATE` billing reason and stay draft until they are paid through checkout or processed
       * Usage analytics CSV exports no longer group by source, which applied line item commitments once per source and overstated true-ups
+      * Scheduled exports to S3-compatible destinations use the endpoint URL and path-style setting from the export configuration
       * HubSpot invoice sync resolves the contact from the invoice's customer and skips unmapped customers instead of falling back to another mapping
       * Razorpay customer creation is idempotent, and Paddle webhooks for environments without a Paddle connection are ignored instead of failing
       * One-time charges synced to Zoho Books show the correct service date instead of the previous day
-      * Dashboard addon tables show overridden addon prices instead of the catalog default, nested dialogs no longer close the dialog beneath them, the Add Credits dialog and update toast are readable in dark mode, spend alert dialog labels render correctly, and the manual export date picker opens inside its dialog
+      * Tax associations created without a `tax_behavior` default to `exclusive` for every currency, where previously USD and CAD defaulted to exclusive and all other currencies to inclusive; associations stored without a behavior read back as exclusive
+      * Dashboard addon tables show overridden addon prices instead of the catalog default, nested dialogs no longer close the dialog beneath them, pressing Escape on a dropdown inside a dialog closes only the dropdown, the Add Credits dialog and update toast are readable in dark mode, spend alert dialog labels render correctly, and the manual export date picker opens inside its dialog
     </Accordion>
 
     <Accordion title="API">
       * `POST /invoices` accepts a `checkout` object; the response includes `checkout_session`, and gated invoices carry `source_type`
-      * New `POST /checkout/sessions/{id}/cancel` endpoint; checkout session responses include `terminal`, `next_poll_after_ms`, `stale`, and `payment`
+      * `GET /checkout/sessions/{id}` responses include `terminal`, `next_poll_after_ms`, `stale`, and `payment`
       * `POST /subscriptions` accepts `line_item_grouping`
       * New `custom_currency_config` setting; invoice and line item responses include `custom_currency` amounts
       * Invoice line item amounts may be negative on any invoice type; invoice metadata accepts `collapsed_invoice_display_name` for collectors that club charges into one item
-      * Subscription schedule `configuration` and `execution_result` are open objects in the OpenAPI spec so SDKs keep their keys, and the list endpoint accepts `subscription_id`
     </Accordion>
   </AccordionGroup>
 </Update>
