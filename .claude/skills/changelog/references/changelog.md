@@ -13,7 +13,7 @@ This is the complete reference for writing Flexprice changelog entries. It conta
   mode: "center"
   ---
   ```
-- **New entries** go immediately after the frontmatter (line 6+), before all existing `<Update>` blocks
+- **New entries** go immediately after the frontmatter, before all existing `<Update>` blocks
 - **Footer** (last 3 lines of changelog.mdx — do NOT modify):
   ```mdx
   <Note>
@@ -207,7 +207,7 @@ Accordion bullet style:
 - 6-space indent (to align inside the `<Accordion>` tag)
 - One line per bullet, concise but specific
 - Use backticks for code references: `DRAFT`, `POST /v1/events/raw/bulk`
-- Use em dashes (`—`) for parenthetical context, not parentheses
+- No em dashes. Use a comma, colon, or a new sentence for parenthetical context
 
 ### Indentation
 
@@ -390,7 +390,7 @@ Deciding what becomes a `##` heading vs an accordion bullet is the most importan
 
 To publish a new changelog entry:
 
-1. Use the `Edit` tool to prepend the `<Update>` block directly into `changelog.mdx` right after the `---` frontmatter closing (line 6), before the previous top `<Update>` tag
+1. Use the `Edit` tool to prepend the `<Update>` block directly into `changelog.mdx` right after the `---` frontmatter closing, before the previous top `<Update>` tag
 2. The most recent entry must always be at the top
 3. Verify by reading the first ~100 lines of the file after the edit
-4. Commit and push — Mintlify auto-deploys
+4. What happens next (commit, push, PR) is decided by the skill that loaded this file. Mintlify auto-deploys once the entry reaches `main`
