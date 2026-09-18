@@ -29,8 +29,11 @@ flexprice-docs/
 │   ├── webhook/             ← Webhook reference
 │   ├── event-ingestion/     ← Event & metering docs
 │   └── ...
+├── api-reference/           ← API reference pages and openapi.json
 ├── images/docs/             ← Screenshots referenced from docs
-├── docs.json                ← Navigation config (Mintlify v2)
+├── docs.json                ← Navigation config (Mintlify v2), including API endpoints
+├── scripts/sync-api-nav.py  ← Syncs API navigation with openapi.json
+├── .github/workflows/       ← Documentation validation and API navigation checks
 └── .claude/skills/          ← This skills directory
 ```
 
@@ -254,9 +257,28 @@ The navigation lives in `navigation.tabs[0].groups` (the Documentation tab). Str
 
 ---
 
+## API Reference Navigation (docs.json)
+
+The API Reference tab lists endpoints explicitly under `Resources`, with one nested, collapsible group per resource. Use `"METHOD /path"` entries with the exact spec path and `{param}` placeholders, without the `/v1` server prefix. Operations missing from navigation are not automatically added.
+
+After changing `api-reference/openapi.json`, run:
+
+```bash
+python3 scripts/sync-api-nav.py          # update docs.json
+python3 scripts/sync-api-nav.py --check  # report missing or stale entries
+```
+
+The script adds missing endpoints by tag and removes stale entries while preserving existing ordering, labels, and MDX pages. Tag label overrides live in its `LABELS` dict. Review the diff after syncing; `.github/workflows/sync-api-nav.yml` checks for drift without editing files.
+
+Generated API URLs use the spec tag and summary, such as `/api-reference/addons/create-addon`. Check existing links when either changes.
+
+For an optional object reference page, add an MDX page with `title`, `description`, and `openapi-schema` frontmatter naming a schema in `components.schemas`. List its path first in the resource group.
+
+---
+
 ## Validation Commands
 
-Run these **before opening a PR**. Both use Node 22 (mintlify does not support Node 25+).
+Run these **before opening a PR**. Both use Node 22 (mintlify does not support Node 25+). The `docs-checks.yml` workflow runs `mint validate` and `mint broken-links` for matching documentation changes; `sync-api-nav.yml` checks API navigation. CI checks must pass before merge.
 
 ### Check for broken links
 
@@ -281,7 +303,7 @@ PATH="/opt/homebrew/opt/node@22/bin:$PATH" \
 ```
 
 - Confirms `docs.json` is valid, all referenced pages exist, and no structural errors
-- Pre-existing warning: `Invalid import path react in /components/Callout.tsx` — this is a known upstream issue, ignore it
+- Must exit 0 with `success build validation passed`; investigate any warnings.
 
 ### Dev server (visual check)
 
@@ -321,10 +343,11 @@ The `.claude/launch.json` in this repo is configured to use this exact path. Use
 - [ ] File is in the right directory (`docs/<section>/`)
 - [ ] Frontmatter has `title` and `description`
 - [ ] Page is added to `docs.json` in the correct group
+- [ ] If `api-reference/openapi.json` changed, `python3 scripts/sync-api-nav.py --check` passes
 - [ ] No em dashes: `grep -n "—" docs/path/to/page.mdx` returns nothing
 - [ ] No `<Frame>` blocks reference images that don't exist in the repo
 - [ ] `mint broken-links` passes with no new errors
-- [ ] `mint validate` passes (the pre-existing `Callout.tsx` warning is acceptable)
+- [ ] `mint validate` passes with no warnings
 - [ ] Dev server renders the page correctly (check heading hierarchy, code block syntax, table alignment)
 - [ ] Internal links use `/docs/...` paths (not relative `../` paths)
 
@@ -332,4 +355,4 @@ The `.claude/launch.json` in this repo is configured to use this exact path. Use
 
 ## Known Pre-Existing Issues (Do Not Fix Unless Asked)
 
-- **`components/Callout.tsx` react import warning** — flagged by `mint validate`, pre-existing, not fixable from docs content.
+- No known exceptions. The unused React import in `components/Callout.tsx` has been removed.

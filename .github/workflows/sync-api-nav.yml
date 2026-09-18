@@ -1,0 +1,44 @@
+name: Check API reference navigation
+
+# The API Reference sidebar in docs.json lists every endpoint explicitly, so an
+# endpoint that is only in openapi.json has no page. This check fails when
+# docs.json and openapi.json disagree and prints exactly which entries are
+# missing or stale. It never edits anything. To fix, run:
+#   python3 scripts/sync-api-nav.py
+
+on:
+  pull_request:
+    paths:
+      - api-reference/openapi.json
+      - docs.json
+      - scripts/sync-api-nav.py
+  push:
+    branches: [main]
+    paths:
+      - api-reference/openapi.json
+      - docs.json
+      - scripts/sync-api-nav.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Compare docs.json with openapi.json
+        run: |
+          set +e
+          python3 scripts/sync-api-nav.py --check | tee result.txt
+          status=${PIPESTATUS[0]}
+          {
+            echo "### API reference navigation"
+            echo
+            echo '```'
+            cat result.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"

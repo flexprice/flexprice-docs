@@ -1,0 +1,50 @@
+name: Docs checks
+
+# Runs the same Mintlify checks that are run locally before a PR:
+#   mint validate      - docs.json is valid, every referenced page exists, MDX builds
+#   mint broken-links  - no internal link or image path points at nothing
+# Read-only: this never edits or commits anything.
+
+on:
+  pull_request:
+    paths:
+      - "docs/**"
+      - "integrations/**"
+      - "api-reference/**"
+      - "components/**"
+      - "snippets/**"
+      - "images/**"
+      - docs.json
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "integrations/**"
+      - "api-reference/**"
+      - "components/**"
+      - "snippets/**"
+      - "images/**"
+      - docs.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mintlify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Install Mintlify CLI
+        run: npm install -g mint
+
+      - name: Validate build
+        run: mint validate
+
+      - name: Check broken links
+        run: mint broken-links
