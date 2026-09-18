@@ -25,6 +25,15 @@ It is built for two audiences at once: a human exploring the API interactively, 
 ## Install
 
 <Tabs>
+  <Tab title="Install script">
+    On macOS or Linux, install the latest release:
+
+    ```sh
+    curl -fsSL https://cli.flexprice.io | sh
+    ```
+
+    The binary is installed to `/usr/local/bin` if writable, or `~/.local/bin` otherwise. Make sure the install directory is on your `PATH`.
+  </Tab>
   <Tab title="Download a release">
     Grab the archive for your platform from the [latest release](https://github.com/flexprice/cli/releases/latest), extract it, and put the `flexprice` binary somewhere on your `PATH`.
 
@@ -64,7 +73,13 @@ flexprice version
 
 ## Upgrading
 
-Download the new release and replace the binary, or re-run `go install github.com/flexprice/cli/cmd/flexprice@latest`. Either way your configuration and stored keys are untouched.
+On macOS or Linux, update to the latest release:
+
+```sh
+flexprice update
+```
+
+On Windows, download the [latest release](https://github.com/flexprice/cli/releases/latest). If you installed with Go, run `go install github.com/flexprice/cli/cmd/flexprice@latest` to upgrade. Updating preserves your configuration and stored keys.
 
 <Note>
   `go install ...@latest` resolves through Go's module proxy, which can take a few minutes to index a brand-new release. To install a specific version immediately, pin it: `go install github.com/flexprice/cli/cmd/flexprice@v1.0.1`.
