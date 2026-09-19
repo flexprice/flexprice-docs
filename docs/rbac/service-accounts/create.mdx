@@ -25,8 +25,13 @@ Flexprice currently supports following custom roles:
 | Role | Use When |
 |------|----------|
 | `super_admin` | Your service needs full, unrestricted access (treat the key as a root credential) |
+| `all_reader` | Your service needs to read every resource but never change anything (read-only API keys) |
 | `event_ingestor` | Your service needs to send events to Flexprice |
 | `event_reader` | Your service needs to read event data |
+
+<Note>
+`all_writer` is only available to user accounts. A service account that needs write access to resources other than events must use `super_admin`.
+</Note>
 
 ### Via Dashboard
 
@@ -37,8 +42,9 @@ Navigate to **Developers > Service Accounts** and click **Create** to open the s
 </Frame>
 
 In the dialog:
-1. Select the roles you want to assign (Event Ingestor, Event Reader, or both)
-2. Click **Create Service Account**
+1. Enter a name for the service account
+2. Select the roles you want to assign, for example `all_reader` for a read-only integration or `event_ingestor` for an event pipeline
+3. Click **Create Service Account**
 
 The service account is created with the selected roles and you can now generate API keys for it.
 
@@ -94,16 +100,57 @@ response = requests.post(
 
 ```json
 {
-  "id": "usr_abc123",
+  "id": "user_01M2SXPDPM7NZJGQBH9H0905QS",
+  "name": "Event Ingestion Worker",
   "type": "service_account",
   "roles": ["event_ingestor"],
-  "created_at": "2025-11-14T10:00:00Z"
+  "tenant": {
+    "id": "tenant_xyz789",
+    "name": "Acme Inc",
+    "status": "published",
+    "created_at": "2025-01-20T14:13:31Z",
+    "updated_at": "2026-09-08T08:37:06Z"
+  }
 }
 ```
 
 <Tip>
 Save the `id` from the response. You'll need it when creating API keys.
 </Tip>
+
+### Read-Only Service Account
+
+To issue read-only API keys, create a service account with the `all_reader` role. Keys created for this account can read every resource in the environment and get `403 Forbidden` on any write.
+
+```bash
+curl --request POST \
+  --url https://api.cloud.flexprice.io/v1/users \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: <api-key>' \
+  --data '{
+  "type": "service_account",
+  "name": "Reporting Sync",
+  "roles": ["all_reader"]
+}'
+```
+
+```json
+{
+  "id": "user_01M2SXPDPM7NZJGQBH9H0905QS",
+  "name": "Reporting Sync",
+  "type": "service_account",
+  "roles": ["all_reader"],
+  "tenant": {
+    "id": "tenant_xyz789",
+    "name": "Acme Inc",
+    "status": "published",
+    "created_at": "2025-01-20T14:13:31Z",
+    "updated_at": "2026-09-08T08:37:06Z"
+  }
+}
+```
+
+Then [create an API key](/docs/rbac/api#for-a-service-account) with `service_account_id` set to the returned `id`. The key inherits `all_reader`.
 
 ## Request Fields
 
@@ -116,8 +163,11 @@ Save the `id` from the response. You'll need it when creating API keys.
 
   Available roles:
   - `super_admin` - Full access to every resource
+  - `all_reader` - Can read every resource, cannot write
   - `event_ingestor` - Can send events
   - `event_reader` - Can read events
+
+  `all_writer` cannot be assigned to a service account.
 </ParamField>
 
 <ParamField path="name" type="string">
@@ -149,6 +199,15 @@ You must assign at least one role when creating a service account. Empty roles w
 }
 ```
 
+**Role Not Allowed for Service Accounts**
+```json
+{
+  "code": "validation_error",
+  "message": "Role 'all_writer' cannot be assigned to a 'service_account' account",
+  "http_status_code": 400
+}
+```
+
 ## Real-World Examples
 
 ### Example 1: Event Ingestion Service
@@ -175,9 +234,22 @@ You must assign at least one role when creating a service account. Empty roles w
 - ❌ Dashboard cannot send events (403 Forbidden)
 - ❌ Dashboard cannot modify anything (403 Forbidden)
 
+### Example 3: Reporting or Data Warehouse Sync
+
+**Scenario**: A nightly job pulls customers, subscriptions, invoices, and usage into your data warehouse. It never writes to Flexprice.
+
+**Create service account with**:
+- Role: `all_reader`
+
+**What happens**:
+- ✅ Job can read every resource (customers, plans, subscriptions, invoices, wallets, events)
+- ❌ Job cannot create, update, or delete anything (403 Forbidden)
+
+This is the role to use whenever you need a read-only API key.
+
 ## Assigning Multiple Roles
 
-You can assign both roles to give combined permissions:
+You can assign more than one role to give combined permissions:
 
 **Service account with both roles**:
 - Roles: `event_ingestor` and `event_reader`

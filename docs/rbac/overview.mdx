@@ -59,7 +59,7 @@ Give scripts, integrations, and scheduled jobs their own service account and use
 |------|--------------|--------|
 | `super_admin` | User and service account | Every action on every resource |
 | `all_writer` | User account | Read and write on every resource |
-| `all_reader` | User account | Read on every resource |
+| `all_reader` | User and service account | Read on every resource |
 | `event_ingestor` | Service account | Send events |
 | `event_reader` | Service account | Read events |
 
@@ -94,7 +94,7 @@ For teammates who manage billing configuration day to day.
 
 ### all_reader
 
-For teammates who review billing data without changing it.
+For teammates who review billing data without changing it, and for integrations that need read-only API keys.
 
 **Can do:**
 - Read every resource
@@ -102,7 +102,11 @@ For teammates who review billing data without changing it.
 **Cannot do:**
 - Create, update, or delete anything
 
-**Use for:** Finance reviewers, support staff checking a customer's usage, read-only dashboards backed by a person's account.
+**Use for:** Finance reviewers, support staff checking a customer's usage, reporting tools, data warehouse syncs, and monitoring jobs that must never write to Flexprice.
+
+<Note>
+Assign `all_reader` to a service account to issue read-only API keys. See [Use Case 3](#use-case-3-read-only-integration).
+</Note>
 
 ### event_ingestor
 
@@ -153,6 +157,16 @@ For services that read event data.
 - ✅ Your dashboard can read event data
 - ❌ If it tries to send events, it gets 403 Forbidden
 - ❌ It cannot modify any data
+
+### Use Case 3: Read-Only Integration
+
+**Scenario**: A reporting tool or data warehouse sync needs to read customers, subscriptions, invoices, and usage, but must never change billing data.
+
+**Solution**: Create a service account with the `all_reader` role and generate an API key. The key is read-only across every resource.
+
+**What happens**:
+- ✅ The integration can read every resource
+- ❌ Any create, update, or delete request gets 403 Forbidden
 
 ## Validation Rules
 
@@ -209,10 +223,11 @@ curl --request POST \
   --header 'Content-Type: application/json' \
   --header 'x-api-key: <api-key>' \
   --data '{
+  "type": "service_account",
+  "name": "<string>",
   "roles": [
     "<string>"
-  ],
-  "type": "user"
+  ]
 }'
 ```
 
