@@ -4,6 +4,47 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="September 20th 2026">
+  ## Cancel checkout sessions
+
+  In-flight checkout sessions can now be cancelled through the API, releasing everything the session was holding in one step.
+
+  * **Endpoint**: `POST /checkout/sessions/{id}/cancel` marks a `pending` or `initiated` session as `expired` and returns the same pollable response as `GET /checkout/sessions/{id}`. Completed sessions are rejected, and sessions that are already `failed` or `expired` are returned unchanged
+  * **Atomic cleanup**: The draft subscription and its addons, coupons, credit grants, and tax associations, any pending addon attachments, and the payment and invoice are archived in a single transaction. A pending wallet top-up transaction, and any pending bonus credit earned from it, is marked failed with the reason `checkout session expired before payment`. A funded invoice is voided first so prepaid credits are returned. If any step fails, nothing is cleaned up and the session stays active
+  * **Concurrency**: The terminal transition is claimed atomically, so a cancel racing the expiry job cleans up once. Cancelled sessions emit `checkout.session.expired`
+  * **Customer portal**: Cancelling from the portal routes through the same path
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/checkout/checkout-sessions" title="Checkout sessions - Documentation" />
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * The event debugger returns every ingested copy of an event ID, newest first and up to 50, in a new `events` array on `GET /events/{id}`, and each event carries `ingested_at`, so duplicate ingestions of the same ID are visible
+      * The Helm chart drops the unused `POSTGRES_AUTO_MIGRATE` config key; deployments use versioned migrations
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Zero commitments no longer report usage as commitment utilization in analytics, and out-of-bucket usage on a line item with time-of-day buckets bills at the base rate without counting as utilized
+      * Subscription schedules keep their `configuration` and `execution_result` when read through the TypeScript SDK, which previously returned them as empty objects, and the `subscription_id` query parameter on `GET /subscriptions/schedules` now filters instead of returning every schedule in the tenant
+      * Grouped invoicing child subscriptions roll their current period together with the parent subscription
+      * Razorpay autopay authorization links carry the mandate expiry, which was previously written to a field the gateway ignored
+      * The dashboard credit grant dialog accepts conversion rates with more than three decimals, matching wallet creation, and saves both rates as numbers
+    </Accordion>
+
+    <Accordion title="API">
+      * New `POST /checkout/sessions/{id}/cancel` endpoint
+      * `GET /events/{id}` responses include `events` and `ingested_at`
+      * Subscription schedule `configuration` and `execution_result` are typed as open objects in the OpenAPI spec, so generated SDKs preserve their contents
+      * The TypeScript SDK generation source now declares bearer JWT authentication with an optional `X-Environment-ID` header alongside API keys, so browser applications can authenticate with a session token. The published SDK picks this up on its next release
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
 <Update label="September 14th 2026">
   ## Custom currencies
 
