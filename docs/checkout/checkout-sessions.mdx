@@ -13,7 +13,7 @@ A Checkout Session represents a single payment attempt. Call `POST /v1/checkout/
 | `pending`   | Payment URL returned; awaiting customer payment              |
 | `completed` | Payment confirmed; subscription activated, invoice finalized |
 | `failed`    | Payment failed or provider cancelled the link                |
-| `expired`   | Session timed out without payment                            |
+| `expired`   | Session timed out without payment, or was cancelled          |
 
 ## Create a Checkout Session
 
@@ -68,7 +68,7 @@ Redirect the customer to `payment_action.url`. Each session has its own link. Do
 | `payment_provider`                                        | Yes      | Payment gateway to use. See [Choose your provider](/docs/checkout/overview#choose-your-payment-provider).                                                  |
 | `configuration.create_subscription_params.plan_id`        | Yes      | The plan to subscribe the customer to.                                                                                                                     |
 | `configuration.create_subscription_params.currency`       | Yes      | Billing currency (e.g., `INR`, `USD`).                                                                                                                     |
-| `configuration.create_subscription_params.billing_period` | No       | `monthly`, `quarterly`, `annual`, etc. Defaults to the plan's period.                                                                                      |
+| `configuration.create_subscription_params.billing_period` | Yes      | `monthly`, `quarterly`, `annual`, etc.                                                                                                                     |
 | `configuration.create_subscription_params.start_date`     | No       | Subscription start date. Defaults to now.                                                                                                                  |
 | `payment_provider_config`                                 | No       | Collect a recurring mandate instead of a one-time link. Omit for the default payment-link flow. See [Autopay & Mandates](/docs/checkout/autopay-mandates). |
 | `payment_provider_config.collection_method`               | No       | Set to `charge_automatically` to register a mandate.                                                                                                       |
@@ -81,14 +81,16 @@ Redirect the customer to `payment_action.url`. Each session has its own link. Do
 
 ## Other Checkout Actions
 
-Two more actions exist, but they are not created through this endpoint. Each is triggered by adding a `checkout` object to the endpoint that owns the change, so that Flexprice can compute the amount and defer the change itself:
+Four more actions exist, but they are not created through this endpoint. Each is triggered by adding a `checkout` object to the endpoint that owns the change, so that Flexprice can compute the amount and defer the change itself:
 
 | Action | Create it with |
 |--------|----------------|
 | `modify_subscription` | `POST /subscriptions/{id}/modify/execute` |
+| `add_addon` | `POST /subscriptions/addon` |
 | `wallet_topup` | `POST /wallets/{id}/top-up` |
+| `pay_invoice` | `POST /invoices` |
 
-Passing either action here returns a validation error naming the endpoint to use instead. Once created, both are read, deleted, and monitored through the same endpoints and webhook events described on this page. See [Pay-First Checkout](/docs/checkout/pay-first-checkout).
+Passing any of these actions here returns a validation error naming the endpoint to use instead. Once created, all of them are read, cancelled, deleted, and monitored through the same endpoints and webhook events described on this page. See [Pay-First Checkout](/docs/checkout/pay-first-checkout).
 
 ## Get a Checkout Session
 
@@ -100,6 +102,73 @@ curl https://us.api.flexprice.io/v1/checkout/sessions/<SESSION_ID> \
 
 Use this to confirm `checkout_status` on your redirect pages before showing the customer a result.
 
+**Response (200):**
+
+```json
+{
+  "id": "chk_01HXXX",
+  "customer_id": "cust_01HABC",
+  "action": "create_subscription",
+  "checkout_status": "pending",
+  "payment_provider": "razorpay",
+  "expires_at": "2024-01-01T12:15:00Z",
+  "payment_action": {
+    "type": "payment_link",
+    "url": "https://rzp.io/l/XXXXXXX"
+  },
+  "terminal": false,
+  "next_poll_after_ms": 2000,
+  "stale": false,
+  "payment": {
+    "id": "pay_01HDEF",
+    "status": "PENDING",
+    "gateway": "razorpay"
+  }
+}
+```
+
+### Polling for the result
+
+Reading a session that is still `initiated` or `pending` checks it against the payment provider and completes it if the customer has already paid, so a late or dropped webhook does not leave a paying customer waiting. Gateway calls are debounced, so reading in a tight loop does not add load. Poll until `terminal` is `true`, waiting `next_poll_after_ms` between reads.
+
+| Field                | Description                                                                                                                                                                                                   |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `terminal`           | `true` once the session has finished (`completed`, `failed`, or `expired`). Poll on this rather than on the status set.                                                                                       |
+| `next_poll_after_ms` | How long to wait before reading again. Starts at 2 seconds for a fresh session and backs off to 5 and then 10 seconds as the session ages. `0` means stop: the session is terminal.                             |
+| `stale`              | `true` when this response is stored state that was not checked against the provider on this read: the check was debounced, the gateway did not answer, or no payment exists yet. Show "still checking" rather than a final result. |
+| `payment`            | The payment the session is waiting on, with its `id`, `status`, and `gateway`. Omitted when no payment has been created yet.                                                                                  |
+
+Reconciliation on read applies to Razorpay sessions. Chargebee sessions reconcile through webhooks, and reads return stored state.
+
+## Cancel a Checkout Session
+
+Cancel a session the customer has abandoned so that everything it was holding is released immediately instead of waiting for `expires_at`.
+
+```bash
+curl -X POST https://us.api.flexprice.io/v1/checkout/sessions/<SESSION_ID>/cancel \
+  -H "x-api-key: <API_KEY>" \
+  -H "X-Environment-ID: <ENVIRONMENT_ID>"
+```
+
+The response has the same shape as `GET /checkout/sessions/{id}`, with `terminal` set to `true`. An active session comes back as `expired`. A session that had already failed or expired is returned unchanged, so `checkout_status` can also be `failed`.
+
+Cancelling releases whatever the session was holding:
+
+- **Draft subscription**: A subscription created behind the session is archived along with its addons, coupons, credit grants, and tax associations. A change deferred behind the session is never applied.
+- **Pending addon attachments**: Addons attached behind the session are archived.
+- **Pending wallet top-up**: The pending wallet transaction is marked failed, along with any pending bonus credit earned from the purchase.
+- **Payment and invoice**: The payment and invoice created for the session are archived. If the invoice already holds customer value, such as applied prepaid credits, it is voided first so that value is returned.
+
+Cleanup runs in a single transaction. If any step fails, nothing is changed and the session stays active, so the call is safe to retry. A cancel that races the expiry job cleans up once.
+
+| Session status               | Result                                                     |
+| ---------------------------- | ---------------------------------------------------------- |
+| `initiated`, `pending`       | Cleaned up and marked `expired`; `checkout.session.expired` fires |
+| `failed`, `expired`          | Returned unchanged                                         |
+| `completed`                  | `400`: a completed session cannot be cancelled             |
+
+Cancelling frees the session's `idempotency_key` for reuse.
+
 ## Delete a Checkout Session
 
 ```bash
@@ -108,7 +177,7 @@ curl -X DELETE https://us.api.flexprice.io/v1/checkout/sessions/<SESSION_ID> \
   -H "X-Environment-ID: <ENVIRONMENT_ID>"
 ```
 
-Sessions in a terminal state (`completed`, `failed`, `expired`) cannot be deleted.
+Deleting an active session first cancels it, releasing everything it holds exactly as `POST /checkout/sessions/{id}/cancel` does, and then archives it. Sessions already in a terminal state (`completed`, `failed`, `expired`) are archived as is. Use cancel instead of delete when you still want to read the session's final state afterwards.
 
 ## Webhook events
 
@@ -119,7 +188,7 @@ Subscribe to these in **Settings > Webhooks** to drive fulfillment from your bac
 | `checkout.session.initiated` | Session created and payment URL returned                  |
 | `checkout.session.completed` | Payment confirmed; subscription active, invoice finalized |
 | `checkout.session.failed`    | Payment failed or provider cancelled                      |
-| `checkout.session.expired`   | Session timed out without payment                         |
+| `checkout.session.expired`   | Session timed out without payment, or was cancelled       |
 
 <Note>
   Safe to receive the same event twice. If your payment provider delivers
@@ -156,4 +225,5 @@ Subscribe to these in **Settings > Webhooks** to drive fulfillment from your bac
 
 - [Create a Checkout Session](/api-reference/checkout/create-checkout-session)
 - [Get a Checkout Session](/api-reference/checkout/get-checkout-session)
+- [Cancel a Checkout Session](/api-reference/checkout/cancel-checkout-session)
 - [Delete a Checkout Session](/api-reference/checkout/delete-checkout-session)
