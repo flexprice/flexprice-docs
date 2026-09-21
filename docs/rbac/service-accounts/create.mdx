@@ -25,7 +25,7 @@ Flexprice currently supports following custom roles:
 | Role | Use When |
 |------|----------|
 | `super_admin` | Your service needs full, unrestricted access (treat the key as a root credential) |
-| `all_reader` | Your service needs to read every resource but never change anything (read-only API keys) |
+| `all_reader` | Your service needs to read every resource but never write anywhere (read-only API keys) |
 | `event_ingestor` | Your service needs to send events to Flexprice |
 | `event_reader` | Your service needs to read event data |
 
@@ -100,7 +100,7 @@ response = requests.post(
 
 ```json
 {
-  "id": "user_01M2SXPDPM7NZJGQBH9H0905QS",
+  "id": "user_0123ABCD",
   "name": "Event Ingestion Worker",
   "type": "service_account",
   "roles": ["event_ingestor"],
@@ -136,7 +136,7 @@ curl --request POST \
 
 ```json
 {
-  "id": "user_01M2SXPDPM7NZJGQBH9H0905QS",
+  "id": "user_0123ABCD",
   "name": "Reporting Sync",
   "type": "service_account",
   "roles": ["all_reader"],
@@ -166,8 +166,6 @@ Then [create an API key](/docs/rbac/api#for-a-service-account) with `service_acc
   - `all_reader` - Can read every resource, cannot write
   - `event_ingestor` - Can send events
   - `event_reader` - Can read events
-
-  `all_writer` cannot be assigned to a service account.
 </ParamField>
 
 <ParamField path="name" type="string">
