@@ -113,11 +113,20 @@ curl --request POST \
 
 ```json
 {
-  "id": "sec_xyz789",
-  "name": "Event Service Production Key",
-  "api_key": "sk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-  "roles": ["event_ingestor"],
-  "created_at": "2025-11-14T10:00:00Z"
+  "secret": {
+    "id": "sec_xyz789",
+    "name": "Event Service Production Key",
+    "type": "private_key",
+    "provider": "flexprice",
+    "display_id": "sk_01***BN",
+    "roles": ["event_ingestor"],
+    "user_type": "service_account",
+    "user_id": "user_0123ABCD",
+    "status": "published",
+    "created_at": "2026-09-18T09:33:55Z",
+    "updated_at": "2026-09-18T09:33:55Z"
+  },
+  "api_key": "sk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 }
 ```
 
@@ -174,6 +183,18 @@ The `api_key` value is only shown once, when you create it. Copy and store it se
 **What happens**:
 - ✅ Can send events (from `event_ingestor`)
 - ✅ Can read events (from `event_reader`)
+
+### Example 3: Read-Only API Key
+
+**Service Account has**: `all_reader` role
+
+**API Key inherits**: `all_reader` role
+
+**What happens**:
+- ✅ Can read every resource (customers, plans, subscriptions, invoices, wallets, events)
+- ❌ Cannot create, update, or delete anything (403 Forbidden)
+
+Use this for reporting tools, data warehouse syncs, and monitoring jobs. See [Creating a Service Account](/docs/rbac/service-accounts/create#read-only-service-account) for the setup.
 
 ## Best Practices
 
