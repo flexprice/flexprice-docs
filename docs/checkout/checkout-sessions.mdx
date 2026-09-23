@@ -138,7 +138,7 @@ Reading a session that is still `initiated` or `pending` checks it against the p
 | `stale`              | `true` when this response is stored state that was not checked against the provider on this read: the check was debounced, the gateway did not answer, or no payment exists yet. Show "still checking" rather than a final result. |
 | `payment`            | The payment the session is waiting on, with its `id`, `status`, and `gateway`. Omitted when no payment has been created yet.                                                                                  |
 
-A declined payment does not fail the session. The payment link stays live so the customer can retry, and the session remains `pending` until the customer pays, the session reaches `expires_at`, or you [cancel it](#cancel-a-checkout-session). Don't wait for `failed` to detect a decline: show "still waiting for payment" while `terminal` is `false`.
+A declined payment does not fail the session. The payment link stays live so the customer can retry, and the session remains `pending` until the customer pays, the session reaches `expires_at`, or you [cancel it](#cancel-a-checkout-session).
 
 Reconciliation on read applies to Razorpay sessions. Chargebee sessions reconcile through webhooks, and reads return stored state.
 
