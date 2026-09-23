@@ -141,7 +141,7 @@ curl https://us.api.flexprice.io/v1/checkout/sessions/<SESSION_ID> \
   -H "X-Environment-ID: <ENVIRONMENT_ID>"
 ```
 
-If `checkout_status` is `completed`, show the success state. If it's still `pending`, the webhook hasn't arrived yet: show a "processing" state and poll again in a few seconds.
+Poll until `terminal` is `true`, waiting `next_poll_after_ms` between reads. Each read checks the session against the payment provider, so a late webhook does not hold up the result. Once `terminal` is `true`, `checkout_status` holds the final result: `completed`, `failed`, or `expired`. See [Polling for the result](/docs/checkout/checkout-sessions#polling-for-the-result).
 
 **Failure or cancel page:** The customer can start over. Create a new session. The previous session and everything it created are cleaned up automatically.
 

@@ -134,9 +134,11 @@ Reading a session that is still `initiated` or `pending` checks it against the p
 | Field                | Description                                                                                                                                                                                                   |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `terminal`           | `true` once the session has finished (`completed`, `failed`, or `expired`). Poll on this rather than on the status set.                                                                                       |
-| `next_poll_after_ms` | How long to wait before reading again. Starts at 2 seconds for a fresh session and backs off to 5 and then 10 seconds as the session ages. `0` means stop: the session is terminal.                             |
+| `next_poll_after_ms` | Milliseconds to wait before the next read: `2000`, rising to `5000` after 30 seconds and `10000` after 2 minutes. `0` on finished sessions, list results, and webhook payloads. Stop polling on `terminal`, not on this value. |
 | `stale`              | `true` when this response is stored state that was not checked against the provider on this read: the check was debounced, the gateway did not answer, or no payment exists yet. Show "still checking" rather than a final result. |
 | `payment`            | The payment the session is waiting on, with its `id`, `status`, and `gateway`. Omitted when no payment has been created yet.                                                                                  |
+
+A declined payment does not fail the session. The payment link stays live so the customer can retry, and the session remains `pending` until the customer pays, the session reaches `expires_at`, or you [cancel it](#cancel-a-checkout-session).
 
 Reconciliation on read applies to Razorpay sessions. Chargebee sessions reconcile through webhooks, and reads return stored state.
 

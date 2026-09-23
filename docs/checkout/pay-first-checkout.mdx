@@ -71,7 +71,7 @@ Nothing about the subscription or wallet balance changes between steps 1 and 6.
 | After payment succeeds | `completed` | `FINALIZED`, paid | `SUCCEEDED` | Yes |
 | Failed, expired, or cancelled | `failed` or `expired` | Archived | Archived | No, and never will be |
 
-Poll `GET /v1/checkout/sessions/{id}` from your redirect pages to read `checkout_status` before showing the customer a result.
+Poll `GET /v1/checkout/sessions/{id}` from your redirect pages until `terminal` is `true`, then read `checkout_status` before showing the customer a result. A declined payment leaves the session `pending` so the customer can retry. See [Polling for the result](/docs/checkout/checkout-sessions#polling-for-the-result).
 
 ## Charge a saved payment method
 
