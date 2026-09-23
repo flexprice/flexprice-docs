@@ -1,0 +1,75 @@
+---
+title: "Storybook"
+description: "Where to see every @flexprice/ui component rendered with real props, and how the Storybook in the dashboard repository fits in"
+---
+
+The UI kit is built inside the Flexprice dashboard repository, [flexprice/flexprice-front](https://github.com/flexprice/flexprice-front), which carries a Storybook. Today that Storybook covers dashboard internals; the kit's own components do not have stories yet. Until they do, the component pages in these docs are the interactive gallery.
+
+## Component previews in the docs
+
+Every page under [Components](/docs/exportable-ui/overview#components-in-the-ui-kit) embeds the real component with realistic props, next to the code that produces it, with a light and dark toggle:
+
+| Component | Page |
+| --- | --- |
+| `PricingTable` | [Pricing Table](/docs/exportable-ui/pricing-widget/pricing-table) |
+| `PricingCard` | [Pricing Card](/docs/exportable-ui/pricing-widget/pricing-card) |
+| `MetricCards` | [Metric Cards](/docs/exportable-ui/usage-widgets/metric-cards) |
+| `UsageTrendChart` | [Usage Trend Chart](/docs/exportable-ui/usage-widgets/usage-trend-chart) |
+| `UsageBreakdown` | [Usage Breakdown](/docs/exportable-ui/usage-widgets/usage-breakdown) |
+| `UsageQuota` | [Usage Quota](/docs/exportable-ui/usage-widgets/usage-quota) |
+| `CreditBalance` | [Credit Balance](/docs/exportable-ui/credits-widgets/credit-balance) |
+| `CreditHistory` | [Credit History](/docs/exportable-ui/credits-widgets/credit-history) |
+
+The props behind each preview are a valid fixture. Copy them into a test or a static JSON file to render a component before your data pipeline exists.
+
+## Run the repository Storybook
+
+<Steps>
+  <Step title="Clone the dashboard repository">
+    ```sh
+    git clone https://github.com/flexprice/flexprice-front
+    cd flexprice-front
+    npm install
+    ```
+  </Step>
+  <Step title="Start Storybook">
+    ```sh
+    npm run storybook
+    ```
+
+    It serves on `http://localhost:6006`. Stories are discovered from `src/**/*.stories.tsx`.
+  </Step>
+  <Step title="Build the kit">
+    ```sh
+    npm run build:ui
+    ```
+
+    This emits the installable package into `packages/flexprice-ui/dist` from the umbrella entry `src/exportable/index.ts`, the same artefact that is published as `@flexprice/ui`.
+  </Step>
+</Steps>
+
+## Add a story for a kit component
+
+Stories for the kit belong next to the component source under `src/pricing`, `src/usage`, or `src/credits`. A minimal one:
+
+```tsx
+// src/credits/components/CreditBalance.stories.tsx
+import type { Meta, StoryObj } from '@storybook/react';
+import CreditBalance from './CreditBalance';
+
+const meta: Meta<typeof CreditBalance> = { title: 'UI kit/CreditBalance', component: CreditBalance };
+export default meta;
+
+export const Active: StoryObj<typeof CreditBalance> = {
+  args: { wallet: { id: 'wallet_1', name: 'Main Wallet', status: 'active', creditBalance: 4200, balance: 42, currency: 'USD' } },
+};
+
+export const Empty: StoryObj<typeof CreditBalance> = { args: { wallet: null } };
+```
+
+Open a pull request against `flexprice-front` with it; the [contributing guide](/docs/contributing-guide/frontend-setup) covers the frontend setup.
+
+<CardGroup cols={2}>
+  <Card icon="/images/developers/icons/ui-kit.svg" title="UI kit overview" href="/docs/exportable-ui/overview" />
+  <Card icon="/images/developers/icons/github.svg" title="flexprice/flexprice-front" href="https://github.com/flexprice/flexprice-front" />
+</CardGroup>

@@ -3,7 +3,7 @@ title: "Authentication"
 description: "How API keys, environments, and profiles fit together in the Flexprice CLI"
 ---
 
-## One key, one environment
+## One API key, one environment
 
 An API key belongs to exactly one environment. There is no `--environment` flag, because the key itself already determines it. Switching environments means switching **profiles**.
 
@@ -13,7 +13,7 @@ A profile bundles three things: a stored API key, the region it belongs to, and 
   The API does not report which environment a key belongs to, so the CLI cannot tell you either. Label your profiles yourself with `--label`, and check with `flexprice whoami` before doing anything destructive.
 </Warning>
 
-## Getting set up
+## Setting up CLI authentication
 
 `flexprice init` is the guided path: it prompts for a region and key, verifies the key against the API, and stores it as the `default` profile.
 
@@ -27,7 +27,7 @@ To add more environments later, use `login`:
 flexprice login --label "production"
 ```
 
-## Working with multiple profiles
+## Working with multiple CLI profiles
 
 ```sh
 flexprice config list                    # every stored profile
@@ -38,7 +38,7 @@ flexprice logout -p production           # remove a profile and its key
 
 `flexprice env list` shows every environment in your tenant, which is useful for orientation — but remember it cannot tell you which one your active key maps to.
 
-## Credential precedence
+## How the CLI resolves credentials
 
 When more than one source could supply a key, the CLI resolves in this order and stops at the first match:
 
@@ -60,7 +60,7 @@ The API base URL resolves separately, on the same first-match basis: `--base-url
   A key on its own does not identify a region. If you pass `--api-key` without a stored profile, you must also pass `--region` or `--base-url` — otherwise the CLI stops and tells you so rather than guessing.
 </Note>
 
-## Where keys are stored
+## Where the CLI stores your API key
 
 Keys go in your operating system's keychain when one is available. Where it is not — inside a container, or a CI runner — the CLI falls back to an encrypted file at `~/.flexprice/keys`.
 
@@ -81,7 +81,7 @@ Key:          sk_test_…4b
 
 Non-secret settings live in `~/.flexprice/config.toml`. **Keys are never written there.**
 
-## In CI
+## Authenticating the CLI in CI
 
 Set the key through the environment and pin the region explicitly:
 
@@ -92,13 +92,13 @@ flexprice --region us customers list --output json
 
 No `init` or `login` step is needed — the environment variable takes precedence over stored profiles, so nothing has to be configured on the runner.
 
-## Next steps
+## Next steps after CLI authentication
 
 <CardGroup cols={2}>
-  <Card icon="flag" title="Global flags" href="/docs/cli/global-flags">
+  <Card icon="/images/developers/icons/flag.svg" title="Global flags" href="/docs/cli/global-flags">
     Every flag the CLI accepts, grouped by purpose.
   </Card>
-  <Card icon="code" title="Output & scripting" href="/docs/cli/output-and-scripting">
+  <Card icon="/images/developers/icons/code.svg" title="Output & scripting" href="/docs/cli/output-and-scripting">
     Exit codes and non-interactive behaviour.
   </Card>
 </CardGroup>

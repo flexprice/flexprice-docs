@@ -1,0 +1,567 @@
+---
+title: "Using the SDKs"
+description: "Client setup, usage events, idempotency, errors, retries, pagination, and webhook parsing in the Flexprice Go, Python, and TypeScript SDKs"
+---
+
+Every example on this page has a Go, Python, and TypeScript tab. Pick a language once and every code block on the page switches to it. For what the SDKs share and which one to pick, see the [SDK overview](/developers/sdks/overview).
+
+<Warning>
+  The SDKs authenticate with an API key that can read and write your whole environment. Call them from server code only, even though the TypeScript SDK also runs in browsers. See [Harden client-side access](/developers/frontend/harden-client-access).
+</Warning>
+
+## Installing the Flexprice SDK
+
+<CodeGroup>
+```bash Go
+go get github.com/flexprice/go-sdk/v2
+```
+
+```bash Python
+pip install flexprice
+```
+
+```bash TypeScript
+npm i @flexprice/sdk
+# or: pnpm add @flexprice/sdk
+# or: yarn add @flexprice/sdk
+```
+</CodeGroup>
+
+| SDK | Requires | Notes |
+| --- | --- | --- |
+| Go | Go 1.25 or newer, with modules | Imported as `github.com/flexprice/go-sdk/v2` |
+| Python | Python 3.10 or newer | Install into your project's virtual environment. Pulls in `httpx` and `pydantic` |
+| TypeScript | Node.js 18+, Bun, Deno, Cloudflare Workers, Vercel Edge | Ships ESM and CommonJS builds with full type definitions |
+
+## Creating an SDK client
+
+<CodeGroup>
+```go Go
+import (
+	"os"
+
+	flexprice "github.com/flexprice/go-sdk/v2"
+)
+
+client := flexprice.New(
+	flexprice.WithServerURL(os.Getenv("FLEXPRICE_API_HOST")), // https://us.api.flexprice.io/v1
+	flexprice.WithSecurity(os.Getenv("FLEXPRICE_API_KEY")),
+)
+```
+
+```python Python
+import os
+from flexprice import Flexprice
+
+client = Flexprice(
+    server_url=os.getenv("FLEXPRICE_API_HOST", "https://us.api.flexprice.io/v1"),
+    api_key_auth=os.environ["FLEXPRICE_API_KEY"],
+)
+```
+
+```typescript TypeScript
+import { Flexprice } from "@flexprice/sdk";
+
+const flexprice = new Flexprice({
+  serverURL: process.env.FLEXPRICE_API_HOST ?? "https://us.api.flexprice.io/v1",
+  apiKeyAuth: process.env.FLEXPRICE_API_KEY,
+});
+```
+</CodeGroup>
+
+The server URL is the full base URL including `/v1`, with no trailing slash. Use `https://api.cloud.flexprice.io/v1` for tenants in the India region.
+
+- **Go:** omit `WithServerURL`, or pass an empty string, to use the default US region. `flexprice.WithServerIndex(1)` picks the India region from the spec's server list.
+- **Python:** the client is also a context manager. `with Flexprice(server_url=..., api_key_auth=...) as client:` closes the underlying HTTP connection pool on exit.
+
+## Creating a customer and sending usage events with the SDK
+
+<CodeGroup>
+```go Go
+_, err := client.Customers.CreateCustomer(ctx, types.CreateCustomerRequest{
+	ExternalID: "cust_123",
+	Name:       "Acme",
+	Email:      flexprice.String("billing@acme.example"),
+})
+if err != nil {
+	return err
+}
+
+resp, err := client.Events.IngestEvent(ctx, types.IngestEventRequest{
+	EventName:          "api_request",
+	ExternalCustomerID: "cust_123",
+	EventID:            flexprice.String("req_9f3c"), // your own ID; retries dedupe on it
+	Properties:         map[string]string{"region": "us-east-1", "bytes": "1024"},
+	Source:             flexprice.String("api-gateway"),
+})
+if err != nil {
+	return err
+}
+log.Println(resp.Object["event_id"])
+```
+
+```python Python
+client.customers.create_customer(
+    external_id="cust_123",
+    name="Acme",
+    email="billing@acme.example",
+)
+
+result = client.events.ingest_event(
+    event_name="api_request",
+    external_customer_id="cust_123",
+    event_id="req_9f3c",  # your own ID; retries dedupe on it
+    properties={"region": "us-east-1", "bytes": "1024"},
+    source="api-gateway",
+)
+print(result["event_id"])
+```
+
+```typescript TypeScript
+const customer = await flexprice.customers.createCustomer({
+  externalId: "cust_123",
+  name: "Acme",
+  email: "billing@acme.example",
+});
+
+const result = await flexprice.events.ingestEvent({
+  eventName: "api_request",
+  externalCustomerId: "cust_123",
+  eventId: "req_9f3c",                 // your own ID; retries dedupe on it
+  properties: { region: "us-east-1", bytes: "1024" },
+  source: "api-gateway",
+});
+console.log(result.event_id);
+```
+</CodeGroup>
+
+Ingestion answers `202 Accepted` with `{"event_id": "...", "message": "..."}`. Go exposes it as `resp.Object`, and Python and TypeScript return it as a plain map. The event is metered asynchronously, so a successful call means "queued", not "counted". Use the [Event Debugger](/docs/event-ingestion/event-debugger) to confirm how it aggregated.
+
+### SDK field names and optional values
+
+- **Field names.** The API uses `snake_case`. Go uses `PascalCase` fields (`ExternalID`) and TypeScript uses `camelCase` fields (`externalId`), and both convert on the wire. Python keeps `snake_case` keyword arguments.
+- **Optional fields in Go.** Required fields such as `ExternalID` and `Name` are plain Go values, and maps such as `Metadata` are plain Go maps. Optional scalar fields are pointers. The package ships `flexprice.String`, `flexprice.Int64`, `flexprice.Bool`, and `flexprice.Pointer` so you do not write `&s` everywhere.
+- **Nil-safe getters in Go.** Response structs expose getters, so `resp.GetCustomerResponse().GetID()` is safe even when a parent is `nil`.
+
+## Sending usage events in bulk with the SDK
+
+For backfills or batching, send up to 1000 events per call. Each item takes the same fields as a single event:
+
+<CodeGroup>
+```go Go
+_, err := client.Events.IngestEventsBulk(ctx, types.BulkIngestEventRequest{
+	Events: []types.IngestEventRequest{
+		{EventName: "api_request", ExternalCustomerID: "cust_123", EventID: flexprice.String("req_9f3c")},
+		{EventName: "api_request", ExternalCustomerID: "cust_456", EventID: flexprice.String("req_9f3d")},
+	},
+})
+```
+
+```python Python
+client.events.ingest_events_bulk(events=[
+    {"event_name": "api_request", "external_customer_id": "cust_123", "event_id": "req_9f3c"},
+    {"event_name": "api_request", "external_customer_id": "cust_456", "event_id": "req_9f3d"},
+])
+```
+
+```typescript TypeScript
+await flexprice.events.ingestEventsBulk({
+  events: [
+    { eventName: "api_request", externalCustomerId: "cust_123", eventId: "req_9f3c" },
+    { eventName: "api_request", externalCustomerId: "cust_456", eventId: "req_9f3d" },
+  ],
+});
+```
+</CodeGroup>
+
+### Batching events with the Go async client
+
+For services that emit many events per second, the Go SDK has an async client. It queues events in memory and sends them from a background goroutine, in batches of `BatchSize` or every `FlushInterval`:
+
+```go
+asyncConfig := flexprice.DefaultAsyncConfig()
+asyncClient := client.NewAsyncClientWithConfig(asyncConfig)
+defer asyncClient.Close() // flushes anything still queued
+
+err := asyncClient.Enqueue("api_request", "cust_123", map[string]interface{}{
+	"region": "us-east-1",
+})
+```
+
+`Enqueue` takes `map[string]interface{}` properties and converts the values to strings on the wire. `EnqueueWithOptions` takes a `flexprice.EventOptions` when you need `EventID`, `Timestamp`, or `Source`:
+
+```go
+err := asyncClient.EnqueueWithOptions(flexprice.EventOptions{
+	EventName:          "api_request",
+	ExternalCustomerID: "cust_123",
+	EventID:            "req_9f3c",
+	Properties:         map[string]interface{}{"region": "us-east-1"},
+	Source:             "api-gateway",
+	Timestamp:          time.Now().UTC().Format(time.RFC3339),
+})
+```
+
+`BatchSize`, `FlushInterval`, `MaxQueueSize`, `MaxConcurrentRequests`, and `Debug` are fields on the config. Always call `Close()` before the process exits or the last batch is lost.
+
+### Async calls in the Python SDK
+
+The Python client also works as an async context manager, and every method has an `_async` twin:
+
+```python
+import asyncio
+import os
+from flexprice import Flexprice
+
+async def main():
+    async with Flexprice(
+        server_url="https://us.api.flexprice.io/v1",
+        api_key_auth=os.environ["FLEXPRICE_API_KEY"],
+    ) as client:
+        result = await client.events.ingest_event_async(
+            event_name="api_request",
+            external_customer_id="cust_123",
+        )
+        print(result)
+
+asyncio.run(main())
+```
+
+Use the async client inside FastAPI, aiohttp, or any event loop so ingestion does not block request handling. TypeScript methods already return promises and need no separate client.
+
+## Idempotent requests with the SDK
+
+Idempotency lives in the request body, on the endpoints that support it. Invoices, credit notes, wallet top-ups, portal payments, and checkout sessions take an `idempotency_key` field. Send the same key on a retry and the API does not create a second object: invoices and credit notes return the original, and a wallet top-up answers `409 Conflict`:
+
+<CodeGroup>
+```go Go
+_, err := client.Wallets.TopUpWallet(ctx, walletID, types.TopUpWalletRequest{
+	CreditsToAdd:      flexprice.String("100"),
+	TransactionReason: types.TransactionReasonPurchasedCreditDirect,
+	IdempotencyKey:    flexprice.String("topup-order-8841"),
+})
+```
+
+```python Python
+client.wallets.top_up_wallet(
+    id=wallet_id,
+    credits_to_add="100",
+    transaction_reason="PURCHASED_CREDIT_DIRECT",
+    idempotency_key="topup-order-8841",
+)
+```
+
+```typescript TypeScript
+await flexprice.wallets.topUpWallet(walletId, {
+  creditsToAdd: "100",
+  transactionReason: "PURCHASED_CREDIT_DIRECT",
+  idempotencyKey: "topup-order-8841",
+});
+```
+</CodeGroup>
+
+For other creates, rely on the natural key. A second customer with the same external ID returns `409 Conflict`, so a retried create can be treated as success. Events dedupe on their event ID.
+
+The Go package also exports `WithIdempotencyKey`, which sets an `Idempotency-Key` request header. The API does not read that header, so it does not make a call safe to retry on its own.
+
+## Handling SDK errors
+
+API errors carry the HTTP status code, so you can branch on it:
+
+<CodeGroup>
+```go Go
+import "github.com/flexprice/go-sdk/v2/errorutils"
+
+_, err := client.Customers.CreateCustomer(ctx, req)
+switch {
+case errorutils.IsConflict(err):     // 409: already exists, safe to look up instead
+case errorutils.IsValidation(err):   // 400: fix the request
+case errorutils.IsNotFound(err):     // 404
+case errorutils.IsRateLimit(err):    // 429: back off
+case errorutils.IsPermissionDenied(err): // 403: key lacks the role
+case errorutils.IsServerError(err):  // 5xx: surface it
+case err != nil:
+	return err
+}
+```
+
+```python Python
+from flexprice.models import errors
+
+try:
+    client.customers.get_customer(id="cust_does_not_exist")
+except errors.FlexpriceError as e:
+    if e.status_code == 404:
+        ...  # not found
+    elif e.status_code == 409:
+        ...  # conflict: safe to retry or look up
+    elif e.status_code == 429:
+        ...  # rate limited: back off
+    else:
+        raise
+```
+
+```typescript TypeScript
+import { FlexPriceError } from "@flexprice/sdk";
+
+try {
+  await flexprice.customers.getCustomer("cust_does_not_exist");
+} catch (err) {
+  if (err instanceof FlexPriceError) {
+    switch (err.statusCode) {
+      case 404: /* not found */ break;
+      case 409: /* conflict: safe to retry or look up */ break;
+      case 429: /* rate limited: back off */ break;
+      default: throw err;
+    }
+  }
+}
+```
+</CodeGroup>
+
+- **Go:** use the `errorutils` helpers for a quick status check, or `errors.As` for the typed error.
+- **Python:** `FlexpriceError` is the base class. `errors.ErrorResponse` carries a parsed API error body, and `errors.NoResponseError` means the request never got an HTTP response.
+- **TypeScript:** non-`2xx` responses throw. `FlexPriceError` is the base class and carries `statusCode`, `body`, `headers`, and `rawResponse`.
+
+## Retrying failed SDK requests
+
+Retries are off by default in every SDK. Pass a retry config to the client and it retries `429`, `500`, `502`, `503`, and `504` responses with exponential backoff, plus connection errors when that flag is set. Intervals are in milliseconds:
+
+<CodeGroup>
+```go Go
+import "github.com/flexprice/go-sdk/v2/retry"
+
+client := flexprice.New(
+	flexprice.WithSecurity(os.Getenv("FLEXPRICE_API_KEY")),
+	flexprice.WithRetryConfig(retry.Config{
+		Strategy: "backoff",
+		Backoff: &retry.BackoffStrategy{
+			InitialInterval: 500, // milliseconds
+			MaxInterval:     10000,
+			Exponent:        1.5,
+			MaxElapsedTime:  60000,
+		},
+		RetryConnectionErrors: true,
+	}),
+)
+```
+
+```python Python
+import os
+from flexprice import Flexprice
+from flexprice.utils import BackoffStrategy, RetryConfig
+
+client = Flexprice(
+    server_url="https://us.api.flexprice.io/v1",
+    api_key_auth=os.environ["FLEXPRICE_API_KEY"],
+    retry_config=RetryConfig("backoff", BackoffStrategy(500, 10_000, 1.5, 60_000), True),
+)
+```
+
+```typescript TypeScript
+const flexprice = new Flexprice({
+  serverURL: process.env.FLEXPRICE_API_HOST ?? "https://us.api.flexprice.io/v1",
+  apiKeyAuth: process.env.FLEXPRICE_API_KEY,
+  retryConfig: {
+    strategy: "backoff",
+    backoff: { initialInterval: 500, maxInterval: 10000, exponent: 1.5, maxElapsedTime: 60000 },
+    retryConnectionErrors: true,
+  },
+});
+```
+</CodeGroup>
+
+## Paginating list endpoints with the SDK
+
+List methods take a limit and an offset. The offset in the response's `pagination` is already advanced to the next page. In Go, the list sits behind `GetListCustomersResponse()`:
+
+<CodeGroup>
+```go Go
+offset := int64(0)
+for {
+	page, err := client.Customers.QueryCustomer(ctx, types.CustomerFilter{
+		Limit:  flexprice.Int64(100),
+		Offset: flexprice.Int64(offset),
+	})
+	if err != nil {
+		return err
+	}
+
+	list := page.GetListCustomersResponse()
+	for _, c := range list.GetItems() {
+		// ...
+	}
+
+	next, total := list.GetPagination().GetOffset(), list.GetPagination().GetTotal()
+	if len(list.GetItems()) == 0 || next == nil || total == nil || *next >= *total {
+		break
+	}
+	offset = *next
+}
+```
+
+```python Python
+offset = 0
+while True:
+    page = client.customers.query_customer(limit=100, offset=offset)
+    for customer in page.items:
+        ...
+    if not page.items or offset + 100 >= page.pagination.total:
+        break
+    offset = page.pagination.offset
+```
+
+```typescript TypeScript
+let offset = 0;
+while (true) {
+  const page = await flexprice.customers.queryCustomer({ limit: 100, offset });
+  for (const customer of page.items ?? []) {
+    // ...
+  }
+  if (!page.items?.length || offset + 100 >= (page.pagination?.total ?? 0)) break;
+  offset = page.pagination?.offset ?? offset + 100;
+}
+```
+</CodeGroup>
+
+## Parsing webhook payloads with the SDK
+
+Every SDK ships a typed model for each webhook payload. Read `event_type`, then parse the body into the matching model. Verify the signature before parsing: see [Signature verification](/developers/webhooks/signature-verification).
+
+<CodeGroup>
+```go Go
+import (
+	"encoding/json"
+	"io"
+	"net/http"
+
+	"github.com/flexprice/go-sdk/v2/models/types"
+)
+
+type envelope struct {
+	EventType types.WebhookEventName `json:"event_type"`
+}
+
+func handleWebhook(w http.ResponseWriter, r *http.Request) {
+	body, _ := io.ReadAll(r.Body)
+
+	var env envelope
+	if err := json.Unmarshal(body, &env); err != nil {
+		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	switch env.EventType {
+	case types.WebhookEventNameInvoiceUpdateFinalized:
+		var payload types.WebhookDtoInvoiceWebhookPayload
+		json.Unmarshal(body, &payload)
+		// payload.GetInvoice().GetID()
+	case types.WebhookEventNamePaymentSuccess, types.WebhookEventNamePaymentFailed:
+		var payload types.WebhookDtoPaymentWebhookPayload
+		json.Unmarshal(body, &payload)
+	}
+
+	w.WriteHeader(http.StatusOK) // also for events you do not handle
+}
+```
+
+```python Python
+import json
+from flexprice.models import (
+    WebhookDtoInvoiceWebhookPayload,
+    WebhookDtoPaymentWebhookPayload,
+    WebhookDtoSubscriptionWebhookPayload,
+)
+
+def handle_webhook(raw_body: str) -> None:
+    event = json.loads(raw_body)
+
+    match event.get("event_type"):
+        case "invoice.update.finalized" | "invoice.payment.overdue":
+            payload = WebhookDtoInvoiceWebhookPayload.model_validate(event)
+            invoice = payload.invoice
+        case "payment.success" | "payment.failed":
+            payload = WebhookDtoPaymentWebhookPayload.model_validate(event)
+        case "subscription.activated" | "subscription.cancelled":
+            payload = WebhookDtoSubscriptionWebhookPayload.model_validate(event)
+        case _:
+            pass  # return 200 for events you do not handle
+```
+
+```typescript TypeScript
+import { webhookDtoInvoiceWebhookPayloadFromJSON } from "@flexprice/sdk";
+
+export async function POST(req: Request) {
+  const raw = await req.text();
+  // verify the signature on `raw` first, see Signature verification
+
+  const { event_type } = JSON.parse(raw);
+
+  if (event_type === "invoice.update.finalized") {
+    const parsed = webhookDtoInvoiceWebhookPayloadFromJSON(raw);
+    if (!parsed.ok) return new Response("bad payload", { status: 400 });
+    const invoice = parsed.value.invoice;
+    // ...
+  }
+
+  return new Response("ok", { status: 200 }); // also for events you do not handle
+}
+```
+</CodeGroup>
+
+In TypeScript, each payload's `fromJSON` helper returns a `SafeParseResult`, so check `.ok` before reading `.value`.
+
+## Standalone functions in the TypeScript SDK
+
+Every TypeScript method is also exported as a standalone function that takes a `FlexpriceCore` instance. Unused functions tree-shake out of the bundle, and the functions return a `Result` instead of throwing, which suits serverless and edge code:
+
+```typescript
+import { FlexpriceCore } from "@flexprice/sdk/core.js";
+import { eventsIngestEvent } from "@flexprice/sdk/funcs/events-ingest-event.js";
+
+const core = new FlexpriceCore({
+  serverURL: "https://us.api.flexprice.io/v1",
+  apiKeyAuth: process.env.FLEXPRICE_API_KEY,
+});
+
+const res = await eventsIngestEvent(core, {
+  eventName: "api_request",
+  externalCustomerId: "cust_123",
+});
+
+if (res.ok) {
+  console.log(res.value.event_id);
+} else {
+  console.error(res.error);
+}
+```
+
+## TypeScript compiler settings for the SDK
+
+Target ES2020 or newer so the SDK's async iterables and streams compile without polyfills:
+
+```jsonc
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "lib": ["es2020", "dom", "dom.iterable"]
+  }
+}
+```
+
+## SDK troubleshooting
+
+| Symptom | Cause |
+| --- | --- |
+| `401` on every call | The API key is unset, expired, or from a different region than the server URL |
+| `404` on every call | The server URL is missing `/v1` or has a trailing slash |
+| Events accepted but never metered | The event name does not match a feature's event name exactly (case-sensitive), or the customer's external ID differs |
+| Go: `not enough arguments in call to c.apiClient.Events.IngestEvent` at build time | The module resolved to `v2.1.31`, which does not compile. Run `go get github.com/flexprice/go-sdk/v2@latest` to move to `v2.1.32` or newer |
+| Go: last events missing after exit | The async client was not closed with `Close()` |
+| Python: `RuntimeError: Event loop is closed` | A sync client was used inside `async` code. Use `async with` and the `_async` methods |
+| TypeScript: `fetch is not defined` | Node.js is older than 18. Upgrade, or pass a `fetch` polyfill through the `httpClient` option |
+
+<CardGroup cols={3}>
+  <Card icon="/images/developers/icons/go.svg" title="Go SDK source" href="https://github.com/flexprice/go-sdk" />
+  <Card icon="/images/developers/icons/python.svg" title="Python SDK source" href="https://github.com/flexprice/python-sdk" />
+  <Card icon="/images/developers/icons/typescript.svg" title="TypeScript SDK source" href="https://github.com/flexprice/javascript-sdk" />
+</CardGroup>

@@ -1,0 +1,95 @@
+---
+title: "Harden client-side access"
+description: "Rules for exposing Flexprice data to browsers and mobile apps without exposing your account"
+---
+
+Client code is public. Assume every string in your bundle, every network call, and every local storage entry can be read and replayed. These rules keep a Flexprice integration safe under that assumption.
+
+## Never ship an API key
+
+An API key authenticates your whole environment. If it is in a bundle, an env var prefixed `VITE_` or `NEXT_PUBLIC_`, a mobile binary, or a request header the browser sends, treat it as leaked: delete it in the dashboard under **Developers** and create a new one.
+
+What goes to the client instead:
+
+| Credential | Scope | Lifetime | Get it from |
+| --- | --- | --- | --- |
+| Portal session token | One customer, read plus self-service actions | 1 hour | [`GET /customers/portal/{external_id}`](/docs/customers/customer-portal#generating-a-portal-session) on your server |
+| Your own session | Whatever your backend allows | Yours | Your auth |
+
+## Treat the portal token as a credential
+
+- Fetch it over your own authenticated endpoint. Never place it in a shared URL, an email, or a log line.
+- Keep it in memory for the page. If you must persist, use `sessionStorage`, not `localStorage`.
+- Re-mint on expiry by reading `expires_at`; do not extend or reuse.
+- When the token opens a hosted checkout, never pass it back as the provider's return URL. See [Portal payments](/docs/customers/customer-portal/payments).
+
+## Enforce on the server, display on the client
+
+An entitlement rendered in the browser is a hint for the UI. The check that blocks a request has to run where the user cannot edit it:
+
+```typescript
+// server-side, in the handler for the gated action
+const ent = await flexprice.customers.getCustomerEntitlementsByExternalID(externalId);
+const feature = ent.features?.find((f) => f.feature?.lookupKey === "exports");
+if (!feature?.entitlement?.isEnabled) {
+  return new Response("Upgrade required", { status: 402 });
+}
+```
+
+The client can read the same data to grey out a button; it should not be the only place the rule lives.
+
+## Cache with a short TTL and a fallback
+
+Entitlement and balance reads sit on hot paths. Cache them on your server, not in the browser:
+
+- **Freshness window of 30 to 60 seconds** for entitlements. Usage limits move with every event, but a minute of staleness is rarely a billing problem. Keep the entry itself far longer than that window. A 60 second TTL on the key deletes the value you wanted to serve during an outage.
+- **Invalidate on webhooks.** `entitlement.updated`, `subscription.updated`, `subscription.plan_changed`, and `wallet.transaction.created` tell you when a cached value is stale. See the [event catalog](/developers/webhooks/event-catalog).
+- **Decide the failure mode up front.** If Flexprice is unreachable, serve the last cached value; if there is none, choose fail-open or fail-closed per feature. Free-tier limits usually fail open; paid-only features usually fail closed.
+
+```typescript
+const key = `ent:${externalId}`;
+const entry = await cache.get(key); // { value, fetchedAt }, or null on a cold cache
+
+if (entry && Date.now() - entry.fetchedAt < 60_000) return entry.value; // still fresh
+
+try {
+  const value = await fetchEntitlements(externalId);
+  await cache.set(key, { value, fetchedAt: Date.now() }, { ttl: 86_400 });
+  return value;
+} catch {
+  return entry?.value ?? DEFAULT_ENTITLEMENTS; // stale beats nothing; defaults only on a cold cache
+}
+```
+
+Freshness is a field on the entry, not the entry's TTL. That is what makes the last line reachable: an expired key is gone, so a cache that drops the value after 60 seconds can only ever fall back to `DEFAULT_ENTITLEMENTS`.
+
+## Do not send usage events from the browser
+
+An event from the browser can be forged, replayed, or dropped by an ad blocker. Emit usage from the server that performs the billable work, with an `event_id` so retries dedupe. If the only place the action happens is the client, send a request to your backend and let it emit the event.
+
+## Validate URLs the API returns
+
+Payment and setup actions return an `action.url` for the browser to open. Refuse any scheme other than `http` or `https` before redirecting:
+
+```typescript
+const url = new URL(action.url);
+if (url.protocol !== "https:" && url.protocol !== "http:") throw new Error("unexpected scheme");
+window.location.assign(url.toString());
+```
+
+## Restrict what a server key can do
+
+For the backend that serves the client, use a key with the narrowest role that works: an event-ingestor role for the usage path, a read-only role for the proxy that serves entitlements. See [Manage API keys](/docs/rbac/manage-api) and [RBAC](/docs/rbac/overview).
+
+## Client-side security checklist
+
+- [ ] No `x-api-key` header is sent from any client
+- [ ] Portal tokens are minted per visit and never logged or shared
+- [ ] Gating decisions run on the server
+- [ ] Entitlement cache has a TTL and a webhook invalidation
+- [ ] Failure mode per feature is written down
+- [ ] Usage events originate on the server with an `event_id`
+- [ ] Returned URLs are scheme-checked before redirect
+- [ ] Server keys use the narrowest role
+
+<Card icon="/images/developers/icons/database.svg" title="Fetch entitlements and usage on the client" href="/developers/frontend/fetch-entitlements-and-usage" horizontal={true} />

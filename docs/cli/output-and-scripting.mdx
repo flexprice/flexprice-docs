@@ -5,7 +5,7 @@ description: "The machine-facing contract: stdout/stderr separation, stable exit
 
 The CLI is designed to be scripted against. Three guarantees make that safe: data and commentary never mix, exit codes are stable, and nothing destructive happens without either a confirmation or an explicit `--force`.
 
-## Data goes to stdout, everything else to stderr
+## How the CLI splits stdout and stderr
 
 Results go to **stdout**. Spinners, footers, receipts, warnings, and empty-state hints go to **stderr**. Redirecting stdout therefore gives you clean data with no commentary in it.
 
@@ -25,7 +25,7 @@ Piping works as you would expect:
 flexprice customers list --output json | jq -r '.items[].email'
 ```
 
-## Exit codes
+## CLI exit codes
 
 Stable and safe to branch on:
 
@@ -49,25 +49,25 @@ if ! flexprice customers retrieve "$ID" --output json > customer.json; then
 fi
 ```
 
-## Running non-interactively
+## Running the CLI non-interactively
 
 The CLI notices whether a human is watching and adapts, without being told:
 
 <CardGroup cols={3}>
-  <Card icon="spinner" title="Progress">
+  <Card icon="/images/developers/icons/spinner.svg" title="Progress">
     Animation is suppressed when stderr is not a terminal, under `TERM=dumb`, and under `--quiet`.
   </Card>
-  <Card icon="palette" title="Colour">
+  <Card icon="/images/developers/icons/palette.svg" title="Colour">
     Disabled when `NO_COLOR` is set, under `TERM=dumb`, and with `--no-color`.
   </Card>
-  <Card icon="keyboard" title="Prompts">
+  <Card icon="/images/developers/icons/keyboard.svg" title="Prompts">
     `--no-input` makes any prompt a hard failure that names the flag to pass instead.
   </Card>
 </CardGroup>
 
 In practice CI logs stay clean without passing any flags at all.
 
-## Destructive commands
+## Confirming destructive CLI commands
 
 `delete`, `void`, `cancel`, `terminate`, `archive`, and `finalize` confirm before acting. In a script, pass `--force`:
 
@@ -81,7 +81,7 @@ flexprice customers delete cust_123 --force
 
 Note that `--force` is a per-command flag, so it goes after the resource and action — see [Global flags](/docs/cli/global-flags).
 
-## A worked CI example
+## A worked CLI script for CI
 
 ```sh
 #!/usr/bin/env bash
@@ -99,13 +99,13 @@ echo "created $CUSTOMER_ID"
 
 `--no-input` guarantees the job can never hang on a prompt, `--quiet` keeps the log readable, `set -e` plus stable exit codes means a failure stops the build, and the key comes from the environment so it never appears in the process list.
 
-## Next steps
+## Next steps for CLI scripting
 
 <CardGroup cols={2}>
-  <Card icon="flag" title="Global flags" href="/docs/cli/global-flags">
+  <Card icon="/images/developers/icons/flag.svg" title="Global flags" href="/docs/cli/global-flags">
     Every flag, grouped by what it controls.
   </Card>
-  <Card icon="key" title="Authentication" href="/docs/cli/authentication">
+  <Card icon="/images/developers/icons/key.svg" title="Authentication" href="/docs/cli/authentication">
     Credential precedence and CI setup.
   </Card>
 </CardGroup>

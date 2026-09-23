@@ -1,177 +1,80 @@
 ---
-title: 'Webhooks'
-description: 'Learn about webhook events in Flexprice'
+title: "Webhooks overview"
+description: "How Flexprice webhooks deliver invoice, payment, subscription, wallet, and usage events to your systems"
 ---
 
-Webhooks let you receive real-time notifications about events in your Flexprice account, such as invoice creation, payment status updates, subscription changes, and more.
-There are **two ways** webhooks can be delivered:
+Webhooks push a notification to your server when something changes in Flexprice: an invoice is finalized, a payment succeeds or fails, a subscription changes plan, a wallet balance drops below a threshold, or a usage event is rejected. They replace polling for anything that has to happen promptly after a billing event.
 
-* **Native Flexprice Webhooks**: Simple, direct POST to your endpoint.
-* **Svix Webhooks**: Advanced, robust delivery with retries, history, signatures, and more (powered by [Svix](https://docs.svix.com/)).
+**Benefits:**
 
-**Flexprice Cloud uses Svix for webhook delivery. For self hosting, if you haven't explicitly enabled Svix, you're using native webhooks by default.**
+- **Push, not poll**: your system learns about a change within seconds instead of on the next sync
+- **Signed and retried**: every delivery on Flexprice Cloud is signed with HMAC-SHA256 and retried for days on failure
+- **Typed payloads**: each event's JSON is documented in the API reference and modelled in every SDK
 
-## Webhook Event Types
+## How webhook delivery works
 
-You can receive webhook notifications for a range of events:
+<Steps>
+  <Step title="Register an endpoint">
+    Add an HTTPS URL in the dashboard under **Developers > Webhooks** and pick the events it should receive. Each endpoint gets its own signing secret. See [Set up an endpoint](/developers/webhooks/set-up-an-endpoint).
+  </Step>
+  <Step title="Flexprice sends a POST">
+    The body is JSON with an `event_type` and the object that changed:
 
-### Invoice Events
+    ```json
+    {
+      "event_type": "invoice.update.finalized",
+      "invoice": { "id": "inv_01J...", "invoice_status": "FINALIZED", "amount_due": "149.00" }
+    }
+    ```
+  </Step>
+  <Step title="Your handler verifies, acknowledges, and processes">
+    Check the signature on the raw body, return `2xx` within 5 seconds, and do the work on a queue. See [Signature verification](/developers/webhooks/signature-verification).
+  </Step>
+  <Step title="Failures are retried">
+    A non-`2xx` response or a timeout is retried on a backoff schedule, so handlers must tolerate duplicates and reordering. See [Retries and ordering](/developers/webhooks/retries-and-ordering).
+  </Step>
+</Steps>
 
-* `invoice.create.drafted` - Fired when a new invoice is created in draft state
-* `invoice.update.finalized` - Fired when an invoice is finalized and ready for payment
-* `invoice.update.payment` - Fired when a payment is recorded on an invoice
-* `invoice.update.voided` - Fired when an invoice is voided
-* `invoice.payment.overdue` - Fired when an invoice payment is overdue
+## Which events Flexprice sends
 
-### Subscription Events
+Sixty event types cover customers, subscriptions, invoices, payments, refunds, credit notes, wallets, features, entitlements, checkout sessions, and usage ingestion. The [event catalog](/developers/webhooks/event-catalog) lists every one with a link to its payload schema. The ones most integrations start with:
 
-* `subscription.created` - Fired when a new subscription is created
-* `subscription.updated` - Fired when a subscription is updated
-* `subscription.paused` - Fired when a subscription is paused
-* `subscription.cancelled` - Fired when a subscription is cancelled
-* `subscription.resumed` - Fired when a paused subscription is resumed
+| Event | Fires when |
+| --- | --- |
+| `invoice.update.finalized` | An invoice is finalized and ready for payment |
+| `invoice.update.payment` | A payment is recorded against an invoice |
+| `payment.success`, `payment.failed` | A payment attempt completes |
+| `subscription.created`, `subscription.cancelled` | A subscription starts or ends |
+| `subscription.plan_changed` | A customer moves between plans |
+| `wallet.credit_balance.dropped` | A wallet crosses its low-balance threshold |
+| `event.rejected` | A usage event was accepted but could not be metered |
 
-### Feature Events
+## Webhook delivery on Cloud and self-hosted
 
-* `feature.created` - Fired when a new feature is created
-* `feature.updated` - Fired when feature details are updated
-* `feature.deleted` - Fired when a feature is deleted
+| | Flexprice Cloud | Self-hosted, default | Self-hosted with Svix enabled |
+| --- | --- | --- | --- |
+| Delivered by | [Svix](https://docs.svix.com/) | Native HTTP client | Svix |
+| Signature | HMAC-SHA256 in `svix-signature` | None; use a static header from tenant config | HMAC-SHA256 |
+| Retries | 8 attempts over about a day | 3 attempts within 2 minutes | 8 attempts over about a day |
+| Delivery logs and replay | Dashboard | Server logs | Dashboard |
 
-### Entitlement Events
+Flexprice Cloud always uses Svix. A self-hosted instance uses native delivery unless Svix is turned on in [configuration](/docs/getting-started/configuration#webhook-configuration).
 
-* `entitlement.created` - Fired when a new entitlement is created
-* `entitlement.updated` - Fired when entitlement details are updated
-* `entitlement.deleted` - Fired when an entitlement is deleted
-* `entitlement.grant.exhausted` - Fired when an [entitlement grant](/docs/product-catalogue/features/entitlement-grants) window's quota is exhausted
+## Webhook handler best practices
 
-### Wallet Events
+1. **Verify every signature** before reading the body.
+2. **Respond fast and process later.** Anything over 5 seconds is a failure.
+3. **Dedupe on `svix-id`.** Delivery is at-least-once.
+4. **Treat payloads as snapshots.** Read the status from the body and compare `updated_at` rather than assuming order.
+5. **Return `200` for events you do not handle** so they are not retried.
+6. **Register separate endpoints per environment** with separate secrets.
+7. **Subscribe to `event.rejected`** so dropped usage is never silent.
 
-* `wallet.created` - Fired when a new wallet is created
-* `wallet.updated` - Fired when wallet details are updated
-* `wallet.terminated` - Fired when a wallet is terminated
-* `wallet.transaction.created` - Fired when a new wallet transaction is created
-
-### Payment Events
-
-* `payment.created` - Fired when a new payment is created
-* `payment.updated` - Fired when payment details are updated
-* `payment.failed` - Fired when a payment attempt fails
-* `payment.success` - Fired when a payment is successful
-* `payment.pending` - Fired when a payment is awaiting processing
-
-### Customer Events
-
-* `customer.created` - Fired when a new customer is created
-* `customer.updated` - Fired when customer information is updated
-* `customer.deleted` - Fired when a customer is deleted
-
-### Checkout Events
-
-* `checkout.session.initiated` - Fired when a Checkout Session is created and the payment link is returned to the caller
-* `checkout.session.completed` - Fired when payment is confirmed; the subscription is activated and the invoice is finalized
-* `checkout.session.failed` - Fired when the payment fails or the provider cancels the payment link
-* `checkout.session.expired` - Fired when the session window elapses without a completed payment
-
-For more on how Checkout Sessions work and how to configure the payment provider webhook events that trigger these, see [Checkout Sessions](/docs/checkout/checkout-sessions).
-
-*(More event types may be added in the future.)*
-
-## Webhook Payload Format
-
-Every webhook payload follows this structure:
-
-```json
-{
-  "subscription": "<subscription object>"
-}
-```
-
-* All event types use this base schema
-* The payload field contains event-specific data
-
-## How Webhook Delivery Works
-
-### Native Webhook System
-
-* **Default mode.**
-* When a subscribed event occurs, Flexprice makes a simple HTTP POST to your provided webhook URL.
-* A JSON payload with event data is sent.
-* If your endpoint responds with a `2xx` status, the event is marked as delivered.
-* If your endpoint fails (non-2xx, timeout, etc.), Flexprice attempts retries with the following configuration:
-  * Maximum retries: 3 (default)
-  * Initial interval: 1 second
-  * Maximum interval: 10 seconds
-  * Multiplier: 2.0
-  * Maximum elapsed time: 2 minutes
-
-**Summary:**
-Fast, direct, and simple. Good for lightweight use-cases or internal integrations.
-
-### Svix Webhook System
-
-* **Advanced mode** (opt-in; see [Svix docs](https://docs.svix.com/) for more on their delivery system).
-* When enabled, Flexprice hands off event delivery to Svix.
-* Svix provides:
-  * **Robust retries:** Automatic, exponential backoff, no event lost due to transient issues
-  * **Delivery guarantees:** At-least-once delivery, dead-letter queues for persistent failures
-  * **Message history and logs:** Track every delivery, status, and error online
-  * **Signature verification:** Every request is signed with HMAC-SHA256 for security
-  * **Versioning & secret management:** Change secrets or endpoint URLs safely without missed events
-
-The retry schedule for failed deliveries is:
-- 5 minutes after the first failure
-- 30 minutes after the second failure
-- 2 hours after the third failure
-- 5 hours after the fourth failure
-- 10 hours after the fifth failure
-
-**Summary:**
-Svix is the recommended choice for production, customer-facing, or high-uptime integrations. If you want reliability, observability, and security, use Svix.
-
-## Setting Up Webhooks
-
-To enable webhooks on flexprice:
-
-1. Go to the **Webhooks** section in your Flexprice dashboard
-2. Click the **Add Endpoint** button
-3. Enter your endpoint URL (e.g., `https://play.svix.com/in/e_...`)
-4. The endpoint will be created with a 0.0% error rate initially
-5. You can monitor message delivery, view logs, and track activity in the dashboard
-
-Your configured webhook endpoint will be displayed in the **Endpoints** tab, where you can:
-- View the error rate for message delivery
-- Access message logs with detailed delivery information
-- See historical delivery attempts and statistics
-- Monitor webhook activity in real-time
-
-The **Event Catalog** tab shows all available event types you can subscribe to, with detailed descriptions of when each event is fired.
-
-The **Logs** tab provides a comprehensive view of message delivery attempts, including:
-- Event type
-- Message ID
-- Timestamp
-- Delivery status
-- Detailed error information if delivery fails
-
-The **Activity** tab shows historical delivery metrics and attempts over time.
-
-## Security & Verification
-
-* Every payload is signed using HMAC-SHA256 (default) or Ed25519
-* Verify signatures using:
-  * Svix's official SDKs
-  * Manual verification using `svix-signature`, `svix-id`, and `svix-timestamp` headers
-* Automatic timestamp validation prevents replay attacks
-* Optional IP address validation
-
-For detailed signature verification instructions, see the [Svix signature docs](https://docs.svix.com/receiving/verifying-payloads).
-
-## Best Practices
-
-1. **Use Svix for Production**: If you're building a production system, use Svix for its reliability and security features.
-2. **Always Verify Signatures**: Whether using native or Svix webhooks, always verify the authenticity of incoming webhooks.
-3. **Process Asynchronously**: Handle webhook processing in the background to avoid timeouts.
-4. **Be Idempotent**: Design your handlers to safely process duplicate events.
-5. **Use HTTPS**: Always use HTTPS endpoints for webhook delivery.
-6. **Monitor Deliveries**: Regularly check webhook logs for failed deliveries.
-7. **Quick Response**: Your endpoint should respond within 5 seconds to avoid timeouts.
+<CardGroup cols={2}>
+  <Card icon="/images/developers/icons/plug.svg" title="Set up an endpoint" href="/developers/webhooks/set-up-an-endpoint" />
+  <Card icon="/images/developers/icons/signature.svg" title="Signature verification" href="/developers/webhooks/signature-verification" />
+  <Card icon="/images/developers/icons/rotate.svg" title="Retries and ordering" href="/developers/webhooks/retries-and-ordering" />
+  <Card icon="/images/developers/icons/flask.svg" title="Test webhooks locally" href="/developers/webhooks/test-locally" />
+  <Card icon="/images/developers/icons/logs.svg" title="Event catalog" href="/developers/webhooks/event-catalog" />
+  <Card icon="/images/developers/icons/api-reference.svg" title="Payload schemas in the API reference" href="/api-reference/webhook-events/invoiceupdatefinalized" />
+</CardGroup>

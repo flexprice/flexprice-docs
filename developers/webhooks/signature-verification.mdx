@@ -1,0 +1,110 @@
+---
+title: "Signature verification"
+description: "Verify that a webhook came from Flexprice and was not altered, using the Svix signature headers or a manual HMAC check"
+---
+
+Every delivery from Flexprice Cloud carries an HMAC-SHA256 signature computed with your endpoint's signing secret. Verifying it proves the request came from Flexprice and that the body was not changed in transit. Reject anything that fails; do not fall back to processing an unsigned body.
+
+## The webhook signature headers
+
+| Header | Contents |
+| --- | --- |
+| `svix-id` | Unique delivery ID. Stays the same across retries of one message, so it doubles as a dedupe key |
+| `svix-timestamp` | Unix timestamp (seconds) when the message was sent |
+| `svix-signature` | Space-separated list of `v1,<base64 signature>` entries. More than one appears while a secret is being rotated |
+
+The secret is shown on the endpoint's page in the dashboard and starts with `whsec_`. Each endpoint has its own.
+
+## Verifying the signature with the Svix library
+
+The simplest route. The library checks the signature, tolerates a five-minute clock skew, and rejects replays outside that window.
+
+<CodeGroup>
+```typescript Node
+import { Webhook } from "svix";
+
+const wh = new Webhook(process.env.FLEXPRICE_WEBHOOK_SECRET!);
+
+// `rawBody` must be the exact bytes received, not a re-serialized object
+const event = wh.verify(rawBody, {
+  "svix-id": req.header("svix-id")!,
+  "svix-timestamp": req.header("svix-timestamp")!,
+  "svix-signature": req.header("svix-signature")!,
+});
+```
+
+```python Python
+from svix.webhooks import Webhook, WebhookVerificationError
+
+wh = Webhook(os.environ["FLEXPRICE_WEBHOOK_SECRET"])
+
+try:
+    event = wh.verify(raw_body, headers)   # raw_body: bytes, headers: dict
+except WebhookVerificationError:
+    ...  # reject with 400
+```
+
+```go Go
+import svix "github.com/svix/svix-webhooks/go"
+
+wh, _ := svix.NewWebhook(os.Getenv("FLEXPRICE_WEBHOOK_SECRET"))
+if err := wh.Verify(rawBody, r.Header); err != nil {
+	http.Error(w, "bad signature", http.StatusBadRequest)
+	return
+}
+```
+</CodeGroup>
+
+Install with `npm i svix`, `pip install svix`, or `go get github.com/svix/svix-webhooks/go`.
+
+<Warning>
+  Verify the **raw** request body. Frameworks that parse JSON before your handler runs hand you a re-serialized string whose bytes differ from what was signed, and verification fails. In Express use `express.raw()` for the webhook route; in FastAPI read `await request.body()`; in Next.js App Router read `await req.text()`.
+</Warning>
+
+## Verifying the webhook signature by hand
+
+If you would rather not add a dependency, the algorithm is short:
+
+1. Strip the `whsec_` prefix from the secret and base64-decode the rest. That is the HMAC key.
+2. Build the signed content: `${svix-id}.${svix-timestamp}.${raw body}`.
+3. Compute HMAC-SHA256 over the signed content with the key and base64-encode the result.
+4. Compare it, in constant time, against each `v1,...` entry in `svix-signature`. One match is enough.
+5. Reject if `svix-timestamp` is more than five minutes from now.
+
+```typescript
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+export function verify(rawBody: string, headers: Record<string, string>, secret: string): boolean {
+  const id = headers["svix-id"];
+  const ts = headers["svix-timestamp"];
+  const sigHeader = headers["svix-signature"];
+  if (!id || !ts || !sigHeader) return false;
+
+  const skew = Math.abs(Date.now() / 1000 - Number(ts));
+  if (skew > 300) return false;
+
+  const key = Buffer.from(secret.replace(/^whsec_/, ""), "base64");
+  const expected = createHmac("sha256", key).update(`${id}.${ts}.${rawBody}`).digest("base64");
+
+  return sigHeader.split(" ").some((entry) => {
+    const [version, sig] = entry.split(",");
+    if (version !== "v1" || !sig) return false;
+    const a = Buffer.from(sig);
+    const b = Buffer.from(expected);
+    return a.length === b.length && timingSafeEqual(a, b);
+  });
+}
+```
+
+## Rotating a webhook signing secret
+
+Rotate from the endpoint's page in the dashboard. For a grace period, deliveries are signed with both the old and the new secret and `svix-signature` carries two `v1` entries. Deploy the new secret to your handler during that window; a handler that accepts any matching entry keeps working throughout.
+
+## Signature verification on self-hosted deployments
+
+Flexprice Cloud always delivers through Svix. A self-hosted instance uses Svix only if you enable it in configuration; otherwise it uses native delivery, which sends the JSON body with the headers configured for the tenant and no signature. To authenticate native deliveries, configure a static secret header on the tenant's webhook settings and check it in your handler, or enable Svix. See [Configuration](/docs/getting-started/configuration#webhook-configuration).
+
+<CardGroup cols={2}>
+  <Card icon="/images/developers/icons/rotate.svg" title="Retries and ordering" href="/developers/webhooks/retries-and-ordering" />
+  <Card icon="/images/developers/icons/api-reference.svg" title="Svix verification reference" href="https://docs.svix.com/receiving/verifying-payloads/how" />
+</CardGroup>

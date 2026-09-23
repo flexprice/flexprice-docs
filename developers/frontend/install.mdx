@@ -1,0 +1,202 @@
+---
+title: "Install the UI kit"
+description: "Add @flexprice/ui to a React, Next.js, Remix, Astro, or Vite app, load it from a script tag in plain HTML, and what to do for Vue"
+---
+
+`@flexprice/ui` is the Flexprice UI kit: the React components the Flexprice dashboard itself renders, published from [flexprice-front](https://github.com/flexprice/flexprice-front/tree/main/packages/flexprice-ui) as one package with pricing, usage, and credits widgets. Every component is presentational. It takes props and renders; you decide where the data comes from. This page covers installation per framework. [Fetch entitlements and usage on the client](/developers/frontend/fetch-entitlements-and-usage) covers the data.
+
+## What the UI kit package ships
+
+| Item | Detail |
+| --- | --- |
+| Formats | ES module (`flexprice-ui.mjs`), CommonJS and UMD (`flexprice-ui.cjs`), TypeScript types |
+| Stylesheet | `@flexprice/ui/style.css`, the theme tokens plus only the utilities the widgets use |
+| Peer dependencies | `react` and `react-dom` 18 or 19. Nothing else is required; every other dependency is bundled |
+| UMD global | `FlexpriceUI`, with `React` and `ReactDOM` read from `window` |
+| Bundler | Any that handles ESM and CSS imports: Vite, Next.js, Remix, Astro, webpack |
+
+## Installing in React (Vite, CRA, or any SPA)
+
+<CodeGroup>
+```bash npm
+npm install @flexprice/ui
+```
+
+```bash pnpm
+pnpm add @flexprice/ui
+```
+
+```bash yarn
+yarn add @flexprice/ui
+```
+</CodeGroup>
+
+Import the stylesheet once at the root, then use components anywhere:
+
+```tsx
+// main.tsx
+import '@flexprice/ui/style.css';
+
+// PricingPage.tsx
+import { PricingTable, type Plan } from '@flexprice/ui';
+
+export function PricingPage({ plans }: { plans: Plan[] }) {
+  return <PricingTable plans={plans} onSelectPlan={(id) => console.log(id)} />;
+}
+```
+
+## Installing in Next.js
+
+The components render on the server and hydrate on the client. Import the stylesheet in the root layout (App Router) or `_app.tsx` (Pages Router).
+
+<Tabs>
+  <Tab title="App Router">
+    ```tsx
+    // app/layout.tsx
+    import '@flexprice/ui/style.css';
+
+    export default function RootLayout({ children }) {
+      return <html><body>{children}</body></html>;
+    }
+    ```
+
+    Components that take callbacks (`onSelectPlan`, `onBillingPeriodChange`) need a client boundary:
+
+    ```tsx
+    // app/pricing/PricingTableClient.tsx
+    'use client';
+    import { PricingTable, type Plan } from '@flexprice/ui';
+
+    export function PricingTableClient({ plans }: { plans: Plan[] }) {
+      return <PricingTable plans={plans} onSelectPlan={(id) => (window.location.href = `/checkout/${id}`)} />;
+    }
+    ```
+
+    Fetch the data in a Server Component and pass it down, so the API key never reaches the browser:
+
+    ```tsx
+    // app/pricing/page.tsx
+    import { PricingTableClient } from './PricingTableClient';
+    import { loadPlans } from '@/lib/flexprice'; // server-only SDK call
+
+    export default async function PricingPage() {
+      const plans = await loadPlans();
+      return <PricingTableClient plans={plans} />;
+    }
+    ```
+  </Tab>
+  <Tab title="Pages Router">
+    ```tsx
+    // pages/_app.tsx
+    import '@flexprice/ui/style.css';
+    import type { AppProps } from 'next/app';
+
+    export default function App({ Component, pageProps }: AppProps) {
+      return <Component {...pageProps} />;
+    }
+    ```
+
+    Load data in `getServerSideProps` or `getStaticProps` and pass it as props.
+  </Tab>
+</Tabs>
+
+## Installing in Remix and Astro
+
+Both work with the same two steps: import the stylesheet once (in `root.tsx` for Remix, in the layout for Astro) and pass data from a loader or frontmatter into the component. In Astro, add `client:load` to components with callbacks so they hydrate:
+
+```astro
+---
+import '@flexprice/ui/style.css';
+import { PricingTable } from '@flexprice/ui';
+const plans = await loadPlans(); // runs on the server
+---
+<PricingTable client:load plans={plans} />
+```
+
+## Installing in plain HTML (no bundler)
+
+The CommonJS file is also a UMD bundle, so a page with no build step can load React, ReactDOM, and the kit from `<script>` tags and reach the components on the `FlexpriceUI` global:
+
+```html
+<link rel="stylesheet" href="https://unpkg.com/@flexprice/ui/dist/style.css" />
+<div id="credit-balance"></div>
+
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@flexprice/ui/dist/flexprice-ui.cjs"></script>
+<script>
+  const { CreditBalance } = FlexpriceUI;
+  const wallet = { id: 'wallet_1', name: 'Main Wallet', status: 'active', creditBalance: 4200, balance: 42, currency: 'USD' };
+  ReactDOM.createRoot(document.getElementById('credit-balance'))
+    .render(React.createElement(CreditBalance, { wallet }));
+</script>
+```
+
+Pin versions in production instead of loading the latest tag, and serve the files from your own origin if you would rather not depend on a public CDN.
+
+## Using the kit with Vue, Svelte, and other frameworks
+
+There is no Vue or web-component build of the kit. Two options work now:
+
+- **Mount a React island.** Render the component into a container with `react-dom`. The island is self-contained, so it works inside a Vue or Svelte page.
+- **Use the data, not the components.** Fetch entitlements and usage as described in [Fetch entitlements and usage on the client](/developers/frontend/fetch-entitlements-and-usage) and render them with your own markup.
+
+A React island bundled once and dropped into any page:
+
+```tsx
+// island.tsx, bundled with Vite or esbuild to island.js
+import '@flexprice/ui/style.css';
+import { createRoot } from 'react-dom/client';
+import { CreditBalance } from '@flexprice/ui';
+
+const el = document.getElementById('credit-balance')!;
+const wallet = JSON.parse(el.dataset.wallet!);
+createRoot(el).render(<CreditBalance wallet={wallet} />);
+```
+
+```html
+<div id="credit-balance" data-wallet='{"id":"wallet_1","name":"Main","status":"active","creditBalance":4200,"balance":42,"currency":"USD"}'></div>
+<script type="module" src="/island.js"></script>
+```
+
+## Theming the installed components
+
+Components read CSS variables declared on the `.flexprice-ui` element. Override `--primary` with HSL channels, and add the `dark` class to any ancestor for dark mode:
+
+```css
+.my-app .flexprice-ui {
+  --primary: 243 75% 59%;
+}
+```
+
+See [Theming](/docs/exportable-ui/overview#theming-the-ui-kit) for the full variable list and the ancestor caveat.
+
+## Map API data with the exported adapters
+
+The kit exports adapter functions that turn raw Flexprice API responses into each component's prop shape, and `normalize*` functions that validate untrusted data at runtime before rendering:
+
+| Component | Adapter |
+| --- | --- |
+| `PricingTable`, `PricingCard` | `filterAndSortPlans(plans, currency, period)` then `adaptPlanToCard(plan, grants)` |
+| `UsageQuota` | `adaptUsageQuotaItems(customerUsage)` |
+| `MetricCards` | `adaptMetricCards(costAnalytics, customItems, config)` |
+| `UsageTrendChart` | `adaptUsageTrendSeries(analyticsItems, config)` |
+| `UsageBreakdown` | `adaptUsageBreakdownRows(analyticsItems)` |
+| `CreditBalance` | `adaptCreditBalance(wallet, realtimeBalance)` |
+| `CreditHistory` | `adaptCreditTransactions(transactions)`, `adaptWalletOptions(wallets)` |
+
+Each component page documents the adapter and the API endpoint it expects. Start from the [UI kit overview](/docs/exportable-ui/overview#components-in-the-ui-kit).
+
+## Next steps with the UI kit
+
+<CardGroup cols={3}>
+  <Card icon="/images/developers/icons/database.svg" title="Fetch data on the client" href="/developers/frontend/fetch-entitlements-and-usage">
+    Portal sessions and backend proxies.
+  </Card>
+  <Card icon="/images/developers/icons/shield.svg" title="Harden client access" href="/developers/frontend/harden-client-access">
+    Keep keys server-side and cache safely.
+  </Card>
+  <Card icon="/images/developers/icons/ui-kit.svg" title="Components" href="/docs/exportable-ui/overview#components-in-the-ui-kit">
+    Every component with a live preview.
+  </Card>
+</CardGroup>

@@ -1,0 +1,143 @@
+---
+title: "Fetch entitlements and usage on the client"
+description: "Two safe patterns for getting a customer's entitlements, usage, and wallet balance into a browser or mobile app"
+---
+
+Browser code cannot hold a Flexprice API key. A key reads and writes your whole environment, and anything shipped to a browser is public. Two patterns give client code the data it needs without the key:
+
+| Pattern | Use when | Auth in the browser |
+| --- | --- | --- |
+| [Portal session](#pattern-1-fetch-through-a-portal-session) | The data is for the signed-in customer only, and you want no billing endpoints in your own backend | A one-hour, customer-scoped session token |
+| [Backend proxy](#pattern-2-fetch-through-a-backend-proxy) | You need entitlements for feature gating in your own request path, want caching, or must merge Flexprice data with your own | Your app's existing session |
+
+Both feed the [UI kit](/developers/frontend/install) the same way: fetch, map into props, render.
+
+## Pattern 1: Fetch through a portal session
+
+Your backend asks Flexprice for a session token for one customer. The browser then calls the `/v1/customer/portal` endpoints directly with that token. The token cannot see any other customer and expires after one hour.
+
+<Steps>
+  <Step title="Mint a session on the server">
+    ```typescript
+    // server: app/api/portal-session/route.ts
+    export async function POST(req: Request) {
+      const externalId = await currentCustomerExternalId(req); // from your own auth
+
+      const res = await fetch(
+        `https://us.api.flexprice.io/v1/customers/portal/${externalId}`,
+        { headers: { "x-api-key": process.env.FLEXPRICE_API_KEY! } },
+      );
+      const session = await res.json(); // { token, expires_at, url }
+      return Response.json({ token: session.token, expiresAt: session.expires_at });
+    }
+    ```
+  </Step>
+  <Step title="Call portal endpoints from the browser">
+    ```typescript
+    const { token } = await fetch("/api/portal-session", { method: "POST" }).then((r) => r.json());
+    const headers = { "X-Session-Token": token };
+    const base = "https://us.api.flexprice.io/v1/customer/portal";
+    const post = (path: string, body: unknown = {}) =>
+      fetch(`${base}${path}`, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }).then((r) => r.json());
+
+    const usage = await fetch(`${base}/usage`, { headers }).then((r) => r.json());
+    const wallets = await post("/wallets"); // an array, possibly empty
+    const subs = await post("/subscriptions", { page: 1, limit: 20 });
+    ```
+
+    `/subscriptions` and `/invoices` bind a JSON body and reject an empty one with a validation error, so send at least `{}`; both take `page` and `limit`. `/wallets` ignores the body, so the same helper works for it.
+  </Step>
+  <Step title="Render">
+    ```tsx
+    import { CreditBalance, UsageQuota, adaptCreditBalance, adaptUsageQuotaItems } from '@flexprice/ui';
+
+    {wallets.length > 0 && <CreditBalance wallet={adaptCreditBalance(wallets[0])} />}
+    <UsageQuota items={adaptUsageQuotaItems(usage.features)} />
+    ```
+
+    `/wallets` returns an array because a customer can have several wallets or none, so pick the one to show and skip the card when it is empty. The `adapt*` functions are exported by the kit and map raw API responses into each component's props. See [Install the UI kit](/developers/frontend/install#map-api-data-with-the-exported-adapters).
+  </Step>
+</Steps>
+
+Portal endpoints available to the browser include the customer's profile and usage summary, subscriptions, invoices and PDFs, wallets with transactions and top-ups, checkout sessions, and saved payment methods. See the [Portal API reference](/docs/customers/customer-portal/api-reference) for every path.
+
+<Note>
+  Mint the session when the customer opens the billing page, not at login. Read `expires_at` and mint a new one when it passes rather than storing tokens.
+</Note>
+
+## Pattern 2: Fetch through a backend proxy
+
+Your backend calls Flexprice with the SDK and exposes only what the client needs, shaped for your UI. This is the right pattern for entitlement checks that gate features, because the check runs where you can trust it.
+
+```typescript
+// server: app/api/me/entitlements/route.ts
+import { Flexprice } from "@flexprice/sdk";
+
+const flexprice = new Flexprice({
+  serverURL: process.env.FLEXPRICE_API_HOST ?? "https://us.api.flexprice.io/v1",
+  apiKeyAuth: process.env.FLEXPRICE_API_KEY,
+});
+
+export async function GET(req: Request) {
+  const externalId = await currentCustomerExternalId(req);
+
+  // Entitlements carry the limit and the enabled flag; current usage comes from the usage summary
+  const [ent, usage] = await Promise.all([
+    flexprice.customers.getCustomerEntitlementsByExternalID(externalId),
+    flexprice.customers.getCustomerUsageSummary({ customerLookupKey: externalId }),
+  ]);
+  const usedByFeature = new Map((usage.features ?? []).map((u) => [u.feature?.id, u.currentUsage]));
+
+  // Return only what the UI renders
+  return Response.json(
+    (ent.features ?? []).map((f) => ({
+      featureId: f.feature?.id,
+      name: f.feature?.name,
+      type: f.feature?.type,
+      enabled: f.entitlement?.isEnabled,
+      limit: f.entitlement?.usageLimit,
+      used: usedByFeature.get(f.feature?.id) ?? "0",
+    })),
+  );
+}
+```
+
+`getCustomerEntitlementsByExternalID` takes the external ID as a plain string. Each entry in its `features` array has `feature`, `entitlement`, and `sources` and no usage figures, so the usage summary supplies `currentUsage`. The usage summary accepts the same external ID as `customerLookupKey`.
+
+Endpoints the proxy typically wraps:
+
+| Need | Endpoint |
+| --- | --- |
+| Entitlements for a customer: enabled flag, limit, sources | [`GET /customers/external/{external_id}/entitlements`](/api-reference/customers/get-customer-entitlements-by-external-id) |
+| Current usage per feature | [`GET /customers/usage`](/api-reference/customers/get-customer-usage-summary) |
+| Usage analytics for charts | [`POST /events/analytics`](/api-reference/events/get-usage-analytics) |
+| Wallets and balances | [`GET /customers/{id}/wallets`](/api-reference/wallets/get-wallets-by-customer-id) |
+| Plans for a pricing page | [`POST /plans/search`](/api-reference/plans/query-plans) |
+
+The client then calls your endpoint with its normal session and renders. If the proxy returns the API response unchanged, the kit's adapters do the mapping; if it returns your own shape, map it to the component's props yourself and run the matching `normalize*` function on it first:
+
+```tsx
+import { UsageQuota, normalizeUsageQuotaItems } from '@flexprice/ui';
+
+const items = await fetch("/api/me/entitlements").then((r) => r.json());
+<UsageQuota items={normalizeUsageQuotaItems(items.map(toQuotaItem))} />
+```
+
+## Which pattern should you use?
+
+- Start with a **portal session** if you are building a billing page and want to ship fast. Every read the page needs already exists under the portal.
+- Use a **backend proxy** when the data gates behaviour (can this user call this feature?), when you want to cache, or when the UI shows Flexprice data next to your own.
+- Mix them. A pricing page can read plans through a proxy while the account page uses a portal session.
+
+<CardGroup cols={2}>
+  <Card icon="/images/developers/icons/shield.svg" title="Harden client access" href="/developers/frontend/harden-client-access">
+    Caching, fallback, and what never to expose.
+  </Card>
+  <Card icon="/images/developers/icons/ui-kit.svg" title="Usage widgets" href="/docs/exportable-ui/usage-widgets/usage-widgets">
+    Prop shapes for the components above.
+  </Card>
+</CardGroup>

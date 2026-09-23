@@ -1,0 +1,161 @@
+---
+title: "Set up an endpoint"
+description: "Register a webhook endpoint in the Flexprice dashboard, choose the events it receives, and write a handler that acknowledges correctly"
+---
+
+A webhook endpoint is an HTTPS URL you own that Flexprice sends a `POST` to when something happens in your account. Registering one takes a minute in the dashboard. Writing a handler that stays correct under retries takes a little more care, and this page covers both.
+
+## Registering a webhook endpoint
+
+<Steps>
+  <Step title="Open Webhooks">
+    In the dashboard, go to **Developers** and open the **Webhooks** section, or run `flexprice open webhooks` from the [CLI](/docs/cli/overview).
+  </Step>
+  <Step title="Add the endpoint">
+    Click **Add Endpoint** and enter your URL. It must be HTTPS and reachable from the public internet. For local development, use a tunnel or Svix Play as described in [Test webhooks locally](/developers/webhooks/test-locally).
+  </Step>
+  <Step title="Choose events">
+    Subscribe to the events your handler acts on rather than everything. A billing integration usually starts with:
+
+    - `invoice.update.finalized`
+    - `invoice.update.payment`
+    - `payment.success` and `payment.failed`
+    - `subscription.created`, `subscription.updated`, and `subscription.cancelled`
+    - `wallet.credit_balance.dropped`
+
+    The full list, with a link to each payload, is in the [event catalog](/developers/webhooks/event-catalog).
+  </Step>
+  <Step title="Copy the signing secret">
+    Open the endpoint and copy its signing secret (it starts with `whsec_`). Store it with your other secrets. Your handler uses it to verify every delivery; see [Signature verification](/developers/webhooks/signature-verification).
+  </Step>
+</Steps>
+
+Endpoints are per environment. Register one in sandbox and a separate one in production, each with its own secret.
+
+## The webhook delivery contract
+
+| Aspect | Value |
+| --- | --- |
+| Method | `POST` |
+| Content type | `application/json` |
+| Body | `{ "event_type": "<name>", "<object>": { ... } }` where the object key matches the event: `invoice`, `payment`, `subscription`, `wallet`, `customer`, and so on |
+| Success | Any `2xx` response |
+| Timeout | Respond within 5 seconds |
+| Failure | Non-`2xx` or a timeout triggers a retry. See [Retries and ordering](/developers/webhooks/retries-and-ordering) |
+
+A finalized invoice looks like this:
+
+```json
+{
+  "event_type": "invoice.update.finalized",
+  "invoice": {
+    "id": "inv_01J...",
+    "customer_id": "cust_01J...",
+    "subscription_id": "sub_01J...",
+    "invoice_status": "FINALIZED",
+    "payment_status": "PENDING",
+    "currency": "USD",
+    "amount_due": "149.00",
+    "line_items": [ ... ]
+  }
+}
+```
+
+Every payload's exact schema is documented under **Webhook Events** in the API reference, for example [invoice.update.finalized](/api-reference/webhook-events/invoiceupdatefinalized).
+
+## Writing the webhook handler
+
+A handler has four jobs, in this order:
+
+1. **Verify the signature** on the raw body before parsing anything.
+2. **Acknowledge fast.** Return `200` and do the real work on a queue. Anything slower than 5 seconds counts as a failure and is retried.
+3. **Dedupe.** Store the delivery ID (the `svix-id` header) and skip a delivery you have already processed. Retries and redeliveries mean you will see duplicates. Do not key on the object ID plus `event_type` alone: two `subscription.updated` messages for the same subscription would collapse into one. If you key on the object, include its `updated_at`. See [Retries and ordering](/developers/webhooks/retries-and-ordering#handling-duplicate-webhook-deliveries).
+4. **Return `200` for events you do not handle.** Otherwise Flexprice keeps retrying them.
+
+<CodeGroup>
+```typescript Node (Express)
+import express from "express";
+import { Webhook } from "svix";
+
+const app = express();
+const wh = new Webhook(process.env.FLEXPRICE_WEBHOOK_SECRET!);
+
+app.post("/webhooks/flexprice", express.raw({ type: "application/json" }), async (req, res) => {
+  let event: { event_type: string; [k: string]: unknown };
+  try {
+    event = wh.verify(req.body, req.headers as Record<string, string>) as typeof event;
+  } catch {
+    return res.status(400).send("bad signature");
+  }
+
+  const deliveryId = req.header("svix-id")!;
+  if (await alreadyProcessed(deliveryId)) return res.sendStatus(200);
+
+  await queue.enqueue({ deliveryId, event }); // process later
+  res.sendStatus(200);
+});
+```
+
+```python Python (FastAPI)
+from fastapi import FastAPI, Request, HTTPException
+from svix.webhooks import Webhook, WebhookVerificationError
+
+app = FastAPI()
+wh = Webhook(os.environ["FLEXPRICE_WEBHOOK_SECRET"])
+
+@app.post("/webhooks/flexprice")
+async def flexprice_webhook(request: Request):
+    body = await request.body()
+    try:
+        event = wh.verify(body, dict(request.headers))
+    except WebhookVerificationError:
+        raise HTTPException(status_code=400, detail="bad signature")
+
+    delivery_id = request.headers["svix-id"]
+    if await already_processed(delivery_id):
+        return {"ok": True}
+
+    await queue.enqueue(delivery_id, event)
+    return {"ok": True}
+```
+
+```go Go (net/http)
+import (
+	"io"
+	"net/http"
+
+	svix "github.com/svix/svix-webhooks/go"
+)
+
+func handler(wh *svix.Webhook) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		if err := wh.Verify(body, r.Header); err != nil {
+			http.Error(w, "bad signature", http.StatusBadRequest)
+			return
+		}
+
+		deliveryID := r.Header.Get("svix-id")
+		if alreadyProcessed(deliveryID) {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		enqueue(deliveryID, body)
+		w.WriteHeader(http.StatusOK)
+	}
+}
+```
+</CodeGroup>
+
+The worker that drains the queue parses `event_type` and the typed payload. [Parsing webhook payloads with the SDK](/developers/sdks/usage#parsing-webhook-payloads-with-the-sdk) shows the typed models in Go, Python, and TypeScript.
+
+## Watching webhook deliveries in the dashboard
+
+The endpoint's page in the dashboard shows its error rate, a **Logs** tab with every attempt and its response, and an **Activity** tab with delivery counts over time. Failed attempts can be replayed from **Logs** after you fix the handler.
+
+<CardGroup cols={3}>
+  <Card icon="/images/developers/icons/signature.svg" title="Signature verification" href="/developers/webhooks/signature-verification" />
+  <Card icon="/images/developers/icons/rotate.svg" title="Retries and ordering" href="/developers/webhooks/retries-and-ordering" />
+  <Card icon="/images/developers/icons/flask.svg" title="Test locally" href="/developers/webhooks/test-locally" />
+</CardGroup>

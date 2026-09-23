@@ -1,0 +1,100 @@
+---
+title: "Retries and ordering"
+description: "How Flexprice retries failed webhook deliveries, what that means for duplicates, and why handlers must not depend on order"
+---
+
+Delivery is at-least-once. A webhook that fails is retried on a schedule, and a delivery that succeeded can still be sent again if your endpoint's response was lost. Two consequences follow: your handler will see the same message more than once, and it will sometimes see messages out of order. Design for both and webhooks become boring, which is the goal.
+
+## What counts as a failed webhook delivery
+
+| Response | Result |
+| --- | --- |
+| `2xx` within 5 seconds | Delivered. No retry |
+| Any other status | Retried on the schedule below |
+| No response within 5 seconds | Treated as a failure and retried |
+| Connection refused, TLS error, DNS failure | Treated as a failure and retried |
+
+There is no special handling for `4xx`. A `410 Gone` does not disable the endpoint; only removing it in the dashboard does. If you want to drop a message on purpose, return `200`.
+
+## The webhook retry schedule on Flexprice Cloud
+
+Flexprice Cloud delivers through Svix, which retries with increasing gaps:
+
+| Attempt | Delay after the previous failure |
+| --- | --- |
+| 1 | Immediate |
+| 2 | 5 seconds |
+| 3 | 5 minutes |
+| 4 | 30 minutes |
+| 5 | 2 hours |
+| 6 | 5 hours |
+| 7 | 10 hours |
+| 8 | 10 hours |
+
+An endpoint that keeps failing for several days is disabled automatically and shown as such in the dashboard, and you are notified. Re-enable it once the handler is fixed.
+
+## Retries on self-hosted native delivery
+
+Without Svix enabled, a self-hosted instance retries with exponential backoff and gives up after a short window. The defaults are 3 retries, a 1 second initial interval, a 10 second cap, a 2.0 multiplier, and 2 minutes of total elapsed time. All five are configurable; see [Configuration](/docs/getting-started/configuration#webhook-configuration). Because the window is short, put native deliveries on a queue as soon as they arrive.
+
+## Replaying a failed webhook delivery
+
+Open the endpoint in the dashboard, go to **Logs**, and choose a failed attempt to resend it. This uses the original payload, so the `svix-id` is the same and your dedupe check treats it as the same message.
+
+## Handling duplicate webhook deliveries
+
+Because delivery is at-least-once, treat every message as possibly repeated:
+
+- **Key on `svix-id`.** It is unique per message and constant across retries. Keep it for longer than the retry window: the schedule above runs for about 28 hours after the first attempt, so a one-day TTL expires before the last retries arrive. Three days is a safe minimum. A dashboard replay after the record expires is processed as new.
+- **Or key on the object.** For state changes, `event_type` plus the object's `id` plus its `updated_at` identifies the change. This also protects against two different messages that describe the same state.
+- **Make the effect idempotent.** "Set invoice `inv_123` to paid" can run twice safely. "Add 100 credits" cannot; look up the wallet transaction ID from the payload before crediting.
+
+## Webhook delivery ordering
+
+Messages are sent in the order the events occurred, but retries and parallel delivery mean they can arrive in any order. `subscription.updated` can land before the `subscription.created` it follows, and a retried `payment.pending` can land after `payment.success`.
+
+Handlers that are safe under reordering share one habit: they treat the payload as a snapshot, not a diff.
+
+- **Compare timestamps.** Each object carries `updated_at`. Ignore a message whose `updated_at` is older than what you already stored for that object, and make that comparison part of the write so a concurrent worker cannot slip between the two.
+- **Read the status from the payload, not the event name.** `invoice.update` tells you an invoice changed; `invoice.invoice_status` and `invoice.payment_status` in the body tell you what it is now.
+- **Fetch when in doubt.** If two messages disagree, call the API for the object's current state. `GET /invoices/{id}` is cheap and always right.
+
+## A webhook handler shape that survives retries
+
+```typescript
+async function process(deliveryId: string, event: WebhookEvent) {
+  const obj = event[objectKeyFor(event.event_type)];  // invoice, payment, subscription, ...
+
+  await db.transaction(async (tx) => {
+    // Insert, not a read: two workers holding the same delivery cannot both pass this
+    if (!(await tx.recordDelivery(deliveryId))) return; // INSERT ... ON CONFLICT DO NOTHING
+
+    // The comparison lives inside the write, so an older message that arrives late
+    // cannot overwrite a newer snapshot. The insert path handles an object whose
+    // first message is an update.
+    await tx.run(
+      `INSERT INTO objects (id, updated_at, data)
+            VALUES ($1, $2, $3)
+       ON CONFLICT (id) DO UPDATE
+              SET updated_at = EXCLUDED.updated_at, data = EXCLUDED.data
+            WHERE objects.updated_at < EXCLUDED.updated_at`,
+      [obj.id, obj.updated_at, obj],
+    );
+  });
+}
+```
+
+Three properties do the work here, and all three are lost if you split the steps up:
+
+- **The dedupe check is an insert.** Calling `seen()` and then `markSeen()` as separate statements leaves a window where two workers handed the same delivery both pass the check and both run the side effects. Svix can redeliver while your first attempt is still queued, so that window is real. A unique constraint on the delivery ID closes it.
+- **The timestamp comparison is part of the write.** Loading the row, comparing it in application code, and saving is three statements. Two workers can both pass the comparison, and the one carrying the older snapshot can commit last. A conditional update decides it in one statement. Taking a row lock before the read works too, as long as you hold it until the write commits.
+- **Both run in one transaction.** A crash cannot then apply one without the other, so you do not have to reason about whether saving or marking first is the safer order.
+
+## Monitoring webhook delivery health
+
+The endpoint page shows the error rate and every attempt. Alert on a rising error rate rather than on a single failure; one failure is normal, a trend means your handler or infrastructure is unhealthy.
+
+<CardGroup cols={2}>
+  <Card icon="/images/developers/icons/signature.svg" title="Signature verification" href="/developers/webhooks/signature-verification" />
+  <Card icon="/images/developers/icons/flask.svg" title="Test webhooks locally" href="/developers/webhooks/test-locally" />
+</CardGroup>

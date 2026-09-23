@@ -1,0 +1,104 @@
+---
+title: "Developer hub"
+description: "Every way to build on Flexprice: REST API, SDKs, CLI, MCP server, UI kit, webhooks, and open-source code"
+mode: "wide"
+---
+
+Flexprice exposes one REST API, and every other developer surface is a wrapper around it. Pick the surface that fits where your code runs, then move between them freely: an object you create with the CLI shows up in the SDK, and a webhook fires no matter which client made the change.
+
+<CardGroup cols={4}>
+  <Card icon="/images/developers/icons/api-reference.svg" title="API reference" href="/developers/api-reference">
+    Base URLs, auth, errors, and a live playground.
+  </Card>
+  <Card icon="/images/developers/icons/sdks.svg" title="SDKs" href="/developers/sdks/overview">
+    Typed clients for Go, Python, and TypeScript.
+  </Card>
+  <Card icon="/images/developers/icons/cli.svg" title="CLI" href="/docs/cli/overview">
+    Send events and script billing from the terminal.
+  </Card>
+  <Card icon="/images/developers/icons/ai-agents.svg" title="AI and agents" href="/docs/connect/mcp-server">
+    MCP server and Agent Skills for coding agents.
+  </Card>
+  <Card icon="/images/developers/icons/ui-kit.svg" title="UI kit" href="/docs/exportable-ui/overview">
+    Pricing, usage, and credits components for React.
+  </Card>
+  <Card icon="/images/developers/icons/webhooks.svg" title="Webhooks" href="/docs/webhook/webhooks">
+    Signed, retried delivery for every billing event.
+  </Card>
+  <Card icon="/images/developers/icons/api-tooling.svg" title="API tooling" href="/developers/api-tooling/openapi-spec">
+    OpenAPI spec, Postman, and Swagger UI.
+  </Card>
+  <Card icon="/images/developers/icons/open-source.svg" title="Open source" href="/docs/contributing-guide/introduction">
+    Contribute, or self-host the community edition.
+  </Card>
+</CardGroup>
+
+## Which tool should I use?
+
+| You want to | Use | Why |
+| --- | --- | --- |
+| Meter usage from a backend service | [SDK](/developers/sdks/overview) | Typed requests, built-in retries, an async batcher for high volume |
+| Call an endpoint the SDK does not wrap yet | [REST API](/developers/api-reference) | The SDKs lag the API by a release; the API is always current |
+| Poke at your account from a terminal or a CI job | [CLI](/docs/cli/overview) | JSON output, stable exit codes, and a `get`/`post`/`delete` escape hatch |
+| Let a coding agent read or change billing data | [MCP server](/docs/connect/mcp-server) | One tool per API operation, scoped to read, write, or delete |
+| Give a coding agent a repeatable Flexprice workflow | [Agent Skills](/developers/ai/agent-skills) | A skill wraps the CLI and MCP server with your own conventions |
+| Render a pricing page or usage dashboard | [UI kit](/docs/exportable-ui/overview) | The dashboard's own React components, fed from any data source |
+| React to a change in Flexprice | [Webhooks](/docs/webhook/webhooks) | Push delivery with signatures and retries instead of polling |
+
+## What every Flexprice surface shares
+
+**One API key, one environment.** An API key belongs to a single environment (sandbox or production) in a single region. The SDKs, CLI, and MCP server all read the same key and never need an environment flag. Create keys in the dashboard under Developers, or with the [API keys endpoint](/api-reference/secrets/create-a-new-api-key). See [Manage API keys](/docs/rbac/manage-api) for roles and scopes.
+
+**Two regional base URLs.** Every client is pointed at one of these, including the `/v1` suffix and no trailing slash:
+
+| Region | Base URL |
+| --- | --- |
+| US | `https://us.api.flexprice.io/v1` |
+| India | `https://api.cloud.flexprice.io/v1` |
+
+## Start building in five minutes
+
+<Steps>
+  <Step title="Create an API key">
+    In the dashboard, open **Developers**, click **Add**, and choose **Read & Write**. Copy the key when it is shown; it is not displayed again.
+  </Step>
+  <Step title="Send one usage event">
+    <CodeGroup>
+    ```bash CLI
+    flexprice init
+    flexprice events ingest --event_name=api_request --external_customer_id=cust_123
+    ```
+
+    ```bash cURL
+    curl -X POST https://us.api.flexprice.io/v1/events \
+      -H "x-api-key: $FLEXPRICE_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{"event_name": "api_request", "external_customer_id": "cust_123"}'
+    ```
+
+    ```typescript TypeScript
+    import { Flexprice } from "@flexprice/sdk";
+
+    const flexprice = new Flexprice({
+      serverURL: "https://us.api.flexprice.io/v1",
+      apiKeyAuth: process.env.FLEXPRICE_API_KEY,
+    });
+
+    await flexprice.events.ingestEvent({
+      eventName: "api_request",
+      externalCustomerId: "cust_123",
+    });
+    ```
+    </CodeGroup>
+  </Step>
+  <Step title="Watch it land">
+    Open the [Event Debugger](/docs/event-ingestion/event-debugger) in the dashboard, or run `flexprice events list --output json`. Then follow [Plan your integration](/docs/getting-started/go-live-checklist) for the full path to production.
+  </Step>
+</Steps>
+
+## Where to follow API and SDK changes
+
+- [Changelog](/changelog): product and API changes, with SDK releases called out
+- [Status page](https://status.flexprice.io): Cloud API and Admin Portal uptime and incidents
+- [Troubleshooting hub](/developers/troubleshooting): the first place to look when something does not line up
+- [Community Slack](https://join.slack.com/t/flexpricecommunity/shared_invite/zt-39uat51l0-n8JmSikHZP~bHJNXladeaQ): questions, feedback, and early access

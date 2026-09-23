@@ -1,0 +1,93 @@
+---
+title: "Test webhooks locally"
+description: "Receive Flexprice webhooks on a laptop with a tunnel or Svix Play, trigger real events from the CLI, and replay deliveries"
+---
+
+Flexprice needs a public HTTPS URL to deliver to, and your handler runs on `localhost`. Bridge the gap with a tunnel, or skip your handler entirely and inspect payloads in a browser. Then trigger events with the CLI so you are testing real deliveries, not hand-written fixtures.
+
+## Option 1: Inspect payloads with Svix Play
+
+For a first look at what an event contains, you do not need any code:
+
+1. Open [play.svix.com](https://play.svix.com) and copy the URL it gives you (it looks like `https://play.svix.com/in/e_...`).
+2. Register that URL as an endpoint in the dashboard under **Developers > Webhooks**.
+3. Trigger an event (see below). The payload, headers, and signature appear in the browser.
+
+Delete the endpoint when you are done; the Play URL is public to anyone who has it.
+
+## Option 2: Tunnel webhooks to your local handler
+
+Run your handler locally and expose it:
+
+<CodeGroup>
+```sh ngrok
+ngrok http 3000
+# Forwarding  https://a1b2c3.ngrok-free.app -> http://localhost:3000
+```
+
+```sh Cloudflare Tunnel
+cloudflared tunnel --url http://localhost:3000
+# https://random-words.trycloudflare.com
+```
+</CodeGroup>
+
+Register the tunnel URL plus your route (for example `https://a1b2c3.ngrok-free.app/webhooks/flexprice`) as a sandbox endpoint, and copy its signing secret into your local environment as `FLEXPRICE_WEBHOOK_SECRET`. Free tunnels change their hostname on every restart, so update the endpoint URL in the dashboard when that happens, or use a reserved domain.
+
+<Note>
+  ngrok's local inspector at `http://127.0.0.1:4040` shows every request and lets you replay it against your handler without going back to Flexprice.
+</Note>
+
+## Triggering real webhook events
+
+Use a sandbox API key and the [CLI](/docs/cli/overview) to cause the events you want to test:
+
+| To fire | Run |
+| --- | --- |
+| `customer.created` | `flexprice customers create --external_id=test_$RANDOM --name="Test"` |
+| `subscription.created` | `flexprice subscriptions create --customer_id=<id> --plan_id=<id> --billing_period=MONTHLY --billing_cadence=RECURRING --currency=USD --start_date=$(date -u +%FT%TZ)` |
+| `wallet.created`, `wallet.transaction.created` | `flexprice wallets create --customer_id=<id> --currency=USD` then `flexprice wallets top-up <wallet_id> --credits_to_add=10` |
+| `invoice.update.finalized` | `flexprice invoices finalize <invoice_id> --force` on a draft invoice |
+| `invoice.communication.triggered` | `flexprice invoices trigger-comms-webhook <invoice_id>` |
+| `subscription.cancelled` | `flexprice subscriptions cancel <subscription_id> --cancellation_type=immediate --force` |
+| `event.rejected` | `flexprice events ingest --event_name=does_not_exist --external_customer_id=<external_id>` |
+
+Run any command with `--help` to see the required flags for your account. The same actions in the dashboard fire the same events.
+
+## Replaying a webhook delivery
+
+Every attempt is stored. In the dashboard, open the endpoint, go to **Logs**, pick a delivery, and choose resend. This is the fastest loop when iterating on a handler: fix the code, replay the same message, repeat. The replay carries the original `svix-id`, so a dedupe check keyed on it will skip the replay; clear that entry or key on something else while testing.
+
+## Testing the signature check
+
+A handler that verifies signatures should reject a tampered body. With the secret in hand you can produce a valid signature for any payload and confirm both paths:
+
+```sh
+SECRET="whsec_..."           # from the endpoint page
+ID="msg_test_1"
+TS=$(date +%s)
+BODY='{"event_type":"customer.created","customer":{"id":"cust_test"}}'
+
+SIG=$(printf '%s.%s.%s' "$ID" "$TS" "$BODY" \
+  | openssl dgst -sha256 -mac HMAC -macopt "hexkey:$(echo -n "${SECRET#whsec_}" | base64 -d | xxd -p -c 256)" -binary \
+  | base64)
+
+curl -X POST http://localhost:3000/webhooks/flexprice \
+  -H "Content-Type: application/json" \
+  -H "svix-id: $ID" -H "svix-timestamp: $TS" -H "svix-signature: v1,$SIG" \
+  -d "$BODY"
+```
+
+Expect `200`. Change one character in `$BODY` after computing `$SIG` and expect `400`.
+
+## Checking the webhook handler end to end
+
+- [ ] A valid delivery returns `200` in under a second
+- [ ] A tampered body returns `400`
+- [ ] Replaying the same delivery does not duplicate a side effect
+- [ ] An event type you do not handle still returns `200`
+- [ ] The dashboard **Logs** tab shows the attempt as successful
+
+<CardGroup cols={2}>
+  <Card icon="/images/developers/icons/logs.svg" title="Event catalog" href="/developers/webhooks/event-catalog" />
+  <Card icon="/images/developers/icons/cli.svg" title="CLI quickstart" href="/docs/cli/quickstart" />
+</CardGroup>

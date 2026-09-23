@@ -1,0 +1,59 @@
+---
+title: "API reference"
+description: "How the Flexprice REST API is organised, and where each part of the reference lives"
+---
+
+The REST API is the source of truth for everything in Flexprice. The [API Reference tab](/api-reference/introduction) is generated from the same OpenAPI document that produces the SDKs, the CLI, and the MCP server, so an endpoint documented there behaves identically in every client.
+
+## API conventions at a glance
+
+| Topic | Summary | Full page |
+| --- | --- | --- |
+| Base URLs | `https://us.api.flexprice.io/v1` (US) or `https://api.cloud.flexprice.io/v1` (India). Pick the region your tenant was created in. | [Introduction](/api-reference/introduction) |
+| Authentication | Send your key in the `x-api-key` header on every request. A key is bound to one environment, so there is no environment parameter. | [Manage API keys](/docs/rbac/manage-api) |
+| Request format | JSON bodies with `snake_case` fields. List endpoints are `POST /<resource>/search` with a filter body. | [Introduction](/api-reference/introduction) |
+| Pagination | Offset based. Send `limit` and `offset`, read `pagination.offset` back for the next page, up to 1000 items per page. | [Pagination](/api-reference/pagination) |
+| Errors | `{"success": false, "error": { "message": "..." }}` with a standard HTTP status. `409` is safe to retry. | [Error responses](/api-reference/error-responses) |
+| Idempotency | Events dedupe on `event_id`. Invoices, credit notes, wallet top-ups, and portal payments accept an `idempotency_key` field. | [Idempotency and deduplication](/docs/event-ingestion/sending-events) |
+| Async ingestion | `POST /events` and `POST /events/bulk` return `202 Accepted`. Bulk accepts up to 1000 events per call. | [Event Ingestion API](/docs/event-ingestion/api-reference) |
+| Rate limits | `429 Too Many Requests` when you exceed the limit. Back off and retry; the CLI exits with code `5`. | [Error responses](/api-reference/error-responses) |
+
+## API endpoints by billing lifecycle
+
+The reference groups endpoints by resource. Read them in the order a billing lifecycle runs:
+
+<Steps>
+  <Step title="Catalog">
+    [Features](/api-reference/features/create-feature), [Plans](/api-reference/plans/create-plan), [Prices](/api-reference/prices/create-price), [Entitlements](/api-reference/entitlements/create-entitlement), [Addons](/api-reference/addons/create-addon), [Coupons](/api-reference/coupons/create-coupon), [Credit Grants](/api-reference/credit-grants/create-credit-grant)
+  </Step>
+  <Step title="Customers and subscriptions">
+    [Customers](/api-reference/customers/create-customer), [Subscriptions](/api-reference/subscriptions/create-subscription), [Wallets](/api-reference/wallets/create-a-new-wallet), [Checkout](/api-reference/checkout/create-checkout-session)
+  </Step>
+  <Step title="Usage">
+    [Events](/api-reference/events/ingest-event), [Usage analytics](/api-reference/events/get-usage-analytics), [Customer entitlements](/api-reference/customers/get-customer-entitlements)
+  </Step>
+  <Step title="Billing">
+    [Invoices](/api-reference/invoices/create-one-off-invoice), [Payments](/api-reference/payments/create-payment), [Credit Notes](/api-reference/credit-notes/create-credit-note), [Refunds](/api-reference/refunds/list-refunds)
+  </Step>
+  <Step title="Platform">
+    [API keys](/api-reference/secrets/create-a-new-api-key), [Users](/api-reference/users/create-user-or-service-account), [Tenants](/api-reference/tenants/get-tenant-by-id), [Environments](/api-reference/environments/clone-an-environment), [Integrations](/api-reference/integrations/link-integration-mapping)
+  </Step>
+</Steps>
+
+## Webhook payload reference
+
+The reference also documents every webhook payload under **Webhook Events**. Those pages describe the JSON Flexprice sends to you, not endpoints you call. Start from the [event catalog](/developers/webhooks/event-catalog) to find the event you want.
+
+## Customer portal API endpoints
+
+Endpoints under `/v1/customer/portal` authenticate with a short-lived session token instead of an API key and are scoped to one customer. They are documented separately in the [Portal API reference](/docs/customers/customer-portal/api-reference).
+
+## Trying an endpoint in the playground
+
+Every endpoint page in the reference has a playground. Choose your region in the server selector, paste an API key, and send a request from the browser. For a terminal, `flexprice get /customers` sends the same request through the [CLI](/docs/cli/overview).
+
+<CardGroup cols={3}>
+  <Card icon="/images/developers/icons/api-reference.svg" title="Open the API Reference" href="/api-reference/introduction" />
+  <Card icon="/images/developers/icons/openapi.svg" title="Download the OpenAPI spec" href="/developers/api-tooling/openapi-spec" />
+  <Card icon="/images/developers/icons/sdks.svg" title="Use an SDK instead" href="/developers/sdks/overview" />
+</CardGroup>
