@@ -3,7 +3,7 @@ title: "Entitlement Grants"
 description: "Configure time-boxed usage quotas on entitlements: rolling windows, parallel limits, and amount-based caps with exhaustion alerts and overage billing"
 ---
 
-Entitlement grants add time-boxed quotas on top of [entitlements](/docs/product-catalogue/features/linking-to-plans). A regular entitlement gives a customer a usage limit per billing period; a grant config turns it into a quota per window, such as "1M tokens per 5 hours" or "$50 of compute per day", independent of the billing cycle. Flexprice opens a concrete grant window when usage starts, tracks consumption against the quota, fires a webhook when the quota is exhausted, and bills usage beyond the quota as overage on the invoice.
+A plain [entitlement](/docs/product-catalogue/features/linking-to-plans) resets once a billing period, which is the wrong shape for a product sold in bursts. An AI assistant that advertises "resets every 5 hours", or a plan that caps spend at $50 a day, cannot express that as a monthly limit. Entitlement grants turn an entitlement into a quota per window instead, on a clock of your choosing. Flexprice opens a window when usage starts, tracks consumption against the quota, fires a webhook when the quota is exhausted, and bills usage beyond it as overage on the invoice.
 
 **Benefits:**
 
@@ -121,7 +121,7 @@ Expiry is not a status. A grant is closed when `valid_to` has passed, regardless
 | `usage` | Usage consumed in this window, refreshed on each evaluation |
 | `valid_from`, `valid_to` | The window boundaries |
 | `grant_status` | `active` or `exhausted` |
-| `quota_crossed_at` | Set once, when evaluation first sees `usage >= quota`. Overage billing starts from this timestamp. |
+| `quota_crossed_at` | When usage first reached the quota. Overage billing starts from this timestamp. |
 
 ## Reading Grant State
 
@@ -265,7 +265,7 @@ Sell top-ups without new plumbing. The plan carries a grant config; the addon ca
 
 ### Soft Limits With Billed Overage
 
-Grants implement soft limits: usage is never blocked. When a window's quota is crossed, usage recorded after the crossing is billed as overage on the subscription's arrears invoice. Quantity overage re-enters the pricer as billable units; amount overage lands directly as a charge. With parallel windows, overlapping overage periods are merged so a unit of usage is never billed twice.
+Grants implement soft limits: usage is never blocked. When a window's quota is crossed, usage recorded after the crossing is billed as overage on the subscription's arrears invoice. Quantity overage is priced as billable units; amount overage lands directly as a charge. With parallel windows, overlapping overage periods are merged so a unit of usage is never billed twice.
 
 <Note>
 Overage folding skips line items with tiered prices, commitments, or true-up. Those price against the full cycle, so grant overage on them falls back to the standard billing calculation.
@@ -273,7 +273,7 @@ Overage folding skips line items with tiered prices, commitments, or true-up. Th
 
 ## Exhaustion Alerts
 
-Evaluation runs after usage events arrive (debounced, roughly five minutes by default). When a window's usage reaches its quota, the grant flips to `exhausted`, one alert log is written, and a webhook fires. Recovery is not a state transition: a fresh window with a fresh quota simply opens when the next one starts.
+Usage is measured shortly after events arrive, within roughly five minutes. When a window's usage reaches its quota the grant turns `exhausted` and a webhook fires, once per window. There is no recovery event: a fresh window with a fresh quota simply opens when the next one starts.
 
 ### Webhook Payload
 
