@@ -3,7 +3,7 @@ title: "Entitlement Grants"
 description: "Configure time-boxed usage quotas on entitlements: rolling windows, parallel limits, and amount-based caps with exhaustion alerts and overage billing"
 ---
 
-A plain [entitlement](/docs/product-catalogue/features/linking-to-plans) resets once a billing period, which is the wrong shape for a product sold in bursts. An AI assistant that advertises "resets every 5 hours", or a plan that caps spend at $50 a day, cannot express that as a monthly limit. Entitlement grants turn an entitlement into a quota per window instead, on a clock of your choosing. Flexprice opens a window when usage starts, tracks consumption against the quota, fires a webhook when the quota is exhausted, and bills usage beyond it as overage on the invoice.
+An [entitlement](/docs/product-catalogue/features/linking-to-plans) resets once a billing period. Entitlement grants let it reset on a shorter clock instead, so you can offer 1M tokens every 5 hours or $50 of compute a day. Flexprice opens a window when usage starts, tracks consumption against the quota, fires a webhook when the quota is exhausted, and bills anything beyond it as overage.
 
 **Benefits:**
 
@@ -24,7 +24,7 @@ A plain [entitlement](/docs/product-catalogue/features/linking-to-plans) resets 
 
 ## Setting Up a Grant
 
-A grant is an entitlement with a recurring value, so it is configured wherever entitlements are: on a plan, or on an addon. The feature must be metered.
+A grant is an entitlement with a recurring value, so it is configured wherever entitlements are. The steps below use a plan; an addon works the same way, from the addon's own **Entitlements** section. The feature must be metered.
 
 <Steps>
   <Step title="Open the plan's entitlements">
@@ -36,7 +36,18 @@ A grant is an entitlement with a recurring value, so it is configured wherever e
   </Step>
 
   <Step title="Pick the feature and set the value">
-    Select the metered feature. The allowance fields appear once it is chosen. Choose a **Value Type** of **Quantity** to count meter units or **Amount** to cap spend in currency, then enter the **Value**, or switch on **Unlimited** for no ceiling.
+    Select the metered feature you want to grant a recurring value for. The value fields appear once it is chosen.
+
+    **Value Type** decides what the value counts:
+
+    - **Quantity** counts meter units, such as tokens or images.
+    - **Amount** caps spend in currency, priced through the meter's existing prices.
+
+    Then enter the **Value**.
+
+    <Note>
+      Switch on **Unlimited** instead to grant an uncapped value. Usage is still tracked and shown, but nothing is ever exhausted and no overage is billed.
+    </Note>
 
     <Frame>
       ![Configure an entitlement grant](/images/docs/product-catalogue/features/entitlement-grants/add-entitlement.png)
@@ -48,7 +59,7 @@ A grant is an entitlement with a recurring value, so it is configured wherever e
   </Step>
 
   <Step title="Set the advanced options if you need them">
-    Under **Advanced**, **Window starts** decides where each window begins, and **Stacking** decides how this allowance combines with others on the same feature. Both are explained below.
+    Under **Advanced**, **Window starts** decides where each window begins and **Stacking** decides how this value combines with others on the same feature. See [Where a Window Starts](#where-a-window-starts) and [Stacking](#stacking).
   </Step>
 
   <Step title="Save">
@@ -58,7 +69,7 @@ A grant is an entitlement with a recurring value, so it is configured wherever e
 
 ### Settings and Their API Fields
 
-The dashboard and the API name these settings differently. Everything you set in the drawer is a field on the [create entitlement](/api-reference/entitlements/create-entitlement) and [update entitlement](/api-reference/entitlements/update-entitlement) endpoints.
+Every setting above is a field on the [create entitlement](/api-reference/entitlements/create-entitlement) and [update entitlement](/api-reference/entitlements/update-entitlement) endpoints.
 
 | Dashboard | API field | Values |
 |---|---|---|
@@ -156,10 +167,10 @@ Selecting a row opens **Grants**, the ledger of windows behind that number.
 | Status | Meaning |
 |---|---|
 | Active | Open now, with quota left |
-| Exhausted | Quota reached. Hover the pill for the moment it was crossed. |
+| Exhausted | The value was fully used before the window ended (hover the status to see when it was crossed) |
 | Closed | The window ended without the quota being reached |
 
-### Reading the Same Thing Over the API
+### Reading Windows Over the API
 
 [Get customer usage summary](/api-reference/customers/get-customer-usage-summary) returns the grant config for each feature plus a `grant_state.allowances` array, one entry per window:
 
