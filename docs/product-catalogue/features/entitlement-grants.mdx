@@ -24,6 +24,8 @@ An [entitlement](/docs/product-catalogue/features/linking-to-plans) resets once 
 
 ## Steps to set up a grant
 
+Entitlements are supported at the plan and addon level, with the same fields on both. The steps below configure a plan's entitlement.
+
 <Steps>
   <Step title="Open the plan's entitlements">
     Go to **Product Catalog** and open the plan, then the **Entitlements** section. Click **Add**.
@@ -36,15 +38,17 @@ An [entitlement](/docs/product-catalogue/features/linking-to-plans) resets once 
   <Step title="Pick the feature and set the value">
     Select the metered feature you want to grant a recurring value for. The value fields appear once it is chosen.
 
-    **Value Type** decides what the value counts:
+    **Value Type**
 
     - **Quantity** counts meter units, such as tokens or images.
     - **Amount** caps spend in currency, priced through the meter's existing prices.
 
-    Then enter the **Value**.
+    **Value**
+
+    - The amount granted in each window.
 
     <Note>
-      Switch on **Unlimited** instead to grant an uncapped value. Usage is still tracked and shown, but nothing is ever exhausted and no overage is billed.
+      Switch on **Unlimited** to grant a value with no ceiling. Usage is still tracked and shown, but nothing is ever exhausted and no overage is billed.
     </Note>
 
     <Frame>
@@ -64,10 +68,6 @@ An [entitlement](/docs/product-catalogue/features/linking-to-plans) resets once 
     Click **Add**, then save the plan. The value applies to every customer on the plan, now and on every later subscription.
   </Step>
 </Steps>
-
-<Note>
-  Addons carry entitlements under their own **Entitlements** section, with the same fields.
-</Note>
 
 ### Settings and Their API Fields
 
@@ -325,7 +325,7 @@ Usage is measured shortly after events arrive, within roughly five minutes. When
   <Card icon="book-open" href="/docs/product-catalogue/features/linking-to-plans" title="Link features to plans">
     Attach a feature to a plan or addon as an entitlement.
   </Card>
-  <Card icon="webhook" href="/docs/webhook/webhooks" title="Webhooks">
+  <Card icon="webhook" href="/docs/webhook/webhooks#entitlement-events" title="Webhooks">
     Subscribe to `entitlement.grant.exhausted` and the rest of the event catalogue.
   </Card>
 </CardGroup>
