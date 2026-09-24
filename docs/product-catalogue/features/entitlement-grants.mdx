@@ -69,16 +69,17 @@ The dashboard and the API name these settings differently. Everything you set in
 | Window starts | `grant_allocation_behavior` | `first_usage` or `unit_start` |
 | Stacking | `aggregation_mode` | `additive` or `parallel` |
 
-A fixed-duration window must be at least one hour long.
+### Validation Rules
 
-<Warning>
-Allowances are validated when you save:
+An allowance is checked when you save it, and refused if it breaks any of these.
 
-- The feature must be metered. Meters with `MAX` aggregation or bucketed aggregation are not supported.
-- All allowances on one feature must share the same value type and the same stacking. Additive allowances must also share the same cadence.
-- Amount allowances require flat per-unit pricing on the meter. Tiered prices are rejected.
-- **Unlimited** is only available with a cadence of **Every billing period**. A recurring window needs a finite value.
-</Warning>
+| Rule | Detail |
+|---|---|
+| The feature must be metered | Meters using `MAX` aggregation or bucketed aggregation are not supported |
+| One value type and one stacking per feature | Every allowance on the same feature must agree. Additive allowances must share the same cadence as well. |
+| Amount allowances need flat pricing | The meter must price per unit at a flat rate. Tiered prices are refused. |
+| Unlimited needs a cycle-length cadence | Available only with **Every billing period**. A recurring window needs a finite value. |
+| A window must last at least an hour | Applies to the hourly, daily and weekly cadences |
 
 ### Unlimited Allowances
 
