@@ -83,6 +83,16 @@ Set `grant_unlimited: true` to give a customer an uncapped allowance for the bil
 
 This is how you remove a ceiling from a metered entitlement. Use it in place of the legacy `usage_limit` and `usage_reset_period` fields, which metered entitlements are moving off.
 
+### Changing a Quota Mid-Cycle
+
+Editing the quota on a subscription's entitlement takes effect immediately, on the window that is already open. The open window is closed and reopened at the new quota, carrying the spend across, so the customer keeps what they have left rather than starting over.
+
+A customer on a 1,000 unit daily allowance who has spent 400 and is moved to 600 has 200 left, not 600. Raising the quota works the same way in reverse.
+
+<Warning>
+This applies to an entitlement scoped to the subscription. Editing the **plan's** entitlement changes the rule for future windows and for new subscribers; it does not re-cut windows already open on existing subscriptions.
+</Warning>
+
 ### Where a Window Starts
 
 `grant_allocation_behavior` decides how a new window is anchored:
@@ -107,6 +117,10 @@ Each grant tracks two states in `grant_status`:
 - `exhausted`: usage reached the quota (`usage >= quota`)
 
 Expiry is not a status. A grant is closed when `valid_to` has passed, regardless of how much quota was used.
+
+<Note>
+Usage is measured against the window's own time range, not accumulated as events arrive. An event that reaches Flexprice late counts against the window its timestamp falls in, so a backfill can change what a window that has already closed reports, and can exhaust it after the fact.
+</Note>
 
 ### Grant Object
 
@@ -186,6 +200,12 @@ The response returns the most recent windows for the current billing period, cap
 </Note>
 
 For a **parallel** feature, the scalar figures cannot describe several independent budgets at once, so the response also carries a `buckets` array: one entry per budget, each with its own quota, cadence and measure. Read those instead of `total_limit` when `buckets` is present.
+
+<Note>
+Allowances are listed per subscription, not merged. A customer holding the same feature on two subscriptions has two sets of windows, and both appear under that feature. They are genuinely separate budgets, so adding them together would suggest a shared pool that does not exist. Use `entitlement_id` on each allowance to tell them apart.
+
+Inherited subscriptions carry no allowances of their own. Usage on those is attributed to the parent, as described in [customer hierarchy](/docs/subscriptions/customer-hierarchy).
+</Note>
 
 ## Aggregation Modes
 
