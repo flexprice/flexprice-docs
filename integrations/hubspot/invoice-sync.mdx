@@ -1,0 +1,79 @@
+---
+title: "HubSpot Invoice Sync"
+description: "How Flexprice pushes finalized invoices to HubSpot and associates them with the customer's HubSpot contact"
+---
+
+Invoice sync creates a HubSpot invoice for each finalized Flexprice invoice whose customer is linked to a HubSpot contact. The HubSpot invoice carries the line items, total, tax, and due date, and is associated with the contact. Turn invoice sync on with the **Invoices** toggle on the [HubSpot connection](/integrations/hubspot/connection-setup), or with `sync_config.invoice.outbound` in the API.
+
+## When HubSpot invoice sync runs
+
+Flexprice pushes an invoice to HubSpot when all of these are true:
+
+1. The invoice is finalized.
+2. The **Invoices** toggle is on for the HubSpot connection.
+3. The invoice's customer is linked to a HubSpot contact. [Customer sync](/integrations/hubspot/customer-sync) creates this link, both for customers it creates and for existing customers it matches by email.
+4. The invoice has not been pushed to HubSpot before.
+
+Flexprice starts the sync five seconds after the invoice is finalized, and tries up to three times. Invoice creation and finalization in Flexprice never wait for HubSpot. If all three attempts fail, Flexprice does not try again on its own; see [Retrying a HubSpot invoice sync](#retrying-a-hubspot-invoice-sync).
+
+## What Flexprice creates in HubSpot for an invoice
+
+Flexprice creates the invoice as a draft, adds its line items, associates it with the contact, fills in the totals, and then moves it to `open`.
+
+### HubSpot invoice properties
+
+| HubSpot property | Value |
+|------------------|-------|
+| `hs_currency` | The invoice currency in uppercase, such as `USD` |
+| `hs_due_date` | The invoice due date. If it is less than 15 minutes away, Flexprice sets it to 15 minutes from now so that HubSpot accepts it. |
+| `hs_amount_billed` | The invoice total. Not set when the total is zero. |
+| `hs_tax` | The invoice's total tax. Not set when it is zero. |
+| `hs_purchase_order_number` | The Flexprice invoice number |
+| `hs_invoice_status` | `open` |
+
+Look for the Flexprice invoice number in the invoice's purchase order number field in HubSpot.
+
+### HubSpot invoice line items
+
+Flexprice adds one HubSpot line item for every line item on the Flexprice invoice, including usage-based charges.
+
+| HubSpot property | Value |
+|------------------|-------|
+| `name` and `description` | The line item's display name, or `Line Item` when it has none |
+| `quantity` | The line item's quantity |
+| `price` | The line item amount divided by its quantity. When the quantity is zero, the line item amount. |
+| `amount` | The line item amount |
+
+## What HubSpot invoice sync leaves unchanged
+
+- **Changes after the first sync.** Flexprice pushes each invoice once. Payments, voids, and credit notes recorded in Flexprice later do not update the HubSpot invoice.
+- **Activity in HubSpot.** Flexprice does not read invoices, payments, or status changes back from HubSpot. A payment collected in HubSpot is not recorded in Flexprice.
+- **Deals and companies.** The HubSpot invoice is associated with the contact only.
+- **Customers without a HubSpot contact.** Their invoices are not pushed to HubSpot.
+
+## Retrying a HubSpot invoice sync
+
+To push an invoice again, for example after you fix a missing scope or link its customer to a contact, call the integration sync endpoint with the invoice ID:
+
+```bash
+curl -X POST https://api.cloud.flexprice.io/v1/integrations/sync \
+  -H "x-api-key: <API_KEY>" \
+  -H "X-Environment-ID: <ENVIRONMENT_ID>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "entity_type": "invoice",
+    "entity_id": "<INVOICE_ID>"
+  }'
+```
+
+The endpoint sends the invoice to every connected provider that has invoice sync turned on. If the invoice was already pushed to HubSpot, Flexprice skips HubSpot.
+
+## Troubleshooting HubSpot invoice sync
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| A finalized invoice is not in HubSpot | The **Invoices** toggle is off, the customer is not linked to a HubSpot contact, or the app is missing the invoice or line item scopes | Fix the cause, then [retry the sync](#retrying-a-hubspot-invoice-sync) |
+| Extra draft invoices appear in HubSpot | A sync attempt failed after it created the draft, and each retry created another draft | Delete the extra drafts in HubSpot |
+| The sync fails for an invoice with no line items | HubSpot only moves an invoice to `open` when it has a contact and at least one line item | Open the draft in HubSpot, add a line item, and move it to Open yourself |
+| The HubSpot invoice has no invoice number | The number is stored as the purchase order number | Check the purchase order number field |
+| The invoice is paid in Flexprice but still open in HubSpot | Flexprice does not update HubSpot invoices after the first sync | Update the invoice in HubSpot |

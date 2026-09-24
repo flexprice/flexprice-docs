@@ -1,0 +1,88 @@
+---
+title: "HubSpot Quote Sync"
+description: "How Flexprice creates a draft HubSpot quote when you create a draft subscription for a HubSpot customer"
+---
+
+Quote sync creates a HubSpot quote when you create a subscription as a draft for a customer who came from HubSpot. The quote is attached to the customer's deal and holds the subscription's fixed-price line items, so your sales team can review it and send it from HubSpot. Turn quote sync on with the **Quotes** toggle on the [HubSpot connection](/integrations/hubspot/connection-setup), or with `sync_config.quote.outbound` in the API.
+
+## When HubSpot quote sync runs
+
+Flexprice creates a quote when all of these are true:
+
+1. A subscription is created as a draft.
+2. The **Quotes** toggle is on for the HubSpot connection.
+3. The subscription's customer has `hubspot_deal_id` in its metadata. Customers created by [customer sync](/integrations/hubspot/customer-sync) have it.
+
+Quote sync runs once per draft subscription. Editing the draft later, activating it, or cancelling it does not change the quote.
+
+## What Flexprice creates in HubSpot for a draft subscription
+
+### HubSpot quote properties
+
+| HubSpot property | Value |
+|------------------|-------|
+| `hs_title` | `Quote for Subscription <subscription_id>` |
+| `hs_expiration_date` | 30 days after the quote is created |
+| `hs_status` | `DRAFT`, set as the last step. Not set when the subscription has no active fixed-price line items; see [Publishing the HubSpot quote](#publishing-the-hubspot-quote) |
+
+Flexprice associates the quote with:
+
+- **The deal** in the customer's `hubspot_deal_id` metadata.
+- **The contact** in the customer's `hubspot_contact_id` metadata, when it is set.
+- **The first quote template** HubSpot returns for your account.
+
+<Note>
+  HubSpot only publishes quotes that have a template. If your account has no quote templates, Flexprice creates the quote without one, and you pick a template in HubSpot before publishing.
+</Note>
+
+### HubSpot quote line items
+
+Flexprice adds one HubSpot line item for each subscription line item that has a fixed price and is active when the quote is created. Usage-based line items are not added.
+
+| HubSpot property | Value |
+|------------------|-------|
+| `name` | The line item's display name |
+| `price` | The price's `amount` |
+| `quantity` | The line item's quantity |
+| `amount` | `price` multiplied by `quantity` |
+| `recurringbillingfrequency` | The subscription's billing period: `weekly`, `monthly`, `quarterly`, or `annually` |
+| `description` | The display name followed by `(FIXED pricing)` |
+
+These quote line items are separate from the deal line items that [deal sync](/integrations/hubspot/deal-sync) manages. If one line item fails, Flexprice still adds the others.
+
+<Warning>
+  Flexprice maps only the weekly, monthly, quarterly, and annual billing periods to HubSpot billing frequencies. For subscriptions billed daily or half-yearly it sends Flexprice's own value (`DAILY` or `HALF_YEARLY`), which HubSpot does not accept, so their line items are not added to the quote.
+</Warning>
+
+<Note>
+  Every line item gets the subscription's billing period as its frequency, including one-time charges such as setup fees, so HubSpot shows them as recurring.
+</Note>
+
+## Publishing the HubSpot quote
+
+The quote arrives in HubSpot as a draft on the customer's deal. Open it in HubSpot, check the template, line items, and expiration date, then publish and send it from HubSpot.
+
+<Warning>
+  If the subscription has no active fixed-price line items, Flexprice stops after creating the quote and never sets `hs_status` to `DRAFT`. The same happens if that final update fails. HubSpot then keeps the quote in its Minimal state: the quote is listed in HubSpot's quotes tool, but it cannot be edited or published.
+</Warning>
+
+To make such a quote editable, set its status to `DRAFT` through HubSpot's API with your private app's access token, then add line items in HubSpot. You can also delete the quote and create a new one in HubSpot.
+
+```bash
+curl -X PATCH "https://api.hubapi.com/crm/v3/objects/quotes/<QUOTE_ID>" \
+  -H "Authorization: Bearer <PRIVATE_APP_ACCESS_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{ "properties": { "hs_status": "DRAFT" } }'
+```
+
+Flexprice does not track the quote's status. When the customer accepts, activate the draft subscription in Flexprice yourself. Activating a draft does not start a [deal sync](/integrations/hubspot/deal-sync); the next quantity change or add-on on the subscription does.
+
+## Troubleshooting HubSpot quote sync
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| No quote is created | The **Quotes** toggle is off, the subscription was not created as a draft, or the customer has no `hubspot_deal_id` | Turn on the toggle, and check the customer's metadata. Customers linked by email need the key added by hand. |
+| The quote cannot be published | The account had no quote template when the quote was created | Select a template on the quote in HubSpot |
+| The quote cannot be edited in HubSpot | The subscription had no active fixed-price line items, so Flexprice never set `hs_status` to `DRAFT` and HubSpot kept the quote in its Minimal state | Set `hs_status` to `DRAFT` as shown in [Publishing the HubSpot quote](#publishing-the-hubspot-quote), or delete the quote and create it in HubSpot |
+| The quote has fewer line items than the subscription | Usage-based line items are skipped, and line items with an unsupported billing period fail | Add the missing items to the quote in HubSpot |
+| The quote is not associated with the contact | The customer has no `hubspot_contact_id` in its metadata | Associate the contact in HubSpot, or add the key to the customer's metadata before creating the next draft |
