@@ -153,7 +153,6 @@ Selecting a row opens **Grants**, the ledger of windows behind that number.
 | Active | Open now, with quota left |
 | Exhausted | Quota reached. Hover the pill for the moment it was crossed. |
 | Closed | The window ended without the quota being reached |
-| Scheduled | The window starts later. Only an allowance that resets **every billing period** with **Additive** stacking is written ahead of time, so this appears when such an allowance is added with an effective date in the future, or on a subscription that has not started. An allowance on an hourly, daily or weekly cadence opens each window from usage, so it never shows this. |
 
 ### Reading the Same Thing Over the API
 
@@ -165,7 +164,7 @@ Selecting a row opens **Grants**, the ledger of windows behind that number.
 | `remaining` | What is left. Absent on an unlimited window, where there is no ceiling to measure against. |
 | `valid_from`, `valid_to` | The window boundaries |
 | `status` | `active` or `exhausted` |
-| `is_active` | Whether the window is open right now, decided by the server's clock. A window whose `valid_from` is still ahead reports `false`: it is scheduled, not closed. |
+| `is_active` | Whether the window is open right now, decided by the server's clock rather than the caller's. |
 | `quota_crossed_at` | When usage first reached the quota. Absent while the window still has room, and on an unlimited window. Overage is billed from this timestamp, so this answers "when did it run out", which `valid_to` does not. |
 | `unlimited` | `true` when the window has no ceiling |
 
