@@ -195,17 +195,11 @@ Each grant-backed feature in the response carries its grant config and a `grant_
 | `quota_crossed_at` | When usage first reached the quota. Absent while the window still has room, and on an unlimited window. Overage is billed from this timestamp, so this answers "when did it run out", which `valid_to` does not. |
 | `unlimited` | `true` when the window has no ceiling |
 
-<Note>
-The response returns the most recent windows for the current billing period, capped at three per entitlement. An hourly allowance on a monthly cycle produces hundreds of windows, and a reader wants the live one and what led to it.
-</Note>
+Only the current billing period is returned, capped at the three most recent windows per entitlement.
 
-For a **parallel** feature, the scalar figures cannot describe several independent budgets at once, so the response also carries a `buckets` array: one entry per budget, each with its own quota, cadence and measure. Read those instead of `total_limit` when `buckets` is present.
+A **parallel** feature also carries a `buckets` array, one entry per budget with its own quota, cadence and measure. Read those instead of `total_limit` when `buckets` is present.
 
-<Note>
-Allowances are listed per subscription, not merged. A customer holding the same feature on two subscriptions has two sets of windows, and both appear under that feature. They are genuinely separate budgets, so adding them together would suggest a shared pool that does not exist. Use `entitlement_id` on each allowance to tell them apart.
-
-Inherited subscriptions carry no allowances of their own. Usage on those is attributed to the parent, as described in [customer hierarchy](/docs/subscriptions/customer-hierarchy).
-</Note>
+Allowances are listed per subscription rather than merged, so a customer holding one feature on two subscriptions sees two sets of windows. Tell them apart with `entitlement_id`. Inherited subscriptions carry none of their own; their usage belongs to the [parent](/docs/subscriptions/customer-hierarchy).
 
 ## Aggregation Modes
 
