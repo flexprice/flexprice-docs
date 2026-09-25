@@ -1,0 +1,78 @@
+---
+title: "HubSpot Customer Sync"
+description: "How Flexprice creates or links a customer for each contact on a HubSpot deal"
+---
+
+Customer sync turns the contacts on your HubSpot deals into Flexprice customers. When HubSpot reports that a deal was won, or created if you subscribe to that event, Flexprice reads every contact associated with the deal and creates or links one Flexprice customer per contact. Customer sync runs one way: Flexprice never creates or updates contacts in HubSpot.
+
+## When HubSpot customer sync runs
+
+Customer sync starts when HubSpot sends a deal event to the Flexprice webhook URL. Set up the subscriptions as described in [Step 4 of the connection setup](/integrations/hubspot/connection-setup#step-4-subscribe-hubspot-to-deal-events).
+
+| HubSpot event | Result |
+|---------------|--------|
+| The deal stage changes to `closedwon` | Flexprice imports the deal's contacts |
+| The deal stage changes to any other stage | Ignored |
+| A deal is created (only with the optional **Created** subscription) | Flexprice imports the deal's contacts |
+
+- **No toggle controls customer sync.** It runs whenever a verified deal event arrives. To stop it, pause or delete the deal subscriptions in your HubSpot app.
+- **Only contacts are imported.** Companies associated with the deal are not.
+- **A deal with no contacts creates nothing.**
+- **A deal with several contacts creates several customers**, one per contact, all carrying the same deal ID.
+
+## How Flexprice matches HubSpot contacts to customers
+
+Flexprice checks each contact on the deal in this order:
+
+1. **Already linked.** If a Flexprice customer is already linked to the contact, Flexprice skips it. The customer keeps the deal ID of the deal that first imported it.
+2. **Same email.** If a Flexprice customer has the contact's email address, Flexprice links that customer to the contact and leaves the customer record unchanged.
+3. **New customer.** Otherwise, Flexprice creates a customer from the contact, as described in the next section.
+
+<Warning>
+  A customer linked by email does not get the `hubspot_deal_id` or `hubspot_contact_id` metadata keys. [Deal sync](/integrations/hubspot/deal-sync) and [quote sync](/integrations/hubspot/quote-sync) read the deal ID from `hubspot_deal_id` and skip customers without it. To include such a customer, add `hubspot_deal_id` (the HubSpot deal's record ID) and `hubspot_contact_id` to the customer's metadata. [Invoice sync](/integrations/hubspot/invoice-sync) works for these customers without any change.
+</Warning>
+
+## HubSpot contact fields copied to Flexprice customers
+
+A customer created from a HubSpot contact gets these values:
+
+| Flexprice customer field | Value from HubSpot |
+|--------------------------|--------------------|
+| `external_id` | The contact's record ID |
+| `name` | The contact's `firstname` and `lastname`, joined with a space. Falls back to `email` when both are empty. |
+| `email` | `email` |
+| `address_line1` | `address` |
+| `address_city` | `city` |
+| `address_state` | `state` |
+| `address_postal_code` | `zip` |
+| `address_country` | `country` |
+| `metadata.hubspot_contact_id` | The contact's record ID |
+| `metadata.hubspot_deal_id` | The record ID of the deal that triggered the import |
+| `metadata.source` | `hubspot` |
+
+<Warning>
+  Flexprice accepts only two-letter ISO 3166-1 country codes, such as `US` or `IN`, for `address_country`. HubSpot's `country` contact property is free text, so a value like `United States` makes the customer creation fail and the contact is not imported. Store two-letter codes in the contact's country property, or leave it empty.
+</Warning>
+
+Later changes to the contact in HubSpot are not copied to the Flexprice customer.
+
+## Finding the HubSpot contact linked to a customer
+
+Customers created by customer sync carry the contact ID in `metadata.hubspot_contact_id`. For any linked customer, including customers linked by email, call [Get entity integration mappings](/api-reference/integrations/get-entity-integration-mappings):
+
+```bash
+curl "https://api.cloud.flexprice.io/v1/integrations/mappings?entity_type=customer&entity_id=<CUSTOMER_ID>" \
+  -H "x-api-key: <API_KEY>" \
+  -H "X-Environment-ID: <ENVIRONMENT_ID>"
+```
+
+The HubSpot link is the item with `provider_type` set to `hubspot`. Its `provider_entity_id` is the HubSpot contact ID, and its `metadata.hubspot_deal_id` is the deal that created the link.
+
+## Troubleshooting HubSpot customer sync
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| A contact on a won deal is not imported | Its `country` is not a two-letter code, or its email address is invalid | Fix the contact in HubSpot, then move the deal out of **Closed won** and back to send the event again |
+| No contacts are imported for any deal | The deal subscription is missing, or the client secret does not match | See [Troubleshooting the HubSpot connection](/integrations/hubspot/connection-setup#troubleshooting-the-hubspot-connection) |
+| A customer exists, but deal sync and quote sync skip it | The customer was linked by email, so it has no `hubspot_deal_id` | Add `hubspot_deal_id` and `hubspot_contact_id` to the customer's metadata |
+| A returning contact's new deal gets no line items or quotes | The customer keeps the deal ID of its first deal | Set `hubspot_deal_id` in the customer's metadata to the new deal's record ID. Line items that already synced stay on the first deal; to move them, see [Moving synced line items to a different HubSpot deal](/integrations/hubspot/deal-sync#moving-synced-line-items-to-a-different-hubspot-deal) |

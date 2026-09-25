@@ -1,0 +1,103 @@
+---
+title: "HubSpot Deal Sync"
+description: "How Flexprice copies subscription line items onto the HubSpot deal and sets the deal amount from its annual contract value"
+---
+
+Deal sync keeps the HubSpot deal that a customer came from in step with the customer's subscription. Flexprice copies the subscription's fixed-price line items onto the deal as HubSpot line items, then sets the deal amount from the annual contract value that HubSpot calculates. Turn deal sync on with the **Deals** toggle on the [HubSpot connection](/integrations/hubspot/connection-setup), or with `sync_config.deal.outbound` in the API.
+
+## When HubSpot deal sync runs
+
+Deal sync needs the **Deals** toggle on, and a customer with `hubspot_deal_id` in its metadata. Customers created by [customer sync](/integrations/hubspot/customer-sync) have it.
+
+| Flexprice event | Starts a deal sync |
+|-----------------|--------------------|
+| A subscription is created, not as a draft | Yes |
+| A line item quantity changes | Yes |
+| An add-on is added, one at a time or in bulk | Yes |
+| A checkout completes for a subscription change or an add-on | Yes |
+| A draft subscription is activated | No |
+| A subscription is cancelled | No |
+
+Each run works from the subscription's current line items, so a later run picks up changes made in between. For example, after you activate a draft subscription, the next quantity change or add-on syncs all of its fixed-price line items.
+
+## How deal sync updates HubSpot line items
+
+- **Only fixed-price line items sync.** Usage-based line items do not appear on the deal.
+- **Synced line items are updated in place.** Flexprice remembers which HubSpot line item belongs to each subscription line item and updates it on every run.
+- **New line items are created** and associated with the deal.
+- **Ended line items stay on the deal.** A line item that ended before the current billing period keeps its end date in HubSpot, so the deal keeps its history.
+- **Failures are retried.** Each line item syncs on its own, so one failure does not block the others. A run that fails is retried up to three times.
+
+### HubSpot deal line item properties
+
+| HubSpot property | Value |
+|------------------|-------|
+| `name` | The line item's display name |
+| `price` | The price's `amount` |
+| `quantity` | The line item's quantity |
+| `amount` | `price` multiplied by `quantity` |
+| `discount` | `0` |
+| `recurringbillingfrequency` | The subscription's billing period: `weekly`, `monthly`, `quarterly`, or `annually` |
+| `hs_recurring_billing_start_date` | The line item's start date, as `YYYY-MM-DD` in UTC |
+| `hs_recurring_billing_end_date` | The line item's end date, only when it has one |
+| `description` | The display name followed by `(FIXED pricing)` |
+
+<Warning>
+  Flexprice maps only the weekly, monthly, quarterly, and annual billing periods to HubSpot billing frequencies. For subscriptions billed daily or half-yearly it sends Flexprice's own value (`DAILY` or `HALF_YEARLY`), which HubSpot does not accept, so their line items do not sync.
+</Warning>
+
+<Note>
+  Every line item gets the subscription's billing period as its frequency, including one-time charges such as setup fees, so HubSpot counts them as recurring revenue.
+</Note>
+
+## How deal sync sets the HubSpot deal amount
+
+After the line items sync, Flexprice waits 10 seconds for HubSpot to recalculate the deal's annual contract value (`hs_acv`). It then reads `hs_acv` and writes it to the deal's `amount`. If HubSpot has not calculated `hs_acv` yet, the amount stays as it was until the next deal sync.
+
+If any line item fails to sync after all retries, Flexprice skips the amount update for that run.
+
+## What HubSpot deal sync leaves unchanged
+
+- **Deal stage and other deal properties.** Flexprice only writes `amount`.
+- **Edits made in HubSpot.** Flexprice does not read line items back. The next deal sync overwrites the properties in the table above with Flexprice's values.
+- **Line items deleted in HubSpot.** Flexprice does not recreate them on its own. Every later deal sync for that subscription fails for the deleted line item and skips the amount update, until you remove the link as described in the next section.
+- **Cancellations.** Cancelling a subscription does not update or remove the deal's line items.
+
+## Recreating a HubSpot line item deleted from a deal
+
+Flexprice links each subscription line item to the HubSpot line item it created. To have Flexprice create a new HubSpot line item, remove that link with [Delink integration mapping](/api-reference/integrations/delink-integration-mapping), passing the Flexprice subscription line item ID:
+
+```bash
+curl -X DELETE https://api.cloud.flexprice.io/v1/integrations/link \
+  -H "x-api-key: <API_KEY>" \
+  -H "X-Environment-ID: <ENVIRONMENT_ID>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "entity_type": "subscription_line_item",
+    "entity_id": "<SUBSCRIPTION_LINE_ITEM_ID>",
+    "provider_type": "hubspot"
+  }'
+```
+
+The next deal sync for the subscription creates a new line item on the deal and links it.
+
+## Moving synced line items to a different HubSpot deal
+
+Deal sync associates a line item with a deal only when it creates the HubSpot line item. After that it updates the same HubSpot line item on every run. So changing the customer's `hubspot_deal_id` does not move line items that already synced: they stay on the old deal, and only line items created afterwards go to the new one. The deal amount is then read from the new deal, which is missing the old items.
+
+To move a subscription's line items to another deal:
+
+1. Set `hubspot_deal_id` in the customer's metadata to the new deal's record ID.
+2. Remove the HubSpot link of each fixed-price line item on the subscription, with the `DELETE /v1/integrations/link` call shown in the previous section. The line item IDs are in the subscription's `line_items`.
+3. The next deal sync for the subscription, started by a quantity change, an add-on, or a completed checkout, creates the line items on the new deal.
+4. In HubSpot, delete the old line items from the previous deal if they should not stay there. Flexprice no longer tracks them once their links are removed.
+
+## Troubleshooting HubSpot deal sync
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| The deal has no line items | The **Deals** toggle is off, the customer has no `hubspot_deal_id`, the subscription only has usage-based prices, or it was activated from a draft with no change since | Turn on the toggle and check the customer's metadata. For an activated draft, the next quantity change or add-on starts the sync. |
+| Line items appear on the wrong deal | The customer's `hubspot_deal_id` still points at an earlier deal | Changing `hubspot_deal_id` alone leaves synced line items on the old deal. Follow [Moving synced line items to a different HubSpot deal](#moving-synced-line-items-to-a-different-hubspot-deal) |
+| No line items sync for a subscription | Its billing period is daily or half-yearly | Use a weekly, monthly, quarterly, or annual billing period |
+| The deal amount does not change | HubSpot had not calculated `hs_acv` after 10 seconds, or a line item failed to sync | Check the line items on the deal. The next deal sync tries the amount update again. |
+| Deal sync fails every time for one subscription | A synced line item was deleted in HubSpot | Remove the link as described in [Recreating a HubSpot line item deleted from a deal](#recreating-a-hubspot-line-item-deleted-from-a-deal) |
