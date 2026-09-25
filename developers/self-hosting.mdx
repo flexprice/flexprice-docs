@@ -1,0 +1,68 @@
+---
+title: "Self-hosting"
+description: "Run the Flexprice community edition on your own infrastructure: where the guides are and what a developer needs to know first"
+---
+
+Flexprice is open source under a community edition you can run yourself. The deployment guides live in the Documentation tab; this page is the developer's entry point to them and the differences that matter when you build against a self-hosted instance instead of Flexprice Cloud.
+
+## Self-hosting guides
+
+<CardGroup cols={2}>
+  <Card icon="/images/developers/icons/open-source.svg" title="Self-hosting guide" href="/docs/getting-started/self-hosting-guide">
+    Docker Compose on one machine: Postgres, ClickHouse, Kafka, Temporal, and the API.
+  </Card>
+  <Card icon="/images/integrations/logos/aws-marketplace.svg" title="Self-hosting on AWS" href="/docs/getting-started/self-hosting-aws">
+    A production layout on AWS with managed data stores.
+  </Card>
+  <Card icon="/images/developers/icons/window.svg" title="Frontend" href="/docs/getting-started/self-hosting-frontend">
+    Build and serve the dashboard against your API.
+  </Card>
+  <Card icon="/images/developers/icons/gear.svg" title="Configuration" href="/docs/getting-started/configuration">
+    Every environment variable, including webhook and Svix settings.
+  </Card>
+</CardGroup>
+
+The [architecture page](/docs/getting-started/architecture) explains what each service does and how events flow through them.
+
+## What self-hosting changes for your code
+
+| Concern | Flexprice Cloud | Self-hosted |
+| --- | --- | --- |
+| Base URL | `https://us.api.flexprice.io/v1` or `https://api.cloud.flexprice.io/v1` | Your host, for example `http://localhost:8080/v1`. Pass it to the SDK's server URL, the CLI's `--base-url`, and the MCP server's `--server-url` |
+| API keys | Created in the dashboard | Same, in your dashboard; a local seed key is documented in the [self-hosting guide](/docs/getting-started/self-hosting-guide#api-documentation) |
+| Webhooks | Svix delivery with signatures and long retries | Native delivery by default: no signature, short retry window. Enable Svix in configuration for parity. See [Signature verification](/developers/webhooks/signature-verification#signature-verification-on-self-hosted-deployments) |
+| OpenAPI spec | Published on this site | `docs/swagger/swagger-3-0.json` in the repository, matching your checked-out version |
+| Status | [status.flexprice.io](https://status.flexprice.io) | Poll `GET /health` on your deployment |
+| Version | Upgraded by Flexprice | You pull a release. Check the [changelog](/docs/changelog) for migrations |
+
+## Pointing each tool at your instance
+
+<CodeGroup>
+```sh CLI
+flexprice login --base-url http://localhost:8080/v1 --api-key "$KEY"
+```
+
+```json MCP server
+{
+  "mcpServers": {
+    "flexprice": {
+      "command": "npx",
+      "args": ["-y", "@flexprice/mcp-server", "start",
+               "--server-url", "http://localhost:8080/v1",
+               "--api-key-auth", "YOUR_API_KEY"]
+    }
+  }
+}
+```
+
+```typescript SDK
+const flexprice = new Flexprice({
+  serverURL: "http://localhost:8080/v1",
+  apiKeyAuth: process.env.FLEXPRICE_API_KEY,
+});
+```
+</CodeGroup>
+
+## Contributing to Flexprice open source
+
+Fixes and features for the backend, dashboard, and these docs are welcome. Start with the [contributing guide](/docs/contributing-guide/introduction) and the [backend setup](/docs/contributing-guide/backend-setup).

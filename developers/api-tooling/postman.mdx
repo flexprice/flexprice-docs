@@ -1,0 +1,58 @@
+---
+title: "Postman collection"
+description: "Import the Flexprice OpenAPI document into Postman and configure an environment for each region and API key"
+---
+
+Postman imports OpenAPI documents directly, so the Flexprice collection is the spec itself. Importing it gives you a folder per resource, a request per endpoint with its body schema filled in, and a place to keep separate environments for sandbox and production.
+
+## Importing the Postman collection
+
+<Steps>
+  <Step title="Download the spec">
+    ```sh
+    curl -sSL https://docs.flexprice.io/api-reference/openapi.json -o flexprice-openapi.json
+    ```
+
+    See [OpenAPI spec](/developers/api-tooling/openapi-spec) for the other sources.
+  </Step>
+  <Step title="Import into Postman">
+    Click **Import** in the top left, drop `flexprice-openapi.json` on the dialog, and choose **Postman Collection** as the import target. Postman creates a collection named **Flexprice API** with one folder per tag.
+  </Step>
+  <Step title="Create an environment">
+    Open **Environments**, click **+**, and add two variables:
+
+    | Variable | Value |
+    | --- | --- |
+    | `baseUrl` | `https://us.api.flexprice.io/v1` or `https://api.cloud.flexprice.io/v1` |
+    | `apiKey` | Your API key for that environment, stored as a **secret** type |
+
+    Create one Postman environment per Flexprice environment (sandbox and production) so switching is one dropdown and a production key never sits in a sandbox request.
+  </Step>
+  <Step title="Set the auth on the collection">
+    Open the collection, go to **Authorization**, choose **API Key**, and set:
+
+    | Field | Value |
+    | --- | --- |
+    | Key | `x-api-key` |
+    | Value | `{{apiKey}}` |
+    | Add to | Header |
+
+    Every request inherits it. If the import set the base URL as a literal, replace it with `{{baseUrl}}` in the collection **Variables** tab.
+  </Step>
+  <Step title="Send a request">
+    Open **Customers > Query customers**, send it with an empty JSON body `{}`, and confirm you get an `items` array back.
+  </Step>
+</Steps>
+
+## Pointing Postman at a self-hosted instance
+
+Point `baseUrl` at your own deployment, for example `http://localhost:8080/v1`, and use a key created in that deployment. The [self-hosting guide](/docs/getting-started/self-hosting-guide#api-documentation) covers the local key.
+
+## Keeping the Postman collection current
+
+The API gains endpoints between SDK releases. Re-import the spec when the [changelog](/docs/changelog) lists API changes and choose **Replace** so your environments and auth settings are kept.
+
+<CardGroup cols={2}>
+  <Card icon="/images/developers/icons/openapi.svg" title="OpenAPI spec" href="/developers/api-tooling/openapi-spec" />
+  <Card icon="/images/developers/icons/cli.svg" title="Prefer a terminal? Use the CLI" href="/docs/cli/quickstart" />
+</CardGroup>

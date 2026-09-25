@@ -1,0 +1,100 @@
+---
+title: "Troubleshooting hub"
+description: "Start here when a Flexprice integration misbehaves: the symptom-to-cause table, the diagnostic tools, and where each deep-dive lives"
+---
+
+Most integration problems fall into a handful of shapes, and each has a fast check. Find your symptom below, run the check, and follow the link for the full write-up.
+
+## What symptom are you seeing?
+
+| Symptom | Most likely cause | Check |
+| --- | --- | --- |
+| `401 Unauthorized` on every request | Missing or expired key, or a key from the other region | Run the auth check below against both base URLs |
+| `403 Forbidden` on some requests | The key's role lacks the permission | [API key roles](/docs/rbac/manage-api#getting-403-forbidden-errors) |
+| `404` on every request | Base URL is missing `/v1` or has a trailing slash | Compare against `https://us.api.flexprice.io/v1` |
+| `404` on one object | Wrong ID, or the object lives in another environment | Keys are bound to one environment; sandbox IDs are invisible to a production key |
+| `400` with a validation message | A required field is missing or an enum value is wrong | Read `error.message`; it names the field. [Error responses](/api-reference/error-responses) |
+| `409 Conflict` | Two writes raced, or the object already exists | Retry the read, or look the object up. Safe to retry |
+| `429 Too Many Requests` | Rate limit | Back off with jitter; batch events with `POST /events/bulk` |
+| Event returns `202` but never shows up | `event_name` does not match a feature exactly, or `external_customer_id` matches no customer | [Usage events not showing up](/docs/event-ingestion/troubleshooting#1-events-not-appearing-in-dashboard), and subscribe to `event.rejected` |
+| Usage number is wrong | Aggregation field name or type mismatch | [Wrong aggregation values](/docs/event-ingestion/troubleshooting#2-wrong-aggregation-values) |
+| Usage shows but the invoice has no charge | Feature is not priced in the plan, or the customer has no subscription | [No charges in billing](/docs/event-ingestion/troubleshooting#3-no-charges-in-billing) |
+| Webhook never arrives | Endpoint not subscribed to that event, or registered in the other environment | Dashboard **Webhooks > Logs**; [Set up an endpoint](/developers/webhooks/set-up-an-endpoint) |
+| Webhook arrives, signature check fails | Handler verifies a re-serialized body instead of the raw bytes | [Signature verification](/developers/webhooks/signature-verification) |
+| Webhook delivered more than once | At-least-once delivery | Dedupe on `svix-id`; [Retries and ordering](/developers/webhooks/retries-and-ordering) |
+| CLI says `command not found` | Install directory not on `PATH` | [CLI install](/docs/cli/overview#installing-the-flexprice-cli) |
+| CLI exits `3` | Authentication failure | `flexprice whoami`; [CLI authentication](/docs/cli/authentication) |
+| MCP server does not appear in the client | Config not saved, or the client was not restarted | [MCP troubleshooting](/docs/connect/mcp-server#troubleshooting-the-mcp-server) |
+| UI component renders unstyled | Stylesheet not imported, or theme variables set on an ancestor | [Install the UI kit](/developers/frontend/install) |
+
+The auth check, with your key in `$KEY`:
+
+```sh
+curl -s -X POST "https://us.api.flexprice.io/v1/customers/search" \
+  -H "x-api-key: $KEY" -H "Content-Type: application/json" -d '{}'
+```
+
+A `200` with an `items` array means the key and region match. Swap in `https://api.cloud.flexprice.io/v1` if you get `401`.
+
+## Tools that show what happened
+
+<CardGroup cols={2}>
+  <Card icon="/images/developers/icons/debugger.svg" title="Event Debugger" href="/docs/event-ingestion/event-debugger">
+    Every ingested event with how it matched a feature and aggregated. The first stop for any metering question.
+  </Card>
+  <Card icon="/images/developers/icons/logs.svg" title="Webhook logs" href="/developers/webhooks/set-up-an-endpoint#watching-webhook-deliveries-in-the-dashboard">
+    Each delivery attempt, the response your endpoint returned, and a replay button.
+  </Card>
+  <Card icon="/images/developers/icons/terminal-debug.svg" title="CLI with --debug" href="/docs/cli/global-flags#flags-for-automation-and-scripting">
+    Dumps the exact request and response with secrets redacted. Fastest way to see what the API actually received.
+  </Card>
+  <Card icon="/images/developers/icons/monitoring.svg" title="Ingestion monitoring" href="/docs/event-ingestion/monitoring">
+    Throughput and rejection counts over time, to tell a code bug from a traffic change.
+  </Card>
+</CardGroup>
+
+## Run a five-minute diagnostic
+
+<Steps>
+  <Step title="Confirm the key and region">
+    ```sh
+    flexprice whoami
+    ```
+
+    Or send any request with `--debug`. A `401` here ends the investigation: the key is wrong for this region or environment.
+  </Step>
+  <Step title="Confirm the object exists where you think">
+    ```sh
+    flexprice customers by-external-id "$EXTERNAL_ID" --output json
+    ```
+
+    Exit code `4` means the customer is not in this environment.
+  </Step>
+  <Step title="Send one event and watch it">
+    ```sh
+    flexprice events ingest --event_name="$NAME" --external_customer_id="$EXTERNAL_ID" --output json
+    ```
+
+    Open the Event Debugger and find it. If it is there but unmatched, the event name or customer is wrong. If it is matched but the number is off, the aggregation property is wrong.
+  </Step>
+  <Step title="Check the invoice preview">
+    ```sh
+    flexprice invoices preview --subscription_id="$SUB_ID" --output json
+    ```
+
+    This shows what the next invoice would charge right now. A missing line item means the feature is not priced in the plan.
+  </Step>
+</Steps>
+
+## Deeper troubleshooting guides
+
+- [Usage events troubleshooting](/docs/event-ingestion/troubleshooting): the long version of every metering problem
+- [Validating events](/docs/event-ingestion/validating-events): what the ingest endpoint checks and what it does not
+- [Error responses](/api-reference/error-responses): every status code and the error body shape
+- [API key troubleshooting](/docs/rbac/manage-api#troubleshooting): keys that stopped working, lost keys, and role errors
+- [MCP server troubleshooting](/docs/connect/mcp-server#troubleshooting-the-mcp-server): connection, URL, and Docker problems
+- [Self-hosting troubleshooting](/docs/getting-started/self-hosting-guide#troubleshooting): containers, migrations, and Kafka
+
+## Still stuck?
+
+Bring the request ID or the `svix-id`, the environment, the region, and the exact time to [support@flexprice.io](mailto:support@flexprice.io) or the [community Slack](https://join.slack.com/t/flexpricecommunity/shared_invite/zt-39uat51l0-n8JmSikHZP~bHJNXladeaQ). Check the [status page](https://status.flexprice.io) first if every request is failing at once.

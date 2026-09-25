@@ -1,0 +1,69 @@
+---
+title: "Agent Skills"
+description: "Give a coding agent a repeatable Flexprice workflow by packaging the CLI, MCP server, and docs as a skill"
+---
+
+An Agent Skill is a folder with a `SKILL.md` file that a coding agent loads when a task matches its description. Claude Code, Cursor, and other agents that follow the [Agent Skills](https://agentskills.io) format read the same file. A Flexprice skill does not add a new API; it tells the agent which existing surface to use for which job, and the conventions your team wants followed.
+
+## What to connect before writing a skill
+
+Before writing a skill, connect the surfaces it will call:
+
+| Surface | What the agent gets | Set up |
+| --- | --- | --- |
+| MCP server | One tool per API operation, scoped with `--scope read`, `write`, or `delete` | [MCP server](/docs/connect/mcp-server) |
+| CLI | Shell commands with JSON output and stable exit codes | [Output and scripting](/docs/cli/output-and-scripting) |
+| Docs as text | The whole documentation set as one file the agent can fetch | `https://docs.flexprice.io/llms-full.txt` |
+| OpenAPI spec | Every endpoint, field, and enum | [OpenAPI spec](/developers/api-tooling/openapi-spec) |
+
+## A minimal Flexprice agent skill
+
+Create `.claude/skills/flexprice/SKILL.md` in your repository (or the equivalent skills directory for your agent):
+
+```markdown
+---
+name: flexprice
+description: Use when the task touches billing, usage metering, plans, customers, subscriptions, wallets, or invoices in Flexprice. Covers reading data, sending usage events, and changing catalog objects.
+---
+
+# Flexprice
+
+## Which surface to use
+
+- Read or list anything: use the Flexprice MCP tools (get_*) if connected, otherwise `flexprice <resource> list --output json`.
+- Send usage events: `flexprice events ingest` with an explicit `--event_id` so retries dedupe.
+- Change catalog or customer data: propose the change, show the exact command, and wait for approval before running any create, update, or delete.
+- Anything without a named command: `flexprice get|post|delete <path>`.
+
+## Rules
+
+- Always pass `--no-input --output json` and read the exit code (3 = auth, 4 = not found, 5 = rate limited).
+- Never pass an API key on the command line. It comes from FLEXPRICE_API_KEY.
+- Never run a destructive action without `--force`, and never add `--force` unless the user asked for that specific deletion.
+- Use the sandbox environment key unless the user names production.
+- Event names are case-sensitive and immutable after creation. Check `flexprice features list` before inventing one.
+
+## Reference
+
+- Docs: https://docs.flexprice.io/llms-full.txt
+- Command list: run `flexprice resources`
+```
+
+## Making the skill safe by construction
+
+The skill text is advice. Enforce the important parts with configuration the agent cannot talk itself out of:
+
+- **Scope the MCP server.** Start it with `--scope read` for exploration and add `write` only for agents that are expected to change data. See [MCP server](/docs/connect/mcp-server#authenticating-the-mcp-server).
+- **Use a sandbox key.** A key is bound to one environment, so a sandbox key cannot touch production.
+- **Use a scoped API key.** Create a key with a read-only role for read-heavy agents. See [Manage API keys](/docs/rbac/manage-api).
+- **Require confirmation in the client.** Most MCP clients can ask a human before running a write tool. Turn that on.
+
+## Extending the skill
+
+Skills grow by adding files next to `SKILL.md`. Useful additions for Flexprice:
+
+- `references/events.md`: the event names and property keys your product emits, so the agent never guesses a meter.
+- `references/plans.md`: your plan lookup keys and what each entitles.
+- `scripts/backfill.sh`: a vetted script the agent runs instead of composing bulk ingestion by hand.
+
+<Card icon="/images/developers/icons/cli.svg" title="CLI output and scripting" href="/docs/cli/output-and-scripting" horizontal={true} />

@@ -1,0 +1,141 @@
+---
+title: "SDK overview"
+description: "Official Flexprice SDKs for Go, Python, and TypeScript: what they share, how to install them, and which to pick"
+---
+
+The Flexprice SDKs are typed clients generated from the same OpenAPI document as the API reference, with hand-written additions where a language needs them (an async event batcher in Go, webhook helpers in every SDK). They cover every public endpoint, retry transient failures once you turn retries on, and map API errors to typed values you can branch on.
+
+<CardGroup cols={3}>
+  <Card icon="/images/developers/icons/go.svg" title="Go" href="https://pkg.go.dev/github.com/flexprice/go-sdk/v2">
+    Go 1.25 or newer. Typed errors and an async event batcher.
+  </Card>
+  <Card icon="/images/developers/icons/python.svg" title="Python" href="https://pypi.org/project/flexprice/">
+    Python 3.10 or newer. Sync and async clients.
+  </Card>
+  <Card icon="/images/developers/icons/typescript.svg" title="TypeScript" href="https://www.npmjs.com/package/@flexprice/sdk">
+    Node.js 18+, Bun, Deno, and edge runtimes.
+  </Card>
+</CardGroup>
+
+| SDK | Package | Requires | Source |
+| --- | --- | --- | --- |
+| Go | `github.com/flexprice/go-sdk/v2` | Go 1.25+ | [flexprice/go-sdk](https://github.com/flexprice/go-sdk) |
+| Python | `flexprice` on PyPI | Python 3.10+ | [flexprice/python-sdk](https://github.com/flexprice/python-sdk) |
+| TypeScript | `@flexprice/sdk` on npm | Node.js 18+, Bun, Deno, modern browsers | [flexprice/javascript-sdk](https://github.com/flexprice/javascript-sdk) |
+
+## Installing a Flexprice SDK
+
+<CodeGroup>
+```bash Go
+go get github.com/flexprice/go-sdk/v2
+```
+
+```bash Python
+pip install flexprice
+```
+
+```bash TypeScript
+npm i @flexprice/sdk
+```
+</CodeGroup>
+
+## Configuring the SDK client
+
+Every SDK takes two values: an API key and a server URL. The key decides the environment. The URL decides the region and must include `/v1` with no trailing slash.
+
+| Setting | Environment variable | Default |
+| --- | --- | --- |
+| API key | `FLEXPRICE_API_KEY` | none, required |
+| Server URL | `FLEXPRICE_API_HOST` | `https://us.api.flexprice.io/v1` |
+
+Use `https://api.cloud.flexprice.io/v1` for tenants in the India region.
+
+<CodeGroup>
+```go Go
+client := flexprice.New(
+	flexprice.WithServerURL(os.Getenv("FLEXPRICE_API_HOST")),
+	flexprice.WithSecurity(os.Getenv("FLEXPRICE_API_KEY")),
+)
+```
+
+```python Python
+from flexprice import Flexprice
+
+client = Flexprice(
+    server_url="https://us.api.flexprice.io/v1",
+    api_key_auth=os.environ["FLEXPRICE_API_KEY"],
+)
+```
+
+```typescript TypeScript
+import { Flexprice } from "@flexprice/sdk";
+
+const flexprice = new Flexprice({
+  serverURL: process.env.FLEXPRICE_API_HOST ?? "https://us.api.flexprice.io/v1",
+  apiKeyAuth: process.env.FLEXPRICE_API_KEY,
+});
+```
+</CodeGroup>
+
+## The same call in each SDK language
+
+Create a customer, then record one usage event for it:
+
+<CodeGroup>
+```go Go
+_, err := client.Customers.CreateCustomer(ctx, types.CreateCustomerRequest{
+	ExternalID: "cust_123",
+	Name:       "Acme",
+})
+
+_, err = client.Events.IngestEvent(ctx, types.IngestEventRequest{
+	EventName:          "api_request",
+	ExternalCustomerID: "cust_123",
+	Properties:         map[string]string{"region": "us-east-1"},
+})
+```
+
+```python Python
+client.customers.create_customer(external_id="cust_123", name="Acme")
+
+client.events.ingest_event(
+    event_name="api_request",
+    external_customer_id="cust_123",
+    properties={"region": "us-east-1"},
+)
+```
+
+```typescript TypeScript
+await flexprice.customers.createCustomer({ externalId: "cust_123", name: "Acme" });
+
+await flexprice.events.ingestEvent({
+  eventName: "api_request",
+  externalCustomerId: "cust_123",
+  properties: { region: "us-east-1" },
+});
+```
+</CodeGroup>
+
+## What every SDK gives you
+
+- **Full coverage.** Customers, plans, prices, features, entitlements, subscriptions, events, invoices, payments, wallets, credit notes, and the rest of the API, as one service per resource on the client.
+- **Retries.** Off by default. Pass a retry config to the client and it retries `429` and `5xx` responses with backoff. Event ingestion is safe to retry because `event_id` dedupes.
+- **Typed errors.** A `404`, `400`, `409`, or `429` surfaces as a value you can inspect rather than a bare string.
+- **Webhook models.** Typed payload models for every webhook event, so a handler can parse the body without hand-written structs. See [Webhooks](/docs/webhook/webhooks).
+- **Field naming.** The API uses `snake_case`. Go and TypeScript expose idiomatic `PascalCase` and `camelCase` fields and convert on the wire. Python keeps `snake_case`.
+
+## Keep SDK keys on the server
+
+The SDKs authenticate with an API key that can read and write your whole environment. Use them from backend code only. For browser and mobile code, generate a customer-scoped [portal session](/docs/customers/customer-portal#generating-a-portal-session) or proxy through your backend. See [Harden client-side access](/developers/frontend/harden-client-access).
+
+## SDK versioning and releases
+
+SDK releases are listed in the [changelog](/docs/changelog) and on each package registry. The SDKs are regenerated when the API changes, so an endpoint added to the API may appear in the reference before it appears in an SDK. Until it does, call it directly with the HTTP client of your choice; the SDK's key and base URL work unchanged.
+
+<Card icon="/images/developers/icons/sdks.svg" title="Using the SDKs" href="/developers/sdks/usage" horizontal={true}>
+  Every SDK task in Go, Python, and TypeScript on one page: events, idempotency, errors, retries, pagination, and webhooks.
+</Card>
+
+<Card icon="/images/developers/icons/react.svg" title="Example app" href="/developers/sdks/example-app" horizontal={true}>
+  A React app that wires the TypeScript SDK end to end: client setup, usage events, and analytics.
+</Card>

@@ -9,7 +9,7 @@ Every command accepts the flags below. They can appear anywhere in the invocatio
 flexprice [global flags] <resource> <action> [command flags]
 ```
 
-## Targeting
+## Flags for account, environment, and endpoint
 
 Which account, environment, and endpoint the command talks to.
 
@@ -26,7 +26,7 @@ See [Authentication](/docs/cli/authentication) for how these resolve against eac
   A key passed with `--api-key` does not identify a region on its own. Pair it with `--region` or `--base-url`, or the command stops and tells you rather than guessing.
 </Warning>
 
-## Output
+## Flags for output format and verbosity
 
 How results are formatted and how much commentary you get.
 
@@ -39,7 +39,7 @@ How results are formatted and how much commentary you get.
 
 Colour is also disabled automatically when `NO_COLOR` is set, when `TERM=dumb`, and whenever stderr is not a terminal — so CI logs stay clean without passing anything.
 
-## Pagination
+## Flags for pagination
 
 | Flag | Description |
 | --- | --- |
@@ -50,7 +50,7 @@ Colour is also disabled automatically when `NO_COLOR` is set, when `TERM=dumb`, 
   For bulk export, combine `--output json` with `--limit` rather than reaching for `--all` — `--all` prints only the final page, which is rarely what an export wants.
 </Note>
 
-## Automation
+## Flags for automation and scripting
 
 | Flag | Description |
 | --- | --- |
@@ -59,14 +59,14 @@ Colour is also disabled automatically when `NO_COLOR` is set, when `TERM=dumb`, 
 
 `--no-input` is what you want in a non-interactive environment where a hung prompt would stall the job: instead of waiting for an answer nobody can give, the command fails immediately and tells you which flag would have supplied it.
 
-## Informational
+## Flags for help and version
 
 | Flag | Description |
 | --- | --- |
 | `-h, --help` | Help for the command. Works at every level: `flexprice customers create --help`. |
 | `-v, --version` | Print the CLI version and the embedded spec build. |
 
-## Not global: `--force`
+## Why `--force` is not a global flag
 
 `--force` skips the confirmation prompt on destructive actions, but it is declared **per command**, not on the root. It has to come after the resource and action:
 
@@ -77,13 +77,13 @@ flexprice --force customers delete cust_123     # wrong
 
 Passing it earlier makes the CLI read the resource name as the flag's value and report a confusing error about the action instead.
 
-## Next steps
+## Next steps after CLI global flags
 
 <CardGroup cols={2}>
-  <Card icon="code" title="Output & scripting" href="/docs/cli/output-and-scripting">
+  <Card icon="/images/developers/icons/code.svg" title="Output & scripting" href="/docs/cli/output-and-scripting">
     Exit codes and the stdout/stderr contract.
   </Card>
-  <Card icon="key" title="Authentication" href="/docs/cli/authentication">
+  <Card icon="/images/developers/icons/key.svg" title="Authentication" href="/docs/cli/authentication">
     Profiles, regions, and credential precedence.
   </Card>
 </CardGroup>

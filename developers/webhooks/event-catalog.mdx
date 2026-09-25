@@ -1,0 +1,144 @@
+---
+title: "Event catalog"
+description: "Every webhook event Flexprice can send, grouped by resource, with a link to the payload schema for each"
+mode: "wide"
+---
+
+Flexprice sends a webhook for each of the events below. Each event name links to its payload schema in the API reference, where the object under the event's key (`invoice`, `payment`, `subscription`, and so on) is documented field by field. Subscribe to events per endpoint in the dashboard under **Developers > Webhooks**.
+
+Every payload has the same envelope:
+
+```json
+{
+  "event_type": "invoice.update.finalized",
+  "invoice": { ... }
+}
+```
+
+The SDKs export the event names as an enum and a typed model per payload. See [Parsing webhook payloads with the SDK](/developers/sdks/usage#parsing-webhook-payloads-with-the-sdk) for Go, Python, and TypeScript examples.
+
+## Customer events
+
+| Event | Fires when |
+| --- | --- |
+| [`customer.created`](/api-reference/webhook-events/customercreated) | A new customer is created |
+| [`customer.updated`](/api-reference/webhook-events/customerupdated) | A customer is updated |
+| [`customer.deleted`](/api-reference/webhook-events/customerdeleted) | A customer is deleted |
+
+## Subscription events
+
+| Event | Fires when |
+| --- | --- |
+| [`subscription.created`](/api-reference/webhook-events/subscriptioncreated) | A new subscription is created |
+| [`subscription.draft.created`](/api-reference/webhook-events/subscriptiondraftcreated) | A new draft subscription is created |
+| [`subscription.activated`](/api-reference/webhook-events/subscriptionactivated) | A draft subscription is activated |
+| [`subscription.updated`](/api-reference/webhook-events/subscriptionupdated) | A subscription is updated (quantity, billing anchor, metadata) |
+| [`subscription.paused`](/api-reference/webhook-events/subscriptionpaused) | A subscription is paused |
+| [`subscription.cancelled`](/api-reference/webhook-events/subscriptioncancelled) | A subscription is cancelled |
+| [`subscription.resumed`](/api-reference/webhook-events/subscriptionresumed) | A paused subscription is resumed |
+| [`subscription.plan_changed`](/api-reference/webhook-events/subscriptionplan_changed) | A subscription moves to another plan in place |
+| [`subscription.phase.created`](/api-reference/webhook-events/subscriptionphasecreated) | A new subscription phase is created |
+| [`subscription.phase.updated`](/api-reference/webhook-events/subscriptionphaseupdated) | A subscription phase is updated |
+| [`subscription.phase.deleted`](/api-reference/webhook-events/subscriptionphasedeleted) | A subscription phase is deleted |
+| [`subscription.spend.threshold_reached`](/api-reference/webhook-events/subscriptionspendthreshold_reached) | Subscription spend crosses a threshold |
+| [`subscription.spend.threshold_recovered`](/api-reference/webhook-events/subscriptionspendthreshold_recovered) | Subscription spend recovers |
+| [`subscription.line_item_spend.threshold_reached`](/api-reference/webhook-events/subscriptionline_item_spendthreshold_reached) | Line item spend crosses a threshold |
+| [`subscription.line_item_spend.threshold_recovered`](/api-reference/webhook-events/subscriptionline_item_spendthreshold_recovered) | Line item spend recovers |
+| [`subscription.group_spend.threshold_reached`](/api-reference/webhook-events/subscriptiongroup_spendthreshold_reached) | Feature group spend crosses a threshold |
+| [`subscription.group_spend.threshold_recovered`](/api-reference/webhook-events/subscriptiongroup_spendthreshold_recovered) | Feature group spend recovers |
+| [`subscription.renewal.due`](/api-reference/webhook-events/subscriptionrenewaldue) | A renewal is coming up |
+
+## Invoice events
+
+| Event | Fires when |
+| --- | --- |
+| [`invoice.update.finalized`](/api-reference/webhook-events/invoiceupdatefinalized) | An invoice is finalized and locked for payment |
+| [`invoice.update.payment`](/api-reference/webhook-events/invoiceupdatepayment) | An invoice payment status changes |
+| [`invoice.update.voided`](/api-reference/webhook-events/invoiceupdatevoided) | An invoice is voided |
+| [`invoice.update`](/api-reference/webhook-events/invoiceupdate) | An invoice is updated |
+| [`invoice.payment.overdue`](/api-reference/webhook-events/invoicepaymentoverdue) | An invoice is past its due date |
+| [`invoice.communication.triggered`](/api-reference/webhook-events/invoicecommunicationtriggered) | An invoice email or notification is triggered |
+
+## Payment and refund events
+
+| Event | Fires when |
+| --- | --- |
+| [`payment.created`](/api-reference/webhook-events/paymentcreated) | A new payment is created |
+| [`payment.updated`](/api-reference/webhook-events/paymentupdated) | A payment is updated |
+| [`payment.failed`](/api-reference/webhook-events/paymentfailed) | A payment fails |
+| [`payment.success`](/api-reference/webhook-events/paymentsuccess) | A payment succeeds |
+| [`payment.pending`](/api-reference/webhook-events/paymentpending) | A payment is pending processing |
+| [`refund.created`](/api-reference/webhook-events/refundcreated) | A refund is planned against an invoice |
+| [`refund.succeeded`](/api-reference/webhook-events/refundsucceeded) | A refund settles to the gateway or a wallet |
+| [`refund.failed`](/api-reference/webhook-events/refundfailed) | A refund fails (gateway refunds retry into the wallet) |
+
+## Credit note events
+
+| Event | Fires when |
+| --- | --- |
+| [`credit_note.created`](/api-reference/webhook-events/credit_notecreated) | A new credit note is created |
+| [`credit_note.updated`](/api-reference/webhook-events/credit_noteupdated) | A credit note is updated |
+
+## Wallet events
+
+| Event | Fires when |
+| --- | --- |
+| [`wallet.created`](/api-reference/webhook-events/walletcreated) | A new wallet is created |
+| [`wallet.updated`](/api-reference/webhook-events/walletupdated) | A wallet is updated |
+| [`wallet.terminated`](/api-reference/webhook-events/walletterminated) | A wallet is terminated |
+| [`wallet.transaction.created`](/api-reference/webhook-events/wallettransactioncreated) | A wallet transaction is created (top-up, deduction) |
+| [`wallet.transaction.updated`](/api-reference/webhook-events/wallettransactionupdated) | A wallet transaction changes state (pending to completed) |
+| [`wallet.credit_balance.dropped`](/api-reference/webhook-events/walletcredit_balancedropped) | A wallet's credit balance drops below an alert threshold |
+| [`wallet.credit_balance.recovered`](/api-reference/webhook-events/walletcredit_balancerecovered) | A wallet's credit balance recovers above an alert threshold |
+| [`wallet.ongoing_balance.dropped`](/api-reference/webhook-events/walletongoing_balancedropped) | A wallet's ongoing balance drops below an alert threshold |
+| [`wallet.ongoing_balance.recovered`](/api-reference/webhook-events/walletongoing_balancerecovered) | A wallet's ongoing balance recovers above an alert threshold |
+| [`wallet.ongoing_balance.updated`](/api-reference/webhook-events/walletongoing_balanceupdated) | A wallet real-time balance changes |
+
+## Feature and entitlement events
+
+| Event | Fires when |
+| --- | --- |
+| [`feature.created`](/api-reference/webhook-events/featurecreated) | A new feature is created |
+| [`feature.updated`](/api-reference/webhook-events/featureupdated) | A feature is updated |
+| [`feature.deleted`](/api-reference/webhook-events/featuredeleted) | A feature is deleted |
+| [`feature.wallet_balance.alert`](/api-reference/webhook-events/featurewallet_balancealert) | A wallet balance tied to a feature crosses a threshold |
+| [`entitlement.created`](/api-reference/webhook-events/entitlementcreated) | A new entitlement is created |
+| [`entitlement.updated`](/api-reference/webhook-events/entitlementupdated) | An entitlement is updated |
+| [`entitlement.deleted`](/api-reference/webhook-events/entitlementdeleted) | An entitlement is deleted |
+| [`entitlement.grant.exhausted`](/docs/product-catalogue/features/entitlement-grants) | An entitlement grant window's quota is used up |
+
+## Checkout events
+
+| Event | Fires when |
+| --- | --- |
+| [`checkout.session.initiated`](/api-reference/webhook-events/checkoutsessioninitiated) | A checkout session is created and a payment URL returned |
+| [`checkout.session.completed`](/api-reference/webhook-events/checkoutsessioncompleted) | Payment confirmed; subscription active, invoice finalized |
+| [`checkout.session.failed`](/api-reference/webhook-events/checkoutsessionfailed) | Payment fails or the provider cancels the link |
+| [`checkout.session.expired`](/api-reference/webhook-events/checkoutsessionexpired) | A checkout session times out unpaid |
+
+## Usage ingestion events
+
+| Event | Fires when |
+| --- | --- |
+| [`event.rejected`](/api-reference/webhook-events/eventrejected) | A usage event matched no meter and was dropped |
+
+## How alert events pair up
+
+Threshold events come in pairs. A `threshold_reached` or `dropped` event fires when a value crosses the configured line, and the matching `recovered` event fires when it crosses back. Configure the thresholds under [spend alerts](/docs/subscriptions/how-to-configure-spend-alerts/what-are-spend-alerts), [wallet low balance alerts](/docs/wallet/low-balance-alert), and [feature wallet balance alerts](/docs/product-catalogue/features/wallet-balance-alert).
+
+`event.rejected` is the one event about ingestion itself. It fires when a usage event is accepted with `202` but cannot be metered, most often because `event_name` matches no feature or `external_customer_id` matches no customer. Subscribe to it in every environment; it is the only push signal that usage is being dropped. See [Troubleshooting usage events](/docs/event-ingestion/troubleshooting).
+
+## Which events to start with
+
+| Goal | Subscribe to |
+| --- | --- |
+| Mirror invoice state into your app | `invoice.update.finalized`, `invoice.update.payment`, `invoice.update.voided`, `invoice.payment.overdue` |
+| React to payment outcomes | `payment.success`, `payment.failed`, `refund.succeeded` |
+| Provision and deprovision access | `subscription.activated`, `subscription.plan_changed`, `subscription.cancelled`, `entitlement.updated` |
+| Warn customers about credits | `wallet.credit_balance.dropped`, `wallet.credit_balance.recovered` |
+| Catch metering mistakes early | `event.rejected` |
+
+<CardGroup cols={2}>
+  <Card icon="/images/developers/icons/plug.svg" title="Set up an endpoint" href="/developers/webhooks/set-up-an-endpoint" />
+  <Card icon="/images/developers/icons/api-reference.svg" title="Webhook Events in the API reference" href="/api-reference/webhook-events/invoiceupdatefinalized" />
+</CardGroup>

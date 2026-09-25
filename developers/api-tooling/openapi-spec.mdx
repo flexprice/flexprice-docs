@@ -1,0 +1,84 @@
+---
+title: "OpenAPI spec"
+description: "Where to download the Flexprice OpenAPI document and what to do with it: code generation, validation, and AI context"
+---
+
+Flexprice publishes its API as an OpenAPI 3.0 document. The API reference, the SDKs, the CLI, and the MCP server are all generated from it, so the spec is the most precise description of the API that exists.
+
+## Downloading the OpenAPI spec
+
+| Source | URL | Notes |
+| --- | --- | --- |
+| Docs site | `https://docs.flexprice.io/api-reference/openapi.json` | The document behind the API Reference tab |
+| Backend repository | `https://raw.githubusercontent.com/flexprice/flexprice/main/docs/swagger/swagger-3-0.json` | Tracks the `main` branch, which can run ahead of Flexprice Cloud |
+| MCP-annotated copy | `https://raw.githubusercontent.com/flexprice/flexprice/main/docs/swagger/swagger-3-0-mcp.json` | The same operations with `x-scope` annotations for read, write, and delete tools |
+
+```sh
+curl -sSL https://docs.flexprice.io/api-reference/openapi.json -o flexprice-openapi.json
+```
+
+The document declares both regional servers, so a generated client can pick `us` or `in` by server index:
+
+```json
+"servers": [
+  { "url": "https://us.api.flexprice.io/v1", "description": "US Region" },
+  { "url": "https://api.cloud.flexprice.io/v1", "description": "India Region" }
+]
+```
+
+Authentication is a single API-key scheme, `ApiKeyAuth`, sent as the `x-api-key` header.
+
+## What the OpenAPI spec contains
+
+- Every endpoint, grouped by tag (Customers, Subscriptions, Events, Invoices, and so on).
+- Request and response schemas, including enums such as billing periods and subscription statuses.
+- A **Webhook Events** tag whose operations describe the payload Flexprice sends for each webhook event. They are documentation of what you receive, not endpoints you call. See the [event catalog](/developers/webhooks/event-catalog).
+- Two vendor extensions: `x-scope` (on the MCP copy) marking an operation as `read`, `write`, or `delete`, and `x-codegen-request-body-name` used by generators.
+
+## Generating a client from the spec
+
+For a language without an official SDK, generate one:
+
+<CodeGroup>
+```sh Java
+npx @openapitools/openapi-generator-cli generate \
+  -i flexprice-openapi.json \
+  -g java \
+  -o ./flexprice-java \
+  --additional-properties=library=native,useJakartaEe=true
+```
+
+```sh C#
+npx @openapitools/openapi-generator-cli generate \
+  -i flexprice-openapi.json \
+  -g csharp \
+  -o ./flexprice-csharp
+```
+
+```sh Ruby
+npx @openapitools/openapi-generator-cli generate \
+  -i flexprice-openapi.json \
+  -g ruby \
+  -o ./flexprice-ruby
+```
+</CodeGroup>
+
+Generated clients need two settings: the server URL with `/v1` and the `x-api-key` header. Both are declared in the spec, so generators expose them as configuration.
+
+## Validating requests and mocking the API
+
+- **Contract tests.** Load the spec into a validator such as `openapi-core` (Python) or `express-openapi-validator` (Node) to check your outgoing requests before they hit the network.
+- **Mock server.** Run `npx @stoplight/prism-cli mock flexprice-openapi.json` to get a local server that answers with example responses, useful for frontend work without a sandbox key.
+
+## Feeding the spec to an AI tool
+
+The spec is the best single file for an agent that needs exact field names. The MCP server already loads it; for other tools, attach the JSON directly or point them at `https://docs.flexprice.io/llms-full.txt` for the prose documentation. See [Agent Skills](/developers/ai/agent-skills).
+
+## OpenAPI spec versioning
+
+The spec has no separate version number from the API. Changes land in the [changelog](/docs/changelog) under **API**, and the SDKs are regenerated from the new document. Diff two downloads to see exactly what changed between releases.
+
+<CardGroup cols={2}>
+  <Card icon="/images/developers/icons/postman.svg" title="Postman collection" href="/developers/api-tooling/postman" />
+  <Card icon="/images/developers/icons/swagger.svg" title="Swagger UI" href="/developers/api-tooling/swagger-ui" />
+</CardGroup>

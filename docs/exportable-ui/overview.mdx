@@ -1,5 +1,5 @@
 ---
-title: "Overview"
+title: "UI kit overview"
 description: "Production-ready billing UI, pulled straight from the Flexprice dashboard, that renders from any data source"
 ---
 
@@ -8,21 +8,21 @@ Building billing UI from scratch means re-solving problems Flexprice already sol
 Every component is presentational: no fetching, no auth, no routing baked in. You own the data. Feed a component from the Flexprice SDK, the REST API, your own backend, or a plain JSON file, and it renders identically either way.
 
 <CardGroup cols={4}>
-  <Card icon="palette" title="Themeable">
+  <Card icon="/images/developers/icons/palette.svg" title="Themeable">
     One CSS variable away from your brand.
   </Card>
-  <Card icon="moon" title="Dark mode built in">
+  <Card icon="/images/developers/icons/moon.svg" title="Dark mode built in">
     Every component ships a light and dark treatment.
   </Card>
-  <Card icon="code" title="Full TypeScript">
+  <Card icon="/images/developers/icons/code.svg" title="Full TypeScript">
     Typed props and adapters, no `any`.
   </Card>
-  <Card icon="server" title="SSR-ready">
+  <Card icon="/images/developers/icons/server.svg" title="SSR-ready">
     Works in Next.js, Remix, and Astro.
   </Card>
 </CardGroup>
 
-## Components
+## Components in the UI kit
 
 <Tabs>
   <Tab title="Pricing">
@@ -49,13 +49,13 @@ Every component is presentational: no fetching, no auth, no routing baked in. Yo
 
 Every component page has a live, interactive **Preview** you can toggle between light and dark, right next to the **Code** that produces it.
 
-<Card icon="file-text" title="Feed this to an LLM" href="https://docs.flexprice.io/llms-full.txt">
+<Card icon="/images/developers/icons/file-text.svg" title="Feed this to an LLM" href="https://docs.flexprice.io/llms-full.txt">
   The full Flexprice documentation, including every component on this page, as one plain-text file at `/llms-full.txt`. Open it to copy the raw text, or paste the link into an AI tool that can fetch URLs.
 </Card>
 
 As more Flexprice surfaces become exportable, they ship here under the same pattern: install, bring your own data, render.
 
-## Install
+## Installing the UI kit
 
 <CodeGroup>
 ```bash npm
@@ -71,11 +71,11 @@ yarn add @flexprice/ui
 ```
 </CodeGroup>
 
-### Peer dependencies
+### UI kit peer dependencies
 
 `react` and `react-dom` (v18).
 
-### Stylesheet
+### Importing the UI kit stylesheet
 
 Import the stylesheet once in your app:
 
@@ -83,13 +83,13 @@ Import the stylesheet once in your app:
 import '@flexprice/ui/style.css';
 ```
 
-You can also override appearance with CSS variables, Tailwind, CSS Modules, or other styling approaches — see [Theming](#theming).
+You can also override appearance with CSS variables, Tailwind, CSS Modules, or other styling approaches — see [Theming](#theming-the-ui-kit).
 
-## Ways to provide data
+## Ways to provide data to the components
 
 Every component follows the same pattern: fetch data from a source you choose, map it into the presentational props the component expects, and render.
 
-### Option 1: Flexprice SDK (recommended)
+### Option 1: Fetch with the Flexprice SDK (recommended)
 
 ```
 Frontend → Flexprice SDK → Flexprice APIs → Components
@@ -97,7 +97,7 @@ Frontend → Flexprice SDK → Flexprice APIs → Components
 
 Best for existing Flexprice customers, live data, and automatic catalog updates.
 
-### Option 2: Flexprice REST APIs
+### Option 2: Fetch from the Flexprice REST API
 
 ```
 Frontend → Flexprice REST API → Components
@@ -105,7 +105,7 @@ Frontend → Flexprice REST API → Components
 
 Best for Server Components, a backend proxy, or custom authentication.
 
-### Option 3: Your own backend
+### Option 3: Fetch through your own backend
 
 ```
 Frontend → Your backend → Flexprice → Components
@@ -113,7 +113,7 @@ Frontend → Your backend → Flexprice → Components
 
 Your backend can cache responses, add auth, transform data, or merge internal fields.
 
-### Option 4: Your own APIs
+### Option 4: Fetch from your own APIs
 
 ```
 Frontend → Your API → Components
@@ -121,11 +121,11 @@ Frontend → Your API → Components
 
 If your APIs already expose the data you need, map them into each component's prop shape. No Flexprice API dependency is required.
 
-### Option 5: Static JSON
+### Option 5: Pass static JSON
 
 Best for documentation sites, marketing pages, and demos.
 
-### Which approach to use
+### Which data source to choose
 
 | Approach | Best for |
 | --- | --- |
@@ -137,7 +137,7 @@ Best for documentation sites, marketing pages, and demos.
 
 Component pages document the exact prop shapes and any adapters for mapping Flexprice API responses.
 
-## Theming
+## Theming the UI kit
 
 Every component renders inside an element carrying the `flexprice-ui` class, and that element is
 where the theme tokens are declared. Override them with a selector that **matches that element** —
@@ -167,15 +167,15 @@ Add the `dark` class to any ancestor to toggle dark mode:
 
 Individual components may also accept theme-related props — see each component page.
 
-## Event callbacks
+## Event callbacks on the components
 
 Components expose callbacks for user actions (selection, checkout, contact sales, and similar). Wire them to analytics, [Checkout](/docs/checkout/overview), a payment provider, or your own flow. See each component page for the callbacks it supports.
 
-## Server-side rendering
+## Server-side rendering the UI kit
 
 Components work with SSR in Next.js (App Router and Pages Router), Remix, and Astro. Fetch data on the server when you can, then pass it as props to avoid client-only waterfalls.
 
-## Typical integration flow
+## A typical UI kit integration flow
 
 <Steps>
   <Step title="Install the package">
@@ -187,7 +187,7 @@ Components work with SSR in Next.js (App Router and Pages Router), Remix, and As
   </Step>
 
   <Step title="Choose a data source">
-    Pick Flexprice SDK, REST APIs, your backend, your own APIs, or static JSON — see [Ways to provide data](#ways-to-provide-data).
+    Pick Flexprice SDK, REST APIs, your backend, your own APIs, or static JSON — see [Ways to provide data](#ways-to-provide-data-to-the-components).
   </Step>
 
   <Step title="Fetch and map data">
@@ -199,6 +199,6 @@ Components work with SSR in Next.js (App Router and Pages Router), Remix, and As
   </Step>
 </Steps>
 
-## Future components
+## Components planned for the UI kit
 
 The package is designed to expand beyond the current exports. Planned surfaces include invoices, subscription details, and the full customer portal. New components follow the same pattern: install from `@flexprice/ui`, load data from any source, map into props, and render.

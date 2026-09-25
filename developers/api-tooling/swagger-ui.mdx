@@ -1,0 +1,52 @@
+---
+title: "Swagger UI"
+description: "Explore the Flexprice API interactively: the built-in playground on this site, or a local Swagger UI against the spec or a self-hosted instance"
+---
+
+You do not need to run anything to try the API. Every endpoint page in the [API Reference](/api-reference/introduction) has a playground: choose the region, paste an API key, edit the body, and send. This page covers running Swagger UI yourself for cases the playground does not reach, such as a self-hosted deployment on a private network or a spec build from a branch.
+
+## Run Swagger UI locally
+
+Swagger UI is a static site that renders any OpenAPI document. Run it in Docker against the published spec:
+
+```sh
+curl -sSL https://docs.flexprice.io/api-reference/openapi.json -o flexprice-openapi.json
+
+docker run --rm -p 8081:8080 \
+  -e SWAGGER_JSON=/spec/flexprice-openapi.json \
+  -v "$PWD:/spec" \
+  swaggerapi/swagger-ui
+```
+
+Open `http://localhost:8081`, click **Authorize**, and enter your API key for `ApiKeyAuth`. The **Servers** dropdown lists the US and India regions from the spec.
+
+<Warning>
+  Requests from a local Swagger UI go straight to the Flexprice API with your key. Use a sandbox key while exploring.
+</Warning>
+
+## Running Swagger UI against a self-hosted instance
+
+A self-hosted Flexprice backend ships the same spec at `docs/swagger/swagger-3-0.json` in the repository. Serve Swagger UI next to it and point the server URL at your deployment:
+
+```sh
+docker run --rm -p 8081:8080 \
+  -e SWAGGER_JSON=/spec/swagger-3-0.json \
+  -v "$PWD/docs/swagger:/spec" \
+  swaggerapi/swagger-ui
+```
+
+Then in the UI, replace the server with `http://localhost:8080/v1` (or your host) using the **Servers** dropdown's editable field. If the browser blocks the request, the backend's CORS setting needs to include the Swagger UI origin. See [Configuration](/docs/getting-started/configuration).
+
+## Swagger UI, Postman, or the API reference?
+
+| Tool | Best for |
+| --- | --- |
+| API Reference playground | Trying Flexprice Cloud endpoints with no setup |
+| Swagger UI | Self-hosted deployments, branch builds of the spec, air-gapped networks |
+| [Postman](/developers/api-tooling/postman) | Saved requests, environments per region, sharing with a team |
+| [CLI](/docs/cli/overview) | Scripting and anything you want to repeat |
+
+<CardGroup cols={2}>
+  <Card icon="/images/developers/icons/openapi.svg" title="OpenAPI spec" href="/developers/api-tooling/openapi-spec" />
+  <Card icon="/images/developers/icons/server.svg" title="Self-hosting guide" href="/docs/getting-started/self-hosting-guide" />
+</CardGroup>

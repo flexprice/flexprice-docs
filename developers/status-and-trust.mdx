@@ -1,0 +1,67 @@
+---
+title: "Status page and trust centre"
+description: "Where to see Flexprice Cloud uptime and incidents, what the compliance posture is, and how to report a security issue"
+---
+
+Two public pages answer the operational questions a platform team asks before depending on a vendor: is it up, and is it safe. Both are maintained outside this documentation and linked here so you know where to look.
+
+## The Flexprice status page
+
+[status.flexprice.io](https://status.flexprice.io) shows live status and a 90-day uptime history for the two things your integration depends on:
+
+| Component | What it covers |
+| --- | --- |
+| Cloud API | The regional API endpoints that ingest and query usage and serve every other endpoint |
+| Admin Portal | The dashboard at `admin.flexprice.io` |
+
+Incidents and scheduled maintenance are posted there with timelines. If every request from your side is failing at once, check it before debugging your code.
+
+The API also exposes a health endpoint you can poll from your own monitoring:
+
+```sh
+curl -s https://us.api.flexprice.io/health
+```
+
+<Note>
+  Ingestion is asynchronous. `POST /events` returns `202` as soon as the event is queued, so a healthy API and a delayed metering pipeline can coexist briefly. The [architecture page](/docs/getting-started/architecture#reliability-and-failure-modes) describes the buffering that protects events during that window, and the [freshness guarantees](/docs/getting-started/architecture#freshness-guarantees) for balances and alerts.
+</Note>
+
+## Flexprice availability and latency commitments
+
+Published targets for availability, ingestion latency, and query latency live on the [architecture page](/docs/getting-started/architecture#service-level-agreements). Enterprise agreements carry their own SLA terms.
+
+## The Flexprice trust centre
+
+[trust.flexprice.io](https://trust.flexprice.io) holds the compliance reports and security documentation that procurement and security reviews ask for. Flexprice is SOC 2 Type II, ISO 27001, and GDPR compliant, with controls across product, data, network, application, endpoint, and corporate security. Request the SOC 2 report and policies through the trust centre.
+
+The public summary is at [flexprice.io/security](https://flexprice.io/security).
+
+## Data residency by region
+
+Flexprice Cloud runs in two regions, and a tenant's data stays in the region it was created in:
+
+| Region | API base URL |
+| --- | --- |
+| US | `https://us.api.flexprice.io/v1` |
+| India | `https://api.cloud.flexprice.io/v1` |
+
+For deployments that must keep data inside your own network, the community edition can be [self-hosted](/docs/getting-started/self-hosting-guide).
+
+## Reporting a security issue
+
+Send vulnerability reports to [security@flexprice.io](mailto:security@flexprice.io) with reproduction steps. Flexprice acknowledges reports within three business days, works with good-faith researchers under a responsible disclosure policy, and credits reporters in public disclosures. The full policy, including what is out of scope, is in the [SECURITY.md](https://github.com/flexprice/flexprice/blob/main/SECURITY.md) of the backend repository.
+
+Do not run automated scanners against Flexprice Cloud without permission, and do not test against other customers' data.
+
+## Rotating a leaked credential
+
+If an API key or webhook secret is exposed:
+
+1. Delete the key in the dashboard under **Developers**, or with [`DELETE /secrets/api/keys/{id}`](/api-reference/secrets/delete-an-api-key). It stops working immediately.
+2. Create a replacement and deploy it.
+3. Rotate the webhook signing secret from the endpoint's page; deliveries carry both signatures during the grace period. See [Signature verification](/developers/webhooks/signature-verification#rotating-a-webhook-signing-secret).
+
+<CardGroup cols={2}>
+  <Card icon="/images/developers/icons/status.svg" title="status.flexprice.io" href="https://status.flexprice.io" />
+  <Card icon="/images/developers/icons/trust.svg" title="trust.flexprice.io" href="https://trust.flexprice.io" />
+</CardGroup>

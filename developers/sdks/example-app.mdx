@@ -1,0 +1,66 @@
+---
+title: "Example app"
+description: "Clone the Flexprice React example to see SDK setup, usage events, and analytics wired into a working app"
+---
+
+[flexprice/react-example](https://github.com/flexprice/react-example) is a small React application that uses the TypeScript SDK end to end: it creates the client, sends usage events from user actions, and renders usage analytics for the signed-in customer. Use it to see the shape of a working integration before wiring your own, or as a scratch app for testing a sandbox environment.
+
+## The example app stack
+
+| Layer | Choice |
+| --- | --- |
+| UI | React 18, TypeScript, Tailwind CSS |
+| Build | Vite |
+| Data | React Query, React Router |
+| Flexprice | `@flexprice/sdk` |
+
+## Running the example app
+
+<Steps>
+  <Step title="Clone and install">
+    ```sh
+    git clone https://github.com/flexprice/react-example
+    cd react-example
+    npm install
+    ```
+  </Step>
+  <Step title="Configure">
+    ```sh
+    cp .env.example .env
+    ```
+
+    Fill in the variables with values from a **sandbox** environment:
+
+    ```sh
+    VITE_FLEXPRICE_API_KEY=your_api_key_here
+    VITE_FLEXPRICE_BASE_URL=https://us.api.flexprice.io/v1
+    VITE_FLEXPRICE_ENVIRONMENT_ID=your_environment_id_here
+    ```
+
+    Use `https://api.cloud.flexprice.io/v1` if your tenant is in the India region.
+  </Step>
+  <Step title="Start">
+    ```sh
+    npm run dev
+    ```
+
+    Open `http://localhost:5173`.
+  </Step>
+</Steps>
+
+<Warning>
+  The example reads the API key in the browser through Vite environment variables so it can run with no backend. That is fine for a local demo against a sandbox key and wrong for anything deployed. A production app keeps the key on a server. See [Harden client-side access](/developers/frontend/harden-client-access).
+</Warning>
+
+## What to look at in the example app
+
+- **Client setup.** Where the SDK is constructed once and shared through the app.
+- **Sending events.** The handlers that call `events.ingestEvent` when a user takes a billable action, including the properties they attach.
+- **Reading usage.** The queries that fetch usage analytics and customer data and feed them to charts.
+
+Once the flow makes sense, swap the demo's direct SDK calls for the pattern in [Fetch entitlements and usage on the client](/developers/frontend/fetch-entitlements-and-usage) and render with the [UI kit](/developers/frontend/install).
+
+<CardGroup cols={2}>
+  <Card icon="/images/developers/icons/github.svg" title="flexprice/react-example" href="https://github.com/flexprice/react-example" />
+  <Card icon="/images/developers/icons/typescript.svg" title="Using the SDKs" href="/developers/sdks/usage" />
+</CardGroup>
