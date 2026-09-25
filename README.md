@@ -18,7 +18,7 @@ flexprice-docs/
 │   ├── cli/ and cli-reference/
 │   ├── customers/, wallet/, subscriptions/, product-catalogue/, ...
 │   └── changelog.mdx  Release notes
-├── api-reference/     API reference pages plus openapi.json (generates endpoint pages)
+├── api-reference/     API reference intro pages (endpoint pages come from the remote spec in docs.json)
 ├── integrations/      Payment and accounting integration guides (Stripe, Paddle, Razorpay, QuickBooks, Zoho Books, ...)
 ├── images/            Screenshots and diagrams referenced from pages
 ├── snippets/          Reusable JSX previews embedded in pages
@@ -63,7 +63,7 @@ Both should finish with no warnings.
 - Read two nearby pages before writing so tone, structure, and component usage match the existing docs.
 - Put screenshots under `images/` and only reference images that exist in the repo.
 - When removing a page, also remove its entry from `docs.json` and any images only that page used.
-- Update the API reference by replacing `api-reference/openapi.json`; endpoint pages are generated from it.
+- API reference endpoint pages are generated from the OpenAPI spec hosted on Speakeasy (the `openapi.source` URL in `docs.json`). There is no spec file in this repo; endpoint changes appear once Speakeasy republishes the spec.
 - Add release notes to `docs/changelog.mdx`.
 
 Detailed writing conventions, the supported MDX components, and the changelog format live in `.mintlify/docs-writing-instructions.md` and `.mintlify/changelog-instructions.md`. Keep the `.mintlify/` files in place; Mintlify automation depends on them.
