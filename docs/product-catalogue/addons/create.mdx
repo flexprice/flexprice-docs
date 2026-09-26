@@ -1,0 +1,217 @@
+---
+title: "Create an Addon"
+description: "Create an addon, then attach charges, entitlements, and credit grants to it via API or dashboard"
+---
+
+An addon is created empty, then configured with charges, entitlements, and credit grants through the same APIs plans use. Only the charges are required before the addon can be attached to a subscription.
+
+## Via API
+
+```bash
+curl -X POST https://us.api.flexprice.io/v1/addons \
+  -H "x-api-key: <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Premium Support",
+    "lookup_key": "addon-premium-support",
+    "description": "24x7 support with a 1 hour response SLA"
+  }'
+```
+
+**Response**
+
+```json
+{
+  "id": "addon_01JD2K3F4G5H6J7K8L9M0N1P2Q",
+  "name": "Premium Support",
+  "lookup_key": "addon-premium-support",
+  "description": "24x7 support with a 1 hour response SLA",
+  "status": "published",
+  "created_at": "2026-09-26T10:00:00Z",
+  "updated_at": "2026-09-26T10:00:00Z"
+}
+```
+
+### Request fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Display name shown in the dashboard and on line items |
+| `lookup_key` | string | Yes | Stable identifier for API calls. Unique among published addons and immutable after creation. |
+| `description` | string | No | Internal note about what the addon is for |
+| `metadata` | object | No | Key-value pairs for your own tracking |
+
+## Add charges
+
+Charges are prices created with `entity_type: "ADDON"`. They use the same billing models, periods, and invoice cadences as plan prices.
+
+A fixed monthly charge billed in advance:
+
+```bash
+curl -X POST https://us.api.flexprice.io/v1/prices \
+  -H "x-api-key: <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "entity_type": "ADDON",
+    "entity_id": "<addon_id>",
+    "type": "FIXED",
+    "billing_model": "FLAT_FEE",
+    "billing_cadence": "RECURRING",
+    "billing_period": "MONTHLY",
+    "billing_period_count": 1,
+    "invoice_cadence": "ADVANCE",
+    "price_unit_type": "FIAT",
+    "currency": "usd",
+    "amount": "49"
+  }'
+```
+
+A usage-based charge metered against a feature, billed in arrear:
+
+```bash
+curl -X POST https://us.api.flexprice.io/v1/prices \
+  -H "x-api-key: <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "entity_type": "ADDON",
+    "entity_id": "<addon_id>",
+    "type": "USAGE",
+    "meter_id": "<meter_id>",
+    "billing_model": "FLAT_FEE",
+    "billing_cadence": "RECURRING",
+    "billing_period": "MONTHLY",
+    "billing_period_count": 1,
+    "invoice_cadence": "ARREAR",
+    "price_unit_type": "FIAT",
+    "currency": "usd",
+    "amount": "0.02"
+  }'
+```
+
+Points specific to addon charges:
+
+- `display_name` defaults to the addon's name on fixed charges.
+- `min_quantity` on a fixed charge becomes the default quantity when the addon is attached.
+- A charge's billing period does not have to match the subscription's. At attach time, a charge is included when its period equals the subscription period or divides evenly into it, and one-time charges are always included. See [compatibility rules](/docs/product-catalogue/addons/overview#compatibility-rules).
+- `POST /v1/prices/bulk` creates several charges in one call.
+
+## Add entitlements
+
+Entitlements are created with `entity_type: "ADDON"` and carry the same fields as plan entitlements:
+
+```bash
+curl -X POST https://us.api.flexprice.io/v1/entitlements \
+  -H "x-api-key: <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "entity_type": "ADDON",
+    "entity_id": "<addon_id>",
+    "feature_id": "<feature_id>",
+    "feature_type": "metered",
+    "usage_limit": 50000,
+    "usage_reset_period": "MONTHLY",
+    "aggregation_mode": "additive"
+  }'
+```
+
+`aggregation_mode` controls stacking when the customer also holds a plan allowance on the same feature: `additive` merges both into one pool, `parallel` keeps a separate window per source. [Entitlement grants](/docs/product-catalogue/features/entitlement-grants) covers stacking, grant quotas, and the other fields in detail.
+
+<Note>
+Every attachment adds its own copy of the addon's entitlements. A subscription holding the same addon twice gets twice the allowance.
+</Note>
+
+## Add credit grants
+
+A credit grant on an addon is a template. Nothing is granted until the addon is attached to a subscription; at that point the grant is cloned to the subscription and credits the customer's prepaid wallet.
+
+```bash
+curl -X POST https://us.api.flexprice.io/v1/creditgrants \
+  -H "x-api-key: <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scope": "ADDON",
+    "addon_id": "<addon_id>",
+    "name": "Booster credits",
+    "credits": "100",
+    "cadence": "RECURRING",
+    "period": "MONTHLY",
+    "priority": 1,
+    "expiration_type": "BILLING_CYCLE"
+  }'
+```
+
+- `scope: "ADDON"` requires `addon_id`, and the addon must be published.
+- `start_date` and `end_date` are not allowed on addon-scoped grants; the association's dates apply instead.
+- All grants on one addon must share the same `conversion_rate` and `topup_conversion_rate`.
+
+## Manage existing addons
+
+```bash
+# Get an addon (embeds its prices, entitlements, and credit grants)
+curl https://us.api.flexprice.io/v1/addons/<addon_id> \
+  -H "x-api-key: <API_KEY>"
+
+# Get by lookup key (published addons only)
+curl https://us.api.flexprice.io/v1/addons/lookup/<lookup_key> \
+  -H "x-api-key: <API_KEY>"
+
+# Search addons
+curl -X POST https://us.api.flexprice.io/v1/addons/search \
+  -H "x-api-key: <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "lookup_keys": ["addon-premium-support"] }'
+
+# Update an addon (name, description, and metadata only)
+curl -X PUT https://us.api.flexprice.io/v1/addons/<addon_id> \
+  -H "x-api-key: <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{ "name": "Premium Support Plus" }'
+
+# Archive an addon
+curl -X DELETE https://us.api.flexprice.io/v1/addons/<addon_id> \
+  -H "x-api-key: <API_KEY>"
+```
+
+Deleting is a soft delete: the addon's status becomes `archived` and it can no longer be attached. Only an addon that no subscription has ever used can be archived. Any active association, or any line item left by a past attachment, blocks the delete, which fails with `Addon is currently active on one or more subscriptions. Remove it from all subscriptions before deleting.`
+
+## Via dashboard
+
+<Steps>
+  <Step title="Create the addon">
+    Go to **Product Catalog** > **Addons** and click **Add**.
+
+    <Frame>
+      ![The Addons list under Product Catalog](/images/docs/product-catalogue/addons/addons-list.png)
+    </Frame>
+
+    Fill in the **Addon Name**, the **Lookup Key** (it auto-generates from the name and cannot be changed later), and an optional **Description**, then click **Create**. You land on the new addon's details page.
+
+    <Frame>
+      ![The Create Addon drawer](/images/docs/product-catalogue/addons/create-addon.png)
+    </Frame>
+  </Step>
+
+  <Step title="Add charges">
+    In the **Charges** card, click **Add** to open the **Add charges to Addon** page. Pick **Fixed charges** or **Usage Charges**, fill in the currency, billing period, billing model, and price, and click **Add** on the charge form. Repeat with **Add fixed charge** or **Add Usage Based Charges** for more, then click **Save**.
+  </Step>
+
+  <Step title="Add entitlements">
+    In the **Entitlements** card, click **Add**. Select a feature, set its value and **Usage resets** window, and use the **Advanced** section for **Window starts** and **Stacking** (Additive or Parallel). Click **Save**.
+  </Step>
+
+  <Step title="Add credit grants">
+    In the **Credit Grants** card, click **Add**. Choose a one-time or recurring **Credit Type**, set the **Credits** amount and **Priority**, and click **Add Credit**.
+  </Step>
+</Steps>
+
+The finished addon page stacks its configuration in cards: Addon Details, Charges, Entitlements, and Credit Grants.
+
+<Frame>
+  ![An addon details page with charges, entitlements, and credit grants](/images/docs/product-catalogue/addons/addon-details.png)
+</Frame>
+
+To archive from the dashboard, use **Archive** on the addon's details page or in the list's row menu. Archived addons stay visible when you filter the list's **Status** to Inactive.
+
+## Next step
+
+[Add the addon to a subscription](/docs/product-catalogue/addons/add-to-subscription) at creation time or through the subscription modification API.
