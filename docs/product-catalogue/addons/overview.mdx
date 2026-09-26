@@ -1,0 +1,71 @@
+---
+title: "Addons Overview"
+description: "Sell optional charges, entitlements, and credit grants on top of a subscription with addons"
+---
+
+An addon is a purchasable unit you sell on top of a subscription: extra API capacity, a support tier, a usage booster, or a one-off setup fee added when the subscription is created. You define the addon once in the product catalogue, then attach it to individual subscriptions. Each attachment creates an **addon association** with its own start date, end date, and status, so the same addon can be sold to many subscriptions, or several times to the same one.
+
+## What an addon carries
+
+An addon groups the same building blocks as a plan:
+
+| Component | What it does when the addon is attached |
+|-----------|------------------------------------------|
+| **Charges** | Fixed or usage-based prices become subscription line items and are billed on every invoice |
+| **Entitlements** | Feature allowances merge with the plan's entitlements for the life of the association |
+| **Credit grants** | Wallet credits are granted to the customer, once or every period |
+
+All three are optional, with one constraint: an addon needs at least one charge that is compatible with the subscription before it can be attached. An addon that only carries entitlements cannot be attached.
+
+## Addon cadence
+
+Cadence is chosen **per attachment**, not on the addon itself. The same addon can be recurring on one subscription and one-time on another.
+
+| Cadence | Behavior |
+|---------|----------|
+| `recurring` | The addon renews every billing period until it is cancelled. This is the default. |
+| `onetime` | The addon ends at the close of the billing period that contains its start date. It cannot be cancelled early: attaching it already sets the end date, and removal requests are rejected as already scheduled. |
+
+## Multiple instances
+
+There is no uniqueness rule on the subscription and addon pair. Attaching the same addon twice is the supported way to buy two of it: each attachment gets its own association, its own line items, and its own copy of the addon's entitlements. To sell several units under a single attachment instead, override the charge quantity when attaching. See [quantity](/docs/product-catalogue/addons/add-to-subscription#addon-quantity).
+
+Credit grants are tracked per addon, not per attachment: removing one attachment stops future credit grants for every attachment of that addon on the subscription.
+
+## Compatibility rules
+
+At attach time, Flexprice selects the addon charges that fit the subscription:
+
+- The charge currency must match the subscription currency.
+- The charge billing period must equal the subscription period or divide evenly into it. A monthly addon charge attaches to a monthly, quarterly, or annual subscription; a quarterly charge does not attach to a monthly one.
+- One-time charges are always compatible.
+
+If no charge qualifies, the attachment is rejected.
+
+<Warning>
+Add an addon carrying a one-time charge, such as a setup fee, when the subscription is created; the charge bills on the first invoice. On an existing subscription, attaching it with `create_prorations` fails, and with `none` the one-time charge is never invoiced.
+</Warning>
+
+## Lifecycle
+
+The addon and each attachment have separate statuses.
+
+| Object | Status | Meaning |
+|--------|--------|---------|
+| Addon | `published` | Usable: it appears in lookups and can be attached |
+| Addon | `archived` | Soft-deleted. Only an addon that no subscription has ever used can be archived; even ended attachments block it. |
+| Association | `active` | Attached and billing |
+| Association | `pending` | Attach is waiting on a [checkout session](/docs/checkout/checkout-sessions) payment; no line items or entitlements yet |
+| Association | `cancelled` | Removed, or scheduled for removal at its `end_date` |
+
+## Where addons appear
+
+- **Subscription line items** carry `entity_type: "addon"` and the association ID. In the dashboard, the charges table shows an **Addon** chip in its **Source** column when a subscription mixes plan and addon charges.
+- **Invoices** bill addon line items like any other line item.
+- **Entitlements** from addons merge into the subscription's totals, listed with an `addon` source. Stacking (additive or parallel) controls how they combine with the plan's allowances; see [Entitlement grants](/docs/product-catalogue/features/entitlement-grants).
+- **Webhooks**: addon changes fire `subscription.updated`. There are no separate `addon.*` events.
+
+## Quick start
+
+1. [Create an addon](/docs/product-catalogue/addons/create) and give it charges, entitlements, or credit grants.
+2. [Add it to a subscription](/docs/product-catalogue/addons/add-to-subscription) at creation time or through the subscription modification API.

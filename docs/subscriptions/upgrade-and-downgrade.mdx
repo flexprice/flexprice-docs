@@ -80,3 +80,7 @@ When you change your subscription plan, Flexprice:
 2. **Calculates proration** for unused time on the current plan
 3. **Creates a new subscription** with the target plan
 4. **Generates an invoice** with credits and charges
+
+### What Happens to Addons
+
+Because this plan change cancels the old subscription, its [addons](/docs/product-catalogue/addons/overview) are cancelled with it and are not carried to the new subscription; re-attach them after the change. The swap-in-place plan change (`POST /subscriptions/{id}/change/v2/preview`) instead keeps addon associations by default: its `entity_policies.addons` object sets a `default_behaviour` of `carry` or `drop`, with per-association overrides, and dropped addons are cancelled with proration at the change.

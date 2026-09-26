@@ -1,0 +1,275 @@
+---
+title: "Add Addons to a Subscription"
+description: "Attach addons at subscription creation or later through the subscription modification API, with cadence, quantity, and proration control"
+---
+
+You can attach addons when the subscription is created. For changes after that (attach, remove, or schedule a removal), use the subscription modification API, which lets you preview the charges or credits before applying them.
+
+## Before you start
+
+An attachment is validated before anything is written:
+
+- The addon must be `published`.
+- The subscription must be `active` or `draft`. Trialing subscriptions cannot take addons.
+- The addon needs at least one charge compatible with the subscription: same currency, and a billing period that equals or divides evenly into the subscription's. An addon with no compatible charge, including an entitlement-only addon, is rejected.
+- One-time charges always qualify, but they only bill at subscription creation. Attaching an addon that carries a one-time charge to an existing subscription fails with `create_prorations`, and with `none` the one-time charge is never invoiced.
+- Metered features must not conflict: if the plan and the addon entitle the same feature, their usage reset periods have to agree.
+
+## At subscription creation
+
+Pass addons in the `addons` array. Each entry takes the same fields as a post-creation attach.
+
+```bash
+curl -X POST https://us.api.flexprice.io/v1/subscriptions \
+  -H "x-api-key: <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_id": "<customer_id>",
+    "plan_id": "<plan_id>",
+    "currency": "usd",
+    "billing_period": "MONTHLY",
+    "start_date": "2026-10-01T00:00:00Z",
+    "addons": [
+      { "addon_id": "<addon_id>" },
+      {
+        "addon_id": "<addon_id_2>",
+        "cadence": "onetime",
+        "override_line_items": [
+          { "price_id": "<price_id>", "quantity": 3 }
+        ]
+      }
+    ]
+  }'
+```
+
+- `start_date` defaults to the subscription start date.
+- No separate proration settlement is created at creation; the addon's charges land on the subscription's first invoice instead. That invoice prorates them like any other line item when the first period is partial, for example with a calendar billing cycle or an addon `start_date` after the subscription start.
+- A single request accepts at most 20 addon entries.
+
+## Attach to an existing subscription
+
+Use the modification API with `type: "addon"` and an `add` action:
+
+```bash
+curl -X POST https://us.api.flexprice.io/v1/subscriptions/<subscription_id>/modify/execute \
+  -H "x-api-key: <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "addon",
+    "addon_params": {
+      "action": "add",
+      "add": {
+        "addon_id": "<addon_id>",
+        "cadence": "recurring",
+        "proration_behavior": "create_prorations"
+      }
+    }
+  }'
+```
+
+Run the same body against `/modify/preview` first to see the resulting line items, invoice, or credit without writing anything. Preview responses mask IDs that do not exist yet as `(preview-created)`. Previews quote the addon's list prices and default quantities; `override_line_items` are applied only on execute.
+
+The execute response reports everything the change touched:
+
+```json
+{
+  "subscription": { "...": "..." },
+  "changed_resources": {
+    "addon_associations": [
+      {
+        "id": "addon_assoc_01JD2M4G5H6J7K8L9M0N1P2Q3R",
+        "addon_id": "addon_01JD2K3F4G5H6J7K8L9M0N1P2Q",
+        "addon_status": "active",
+        "start_date": "2026-09-26T10:00:00Z",
+        "change_action": "created"
+      }
+    ],
+    "line_items": [ { "change_action": "created" } ],
+    "invoices": [ { "action": "created", "status": "issued" } ]
+  }
+}
+```
+
+<Warning>
+Store the `addon_associations[].id` from the response. Removing the addon later requires this association ID, not the addon ID. Active associations are also listed by `GET /v1/subscriptions/{id}/addons/associations`.
+</Warning>
+
+### Attach fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `addon_id` | string | Yes | The addon to attach |
+| `cadence` | string | No | `recurring` (default) or `onetime`. A one-time addon ends with the billing period that contains its start date. |
+| `proration_behavior` | string | No | `create_prorations` or `none`. Only `create_prorations` produces immediate charges or credits. |
+| `start_date` | timestamp | No | When the addon starts. Defaults to now. Mutually exclusive with `change_at`. |
+| `change_at` | string | No | `immediate` or `end_of_period`, as an alternative to an explicit `start_date` |
+| `override_line_items` | array | No | Per-charge overrides: each entry takes a `price_id` plus `quantity`, `amount`, `billing_model`, or tier changes, the same shape as [subscription override line items](/docs/subscriptions/override-line-items) |
+| `line_item_commitments` | object | No | Map keyed by `price_id` setting `commitment_amount` or `commitment_quantity`, `overage_factor`, and `enable_true_up` on the addon's usage charges. See [Commitment](/docs/subscriptions/commitment/overview). A subscription-level commitment and line-item commitments cannot be combined. |
+| `metadata` | object | No | Stored on the association |
+
+To gate an attach behind a payment, add a `checkout` object at the top level of the modification request, next to `type` and `addon_params`; it is not a field of the attach entry. See [payment-gated attach](#payment-gated-attach).
+
+## Addon quantity
+
+There is no quantity field on the attach itself. To sell more than one unit:
+
+- **Override the charge quantity**: pass `override_line_items` with the fixed charge's `price_id` and the `quantity`. This is what the dashboard's Quantity input does.
+- **Attach the addon again**: each attachment is an independent association with its own line items and entitlements, so two attachments of a seat addon are two seats.
+
+Without an override, a fixed charge's quantity defaults to its `min_quantity`, or 1.
+
+## Bulk changes
+
+`addon_bulk_params` batches several attaches and removals into one transaction:
+
+```bash
+curl -X POST https://us.api.flexprice.io/v1/subscriptions/<subscription_id>/modify/execute \
+  -H "x-api-key: <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "addon",
+    "addon_bulk_params": {
+      "adds": [
+        { "addon_id": "<addon_id>" },
+        { "addon_id": "<addon_id>" }
+      ],
+      "removes": [
+        { "addon_association_id": "<addon_association_id>" }
+      ]
+    }
+  }'
+```
+
+- `addon_params` and `addon_bulk_params` are mutually exclusive.
+- A batch holds at most 20 entries across `adds` and `removes`.
+- The same addon may appear more than once in `adds`.
+- Everything runs in a single transaction: removals first, then attaches. If any step fails, nothing is applied.
+- All charges and credits from the batch are netted into one settlement document.
+
+## Remove an addon
+
+```bash
+curl -X POST https://us.api.flexprice.io/v1/subscriptions/<subscription_id>/modify/execute \
+  -H "x-api-key: <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "addon",
+    "addon_params": {
+      "action": "remove",
+      "remove": {
+        "addon_association_id": "<addon_association_id>",
+        "proration_behavior": "create_prorations",
+        "effective_date": "2026-10-15T00:00:00Z"
+      }
+    }
+  }'
+```
+
+### Remove fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `addon_association_id` | string | Yes | The association to end, from the attach response or the associations endpoint |
+| `effective_date` | timestamp | No | When the addon ends. Defaults to the current period end. Must fall inside the current billing period. Mutually exclusive with `change_at`. |
+| `change_at` | string | No | `immediate` or `end_of_period` |
+| `proration_behavior` | string | No | `create_prorations` credits unused time; `none` does not |
+| `reason` | string | No | Stored on the association as the cancellation reason |
+
+Removal behavior to know:
+
+- The default, removing at period end, produces zero credit: the customer keeps the addon until the date they already paid for.
+- A `onetime` addon cannot be removed at all: attaching it already set its end date, so a removal fails with `addon is already scheduled to be removed`. The same applies to an association whose charges are all one-time prices (`addon is already scheduled to end`).
+- The association's status flips to `cancelled` as soon as the removal is accepted, even when the `effective_date` is in the future. Billing and entitlements continue until the `end_date`, but the association no longer appears in `GET /v1/subscriptions/{id}/addons/associations`, which lists active associations only.
+- A second removal of the same association fails with `addon is already scheduled to be removed`.
+
+## Proration and settlement
+
+With `proration_behavior: "create_prorations"`, a mid-cycle change is priced for the remainder of the period:
+
+- Fixed charges billed in advance are prorated on attach, and credited for unused time on removal, capped at what was invoiced for the period containing the removal date, or at list price when nothing has been invoiced for it yet.
+- Fixed charges billed in arrear raise no upfront charge; the next invoice bills the prorated amount.
+- Usage charges are never prorated; usage is billed at period end as usual.
+- A charge on a different cadence from the subscription is prorated against its own period, not the subscription's.
+
+The change's charges and credits are then netted into a single document:
+
+| Net result | What is created |
+|------------|-----------------|
+| Customer owes money | One one-off invoice with billing reason `SUBSCRIPTION_UPDATE`, and payment is attempted |
+| Customer is owed money | A credit to the customer's prepaid wallet, created if none exists |
+| Zero | Nothing |
+
+With `proration_behavior: "none"`, no immediate document is created and the next scheduled invoice picks the addon up normally.
+
+## Entitlements and credit grants on attach
+
+- The addon's entitlements join the subscription's from the association start and leave at its end. Mid-cycle attaches prorate entitlement grant quotas for the time remaining in the window; quota already granted is never taken back.
+- Addon entitlements cannot be overridden per subscription; the `override_entitlements` array on subscription creation rejects them.
+- The addon's credit grants are cloned to the subscription and credit the prepaid wallet. Recurring grants repeat each period while the association is active. Removing the addon cancels future grant applications without clawing back credits already granted. Grants are tracked per addon, not per attachment, so removing one attachment of a duplicated addon stops future grants for all of its attachments.
+
+## Payment-gated attach
+
+Pass a `checkout` object at the top level of the modification request to make the attachment wait for payment, using the same checkout session flow as subscription creation:
+
+```json
+{
+  "type": "addon",
+  "checkout": {
+    "payment_provider": "razorpay",
+    "success_url": "https://example.com/success"
+  },
+  "addon_params": {
+    "action": "add",
+    "add": { "addon_id": "<addon_id>" }
+  }
+}
+```
+
+- Checkout requires an `active` subscription; a request against a draft subscription is rejected.
+- `override_line_items` and `line_item_commitments` cannot be combined with `checkout`; the request is rejected.
+- When the netted amount is not a charge, no session opens and the change applies immediately. The request must still pass the checks above.
+- While payment is pending, the association's status is `pending`: no line items, no entitlements, no credit grants. Completion applies the change; expiry or cancellation of the session archives it.
+- One open checkout session is allowed per subscription.
+
+See [Checkout sessions](/docs/checkout/checkout-sessions) for the session object, redirect URLs, and expiry cleanup.
+
+## Plan changes and cancellation
+
+- A swap-in-place plan change (`/change/v2`) keeps addon associations by default. Its `entity_policies.addons` object sets a `default_behaviour` of `carry` or `drop`, with per-association overrides, and dropped addons are cancelled with proration at the change.
+- The legacy plan change (`/change/execute`) cancels the subscription and creates a new one; addons are not carried over.
+- Cancelling a subscription cancels its addon associations, ends their line items, and stops future credit grant applications. Scheduled cancellations do this when they take effect.
+
+## Webhooks
+
+Addon changes fire `subscription.updated` once they are applied, including when a payment-gated attach completes. There are no `addon.*` events. Payment-gated flows also emit the `checkout.session.*` events.
+
+## Via dashboard
+
+### While creating a subscription
+
+After you select a plan in the subscription form, an **Addons** section appears. Click **Add** to open the **Add Addon** dialog:
+
+1. Pick an addon under **Addon**. The dialog lists only charges compatible with the subscription's billing period and currency.
+2. Set the **Quantity** on each fixed charge. Usage charges show "pay as you go".
+3. Use a charge's row menu for **Override Price**, or **Configure Commitment** on usage charges.
+4. Optionally set a **Start Date**, then click **Add Addon**.
+
+<Frame>
+  ![The Add Addon dialog in the subscription form](/images/docs/product-catalogue/addons/subscription-add-addon.png)
+</Frame>
+
+### On an existing subscription
+
+The **Addons** card on the subscription details page is read-only. To manage addons, open the **Edit Subscription** page from the menu next to the subscription's name.
+
+- **Attach**: click **Add** in the Addons card, pick the addon, and adjust quantities or overrides. **Advanced options** holds the **Start date**, the **Cadence** (Recurring or One-time), and the **Proration** choice (Prorate or No proration).
+- **Configure**: the row menu's **Configure** action changes a charge's quantity or price. The dialog previews the resulting charges or credits before you click **Apply changes**.
+- **Cancel**: the row menu's **Cancel** action asks for an **Effective end date** (preset to the current period end and limited to the current period) and a **Proration** choice, which is preset to None.
+
+<Frame>
+  ![The Add dialog on the Edit Subscription page with Advanced options open](/images/docs/product-catalogue/addons/edit-subscription-add-addon.png)
+</Frame>
+
+## Deprecated endpoints
+
+`POST /v1/subscriptions/addon` and `DELETE /v1/subscriptions/addon` still work but are deprecated. They accept the same attach and remove fields with an added `subscription_id` (and, on the add endpoint, an inline `checkout`), and route through the same logic. Use the modification API for new integrations; it adds previews, bulk changes, and the unified response.
