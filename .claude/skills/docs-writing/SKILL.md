@@ -307,7 +307,7 @@ Card template (one line per card, the icon is a file path):
 
 ### Page frontmatter
 
-Integration pages use only `title` and `description`. Do not add `tag: 'Beta'` or any other `tag` field unless product explicitly asks for a badge; it renders in the sidebar next to the page name and was removed from the marketplace pages on 2026-09-15 because nothing in the backend gated them.
+Integration pages use `title` and `description`. The marketplace pages (`integrations/marketplace-integration/**`) also carry `tag: 'Beta'`, which renders as a badge next to the page name in the sidebar; keep it on every marketplace page, including new ones. Do not add a `tag` to other integration pages unless product explicitly asks for a badge.
 
 ---
 
