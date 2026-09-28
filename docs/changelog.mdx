@@ -4,6 +4,118 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="September 28th 2026">
+  {/* changelog-coverage: {"version":1,"complete":true,"backend":{"from":"fa753fce9f8c0a37d00cfa1ff7e6085abad637cc","to":"5bf18b4dd157ee1fcfadf4c6fa4a8c72ce237b1a"},"frontend":{"from":"a515674fa06197f9e8ccea3c78b40e6a5ac1ed65","to":"bf2885c4d0a3e4ee0586f7fefb991ce878db179a"}} */}
+
+  ## Entitlement allowances in the dashboard
+
+  Grant-backed allowances can now be configured, overridden per subscription, and monitored window by window from the dashboard and the API.
+
+  * **Allowance form**: Plan and addon entitlements on metered features take a value type, a value or unlimited, and a reset cadence, with window start and stacking under Advanced. A feature can carry more than one parallel entitlement
+  * **Unlimited allowances**: `grant_unlimited: true` tracks usage with no ceiling. It requires `grant_duration_unit: subscription_period` and cannot be combined with `grant_quota`
+  * **Subscription overrides**: `override_entitlements` at subscription creation accepts the grant fields and inherits any it omits from the plan entitlement. An override created with `POST /entitlements` does not inherit
+  * **Override rule**: `POST /entitlements` and `PUT /entitlements/{id}` refuse an override when more than one entitlement feeds the feature on that subscription
+  * **Mid-cycle edits**: Changing an additive allowance's value on a subscription closes the open window and opens one for the rest of it with what remains, so raising 1,000 to 5,000 with 800 used leaves 4,200. A cut below what the window has already used leaves nothing, and further usage in that window bills as overage
+  * **Edit timing**: Changing a parallel allowance's value on a subscription closes its open window, and the next window opens with the full new value. Cadence changes apply from the next window, and plan edits do not re-cut open windows
+  * **Usage reads**: Customer entitlement, subscription entitlement, and usage summary responses include `grant_state.allowances`, with each window's quota, usage, remaining balance, and `quota_crossed_at`, capped at the three most recent windows per entitlement in the current billing period
+  * **Usage summary**: Grant-backed features report their usage and limit, where they previously showed zero usage against an unlimited ceiling
+  * **Customer view**: The customer entitlements table shows each budget's value, mode, and measure on its own row, and selecting a row opens the ledger of its windows
+
+  <br />
+
+  <Frame>
+    <img src="/images/docs/product-catalogue/features/entitlement-grants/add-entitlement.png" alt="Add entitlement dialog with value type, value, usage reset cadence, unlimited toggle, and advanced window and stacking options" style={{ borderRadius: '0.5rem' }} />
+  </Frame>
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/product-catalogue/features/entitlement-grants" title="Entitlement grants - Documentation" />
+
+  <br />
+
+  ## Line item changes
+
+  Fixed charges on a subscription can now change quantity, price, or both in one prorated modification.
+
+  * **Modification type**: Send `type: "line_item_change"` to `POST /subscriptions/{id}/modify/preview` or `/modify/execute` with `line_item_change_params.line_items`, each entry carrying an `id` and a `quantity`, an `amount`, or both. `quantity_change` is deprecated in its favor
+  * **Scope**: Applies to fixed-price line items on active subscriptions. Repricing with `amount` is limited to flat fee charges that are not priced in a custom price unit
+  * **Timing and settlement**: `effective_date` defaults to now and must fall within the current billing period. The line item is ended at that date and replaced, with the same proration and `checkout` support as quantity changes
+  * **Dashboard**: The line item edit dialog adds a price per unit field for flat fee charges and sends only the values that changed
+
+  <br />
+
+  ## Batch addon changes
+
+  Several addons can now be added and removed in one subscription modification, settled as a single netted document.
+
+  * **Batch payload**: With `type: "addon"`, send `addon_bulk_params` with `adds` and `removes` in place of `addon_params`. A batch holds up to 20 entries, and each addon association can be removed once per request
+  * **Checkout**: With a `checkout`, a batch that nets to a charge waits for payment, with its adds pending and its removals not yet applied. A zero or negative net applies immediately
+  * **Scheduling**: Adds and removes accept `change_at` (`immediate` or `end_of_period`) as an alternative to `start_date` or `effective_date`
+  * **Allowance rules**: Adds in one request that grant allowances on the same feature and take effect this period must share a date. A future-dated change that would cut an open allowance window is rejected
+  * **Response**: `changed_resources.addon_associations` lists each association created or ended, including the new association ID a later removal needs
+
+  <br />
+
+  <Card icon="code" horizontal={true} href="/api-reference/subscriptions/execute-subscription-modification" title="Execute subscription modification - API Reference" />
+
+  <br />
+
+  ## Replace a pending wallet top-up checkout
+
+  A payment-gated wallet top-up can now replace a checkout that is still pending instead of being blocked by it.
+
+  * **Conflict policy**: Set `checkout.entity_creation_options.entity_creation_conflict_policies.on_existing_entity` to `supersede` on `POST /wallets/{id}/top-up` or a customer portal top-up to expire the pending session and start a new one. The default, `reject`, keeps the pending session. The policy applies to wallet top-ups only
+  * **Creation result**: The checkout session in the response carries `entity_creation_result` with a `status` of `created`, `superseded`, or `failed_already_exists`. A rejected API top-up now returns the in-flight session, invoice, and transaction with `failed_already_exists` instead of an error, so check `status` before sharing the payment link
+  * **Expired sessions**: A pending session past its expiry no longer blocks a new top-up while it waits to be settled
+  * **Dashboard and portal**: A blocked top-up shows the pending session, with options to open it or cancel it and start a new checkout
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Addons passed at subscription creation are validated as one batch, with the same 20-entry cap
+      * Customer portal top-ups with a saved method require an active saved method on the selected provider, and the portal shows the saved card option only when that provider has one
+      * Enabling auto top-up from the portal checks that a saved method can be charged for the top-up amount, including a Razorpay mandate's maximum
+      * Auto top-up skips a wallet while a manual purchased-credit top-up is still pending, so the two no longer both credit the wallet
+      * Service accounts can be assigned the `all_reader` role for read-only API keys
+      * The `invoice_pdf_config` setting accepts `template_name: cost_breakdown.typ`, a simplified cost breakdown layout that also prints the invoice's `po_number` metadata
+      * Nigerian Naira (`NGN`) is a supported currency with a precision of 2
+      * The dashboard sets tax behavior on tax associations and tax treatment on customers, and invoice line item tables break down inclusive and exclusive tax
+      * The event debugger lists each ingested version of an event ID with its ingest time and the event's own timestamp. When an ID was ingested more than once, it notes that stored usage comes from the first processed ingest
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Usage against a zero commitment, including usage outside a line item's time-of-day buckets, is reported as overage and billed at the line item's overage factor; the September 21st release billed it at the base rate
+      * A commitment saved without an overage factor uses 1.0, now including commitments set only through time buckets
+      * Absolute ongoing-balance wallet alerts compare the threshold against the balance in the wallet's currency, so they fire on wallets whose conversion rate is not 1
+      * Draft invoices finalized because a payment covered them in full now send `invoice.update.finalized`
+      * A wallet top-up whose checkout session fails to be created marks its pending transaction as failed
+      * Detailed usage analytics grouped by `source` or customer return time series that match the aggregate row for events with no source or customer
+      * Invoice periods in the dashboard and customer portal show the last day of the period instead of the first day of the next one
+      * Webhook endpoints show custom headers whose values Svix withholds, such as `Authorization`, and adding or removing a header no longer deletes them; header rows stay inside their card on narrow screens
+      * The Override Price Configuration dialog for subscription charges shows slab tiered charges as Slab Tiered instead of Volume Tiered
+      * The dashboard wallet top-up dialog offers a Checkout link only when a Razorpay connection exists, and a failed top-up can be retried without reusing its reference ID
+      * Subscription-sourced entitlements in the customer usage table link to their subscription
+      * Entitlement sources from addons and subscription overrides carry the plan or addon name in `entity_name`, so the dashboard names them instead of showing a placeholder
+    </Accordion>
+
+    <Accordion title="API">
+      * Subscription modification accepts `type: "line_item_change"` with `line_item_change_params`; `quantity_change` is deprecated
+      * Subscription modification accepts `addon_bulk_params`, addon adds and removes accept `change_at`, and responses include `changed_resources.addon_associations`
+      * Entitlement create and update requests and `override_entitlements` accept `grant_unlimited`, and `override_entitlements` accepts the grant fields
+      * `POST /entitlements` stores a metered entitlement sent without grant fields as an allowance that resets each billing period: `usage_limit` becomes `grant_quota` (none means unlimited) and reads back as `null`. Meters that cannot carry an allowance, such as MAX, bucketed, or tiered-price meters, keep `usage_limit`
+      * Allowances are refused on meters with tiered prices for both value types; previously only amount allowances were
+      * Customer entitlement, subscription entitlement, and usage summary responses include grant config fields and `grant_state`, and usage summary features on parallel entitlements include `buckets`
+      * Wallet top-up checkouts accept `entity_creation_options`, and the checkout session in top-up responses includes `entity_creation_result`
+      * New usage analytics endpoints: `POST /analytics/query` runs a view definition, `POST /analytics/views` saves one, and `POST /analytics/views/{id}/query` runs a saved view with variables. Views return `usage_quantity` or `event_count` as a timeseries or breakdown by meter, source, customer, or event property
+      * Invoice list responses include `tax_summary`, matching the invoice detail response
+      * The bearer JWT authentication added to the TypeScript SDK generation source in the September 21st release is reverted; the SDK is generated with API key authentication only
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
 <Update label="September 21st 2026">
   ## Cancel checkout sessions
 
