@@ -86,11 +86,11 @@ Four more actions exist, but they are not created through this endpoint. Each is
 | Action | Create it with |
 |--------|----------------|
 | `modify_subscription` | `POST /subscriptions/{id}/modify/execute` |
-| `add_addon` | `POST /subscriptions/addon` |
+| `add_addon` | `POST /subscriptions/{id}/modify/execute` with `type: "addon"` (or the deprecated `POST /subscriptions/addon`) |
 | `wallet_topup` | `POST /wallets/{id}/top-up` |
 | `pay_invoice` | `POST /invoices` |
 
-Passing any of these actions here returns a validation error naming the endpoint to use instead. Once created, all of them are read, cancelled, deleted, and monitored through the same endpoints and webhook events described on this page. See [Pay-First Checkout](/docs/checkout/pay-first-checkout).
+Passing any of these actions here returns a validation error naming the endpoint to use instead (for `add_addon`, the error names the deprecated `POST /subscriptions/addon`). Once created, all of them are read, cancelled, deleted, and monitored through the same endpoints and webhook events described on this page. See [Pay-First Checkout](/docs/checkout/pay-first-checkout).
 
 ## Get a Checkout Session
 

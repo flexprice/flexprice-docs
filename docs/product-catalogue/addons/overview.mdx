@@ -11,7 +11,7 @@ An addon groups the same building blocks as a plan:
 
 | Component | What it does when the addon is attached |
 |-----------|------------------------------------------|
-| **Charges** | Fixed or usage-based prices become subscription line items and are billed on every invoice |
+| **Charges** | Its fixed and usage-based prices that fit the subscription become line items, billed like the plan's charges |
 | **Entitlements** | Feature allowances merge with the plan's entitlements for the life of the association |
 | **Credit grants** | Wallet credits are granted to the customer, once or every period |
 
@@ -37,26 +37,29 @@ Credit grants are tracked per addon, not per attachment: removing one attachment
 At attach time, Flexprice selects the addon charges that fit the subscription:
 
 - The charge currency must match the subscription currency.
-- The charge billing period must equal the subscription period or divide evenly into it. A monthly addon charge attaches to a monthly, quarterly, or annual subscription; a quarterly charge does not attach to a monthly one.
-- One-time charges are always compatible.
+- The charge billing period, together with its count, must equal the subscription's or divide evenly into it. A monthly addon charge attaches to a monthly, quarterly, or annual subscription; a quarterly charge does not attach to a monthly one.
+- Daily and weekly charges must match the subscription's period exactly, so a daily charge does not attach to a weekly subscription.
+- One-time charges skip the billing period check, but their currency must still match.
 
 If no charge qualifies, the attachment is rejected.
 
 <Warning>
-Add an addon carrying a one-time charge, such as a setup fee, when the subscription is created; the charge bills on the first invoice. On an existing subscription, attaching it with `create_prorations` fails, and with `none` the one-time charge is never invoiced.
+Add an addon carrying a one-time charge, such as a setup fee, when the subscription is created; the charge bills on the first invoice. On an existing subscription, attach it with `proration_behavior: "none"` and `change_at: "end_of_period"` to bill it on the renewal invoice. Attached mid-period with `none`, the one-time charge is never invoiced, and with `create_prorations` the attach fails.
 </Warning>
 
 ## Lifecycle
 
-The addon and each attachment have separate statuses.
+The addon's `status` and each association's `addon_status` are separate.
 
-| Object | Status | Meaning |
-|--------|--------|---------|
-| Addon | `published` | Usable: it appears in lookups and can be attached |
-| Addon | `archived` | Soft-deleted. Only an addon that no subscription has ever used can be archived; even ended attachments block it. |
-| Association | `active` | Attached and billing |
-| Association | `pending` | Attach is waiting on a [checkout session](/docs/checkout/checkout-sessions) payment; no line items or entitlements yet |
-| Association | `cancelled` | Removed, or scheduled for removal at its `end_date` |
+| Object | Field and value | Meaning |
+|--------|-----------------|---------|
+| Addon | `status: published` | Usable: it appears in lookups and can be attached |
+| Addon | `status: archived` | Soft-deleted. Only an addon that no subscription has ever used can be archived; even ended attachments block it. |
+| Association | `addon_status: active` | Attached. It bills from its `start_date` until its `end_date`, if any. |
+| Association | `addon_status: pending` | Attach is waiting on a [checkout session](/docs/checkout/checkout-sessions) payment; no line items or entitlements yet. If the session is cancelled or expires, the association is archived (`status: archived`). |
+| Association | `addon_status: cancelled` | Removed, or scheduled for removal at its `end_date` |
+
+`addon_status` changes only when a pending attach is paid or the addon is removed. A future-dated attach is already `active` before it starts, and a `onetime` association stays `active` after its `end_date`.
 
 ## Where addons appear
 
