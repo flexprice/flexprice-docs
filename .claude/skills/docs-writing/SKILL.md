@@ -33,6 +33,7 @@ flexprice-docs/
 ├── images/docs/             ← Screenshots referenced from docs
 ├── images/integrations/logos/ ← Brand SVG icons for the integrations landing page
 ├── docs.json                ← Navigation config (Mintlify v2)
+├── redirect.json            ← All redirects; docs.json loads it via `$ref`
 └── .claude/skills/          ← This skills directory (docs-writing/scripts/brand_icon.py builds integration icons)
 ```
 
@@ -251,6 +252,7 @@ The navigation lives in `navigation.tabs[0].groups` (the Documentation tab). Str
 - Sub-groups use the same `{ "group": "...", "pages": [...] }` shape — no `icon` on sub-groups
 - Always add new pages immediately after the most relevant existing page in the same section
 - Never create a new top-level group without checking if an existing group is the right home
+- Renaming, moving or deleting a page file changes its URL, so add a redirect from the old URL to its new home in `redirect.json` (an entry `{ "source": "/old/path", "destination": "/new/path" }`). `docs.json` loads that file with `"redirects": { "$ref": "./redirect.json" }`, so never add redirects to `docs.json` itself. Check them with `mint broken-links --check-redirects`
 
 **Common icon names:** `users`, `wallet`, `webhook`, `layer-group`, `refresh`, `file-text`, `gear`, `bell`, `shield`, `code`, `book-open`, `plug`
 
@@ -378,6 +380,7 @@ The `.claude/launch.json` in this repo is configured to use this exact path. Use
 - [ ] File is in the right directory (`docs/<section>/`)
 - [ ] Frontmatter has `title` and `description`
 - [ ] Page is added to `docs.json` in the correct group
+- [ ] Every renamed, moved or deleted page file has a redirect in `redirect.json`
 - [ ] No em dashes: `grep -n "—" docs/path/to/page.mdx` returns nothing
 - [ ] No `<Frame>` blocks reference images that don't exist in the repo
 - [ ] `mint broken-links` passes with no new errors
