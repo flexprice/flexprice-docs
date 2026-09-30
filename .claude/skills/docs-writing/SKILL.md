@@ -252,7 +252,7 @@ The navigation lives in `navigation.tabs[0].groups` (the Documentation tab). Str
 - Sub-groups use the same `{ "group": "...", "pages": [...] }` shape — no `icon` on sub-groups
 - Always add new pages immediately after the most relevant existing page in the same section
 - Never create a new top-level group without checking if an existing group is the right home
-- Renaming, moving or deleting a page file changes its URL, so add a redirect from the old URL to its new home in `redirect.json` (an entry `{ "source": "/old/path", "destination": "/new/path" }`). `docs.json` loads that file with `"redirects": { "$ref": "./redirect.json" }`, so never add redirects to `docs.json` itself. Check them with `mint broken-links --check-redirects`
+- Renaming, moving or deleting a page file changes its URL, so add a redirect from the old URL to its new home in `redirect.json` (an entry `{ "source": "/old/path", "destination": "/new/path" }`). `docs.json` loads that file with `"redirects": { "$ref": "./redirect.json" }`, so never add redirects to `docs.json` itself. Also repoint every existing redirect whose destination is the old URL straight at the new one, so redirects never chain (a to b to c becomes a to c and b to c). Check them with `mint broken-links --check-redirects`
 
 **Common icon names:** `users`, `wallet`, `webhook`, `layer-group`, `refresh`, `file-text`, `gear`, `bell`, `shield`, `code`, `book-open`, `plug`
 
