@@ -117,10 +117,10 @@ Editing an entitlement that customers are already using does not always take eff
 |---|---|
 | Raising the value | Immediately, on the open window |
 | Lowering the value, still above what has been used | Immediately, on the open window |
-| Lowering the value below what has been used | When the current window ends |
+| Lowering the value below what has been used | Immediately: the open window has nothing left, so further usage bills as overage |
 | Changing the cadence, value type or stacking | When the current window ends |
 
-Usage already recorded in the open window still counts. A customer on a 1,000 unit hourly allowance who has spent 400 and is moved to 600 has 200 left, not 600. The dashboard tells you which case you are in before you save.
+Usage already recorded in the open window still counts. A customer on a 1,000 unit hourly allowance who has spent 400 and is moved to 600 has 200 left, not 600. Moved to 300 instead, they have nothing left, and every unit they use for the rest of the window bills as overage. These timings are for additive stacking, the default. For a cadence, value type or stacking change, the dashboard shows when the new rule starts before you save.
 
 <Warning>
 This applies to an entitlement edited on a **subscription**. Editing the **plan's** entitlement changes the rule for future windows and for new subscribers; it does not re-cut windows already open on existing subscriptions.
@@ -183,7 +183,7 @@ Selecting a row opens **Grants**, the ledger of windows behind that number.
 | `valid_from`, `valid_to` | The window boundaries |
 | `status` | `active` or `exhausted` |
 | `is_active` | Whether the window is open right now, decided by the server's clock rather than the caller's. |
-| `quota_crossed_at` | When usage first reached the quota. Absent while the window still has room, and on an unlimited window. Overage is billed from this timestamp, so this answers "when did it run out", which `valid_to` does not. |
+| `quota_crossed_at` | When a usage evaluation first found the window at or over its quota. This is the evaluation time, not the time of the usage event that crossed the quota, so it can trail the real crossing. Absent while the window still has room, and on an unlimited window. It only affects billing when windows overlap, as with parallel allowances on one feature: overage is then billed from this timestamp to `valid_to`, so usage between the real crossing and this timestamp is not billed as overage. Windows that do not overlap bill everything above the quota, whenever it arrived: a quota of 100 with 150 used bills 50. |
 | `unlimited` | `true` when the window has no ceiling |
 
 Only the current billing period is returned, capped at the three most recent windows per entitlement.
@@ -218,9 +218,11 @@ Cap token consumption in a rolling window that has nothing to do with the monthl
 |---|---|
 | Value Type | Quantity |
 | Value | 1,000,000 |
-| Usage resets | Hourly |
+| Usage resets | Every 5 hours |
 | Window starts | Calendar boundary |
 | Stacking | Parallel |
+
+Create this allowance through the API with `grant_duration_unit: "hour"` and `grant_duration_value: 5`. The dashboard's **Hourly** option always creates a one-hour window, so it cannot set up a five-hour one.
 
 Add a second parallel allowance that resets weekly to layer a sustained ceiling on top of the burst limit.
 
@@ -325,7 +327,7 @@ Usage is measured shortly after events arrive, within roughly five minutes. When
   <Card icon="book-open" href="/docs/product-catalogue/features/linking-to-plans" title="Link features to plans">
     Attach a feature to a plan or addon as an entitlement.
   </Card>
-  <Card icon="webhook" href="/docs/webhook/webhooks#entitlement-events" title="Webhooks">
+  <Card icon="webhook" href="/developers/webhooks/event-catalog#feature-and-entitlement-events" title="Webhooks">
     Subscribe to `entitlement.grant.exhausted` and the rest of the event catalogue.
   </Card>
 </CardGroup>
