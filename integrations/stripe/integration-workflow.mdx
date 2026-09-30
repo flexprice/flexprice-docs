@@ -53,43 +53,47 @@ Follow the connection setup guide below to link Stripe with Flexprice:
 
 ### Required Webhook Events
 
-```
+Subscribe your Stripe webhook endpoint to these events whatever your sync settings:
 
-customer.created
-payment_intent.succeeded
-payment_intent.payment_failed
-setup_intent.succeeded
-invoice_payment.paid
+| Event                           | What Flexprice does with it                                                              |
+| ------------------------------- | ---------------------------------------------------------------------------------------- |
+| `checkout.session.completed`    | Marks the Flexprice payment behind a Stripe Checkout session as paid                     |
+| `customer.created`              | Creates the customer in Flexprice. If the Stripe customer's metadata already names a Flexprice customer (`flexprice_customer_id` or `flexprice_lookup_key`), it uses that customer instead |
+| `payment_intent.succeeded`      | A payment made directly in Stripe is recorded only when Invoices sync is on and it pays a Stripe invoice that Flexprice synced. All other payments are skipped |
+| `payment_intent.payment_failed` | Marks the Flexprice payment as failed                                                    |
+| `setup_intent.succeeded`        | Saves the card as the customer's default payment method when the setup intent asks for it |
 
-```
+### Webhook Events for Sync Settings
 
-### Optional Webhook Events (based on your sync preferences)
+Add these only for the sync switches you turn on:
 
-```
+| Switch        | Events                                                                                        |
+| ------------- | --------------------------------------------------------------------------------------------- |
+| Plans         | `product.created`, `product.updated`, `product.deleted`                                       |
+| Subscriptions | `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted` |
+| Invoices      | `invoice_payment.paid`                                                                        |
+| Prices        | None                                                                                          |
 
-product.created
-product.updated
-product.deleted
-customer.subscription.created
-customer.subscription.updated
-customer.subscription.deleted
-
-```
+<Note>
+  The Stripe connection drawer in Flexprice lists the events to subscribe to as you change the switches. It shows `setup_intent.succeeded` only when Invoices is on, but Flexprice processes that event whatever your settings, so keep it subscribed if you save cards through Flexprice. The drawer also lists `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed` and `checkout.session.expired`. Subscribing to them is harmless, but Flexprice does not act on them.
+</Note>
 
 ---
 
 ### 1.2 Configure Sync Settings
 
-Select which data types you want to sync between **Flexprice** and **Stripe**:
+Select which data types you want to sync between **Flexprice** and **Stripe**. In the Stripe connection drawer these are four switches: **Plans** and **Subscriptions** (pull from Stripe), **Invoices** and **Prices** (push to Stripe).
 
-| Sync Type             | Direction | Status           | Description                                   |
-| --------------------- | --------- | ---------------- | --------------------------------------------- |
-| **Plan Sync**         | Inbound   | ✅               | Sync Stripe products into Flexprice as plans  |
-| **Plan Sync**         | Outbound  | ❌ Not available |                                               |
-| **Subscription Sync** | Inbound   | ✅               | Sync Stripe subscriptions into Flexprice      |
-| **Subscription Sync** | Outbound  | ❌ Not available |                                               |
-| **Invoice Sync**      | Inbound   | ❌ Not available |                                               |
-| **Invoice Sync**      | Outbound  | ✅               | Send Flexprice invoices to Stripe for payment |
+| Sync Type             | Direction | Status           | Description                                            |
+| --------------------- | --------- | ---------------- | ------------------------------------------------------ |
+| **Plan Sync**         | Inbound   | ✅               | Sync Stripe products into Flexprice as plans           |
+| **Plan Sync**         | Outbound  | ❌ Not available |                                                        |
+| **Subscription Sync** | Inbound   | ✅               | Sync Stripe subscriptions into Flexprice               |
+| **Subscription Sync** | Outbound  | ❌ Not available |                                                        |
+| **Invoice Sync**      | Inbound   | ❌ Not available |                                                        |
+| **Invoice Sync**      | Outbound  | ✅               | Send Flexprice invoices to Stripe for payment          |
+| **Price Sync**        | Inbound   | ❌ Not available |                                                        |
+| **Price Sync**        | Outbound  | ✅               | Link invoice line items in Stripe to Stripe products   |
 
 ---
 
@@ -144,7 +148,6 @@ Flexprice handles subscription changes through a **cancel-and-recreate** process
 3. **Usage charges are calculated immediately** for the canceled period
 4. If invoice outbound sync is enabled, usage invoice is sent to Stripe
 5. New subscription is created with exact start and end dates
-6. Customer receives confirmation of the change
 
 **Benefits of this approach:**
 
@@ -160,7 +163,6 @@ When a subscription is canceled:
 1. **Immediate usage invoice generation** for the current period
 2. **Conditional sync** to Stripe based on your settings
 3. **Subscription marked as canceled** in both systems
-4. **Final confirmation** sent to customer
 
 **Key Features:**
 
@@ -173,6 +175,13 @@ When a subscription is canceled:
 - **What it does:** Sends invoices generated in Flexprice to Stripe for payment processing
 - **When to enable:** You create invoices in Flexprice but want Stripe to handle payment collection
 - **Benefits:** Unified payment experience and centralized transaction history
+
+#### 2.6 Price Outbound Sync (Flexprice → Stripe)
+
+- **What it does:** Links each invoice line item in Stripe to a Stripe product for its Flexprice price, instead of sending the line as a bare amount. Flexprice creates the product the first time that price is synced, and overrides of a plan price on a subscription share the plan price's product.
+- **Where it applies:** Invoices synced to Stripe, and payment links that pay an invoice's full remaining amount. A payment link for a partial amount keeps a single line item, because Stripe Checkout has no partial payments.
+- **When to enable:** You want invoices and payment links in Stripe to show your products as line items.
+- **Webhook events used:** None
 
 ---
 
