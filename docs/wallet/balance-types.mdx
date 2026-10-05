@@ -52,7 +52,25 @@ Different alert and webhook events read different balances. Pick the event that 
 
 ## Reading balances
 
-Both values are returned by the wallet read APIs and surfaced in the customer dashboard. When you build internal dashboards, gate actions on Ongoing Balance; when you build accounting views, prefer Current Balance.
+Both values are returned by the wallet read APIs and surfaced in the customer dashboard. When you build internal dashboards, gate actions on Ongoing Balance. When you build accounting views, prefer Current Balance.
+
+### Response fields: currency vs credits
+
+Each balance is returned twice in the wallet API response: once in the wallet's currency (for example USD) and once in credits (the wallet's internal unit). The currency value equals `credits × conversion_rate`. See [Conversion rate](/docs/wallet/conversion-rate) for how the two units relate.
+
+| API field | Balance type | Unit |
+|--|--|--|
+| `balance` | Current Balance | Currency (e.g. USD) |
+| `credit_balance` | Current Balance | Credits |
+| `real_time_balance` | Ongoing Balance | Currency (e.g. USD) |
+| `real_time_credit_balance` | Ongoing Balance | Credits |
+
+The `real_time_*` fields are always returned by `GET /v1/wallets/{id}/balance/real-time`. On the list-customer-wallets endpoint (`GET /v1/customers/{id}/wallets`), they are only populated when the request sets `include_real_time_balance=true`. If they are omitted from a response, read `balance` and `credit_balance` for the settled view.
+
+<Info>
+  Use the credits fields (`credit_balance`, `real_time_credit_balance`) when comparing against wallet transactions or entitlement thresholds that are expressed in credits. Use the currency fields (`balance`, `real_time_balance`) for display and reporting in the customer's currency.
+</Info>
+
 
 <Warning>
   Do not configure low-balance alerts against Current Balance — it will not move during a billing period, so the alert will fire late or not at all. Configure thresholds against Ongoing Balance using [Wallet Sentinel Alerts](/docs/wallet/low-balance-alert).
