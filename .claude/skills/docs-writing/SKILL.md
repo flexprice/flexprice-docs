@@ -228,12 +228,11 @@ Model new webhook events on existing ones — see `docs/wallet/low-balance-alert
 
 After writing a new file, **always add it to `docs.json`**.
 
-The navigation lives in `navigation.tabs[0].groups` (the Documentation tab). Structure:
+The navigation lives in `navigation.tabs[0].groups` (the Documentation tab). Each top-level group is a section heading, in this order: Start Here, Usage Metering, Pricing and Packaging, Entitlements, Customers, Subscriptions, Credits and Wallets, Enterprise Billing, Invoicing and Taxes, Payments and Checkout, Reporting and Data, Deployment and Reliability, Platform and Security. Inside a section, topics are collapsible sub-groups (Usage Metering holds Features, Send Usage Events, Debug and Monitor). Billing recipes and pricing teardowns belong in the Cookbooks tab, not in Documentation. Structure:
 
 ```json
 {
-  "group": "Group Name",
-  "icon": "icon-name",
+  "group": "Section Name",
   "pages": [
     "docs/path/to/page",
     {
@@ -248,24 +247,24 @@ The navigation lives in `navigation.tabs[0].groups` (the Documentation tab). Str
 
 **Rules:**
 - Flat page paths are relative to repo root, no `.mdx` extension
-- Sub-groups use the same `{ "group": "...", "pages": [...] }` shape — no `icon` on sub-groups
-- Always add new pages immediately after the most relevant existing page in the same section
-- Never create a new top-level group without checking if an existing group is the right home
-
-**Common icon names:** `users`, `wallet`, `webhook`, `layer-group`, `refresh`, `file-text`, `gear`, `bell`, `shield`, `code`, `book-open`, `plug`
+- No `icon` on any header tab or any group, top-level or nested. The only navigation icons are on the global anchors (Support, Community, Website)
+- A sub-group holds 3 to 6 pages. Never leave more than 6 pages in one flat list: give a topic with several pages its own nested sub-group (Plans and Packaging holds Plans, Addons, Groups). Aggregation Types, one page per type, is the only exception
+- Never create a sub-group for a single page; a lone page sits directly in its section
+- Always add new pages immediately after the most relevant existing page in the same sub-group
+- Never add a new top-level section without asking first
 
 ---
 
 ## Integrations Tab
 
-The header tab named **Integrations** (the third tab in `docs.json`) follows the layout Lago uses for its integrations docs. Keep this structure when adding or moving an integration.
+The header tab named **Integrations** follows the layout Lago uses for its integrations docs. Keep this structure when adding or moving an integration.
 
 ### Sidebar structure
 
 The tab has one top-level group, `Integrations`, and everything sits inside it:
 
 ```
-Integrations                      <- single top-level group, icon "plug"
+Integrations                      <- single top-level group, no icon
   integrations/introduction       <- landing page, always first
   Payments                        <- category sub-group, no icon
     Stripe                        <- provider sub-group, no icon
@@ -283,7 +282,6 @@ Integrations                      <- single top-level group, icon "plug"
 - A provider is a sub-group named after the product, inside exactly one category sub-group. Never add a provider as a top-level group.
 - The first page in every provider group is `connection-setup`. Feature pages (`payment-links`, `customer-sync`, `invoice-sync`, `integration-workflow`) follow in workflow order.
 - Categories today are Payments, Accounting, and Marketplaces. A provider that collects payment for invoices belongs in Payments even if it also syncs catalog or customer data (Chargebee is the example). Add a new category only when a provider fits none of them, and add it to the landing page in the same change.
-- No `icon` on category or provider sub-groups. The only icon in the tab is on the top-level group.
 - Page paths stay under `integrations/<provider>/`. Moving a page between categories changes only `docs.json`, never the file path, so no redirects are needed.
 
 ### Landing page: `integrations/introduction.mdx`
