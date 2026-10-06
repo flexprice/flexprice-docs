@@ -52,7 +52,7 @@ cat docs/wallet/auto-top-up.mdx
 cat docs/wallet/low-balance-alert.mdx
 ```
 
-Also check `docs/webhook/webhooks.mdx` if the doc involves webhooks, and `docs/product-catalogue/features/wallet-balance-alert.mdx` for alert-related docs.
+Also check `docs/webhook/webhooks.mdx` if the doc involves webhooks, and `docs/wallet/low-balance-alert.mdx` for alert-related docs.
 
 ### 2. Pick the Right File Location
 
@@ -220,7 +220,7 @@ When documenting a feature that emits webhooks, follow this structure:
 | `nested.field` | Description |
 ```
 
-Model new webhook events on existing ones — see `docs/wallet/low-balance-alert.mdx` (event: `wallet.alert`) and `docs/product-catalogue/features/wallet-balance-alert.mdx` (event: `feature.wallet_balance.alert`). For usage-based alerts, follow the `customer.usage.alert` / `feature.usage.alert` pattern established in `docs/customers/threshold-notifications.mdx`.
+Model new webhook events on existing ones — see `docs/wallet/low-balance-alert.mdx` (event: `wallet.alert`). For usage-based alerts, follow the `customer.usage.alert` / `feature.usage.alert` pattern established in `docs/customers/threshold-notifications.mdx`.
 
 ---
 
@@ -228,7 +228,7 @@ Model new webhook events on existing ones — see `docs/wallet/low-balance-alert
 
 After writing a new file, **always add it to `docs.json`**.
 
-The navigation lives in `navigation.tabs[0].groups` (the Documentation tab). Each top-level group is a section heading, in this order: Start Here, Usage Metering, Pricing and Packaging, Entitlements, Customers, Subscriptions, Credits and Wallets, Enterprise Billing, Invoicing and Taxes, Payments and Checkout, Reporting and Data, Deployment and Reliability, Platform and Security. Inside a section, topics are collapsible sub-groups (Usage Metering holds Features, Send Usage Events, Debug and Monitor). Billing recipes and pricing teardowns belong in the Cookbooks tab, not in Documentation. Structure:
+The navigation lives in `navigation.tabs[0].groups` (the Documentation tab). Each top-level group is a section heading, in this order: Start Here, Usage Metering, Pricing and Packaging, Entitlements, Customers, Subscriptions, Credits and Wallets, Enterprise Billing, Invoicing and Taxes, Payments and Checkout, Reporting and Data, Self-hosting, Platform and Security. Inside a section, topics are collapsible sub-groups (Usage Metering holds Features, Send Usage Events, Debug and Monitor). Billing recipes and pricing teardowns belong in the Cookbooks tab, not in Documentation. Structure:
 
 ```json
 {
