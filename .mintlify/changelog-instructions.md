@@ -347,7 +347,7 @@ Two types:
 
 Always `horizontal={true}` (JSX boolean). Title format: `"Feature name - Documentation"` or `"Endpoint name - API Reference"`.
 
-Before using an `href`, verify the target actually exists — for a Documentation card, confirm the page exists under `docs/` in `flexprice-docs`; for an API Reference card, confirm the endpoint exists in the API reference pages under `api-reference/`. Never guess a path. If no matching page or endpoint can be found, omit the `<Card>` rather than link to something that may not resolve.
+Before using an `href`, verify the target actually exists. For a Documentation card, confirm the page exists under `docs/` in `flexprice-docs`; for an API Reference card, confirm the operation exists in the OpenAPI spec that generates the API Reference tab (the `openapi.source` URL in `docs.json`, hosted on Speakeasy). There is no spec file in the repo. Never guess a path. If no matching page or endpoint can be found, omit the `<Card>` rather than link to something that may not resolve.
 
 ---
 
