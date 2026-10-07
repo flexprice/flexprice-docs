@@ -4,6 +4,107 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="October 5th 2026">
+  {/* changelog-coverage: {"version":1,"complete":true,"backend":{"from":"5bf18b4dd157ee1fcfadf4c6fa4a8c72ce237b1a","to":"31421e9ff62d00a9f4cdded11d0aad5d32a22f4a"},"frontend":{"from":"bf2885c4d0a3e4ee0586f7fefb991ce878db179a","to":"f00ba7c9a3e281d280b074cf01531a459f659f62"}} */}
+
+  ## Payment-gated renewals
+
+  Subscriptions that gate on payment now apply the same rule at renewal: an unpaid renewal invoice holds back new-period credits and, once it fails or goes overdue, moves the subscription to `incomplete` until it is paid.
+
+  * **Scope**: Applies to subscriptions whose `payment_behavior` is `allow_incomplete`, `default_incomplete`, or `error_if_incomplete`. `default_active` subscriptions renew as before
+  * **Recurring credit grants**: A renewal's recurring credit grant is applied only after the renewal invoice is paid, or skipped because nothing is owed. Deferred applications are retried and are applied right away when the invoice is paid
+  * **Payment failure**: A Stripe `invoice.payment_failed` event moves an active gated subscription to `incomplete` when its finalized renewal invoice still has an amount due, on the first failure for `charge_automatically` and only after the due date for `send_invoice`. It also records the failed payment when Stripe has an open payment intent. This needs Stripe invoice outbound sync enabled and an invoice synced to Stripe
+  * **Overdue invoices**: A recurring job moves an active gated subscription to `incomplete` once its finalized renewal invoice is past its due date and still unpaid, within the grace period set by `grace_period_days`
+  * **Reactivation**: Paying the renewal invoice moves an `incomplete` subscription back to `active` and applies its pending credit grants. A Stripe `invoice.paid` event also marks invoices settled without a payment intent, such as paid from customer balance or out of band
+  * **Auto-cancellation**: Past the grace period, auto-cancellation, when enabled, now covers `incomplete` subscriptions. It voids the overdue invoice in Stripe first and holds the cancellation if that invoice was already paid. It then cancels the subscription with the metadata `cancellation_reason` set to `payment_overdue` and voids the invoice in Flexprice
+  * **Webhooks**: Each move to `incomplete` sends `subscription.updated`
+
+  <br />
+
+  ## Stripe checkout and saved payment methods
+
+  Stripe connections now support checkout sessions, off-session charges with a saved card, and saved card management, as Chargebee does.
+
+  * **Checkout sessions**: Checkout sessions resolve to hosted Stripe Checkout for payment links and saved card authorization
+  * **Saved card charges**: A customer's default Stripe payment method is charged off-session, or the first listed card when none is marked default. With no saved card, an authorization link is issued instead, and an unattended checkout returns an error
+  * **Card management**: Customers can list, add, remove, and set a default card on Stripe, cards only. Unexpired saved cards report `instantly_chargeable: true`. Adding a card opens Stripe Checkout in setup mode
+  * **Late payments**: A payment captured after its Flexprice checkout session has expired or failed is refunded in Stripe automatically, once per payment
+
+  <br />
+
+  <Card icon="code" horizontal={true} href="/api-reference/customers/list-customer-payment-methods" title="List customer payment methods - API Reference" />
+
+  <br />
+
+  ## Expiring credits pay for usage first
+
+  A wallet credit that expires mid-period can now pay for the usage that happened before its expiry, so only the unused remainder expires. It is off by default.
+
+  * **Setting**: Turn it on with `credit_expiry_settlement_config` set to `{"enabled": true}`. With it off, behavior is unchanged and an expiring credit expires in full
+  * **Example**: A wallet holding 100 purchased and 30 free credits, with 20 of usage, ends at 100 when the free credits expire. Before, it ended at 80
+  * **Settlement**: Usage before the expiry, after discounts, is applied to the subscription's open renewal draft invoices, oldest period first, and the credit is debited. The current period's draft is created when there is usage before the expiry. Fixed charges are never paid this way, amounts are rounded down to the currency's precision, and a credit is applied to a draft at most once
+  * **Finalization**: A recomputed draft keeps the applied credits, and finalization takes only the rest from the wallet. With the setting on, it waits for up to 3 hours after an expiry inside the period while that expiry is still unprocessed
+  * **Timing**: With it on, expiries are processed 2 hours after they occur, so late events dated before the expiry are counted. With it off, 6 hours
+  * **Eligibility**: Active prepaid wallets, and active standalone or parent subscriptions in the wallet's currency that do not use threshold billing
+
+  <br />
+
+  ## FX rates
+
+  You can now store exchange rates at tenant, customer, or subscription scope through the API.
+
+  * **Scopes**: A tenant rate is the base for a currency pair, with one allowed per pair. Customer and subscription rates are overrides that need a tenant rate for the same pair, and the most specific scope wins at resolution
+  * **Validity windows**: Overrides take an optional `start_date` and `end_date`, and windows for the same scope and pair cannot overlap. Tenant rates have no window
+  * **Source**: `source` defaults to `fixed`, which requires a positive `rate`. `market` can be stored, but market rate resolution is not available yet
+  * **Guardrails**: Only fiat currencies are accepted, and the two currencies must differ. A subscription rate must convert from the subscription's own currency, and customer and subscription IDs must exist
+  * **Updates and deletes**: Updates change `rate`, the window on overrides, or `metadata`, and apply to published rates only. Scope, `scope_id`, and the currency pair cannot change. Deleting archives an override, and tenant rates cannot be deleted
+  * **Availability**: Rates are stored and managed through the API. Invoicing and wallet conversion do not read them yet
+
+  <br />
+
+  ## Invoice sync webhooks
+
+  Invoice syncs to external providers now report their final outcome as a webhook.
+
+  * **Events**: `invoice.sync.success` and `invoice.sync.failed` are sent once a sync workflow finishes
+  * **Payload**: Contains the invoice, `provider_details` with the provider, its invoice ID, and its hosted invoice URL, and an `error` message on failure. The provider invoice ID is `null` when the invoice was not mapped to the provider, such as after a failed sync. The hosted invoice URL is currently returned only for Stripe and is `null` for other providers
+  * **Providers**: Stripe, Chargebee, HubSpot, Moyasar, Nomod, Paddle, QuickBooks, Razorpay, Tabs, Whop, and Zoho Books
+  * **Exceptions**: No event is sent when the sync is canceled, the provider connection is not found, or the sync was skipped and the invoice was never mapped to the provider
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Renewal invoice processing starts 1 to 5 hours after the billing period rolls over, up from 15 to 20 minutes
+      * The dashboard Recalculate Invoice action now works on draft and skipped subscription invoices, recomputing them in place with current pricing and usage. Finalized invoices are still voided and reissued, and the confirmation says which will happen
+      * The dashboard event debugger looks events up by the event's external customer ID, as the lookup endpoint now requires
+      * The API server drains in-flight requests on `SIGTERM` for a configured timeout before closing connections, instead of cutting them off
+      * The daily draft-and-compute, draft finalization, and subscription billing workflows time out their activities after 1 hour with a 2 minute heartbeat timeout, down from 24 hours
+      * The Helm chart adds `ingress.type` (`nginx` or `gce`), a `gceIngress` parallel GCE Ingress with per-path backends, an optional `sslPolicy`, and request logging. `ingress.provider` is still honored
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * The dashboard usage events list no longer retries a rate-limited page in a loop. It backs off after a `429`, honors `Retry-After`, loads 20 events per page, and shows a Retry button
+      * Invoices with very large numbers of line items are saved in batches, avoiding PostgreSQL's parameter limit
+      * Stripe off-session charges are deduplicated and settled from `payment_intent.succeeded`, since they raise no `checkout.session.completed` event
+            * A Razorpay saved card whose issuer flags recurring payments as unsupported reports its `recurring` status as `rejected` instead of `active` in saved payment method listings
+      * A checkout session whose Razorpay saved-method charge was submitted now stays open for 72 hours from submission, covering the 24 to 36 hour mandate debit, instead of expiring first and refunding the late capture
+    </Accordion>
+
+    <Accordion title="API">
+      * `GET /events/lookup` requires `external_customer_id` and accepts `start_time` and `end_time`. `start_time` defaults to 14 days before `end_time`, and `end_time` defaults to now. An event outside the window returns not found
+      * `GET /events` rejects an `event_id` filter sent without `external_customer_id`
+      * `POST /events/huggingface-billing`, the Hugging Face billing endpoint, is removed
+      * New `GET /customers/{id}/payment-methods` lists saved payment methods across connected gateways, with an optional `providers` filter. Each item reports `is_default`, `can_auto_charge`, `instantly_chargeable`, and Razorpay `recurring` details
+      * New `/forex` endpoints: `POST /forex`, `GET /forex/{id}`, `PUT /forex/{id}`, `DELETE /forex/{id}`, and `POST /forex/query`
+      * New `invoice.sync.success` and `invoice.sync.failed` webhook events
+      * Auto-cancelled subscriptions carry `cancellation_reason` of `payment_overdue` in their metadata
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
 <Update label="September 28th 2026">
   {/* changelog-coverage: {"version":1,"complete":true,"backend":{"from":"fa753fce9f8c0a37d00cfa1ff7e6085abad637cc","to":"5bf18b4dd157ee1fcfadf4c6fa4a8c72ce237b1a"},"frontend":{"from":"a515674fa06197f9e8ccea3c78b40e6a5ac1ed65","to":"bf2885c4d0a3e4ee0586f7fefb991ce878db179a"}} */}
 

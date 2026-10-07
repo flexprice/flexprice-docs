@@ -1,0 +1,114 @@
+---
+title: "Attio Customer Sync"
+description: "How Flexprice creates or links a customer for the company on each won Attio deal"
+tag: 'Beta'
+---
+
+Customer sync turns the companies on your won Attio deals into Flexprice customers. When a deal reaches the won stage set on the [Attio connection](/integrations/attio/connection-setup), Flexprice reads the deal's company and people, then creates or links one Flexprice customer for the company. Customer sync runs one way: Flexprice never creates or updates companies or people in Attio. Turn it on with the **Customers** toggle, or with `sync_config.customer.inbound` in the API.
+
+## When Attio customer sync runs
+
+Customer sync starts when Attio sends a deal event to the webhook that Flexprice registers for the connection. See [How Flexprice receives Attio deal events](/integrations/attio/connection-setup#how-flexprice-receives-attio-deal-events). With Attio's default pipeline, moving a deal into the **Won 🎉** column starts customer sync.
+
+<Frame>
+  ![Deals pipeline in Attio with the default Lead, In Progress, Won, and Lost stages](/images/docs/integrations/attio/attio-deal-stages.png)
+</Frame>
+
+| Attio event | Result |
+|-------------|--------|
+| A deal's stage changes to the won stage | Flexprice imports the deal |
+| A deal is created in the won stage | Flexprice imports the deal |
+| A deal moves to any other stage, or is created in another stage | Ignored |
+| A won deal moves back out of the won stage, or is deleted | Ignored. The customer and its subscriptions stay as they are. |
+
+- **One customer per company.** Every won deal for the same company links to the same customer.
+- **A deal with neither a company nor a person** creates nothing.
+
+## How Flexprice picks the company and billing contact
+
+Flexprice reads two attributes on the won deal:
+
+| Deal attribute | What Flexprice uses it for |
+|----------------|----------------------------|
+| `associated_company` | The company that becomes the Flexprice customer |
+| `associated_people` | The billing contact: the first person listed who has an email address |
+
+If the deal has no associated company, Flexprice creates the customer from the billing contact instead, as described in [Customers created from a person](#customers-created-from-a-person).
+
+<Note>
+  The billing contact's email address becomes the customer's email in Flexprice. List the person who handles billing first under **Associated people** on the deal, or make sure they are the first person with an email address.
+</Note>
+
+## How Flexprice matches Attio companies to customers
+
+Flexprice checks each won deal in this order:
+
+1. **Company already linked.** If a Flexprice customer is already linked to the deal's company, Flexprice does not create another one. It sets the customer's `attio_deal_id` to the newly won deal, so the customer's next subscription syncs to that deal.
+2. **Same email.** If a Flexprice customer has the billing contact's email address, Flexprice links that customer to the company and adds the Attio metadata keys. It leaves the customer's name and address unchanged.
+3. **New customer.** Otherwise, Flexprice creates a customer from the company, as described in the next section.
+
+## Attio fields copied to Flexprice customers
+
+A customer created from an Attio company gets these values:
+
+| Flexprice customer field | Value from Attio |
+|--------------------------|------------------|
+| `external_id` | The company's record ID |
+| `name` | The company's `name` |
+| `email` | The billing contact's first address in `email_addresses` |
+| `address_line1` | `line_1` of the company's `primary_location` |
+| `address_line2` | `line_2` of `primary_location` |
+| `address_city` | `locality` of `primary_location` |
+| `address_state` | `region` of `primary_location` |
+| `address_postal_code` | `postcode` of `primary_location` |
+| `address_country` | `country_code` of `primary_location` |
+| `metadata.attio_company_id` | The company's record ID |
+| `metadata.attio_person_id` | The billing contact's record ID |
+| `metadata.attio_deal_id` | The record ID of the deal that triggered the import |
+| `metadata.source` | `attio` |
+
+Attio stores `country_code` as a two-letter ISO 3166-1 code, the format Flexprice expects, so the country maps without conversion. Fields that are empty in Attio stay empty on the customer.
+
+<Frame>
+  ![Information tab of a Flexprice customer created by Attio customer sync, with the Attio company record ID as the External ID and the attio_company_id, attio_person_id, attio_deal_id, and source keys under Metadata](/images/docs/integrations/attio/customer-information.png)
+</Frame>
+
+Later changes to the company or the billing contact in Attio are not copied to the Flexprice customer.
+
+### Customers created from a person
+
+When the won deal has no associated company, the customer is built from the billing contact:
+
+| Flexprice customer field | Value from Attio |
+|--------------------------|------------------|
+| `external_id` | The person's record ID |
+| `name` | The person's `full_name` |
+| `email` | The person's first address in `email_addresses` |
+| Address fields | The person's `primary_location`, mapped as in the table above |
+| `metadata.attio_person_id` | The person's record ID |
+| `metadata.attio_deal_id` | The record ID of the deal that triggered the import |
+| `metadata.source` | `attio` |
+
+Flexprice matches these customers on the person's record ID instead of a company's.
+
+## Finding the Attio record linked to a customer
+
+Customers created by customer sync carry the company ID in `metadata.attio_company_id`. For any linked customer, including customers linked by email, call [Get entity integration mappings](/api-reference/integrations/get-entity-integration-mappings):
+
+```bash
+curl "https://api.cloud.flexprice.io/v1/integrations/mappings?entity_type=customer&entity_id=<CUSTOMER_ID>" \
+  -H "x-api-key: <API_KEY>" \
+  -H "X-Environment-ID: <ENVIRONMENT_ID>"
+```
+
+The Attio link is the item with `provider_type` set to `attio`. Its `provider_entity_id` is the Attio company record ID, or the person record ID for a customer created from a person.
+
+## Troubleshooting Attio customer sync
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| A won deal created no customer | The deal reached a stage other than **Won Stage**, **Customers** is off, or the deal has no company and no person | Check **Won Stage** and the **Customers** toggle on the connection, and associate a company with the deal |
+| The customer has no email | No person on the deal had an email address when it was won | Set the customer's email in Flexprice. Later changes in Attio are not copied. |
+| The wrong person is the billing contact | Flexprice uses the first person with an email address under **Associated people** | Change the customer's email in Flexprice, and reorder the deal's people for future deals |
+| Two customers exist for one company | The deals point at two company records in Attio, such as duplicates created from different email domains | Merge the duplicate companies in Attio, then archive the extra customer in Flexprice |
+| A returning company's new subscription syncs to its old deal | The subscription was created before the new deal was won | Move the subscription as described in [Moving a subscription to a different Attio deal](/integrations/attio/deal-sync#moving-a-subscription-to-a-different-attio-deal) |

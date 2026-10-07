@@ -1,0 +1,105 @@
+---
+title: "Attio Deal Sync"
+description: "How Flexprice writes a subscription's annual contract value, plan, status, and renewal date to the Attio deal it came from"
+tag: 'Beta'
+---
+
+Deal sync keeps the Attio deal that a customer came from in step with the customer's subscription. Flexprice sets the deal's **Deal value** to the subscription's annual contract value and fills four Flexprice attributes on the deal with the subscription's ID, plan, status, and renewal date. Because they are ordinary Attio attributes, you can show them on your pipeline board and filter or report on them like any other attribute. Turn deal sync on with the **Deals** toggle on the [Attio connection](/integrations/attio/connection-setup), or with `sync_config.deal.outbound` in the API.
+
+## When Attio deal sync runs
+
+Deal sync needs the **Deals** toggle on, and a customer with `attio_deal_id` in its metadata. Customers created or linked by [customer sync](/integrations/attio/customer-sync) have it.
+
+| Flexprice event | Starts a deal sync |
+|-----------------|--------------------|
+| A subscription is created, not as a draft | Yes |
+| A draft subscription is activated | Yes |
+| A line item quantity changes | Yes |
+| An add-on is added or removed | Yes |
+| The subscription changes plan | Yes |
+| The subscription is paused, resumed, or cancelled | Yes |
+| A subscription is created as a draft | No |
+
+Each run works from the subscription's current state, so a later run picks up every change made in between. A run that fails is retried up to three times.
+
+## Which Attio deal a subscription syncs to
+
+The first deal sync for a subscription links it to the deal in the customer's `attio_deal_id` metadata. Every later run updates that same deal, even after the customer wins another deal and customer sync moves `attio_deal_id` to it.
+
+Each deal holds one subscription. If the deal in `attio_deal_id` is already linked to another subscription, a new subscription for the customer is not linked and does not sync until you move it to a deal of its own, as described in [Moving a subscription to a different Attio deal](#moving-a-subscription-to-a-different-attio-deal).
+
+## What Flexprice writes on the Attio deal
+
+| Attio attribute | API slug | Type | Value |
+|-----------------|----------|------|-------|
+| **Deal value** | `value` | Currency | The subscription's annual contract value, calculated as described in the next section |
+| **Flexprice subscription ID** | `flexprice_subscription_id` | Text | The subscription's ID |
+| **Flexprice plan** | `flexprice_plan` | Text | The name of the subscription's plan |
+| **Flexprice status** | `flexprice_status` | Select | `Active`, `Trialing`, `Paused`, `Cancelled`, or `Incomplete` |
+| **Flexprice renewal date** | `flexprice_renewal_date` | Date | The end of the current billing period |
+
+**Deal value** is a standard attribute of Attio's Deals object. Flexprice adds the four Flexprice attributes to your Deals object the first time deal sync runs, which is why the token needs **Object Configuration** at **Read-write**. Flexprice does not create them again if they already exist.
+
+<Frame>
+  ![A won deal in Attio after deal sync, with a Deal value of US$7,880.00 and the Flexprice subscription ID, plan, status, and renewal date attributes filled in](/images/docs/integrations/attio/attio-deal.png)
+</Frame>
+
+### How Flexprice calculates the deal value
+
+Flexprice adds up the subscription's recurring fixed-price line items. Each one counts as its amount multiplied by its quantity, scaled to one year by its billing period:
+
+| Billing period | Multiplied by |
+|----------------|---------------|
+| Daily | 365 |
+| Weekly | 52 |
+| Monthly | 12 |
+| Quarterly | 4 |
+| Half-yearly | 2 |
+| Annual | 1 |
+
+For example, 10 seats at \$49 a month plus a \$2,000 annual platform fee give a deal value of 10 × 49 × 12 + 2,000 = **\$7,880**.
+
+These charges are left out of the deal value:
+
+- **Usage-based line items**, because their amount depends on usage that has not happened yet.
+- **One-time charges**, such as a setup fee.
+- **Line items that have ended.**
+- **Discounts, credits, and taxes.** The deal value is the list price of the recurring charges.
+
+<Warning>
+  Attio's **Deal value** attribute holds one currency for every deal in the workspace. Flexprice writes the deal value only when the subscription's currency matches it. For a subscription in any other currency, Flexprice leaves **Deal value** unchanged and still writes the four Flexprice attributes.
+</Warning>
+
+## What Attio deal sync leaves unchanged
+
+- **Deal stage, owner, name, and associations.** Flexprice writes only the five attributes in the table above.
+- **Deal value after cancellation.** Cancelling a subscription sets **Flexprice status** to `Cancelled` and leaves **Deal value** as it was, so the deal keeps the revenue it was won with.
+- **Edits made in Attio.** Flexprice does not read deals back. The next deal sync overwrites the five attributes with Flexprice's values.
+
+## Moving a subscription to a different Attio deal
+
+Flexprice links each subscription to one deal and keeps updating it. To move a subscription to another deal, for example after a renewal deal is won, remove the link with [Delink integration mapping](/api-reference/integrations/delink-integration-mapping), passing the Flexprice subscription ID:
+
+```bash
+curl -X DELETE https://api.cloud.flexprice.io/v1/integrations/link \
+  -H "x-api-key: <API_KEY>" \
+  -H "X-Environment-ID: <ENVIRONMENT_ID>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "entity_type": "subscription",
+    "entity_id": "<SUBSCRIPTION_ID>",
+    "provider_type": "attio"
+  }'
+```
+
+Then set `attio_deal_id` in the customer's metadata to the new deal's record ID, if customer sync has not already done so. The next deal sync for the subscription links it to the new deal and writes the five attributes there. The old deal keeps the values Flexprice last wrote; clear them in Attio if they should not stay.
+
+## Troubleshooting Attio deal sync
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| The deal shows no Flexprice attributes | The **Deals** toggle is off, the customer has no `attio_deal_id`, or the subscription is still a draft | Turn on the toggle and check the customer's metadata. Activating the draft starts a deal sync. |
+| **Deal value** does not change | The subscription's currency differs from the currency of **Deal value**, or the subscription only has usage-based or one-time charges | Check the subscription's currency and line items. The Flexprice attributes still update. |
+| Deal sync fails with an attribute error | Your Deals object already has an attribute with one of the Flexprice API slugs but a different type | Rename that attribute's slug in Attio. The next deal sync creates the Flexprice attribute. |
+| A second subscription for the customer does not sync | The deal in `attio_deal_id` is already linked to another subscription | Win a separate deal for it in Attio, or link it by hand as described in [Moving a subscription to a different Attio deal](#moving-a-subscription-to-a-different-attio-deal) |
+| Deal sync fails after the deal was deleted in Attio | The subscription is still linked to the deleted deal | Move the subscription to another deal as described above |
