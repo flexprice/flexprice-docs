@@ -232,12 +232,11 @@ Model new webhook events on existing ones — see `docs/wallet/low-balance-alert
 
 After writing a new file, **always add it to `docs.json`**.
 
-The navigation lives in `navigation.tabs[0].groups` (the Documentation tab). Structure:
+The navigation lives in `navigation.tabs[0].groups` (the Documentation tab). Each top-level group is a section heading, in this order: Start Here, Usage Metering, Pricing and Packaging, Entitlements, Customers, Subscriptions, Credits and Wallets, Enterprise Billing, Invoicing and Taxes, Payments and Checkout, Reporting and Data, Deployment and Reliability, Platform and Security. Inside a section, topics are collapsible sub-groups (Usage Metering holds Features, Send Usage Events, Debug and Monitor). Billing recipes and pricing teardowns belong in the Cookbooks tab, not in Documentation. Structure:
 
 ```json
 {
-  "group": "Group Name",
-  "icon": "icon-name",
+  "group": "Section Name",
   "pages": [
     "docs/path/to/page",
     {
@@ -252,11 +251,11 @@ The navigation lives in `navigation.tabs[0].groups` (the Documentation tab). Str
 
 **Rules:**
 - Flat page paths are relative to repo root, no `.mdx` extension
-- Sub-groups use the same `{ "group": "...", "pages": [...] }` shape — no `icon` on sub-groups
-- Always add new pages immediately after the most relevant existing page in the same section
-- Never create a new top-level group without checking if an existing group is the right home
-
-**Common icon names:** `users`, `wallet`, `webhook`, `layer-group`, `refresh`, `file-text`, `gear`, `bell`, `shield`, `code`, `book-open`, `plug`
+- No `icon` on any header tab or any group, top-level or nested. The only navigation icons are on the global anchors (Support, Community, Website)
+- A sub-group holds 3 to 6 pages. Never leave more than 6 pages in one flat list: give a topic with several pages its own nested sub-group (Plans and Packaging holds Plans, Addons, Groups). Aggregation Types, one page per type, is the only exception
+- Never create a sub-group for a single page; a lone page sits directly in its section
+- Always add new pages immediately after the most relevant existing page in the same sub-group
+- Never add a new top-level section without asking first
 
 ---
 
