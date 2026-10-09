@@ -22,7 +22,8 @@ flexprice-docs/
 ├── integrations/      Payment and accounting integration guides (Stripe, Paddle, Razorpay, QuickBooks, Zoho Books, ...)
 ├── images/            Screenshots and diagrams referenced from pages
 ├── snippets/          Reusable JSX previews embedded in pages
-├── docs.json          Site config and navigation (tabs, groups, page order, redirects)
+├── docs.json          Site config and navigation (tabs, groups, page order)
+├── redirect.json      Redirects for moved, renamed or deleted pages (loaded by docs.json via $ref)
 └── style.css          Custom styling
 ```
 
