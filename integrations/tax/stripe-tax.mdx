@@ -1,0 +1,208 @@
+---
+title: 'Stripe Tax'
+description: 'Calculate indirect tax on Flexprice invoices and credit notes with Stripe Tax'
+---
+
+Stripe Tax calculates indirect taxes, which are VAT, GST and sales tax, from the tax configuration held in your Stripe account. Enable it on a Flexprice environment and Flexprice asks Stripe for the tax on every invoice and credit note in that environment, in place of the Flexprice-native tax engine and the tax rates you configure yourself.
+
+## How Stripe decides the tax
+
+Stripe calculates tax on a transaction taking into account some or all of the following factors:
+
+- The location of the seller
+- The location of the customer
+- The location where the activity is performed
+- The type of the product sold
+- Whether the transaction involves a reverse charge
+- The status of the customer, for example whether they are a VAT-registered business, a private person, or an exempt organisation
+
+Stripe only calculates tax in jurisdictions where you hold an active tax registration. Without a registration covering the customer's location, the calculation returns zero tax.
+
+All of this is configured in your Stripe account, not in Flexprice. Read [How Stripe Tax works](https://docs.stripe.com/tax/how-tax-works) and [Calculate tax](https://docs.stripe.com/tax/calculating) to set yours up, and [Understand zero tax amounts](https://docs.stripe.com/tax/zero-tax) for the cases where Stripe returns zero.
+
+<Warning>
+  Stripe Tax supports a different set of countries for the seller than for the customer. If your Stripe account's own country is not supported as a seller location, Stripe Tax cannot calculate for you at all. Check [Countries supported by Stripe Tax](https://docs.stripe.com/tax/supported-countries) before you enable it.
+</Warning>
+
+## Prerequisites
+
+1. **Stripe Tax set up in your Stripe account**, with your business address and an active registration for every jurisdiction you collect in. See [Set up Stripe Tax](https://docs.stripe.com/tax/set-up) and [Manage your registrations](https://docs.stripe.com/tax/registering).
+2. **A Stripe connection in Flexprice.** Tax uses the same connection as payments and invoice sync, so if Stripe is already connected there is nothing more to add. See [Stripe Connection Setup](/integrations/stripe/connection-setup). A restricted key must allow write access to the Tax resource.
+3. **Every customer you bill must already exist in Stripe.** Stripe reads the customer's address, tax identification numbers, and exemption status from its own Customer object, so a customer Flexprice has never pushed to Stripe cannot be taxed. [Customer Sync](/integrations/stripe/customer-sync) is what creates them.
+
+<Note>
+  Store your customers' VAT and GST numbers on the Stripe Customer. Stripe uses them to determine whether a transaction is a reverse charge. Flexprice does not hold tax identification numbers and does not sync them to Stripe.
+</Note>
+
+## Enable Stripe Tax
+
+Set the `tax_config` setting on the environment you want Stripe to tax.
+
+<CodeGroup>
+```bash cURL
+curl -X PUT https://api.cloud.flexprice.io/v1/settings/tax_config \
+  -H "x-api-key: $FLEXPRICE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "value": {
+      "enabled": true,
+      "provider": "stripe"
+    }
+  }'
+```
+
+```json Response
+{
+  "value": {
+    "enabled": true,
+    "provider": "stripe"
+  },
+  "tenant_id": "tenant_...",
+  "environment_id": "env_01KW1XCFW0SZ0T9D81JX0NV47E",
+  "created_at": "2026-10-10T09:12:04Z",
+  "updated_at": "2026-10-10T09:12:04Z"
+}
+```
+</CodeGroup>
+
+Send `{"value": {"enabled": false}}` to stop using Stripe Tax. Flexprice goes back to the Flexprice-native tax engine. See [Tax Configuration](/docs/settings/settings#tax-configuration) for the full schema.
+
+<Info>
+  While Stripe Tax is enabled, the tax rates and tax associations you configure in Flexprice are not applied, and creating a new tax association is rejected. Configure your tax in Stripe instead.
+</Info>
+
+<Info>
+  **Your prices must match the tax behavior set in Stripe.** Flexprice does not send a tax behavior, so Stripe resolves it from the default in your Stripe Tax Settings. If that default is inclusive, your Flexprice prices must already contain the tax. If it is exclusive, they must be pre-tax. A mismatch produces a wrong total that Flexprice cannot detect. See [Specify product tax codes and tax behavior](https://docs.stripe.com/tax/products-prices-tax-codes-tax-behavior).
+</Info>
+
+## How Flexprice applies the tax
+
+Flexprice asks Stripe for the tax, adds it to the document, and records the transaction back in Stripe. The tax Stripe returned is stored on the document in `taxes[]`, one entry per jurisdiction that assessed it.
+
+| Field | What it holds |
+|-------|---------------|
+| `provider` | `stripe` when Stripe calculated this tax |
+| `tax_transaction_id` | The Stripe tax transaction this tax was recorded under |
+| `tax_transaction_type` | `reversal` on a credit note. Absent on an invoice |
+| `external_tax_details` | What Stripe returned: the jurisdiction, the resolved rate, the tax type, and the reason |
+
+### Invoices
+
+Tax is calculated when the invoice is drafted and again when it is finalized, on the invoice total after discounts, so a change in your Stripe setup between the two is picked up. Once the invoice is finalized, Flexprice records the tax as a transaction in Stripe.
+
+<Info>
+  Voiding an invoice reverses its tax transaction in Stripe in full. 
+</Info>
+
+```json Invoice response
+{
+  "invoice_number": "INV-202610-00008",
+  "currency": "usd",
+  "subtotal": "1000",
+  "total_tax": "180",
+  "total": "1180",
+  "taxes": [
+    {
+      "taxable_amount": "1000",
+      "tax_amount": "180",
+      "tax_behavior": "exclusive",
+      "provider": "stripe",
+      "tax_transaction_id": "tax_1UOyCBJiOrSZFKQmSQOmEEXg",
+      "external_tax_details": {
+        "display_name": "Integrated goods and services tax (IGST)",
+        "tax_type": "igst",
+        "percentage": "18.0",
+        "taxability_reason": "standard_rated",
+        "jurisdiction": { "country": "IN", "display_name": "India", "level": "country" }
+      }
+    },
+    {
+      "taxable_amount": "0",
+      "tax_amount": "0",
+      "tax_behavior": "exclusive",
+      "provider": "stripe",
+      "tax_transaction_id": "tax_1UOyCBJiOrSZFKQmSQOmEEXg",
+      "external_tax_details": {
+        "taxability_reason": "not_subject_to_tax",
+        "jurisdiction": { "country": "IN", "state": "HR", "display_name": "Haryāna", "level": "state" }
+      }
+    }
+  ],
+  "tax_summary": {
+    "inclusive_tax": "0",
+    "exclusive_tax": "180",
+    "total_tax": "180",
+    "exemption": null
+  }
+}
+```
+
+Every jurisdiction Stripe assessed produces an entry, including one that assessed nothing. Above, India charged 18% IGST and Haryana assessed the same sale at zero, so the invoice carries both and `total_tax` is 180.
+
+### Credit notes
+
+A credit note returns what the customer paid, so the tax comes back with the price. Stripe prices the credited amount and Flexprice adds that tax to the credit note.
+
+<Info>
+  Finalizing a credit note reverses that part of the invoice's tax transaction in Stripe. If Stripe refuses the reversal the credit note is not issued, so a credit note never exists while the tax it credits is still recorded in full.
+</Info>
+
+<Frame>
+  ![Issuing a credit note for 500.00 on a Stripe-taxed invoice, showing 90.00 of tax and 590.00 to be adjusted](/images/integrations/tax/credit-note-tax.png)
+</Frame>
+
+```json Credit note response
+{
+  "credit_note_type": "ADJUSTMENT",
+  "currency": "usd",
+  "subtotal": "500",
+  "total_tax": "90",
+  "total_amount": "590",
+  "taxes": [
+    {
+      "entity_type": "credit_note",
+      "taxable_amount": "500",
+      "tax_amount": "90",
+      "tax_behavior": "exclusive",
+      "provider": "stripe",
+      "tax_transaction_type": "reversal",
+      "external_tax_details": {
+        "display_name": "Integrated goods and services tax (IGST)",
+        "tax_type": "igst",
+        "percentage": "18.0",
+        "taxability_reason": "standard_rated",
+        "jurisdiction": { "country": "IN", "display_name": "India", "level": "country" }
+      }
+    }
+  ]
+}
+```
+
+`total_amount` is gross. Crediting 500.00 of a line taxed at 18% returns 590.00, and 90.00 of tax is reversed in Stripe.
+
+Which engine taxes a credit note is decided by the invoice it credits, not by the current setting:
+
+- **An invoice taxed by Stripe is always credited by Stripe**, even after you disable the setting on that environment.
+- **An invoice that carries no Stripe tax is credited untaxed.** An invoice finalized before you enabled Stripe Tax has no Stripe transaction to reverse, so its credit note returns the net amount. No tax was charged on that invoice, so there is none to return.
+
+A credit note whose tax has been reversed cannot be voided.
+
+## Where to see the tax
+
+**In Flexprice.** `taxes[]` on the invoice or credit note, and `tax_summary` for the totals. When no tax was charged, `tax_summary.exemption.reason_code` states why.
+
+**In Stripe.** Every finalized invoice's tax is recorded as a Stripe tax transaction and appears in your [Stripe Tax reports](https://docs.stripe.com/tax/reports), where you can export it in itemised form. Filing and remitting the tax you collect remains yours to do, in every location you are registered in. See [Report, file, and remit](https://docs.stripe.com/tax/how-tax-works#report-file-and-remit).
+
+## Troubleshooting
+
+| Message | Cause | Fix |
+|---------|-------|-----|
+| `Connect Stripe before selecting it as the tax engine` | Stripe is named in `tax_config` but no Stripe connection exists in that environment | Create the connection. See [Stripe Connection Setup](/integrations/stripe/connection-setup) |
+| `The customer must exist in Stripe before tax can be calculated for them` | The customer has never been pushed to Stripe | Enable outbound customer sync. See [Customer Sync](/integrations/stripe/customer-sync) |
+| `Stripe could not calculate tax` | Stripe refused the calculation | Check the credentials on the connection, that your account country is a supported seller location, and that the Stripe Customer has a usable address |
+| `Tax for this environment is calculated by stripe...` | A tax rate was linked, or `tax_rate_overrides` were sent, while Stripe Tax is enabled | Configure the tax in Stripe instead |
+| An invoice is finalized with no tax on it | No active registration covers the customer's location, or the Stripe Customer has no usable address | Read `tax_summary.exemption.reason_code` on the invoice. `not_collecting` means no registration covers that jurisdiction |
+
+<Info>
+  A missing registration does not fail. Stripe returns a valid calculation with zero tax, and the invoice finalizes and bills the customer without tax. Add every registration in Stripe before you enable Stripe Tax.
+</Info>

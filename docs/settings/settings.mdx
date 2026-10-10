@@ -17,11 +17,12 @@ Settings in Flexprice control behavior for respective environment against tenant
 
 Flexprice supports the following setting keys:
 
-- **Subscription Configuration** (`subscription_config`) — Controls subscription auto-cancellation for unpaid invoices
-- **Invoice Configuration** (`invoice_config`) — Controls invoice number generation and due date calculation
-- **Wallet Balance Alert Configuration** (`wallet_balance_alert_config`) —  Wallet balance alert thresholds configurations per tenant per environment
-- **Bonus Credits Topup Configuration** (`bonus_credits_topup_config`) — Slab-based bonus credit rules applied automatically to purchased wallet top-ups
+- **Subscription Configuration** (`subscription_config`): controls subscription auto-cancellation for unpaid invoices
+- **Invoice Configuration** (`invoice_config`): controls invoice number generation and due date calculation
+- **Wallet Balance Alert Configuration** (`wallet_balance_alert_config`): wallet balance alert thresholds configurations per tenant per environment
+- **Bonus Credits Topup Configuration** (`bonus_credits_topup_config`): slab-based bonus credit rules applied automatically to purchased wallet top-ups
 - **Custom Currency Configuration** (`custom_currency_config`): currencies of your own that the catalogue can be priced in, and the fiat currency invoices are denominated in
+- **Tax Configuration** (`tax_config`): hands tax calculation on invoices and credit notes to an external tax engine, such as Stripe Tax, instead of the Flexprice-native tax engine that applies the tax rates you configure yourself
 
 ---
 
@@ -325,6 +326,64 @@ When creating a new setting via API, defaults are:
 - **Factors:** Every factor must be a positive decimal.
 - **Default currency:** Required when `custom_currencies` is non-empty, and cannot itself be a custom currency code. Every custom currency must define a factor for it.
 - **Matching fiat currencies:** Every custom currency must define factors for the same fiat currencies. If one defines `inr` and another does not, the update is rejected.
+
+---
+
+## Tax Configuration
+
+**Key:** `tax_config`
+
+Defines which tax engine calculates tax on invoices and credit notes for an environment. By default Flexprice uses its own tax engine, which applies the percentage [tax rates](/docs/product-catalogue/taxes/overview) you configure and link to customers and subscriptions. Naming an external engine replaces that: the engine determines the tax from the configuration you hold in the engine itself, and your Flexprice tax rates are no longer applied.
+
+### Schema
+
+```json
+{
+  "enabled": boolean,
+  "provider": "stripe"
+}
+```
+
+- **`enabled`**: Optional, defaults to `false`. Boolean. Whether the named engine calculates tax for this environment.
+- **`provider`**: Optional, defaults to `""`. The engine to use. `stripe` is the only engine available.
+
+Both fields are needed for an engine to take effect. Set `enabled` to `false` to go back to the Flexprice-native engine while keeping the provider on record.
+
+### Default Values
+
+The setting ships empty, so an environment that has never set it uses the Flexprice-native tax engine:
+
+```json
+{}
+```
+
+A `GET` on that environment returns `{"enabled": false, "provider": ""}`.
+
+### How a Value Resolves
+
+| Stored value | Tax calculated by |
+|--------------|-------------------|
+| No setting at all | Flexprice-native tax engine |
+| `{"enabled": false, "provider": "stripe"}` | Flexprice-native tax engine |
+| `{"enabled": true, "provider": "stripe"}` | **Stripe Tax** |
+
+### What Happens When Enabled
+
+- **The engine determines the tax.** Flexprice asks it when an invoice is drafted and again when the invoice is finalized, then records the tax with the engine so it appears in the engine's own tax reports.
+- **Your Flexprice tax rates are no longer applied**, and linking a new one is rejected. `POST /v1/taxes/associations`, and `tax_rate_overrides` on a customer or subscription, are refused while an engine is in force.
+- **Credit notes follow the invoice, not this setting.** A credit note is taxed and reversed by the engine that taxed the invoice it credits, so changing this setting does not affect invoices that have already been issued.
+
+See [Stripe Tax](/integrations/tax/stripe-tax) for what the Stripe engine requires.
+
+### Validation
+
+- **`provider`:** must name a supported engine. `stripe` is the only one available.
+- **Connection:** the named engine must be connected in the same environment. For Stripe that is a [Stripe connection](/integrations/stripe/connection-setup).
+- **When it is checked:** the connection is verified the first time tax is calculated, not when you save the setting.
+
+<Info>
+  If the engine named here has no connection in this environment, tax calculation fails. Flexprice does not fall back to its own tax rates, because charging those while an external engine is configured produces an invoice that is wrong but looks correct.
+</Info>
 
 ---
 

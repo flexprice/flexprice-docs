@@ -1,5 +1,5 @@
 ---
-title: "Taxes Overview"
+title: "Overview"
 description: "Collect tax on invoices with percentage tax rates applied to customers and subscriptions"
 ---
 
@@ -68,6 +68,25 @@ You can create more than one tax association on the same entity. Rates never com
 | **Total** | | **\$108.00** |
 
 The city tax is calculated on \$100.00, not \$106.00. Combining several inclusive rates works differently since they cannot each be pulled out of the price independently. See [Multiple tax rates](/docs/product-catalogue/taxes/apply#apply-several-rates-at-once) for that math.
+
+## Calculating tax with an external engine
+
+Tax rates work when you already know the rate. Indirect taxes, which are VAT, GST and sales tax, depend on more than that, so you can hand the calculation to an external tax engine instead of maintaining rates yourself. An engine takes some or all of the following into account:
+
+- The location of the seller
+- The location of the customer
+- The location where the activity is performed
+- The type of the product sold
+- Whether the transaction involves a reverse charge
+- The status of the customer, for example whether they are a VAT-registered business, a private person, or an exempt organisation
+
+Set the [`tax_config` setting](/docs/settings/settings#tax-configuration) to enable an engine on an environment. Your business address, your tax registrations, your customers' tax identification numbers, and the tax treatment of what you sell are then all configured in the engine rather than in Flexprice. Flexprice sends the taxable amount and the customer, the engine returns the tax, and Flexprice records it on the invoice.
+
+<Info>
+  While an external tax engine is enabled, Flexprice tax rates and tax associations are not applied to any invoice, and creating a new tax association is rejected. Your existing ones are left untouched and apply again if you disable the engine.
+</Info>
+
+<Card icon="receipt" horizontal={true} href="/integrations/tax/stripe-tax" title="Stripe Tax" />
 
 ## Quick start
 
