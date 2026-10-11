@@ -24,7 +24,7 @@ The Flexprice Collector is optimized for high-performance usage metering:
 - **Automatic Batching**: Groups events for bulk ingestion (10 events or 2s by default)
 - **Smart Routing**: Uses `/events` for single events, `/events/bulk` for batches
 - **Retry Logic**: Exponential backoff ensures no data loss on network failures
-- **High Throughput**: Handles millions of events per day with minimal latency
+- **High Throughput**: Configurable batching and output concurrency let you tune ingestion for your workload
 
 ## Ingesting Data into Flexprice
 
@@ -75,11 +75,13 @@ The Flexprice Collector is available via:
 
 ## Performance & Reliability
 
+The collector forwards events to the Flexprice platform, which processes **40,000+ events per second** and **10 billion+ API requests per month**. Throughput for an individual collector depends on its resources, batching, and output concurrency. See [Ingestion performance](/docs/getting-started/architecture#ingestion-performance).
+
 The collector provides:
 
-- **Bulk Ingestion**: Batches up to 100 events per API call
+- **Bulk Ingestion**: Configurable batch sizes; the [bulk event API](/docs/event-ingestion/api-reference#bulk-events) accepts up to 1,000 events per request. Set `batching.count` within this limit
 - **Automatic Retries**: Failed events retry with exponential backoff
 - **At-Least-Once Delivery**: Kafka consumer groups ensure no data loss
 - **Observability**: Prometheus metrics and structured logging
 
-Contact support@flexprice.io for performance tuning assistance.
+Contact [support@flexprice.io](mailto:support@flexprice.io) for performance tuning assistance.
