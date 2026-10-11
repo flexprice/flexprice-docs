@@ -1,0 +1,171 @@
+---
+title: "Meter Usage with Features"
+sidebarTitle: "Features"
+description: "How a Flexprice feature turns usage events into a billable quantity: feature types, aggregations, filters, changes after creation, and testing"
+---
+
+A feature is something you sell: a metered quantity such as tokens, or a capability such as SSO. A metered feature turns the [usage events](/docs/core-concepts/send-usage-events) you send into a quantity per customer and billing period, and a usage price on a [plan](/docs/core-concepts/plans-and-prices) charges for that quantity. A feature that reads the wrong property, filters out real events, or adds up readings misbills every invoice. Nothing reports the mistake, because Flexprice accepts the events either way.
+
+<Info>
+  Manage features with [Create feature](/api-reference/features/create-feature), [Update feature](/api-reference/features/update-feature), and [Delete feature](/api-reference/features/delete-feature). For a field-by-field walkthrough, see [Creating a Metered Feature](/docs/event-ingestion/creating-a-metered-feature), and for each aggregation, [Aggregation Types](/docs/product-catalogue/features/aggregation/overview).
+</Info>
+
+## Choosing a feature type
+
+Pick the `type` at creation: it can't be changed later.
+
+| `type` | Use it for | What its entitlement sets |
+|--------|------------|---------------------------|
+| `metered` | Usage you charge for or limit, counted from events | `usage_limit` and `usage_reset_period`, such as 100,000 tokens a month |
+| `boolean` | Access that is on or off, such as SSO | `is_enabled` |
+| `static` | A fixed value per plan, such as a support tier | `static_value`, a text value |
+| `config` | Settings your application reads, such as rate limits | `config_value`, a JSON object |
+
+Only metered features count usage and can back a usage price. The other types serve entitlements, which tell your application what a plan includes.
+
+## Defining what a metered feature counts
+
+A metered feature carries a meter: which events it counts, how it combines them, and which ones it skips. The create request takes the meter inline:
+
+```json
+{
+  "name": "Input Tokens",
+  "type": "metered",
+  "unit_singular": "token",
+  "unit_plural": "tokens",
+  "meter": {
+    "name": "Input Tokens",
+    "event_name": "llm_request",        // the events this feature counts
+    "aggregation": {
+      "type": "SUM",                    // how it combines them
+      "field": "input_tokens"           // the property it reads
+    },
+    "filters": [                        // optional: which events count
+      { "key": "model", "values": ["gpt-4o", "gpt-4o-mini"] }
+    ],
+    "reset_usage": "BILLING_PERIOD"
+  }
+}
+```
+
+- **`event_name`**: The feature counts events whose `event_name` matches this value exactly, including case.
+- **`aggregation`**: Every type except `COUNT` reads a `field`, a top-level key in the event's `properties`. `SUM`, `AVG`, `MAX`, and `LATEST` can use an [`expression`](/docs/product-catalogue/features/custom-expression) instead, such as `input_tokens + output_tokens`. Flexprice compiles it when you create the feature and rejects one that doesn't compile. `SUM_WITH_MULTIPLIER` also needs a `multiplier` greater than 0.
+- **`unit_singular` and `unit_plural`**: Set both or neither: the API rejects one without the other.
+
+### Counting one event toward several features
+
+Several features can count the same `event_name`, each with its own filters and aggregation. One `llm_request` event can feed an Input Tokens feature that sums `input_tokens` and an Output Tokens feature that sums `output_tokens`, each with its own price. You can also split an event name by property, such as one feature per `model` value.
+
+<img className="block dark:hidden" src="/images/docs/core-concepts/feature-matching-light.png" alt="One llm_request event counted by two features: Input Tokens filters on model and sums input_tokens, and Output Tokens sums output_tokens" />
+<img className="hidden dark:block" src="/images/docs/core-concepts/feature-matching-dark.png" alt="One llm_request event counted by two features: Input Tokens filters on model and sums input_tokens, and Output Tokens sums output_tokens" />
+
+### Choosing a usage reset for a metered feature
+
+`reset_usage` is `BILLING_PERIOD` or `NEVER`, and it can't be changed after creation. Invoices bill the usage inside each billing period with either value. `NEVER` makes [Get usage by meter](/api-reference/events/get-usage-by-meter) add all usage from before the start time you query. Set `BILLING_PERIOD`, and bill a running total such as storage in use as a reading with `LATEST` or `MAX`.
+
+## Choosing an aggregation for a metered feature
+
+Choose by what each event reports. Adding up action events, such as requests, is correct. Adding up readings, such as seats in use, is wrong.
+
+| What each event reports | Example property | Aggregation | Quantity for the period |
+|-------------------------|------------------|-------------|-------------------------|
+| One action | None needed | `COUNT` | Number of events |
+| An amount per action | `"tokens": 1200` | `SUM` | Total of the property |
+| An amount in another unit | `"duration_ms": 5400`, priced per second | `SUM_WITH_MULTIPLIER`, `multiplier` `0.001` | Total times the multiplier |
+| Who or what was active | `"user_id": "u_42"` | `COUNT_UNIQUE` | Number of distinct values |
+| A level, billed at its peak | `"seats": 25` | `MAX` | Highest reading |
+| A level, billed at its last value | `"storage_gb": 120` | `LATEST` | Latest reading by timestamp |
+| A level, billed on average | `"cpu_cores": 8` | `AVG` | Mean of the readings |
+
+<img className="block dark:hidden" src="/images/docs/core-concepts/sum-vs-max-light.png" alt="Hourly seat readings of 25: over a 30-day month, SUM bills 18,000 seats and MAX bills 25" />
+<img className="hidden dark:block" src="/images/docs/core-concepts/sum-vs-max-dark.png" alt="Hourly seat readings of 25: over a 30-day month, SUM bills 18,000 seats and MAX bills 25" />
+
+<Warning>
+  **Don't sum a reading.** Reporting `"seats": 25` every hour sends 720 readings in a 30-day month: `SUM` bills 18,000 seats, and `MAX` bills 25. Don't report changes as negative numbers either. A negative value counts as 0, so a `SUM` of `+1` and `-1` seat changes only grows. Report the current level and use `MAX` or `LATEST`.
+</Warning>
+
+Readings need two more things:
+
+- **A reading in every billing period.** `MAX`, `LATEST`, and `AVG` see only events inside the period, so a period without a reading bills 0. Send readings on a schedule and make them [idempotent](/docs/core-concepts/send-usage-events#making-heartbeat-events-idempotent).
+- **A fixed interval for `AVG`.** `AVG` weights every reading equally, whatever time it covers, so uneven intervals skew it.
+
+To bill per time window, such as the total of each hour's peak, set `bucket_size` (for example `HOUR`) on the usage price with [Create price](/api-reference/prices/create-price). It works with `MAX` and `SUM` features. The meter's `aggregation.bucket_size` is deprecated.
+
+## Counting missing, negative, and non-numeric values
+
+Flexprice accepts any property value and reads it like this:
+
+| Property value in the event | With `field` | With `expression` |
+|-----------------------------|--------------|-------------------|
+| Missing | 0 | 0 |
+| A numeric string, such as `"12.5"` | 12.5 | 12.5 |
+| Not a number, such as `"12 GB"` or `true` | 0 | The event doesn't count for this feature |
+| Negative | 0 | 0, when the result is negative |
+
+A 0 still counts as a reading: an event without the property pulls an `AVG` down, and sets `LATEST` to 0 when it's the period's latest event. `COUNT_UNIQUE` skips such events. A `field` reads only top-level keys in `properties`, so a nested value such as `{"usage": {"tokens": 5}}` counts as missing.
+
+## Filtering the events a metered feature counts
+
+Each filter names a top-level `key` in `properties` and the `values` that count. An event counts only when it matches every key, with any one of that key's values:
+
+```json
+"filters": [
+  { "key": "model", "values": ["gpt-4o", "gpt-4o-mini"] },
+  { "key": "region", "values": ["us-east-1"] }
+]
+```
+
+This feature counts `gpt-4o` and `gpt-4o-mini` events from `us-east-1` only.
+
+- **Matching is exact text, including case.** `GPT-4o` doesn't match `gpt-4o`. Flexprice compares the property's value as text, so send the properties you filter on as strings.
+- **An event without the key doesn't count.**
+
+<Warning>
+  **A filter excludes events silently.** Flexprice accepts excluded events with `202` and bills nothing for them. When your product adds a model or a region, add it to the filter before the first event arrives: events processed before the change don't count later.
+</Warning>
+
+## Changing a metered feature after creation
+
+| Setting | After creation |
+|---------|----------------|
+| `name`, `description`, `metadata`, `unit_singular`, `unit_plural` | Editable |
+| `filters` | You can add keys and values, but not remove them |
+| `type`, `lookup_key`, `event_name`, `aggregation`, `reset_usage` | Fixed |
+
+[Update feature](/api-reference/features/update-feature) merges the `filters` you send into the existing ones. A value added to an existing key widens the feature. A new key narrows it to events that carry that key.
+
+Flexprice matches an event to features when it processes the event, and invoices bill that result. A filter change or a new feature applies only to events processed after it, and usage already counted stays as it was. Flexprice caches the features for each event name for up to 10 minutes, so a change can take that long to apply.
+
+To change a fixed setting, create a new feature and price it on your plans.
+
+## Testing a metered feature before go-live
+
+Test each feature before real usage depends on it:
+
+1. Create the feature, a plan with a usage price for it, and a test customer subscribed to that plan.
+2. Send events that cover each filter value, plus one without the aggregated property. If other features already count the event name, wait 10 minutes after creating or changing the feature.
+3. Look up each event in the [Event Debugger](/docs/event-ingestion/event-debugger), or with [Get event](/api-reference/events/get-event) and its `id` and `external_customer_id`. A `processed` event shows the feature and price it was billed to, and the quantity in `qty_total`. For a `failed` event, `debug_tracker.failure_point.failure_point_type` names the step that failed: `meter_lookup` means no feature matched the event's name and filters.
+4. Compare the totals with [Get usage analytics](/api-reference/events/get-usage-analytics), filtered by `external_customer_id` and `feature_ids`. It reads the same usage records that invoices bill.
+
+<Note>
+  When several features count one event, Get event can show only one of them. Get usage by meter doesn't predict invoices: it reads raw events, applies a feature's filters only when you pass them, and doesn't evaluate an `expression`.
+</Note>
+
+## Deleting a feature that a plan uses
+
+[Delete feature](/api-reference/features/delete-feature) archives the feature and its meter. It fails with `400` and the message `Feature is linked to some plans, please remove the feature from the plans first` while a published entitlement to the feature exists on a plan, an addon, or a subscription. A usage price doesn't block it. An archived feature stops counting new events, so its usage price bills no new usage. Remove the feature's prices and entitlements from your plans first.
+
+<CardGroup cols={2}>
+  <Card title="Features" icon="cubes" href="/docs/product-catalogue/features/overview">
+    What each feature type is for, and how features attach to plans.
+  </Card>
+  <Card title="Aggregation Types" icon="calculator" href="/docs/product-catalogue/features/aggregation/overview">
+    How each aggregation turns events into a quantity.
+  </Card>
+  <Card title="Creating a Metered Feature" icon="gauge" href="/docs/event-ingestion/creating-a-metered-feature">
+    Set the event name, aggregation, filters, and units.
+  </Card>
+  <Card title="Event Debugger" icon="bug" href="/docs/event-ingestion/event-debugger">
+    Check whether a feature counted an event.
+  </Card>
+</CardGroup>

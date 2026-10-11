@@ -9,7 +9,7 @@ The design goal is **zero manual setup**. You connect a source; Flexprice handle
 
 ## The standardised AI usage event
 
-Every source — a LiteLLM webhook, a Langfuse trace, a Bedrock log, a Databricks usage row — is normalised to one canonical shape before anything else happens. It rides on Flexprice's standard [event](/docs/event-ingestion/overview) (`event_name`, `external_customer_id`, `properties`, `timestamp`, `source`), with a fixed convention for AI properties.
+Every source (a LiteLLM webhook, a Langfuse trace, a Bedrock log, a Databricks usage row) is normalised to one canonical shape before anything else happens. It rides on Flexprice's standard [event](/docs/core-concepts/send-usage-events) (`event_name`, `external_customer_id`, `properties`, `timestamp`, `source`), with a fixed convention for AI properties.
 
 ```json
 {
@@ -183,7 +183,7 @@ Whichever option you pick, the same canonical event lands — already mapped, re
 }
 ```
 
-If you'd rather not use an SDK at all, the same event can be posted directly to the [events API](/docs/event-ingestion/sending-events):
+If you'd rather not use an SDK at all, the same event can be posted directly to the [events API](/docs/core-concepts/usage-events/sending-events):
 
 ```bash
 curl -X POST https://api.cloud.flexprice.io/v1/events \
@@ -283,7 +283,7 @@ Aggregate sources (such as Agentforce and SAP Joule) report coarse, native-unit 
   <Card title="Flexprice Collector" icon="database" href="/docs/collectors/overview">
     The Bento-based collector used for push and in-infra sources.
   </Card>
-  <Card title="Event Ingestion" icon="bolt" href="/docs/event-ingestion/overview">
+  <Card title="Send Usage Events" icon="bolt" href="/docs/core-concepts/send-usage-events">
     The underlying event pipeline AI usage rides on.
   </Card>
   <Card title="Alerts and Notifications" icon="bell" href="/docs/customers/threshold-notifications">

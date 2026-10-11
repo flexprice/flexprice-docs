@@ -1,0 +1,160 @@
+---
+title: "Send Usage Events with the API and SDKs"
+sidebarTitle: "API and SDKs"
+description: "Send usage events to Flexprice with the events API or the Go, Python, and TypeScript SDKs: authentication, single and bulk requests, and the responses to handle"
+---
+
+Send usage events from your servers to the events API, directly or through an SDK. This page covers authentication, single and bulk requests, and the responses and errors to handle. For what to put in each field and how to keep delivery reliable, start with [Send Usage Events](/docs/core-concepts/send-usage-events).
+
+<Info>
+  The endpoints are [Ingest event](/api-reference/events/ingest-event) and [Bulk ingest events](/api-reference/events/bulk-ingest-events) in the API Reference. When your events already flow through a stream such as Kafka, the [Flexprice Collector](/docs/collectors/overview) sends them for you.
+</Info>
+
+## Usage event fields
+
+- **`event_name`** (required): matches the event name of the metered features that count the event, including case.
+- **`external_customer_id`** (required): your ID for the customer, the same value as the customer's External ID in Flexprice.
+- **`event_id`** (recommended): a unique ID for this piece of usage. Generated when missing.
+- **`timestamp`** (recommended): when the usage happened, as RFC 3339 with a timezone. Defaults to the time Flexprice receives the request.
+- **`properties`** (optional): key-value pairs that features aggregate and filter on, as numbers or numeric strings.
+- **`source`** (optional): free text naming the system that sent the event.
+
+Copies of an event collapse into one only when both `event_id` and `timestamp` match, so a retried event without them counts twice. [Usage event structure](/docs/core-concepts/send-usage-events#usage-event-structure) explains how to choose each value.
+
+## Sending a usage event with the API or SDKs
+
+Authenticate with an API key in the `x-api-key` header, and send events from your servers only, never from browser or mobile code. Use the base URL of the region your account was created in: `https://us.api.flexprice.io/v1` (US) or `https://api.cloud.flexprice.io/v1` (India).
+
+<CodeGroup>
+```bash cURL
+curl --request POST \
+  --url https://us.api.flexprice.io/v1/events \
+  --header 'Content-Type: application/json' \
+  --header "x-api-key: $FLEXPRICE_API_KEY" \
+  --data '{
+    "event_name": "api_request",
+    "external_customer_id": "cust_123",
+    "event_id": "req_9f3c",
+    "timestamp": "2026-10-10T14:03:00Z",
+    "properties": { "bytes": 1024, "region": "us-east-1" },
+    "source": "api-gateway"
+  }'
+```
+
+```go Go
+resp, err := client.Events.IngestEvent(ctx, types.IngestEventRequest{
+	EventName:          "api_request",
+	ExternalCustomerID: "cust_123",
+	EventID:            flexprice.String("req_9f3c"),
+	Timestamp:          flexprice.String("2026-10-10T14:03:00Z"),
+	Properties: map[string]string{
+		"bytes":  "1024",
+		"region": "us-east-1",
+	},
+	Source: flexprice.String("api-gateway"),
+})
+```
+
+```python Python
+result = client.events.ingest_event(
+    event_name="api_request",
+    external_customer_id="cust_123",
+    event_id="req_9f3c",
+    timestamp="2026-10-10T14:03:00Z",
+    properties={"bytes": "1024", "region": "us-east-1"},
+    source="api-gateway",
+)
+```
+
+```typescript TypeScript
+const result = await flexprice.events.ingestEvent({
+  eventName: "api_request",
+  externalCustomerId: "cust_123",
+  eventId: "req_9f3c",
+  timestamp: "2026-10-10T14:03:00Z",
+  properties: { bytes: "1024", region: "us-east-1" },
+  source: "api-gateway",
+});
+```
+</CodeGroup>
+
+The SDK examples assume a configured client: see [Creating an SDK client](/developers/sdks/usage#creating-an-sdk-client). The SDKs take `timestamp` as an RFC 3339 string and send it unchanged, and they take property values as strings only.
+
+A single event returns `202 Accepted` with its event ID:
+
+```json
+{
+  "event_id": "req_9f3c",
+  "message": "Event accepted for processing"
+}
+```
+
+`202` means Flexprice accepted the event for processing. Metering runs asynchronously, so use the [Event Debugger](/docs/event-ingestion/event-debugger) to confirm how an event was counted.
+
+### Sending usage events in bulk
+
+`POST /v1/events/bulk` takes 1 to 1000 events in an `events` array, in a request body of up to 32 MiB. It returns `202` with `{"message": "Events accepted for processing"}` and no event IDs. Use it whenever you send more than a few events at a time: [High-Volume Ingestion](/docs/core-concepts/usage-events/high-volume-ingestion) covers batching.
+
+```bash
+curl --request POST \
+  --url https://us.api.flexprice.io/v1/events/bulk \
+  --header 'Content-Type: application/json' \
+  --header "x-api-key: $FLEXPRICE_API_KEY" \
+  --data '{
+    "events": [
+      {
+        "event_name": "api_request",
+        "external_customer_id": "cust_123",
+        "event_id": "req_9f3c",
+        "timestamp": "2026-10-10T14:03:00Z",
+        "properties": { "bytes": 1024 }
+      },
+      {
+        "event_name": "api_request",
+        "external_customer_id": "cust_456",
+        "event_id": "req_9f3d",
+        "timestamp": "2026-10-10T14:03:02Z",
+        "properties": { "bytes": 2048 }
+      }
+    ]
+  }'
+```
+
+## Usage event responses and errors
+
+| Status | Meaning | What to do |
+| ------ | ------- | ---------- |
+| **`202`** | Accepted for processing | Nothing. While you integrate, confirm counts in the Event Debugger |
+| **`400`** | The request is malformed: invalid JSON, a timestamp that isn't RFC 3339, a missing `event_name` or `external_customer_id`, more than 1000 events, or a body over 32 MiB | Don't retry. Move the event to a dead letter queue and fix the payload |
+| **`401`** | Missing or invalid API key | Check the `x-api-key` header and the environment the key belongs to |
+| **`403`** | The API key isn't allowed to write events | Use a key with write access |
+| **`5xx`** or a network error | The request may or may not have been processed | Retry with the same `event_id` and `timestamp` |
+
+Errors other than `401` share one body, with the reason in `message`:
+
+```json
+{
+  "code": "validation_error",
+  "message": "Invalid request payload",
+  "http_status_code": 400
+}
+```
+
+A `401` has a shorter body, such as `{"error": "Invalid API key"}`.
+
+To build these rules into a sender, with a durable queue, backoff, and a dead letter queue, see [Queuing and retrying usage events](/docs/core-concepts/send-usage-events#queuing-and-retrying-usage-events).
+
+<CardGroup cols={2}>
+  <Card title="Send Usage Events" icon="book-open" href="/docs/core-concepts/send-usage-events">
+    What to put in a usage event, and how to queue, retry, and log events.
+  </Card>
+  <Card title="Idempotency and Deduplication" icon="clone" href="/docs/core-concepts/usage-events/idempotency">
+    How Flexprice recognizes a copy of an event, and how to make retries and heartbeats safe.
+  </Card>
+  <Card title="High-Volume Ingestion" icon="gauge-high" href="/docs/core-concepts/usage-events/high-volume-ingestion">
+    Batch events with the bulk endpoint, the SDKs, or the Flexprice Collector.
+  </Card>
+  <Card title="Event Debugger" icon="bug" href="/docs/event-ingestion/event-debugger">
+    See how each event was received and counted.
+  </Card>
+</CardGroup>

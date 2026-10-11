@@ -90,7 +90,8 @@ if err != nil {
 resp, err := client.Events.IngestEvent(ctx, types.IngestEventRequest{
 	EventName:          "api_request",
 	ExternalCustomerID: "cust_123",
-	EventID:            flexprice.String("req_9f3c"), // your own ID; retries dedupe on it
+	EventID:            flexprice.String("req_9f3c"),             // your own ID, reused on retries
+	Timestamp:          flexprice.String("2026-10-10T14:03:00Z"), // when the usage happened, reused on retries
 	Properties:         map[string]string{"region": "us-east-1", "bytes": "1024"},
 	Source:             flexprice.String("api-gateway"),
 })
@@ -110,7 +111,8 @@ client.customers.create_customer(
 result = client.events.ingest_event(
     event_name="api_request",
     external_customer_id="cust_123",
-    event_id="req_9f3c",  # your own ID; retries dedupe on it
+    event_id="req_9f3c",  # your own ID, reused on retries
+    timestamp="2026-10-10T14:03:00Z",  # when the usage happened, reused on retries
     properties={"region": "us-east-1", "bytes": "1024"},
     source="api-gateway",
 )
@@ -127,7 +129,8 @@ const customer = await flexprice.customers.createCustomer({
 const result = await flexprice.events.ingestEvent({
   eventName: "api_request",
   externalCustomerId: "cust_123",
-  eventId: "req_9f3c",                 // your own ID; retries dedupe on it
+  eventId: "req_9f3c",                 // your own ID, reused on retries
+  timestamp: "2026-10-10T14:03:00Z",   // when the usage happened, reused on retries
   properties: { region: "us-east-1", bytes: "1024" },
   source: "api-gateway",
 });
@@ -135,7 +138,7 @@ console.log(result.event_id);
 ```
 </CodeGroup>
 
-Ingestion answers `202 Accepted` with `{"event_id": "...", "message": "..."}`. Go exposes it as `resp.Object`, and Python and TypeScript return it as a plain map. The event is metered asynchronously, so a successful call means "queued", not "counted". Use the [Event Debugger](/docs/event-ingestion/event-debugger) to confirm how it aggregated.
+Ingestion answers `202 Accepted` with `{"event_id": "...", "message": "..."}`. Go exposes it as `resp.Object`, and Python and TypeScript return it as a plain map. The event is metered asynchronously, so a successful call means "queued", not "counted". Use the [Event Debugger](/docs/event-ingestion/event-debugger) to confirm how it aggregated. A retried event collapses into the original only when it carries the same `event_id` and `timestamp`: see [Idempotency and Deduplication](/docs/core-concepts/usage-events/idempotency).
 
 ### SDK field names and optional values
 
@@ -176,12 +179,12 @@ await flexprice.events.ingestEventsBulk({
 
 ### Batching events with the Go async client
 
-For services that emit many events per second, the Go SDK has an async client. It queues events in memory and sends them from a background goroutine, in batches of `BatchSize` or every `FlushInterval`:
+The Go SDK has an async client that queues events in memory and sends them from background goroutines, picking up `BatchSize` events at a time or every `FlushInterval`. Each event still goes out as its own `POST /events` request:
 
 ```go
 asyncConfig := flexprice.DefaultAsyncConfig()
 asyncClient := client.NewAsyncClientWithConfig(asyncConfig)
-defer asyncClient.Close() // flushes anything still queued
+defer asyncClient.Close()
 
 err := asyncClient.Enqueue("api_request", "cust_123", map[string]interface{}{
 	"region": "us-east-1",
@@ -201,7 +204,7 @@ err := asyncClient.EnqueueWithOptions(flexprice.EventOptions{
 })
 ```
 
-`BatchSize`, `FlushInterval`, `MaxQueueSize`, `MaxConcurrentRequests`, and `Debug` are fields on the config. Always call `Close()` before the process exits or the last batch is lost.
+`BatchSize`, `FlushInterval`, `MaxQueueSize`, and `Debug` are fields on the config. The async client does not set an `event_id`, so pass one with `EnqueueWithOptions` if you need retries to dedupe. A failed send is dropped once the parent client's retries run out, and `Close()` returns without waiting for queued events, so events still in memory at exit can be lost. For usage you bill on, see [High-Volume Ingestion](/docs/core-concepts/usage-events/high-volume-ingestion#how-the-go-sdk-async-client-sends-usage-events).
 
 ### Async calls in the Python SDK
 
@@ -259,7 +262,7 @@ await flexprice.wallets.topUpWallet(walletId, {
 ```
 </CodeGroup>
 
-For other creates, rely on the natural key. A second customer with the same external ID returns `409 Conflict`, so a retried create can be treated as success. Events dedupe on their event ID.
+For other creates, rely on the natural key. A second customer with the same external ID returns `409 Conflict`, so a retried create can be treated as success. Events dedupe on their event ID and timestamp together.
 
 The Go package also exports `WithIdempotencyKey`, which sets an `Idempotency-Key` request header. The API does not read that header, so it does not make a call safe to retry on its own.
 

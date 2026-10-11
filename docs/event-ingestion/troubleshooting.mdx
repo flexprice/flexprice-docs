@@ -302,15 +302,14 @@ curl -v --request POST \
 2. Check API key permissions
 3. Ensure the key is active
 
-#### C. 429 Too Many Requests
+#### C. 5xx Errors and Timeouts
 
-**Cause**: Rate limit exceeded.
+**Cause**: The request failed in Flexprice or on the network before it completed. Some events in it may already be accepted.
 
 **Fix**:
 
-- Implement exponential backoff
-- Use bulk events for high volume
-- Reduce request frequency
+- Retry with exponential backoff, resending the same `event_id` and `timestamp` so accepted events aren't counted twice
+- Send high volumes through the bulk endpoint: see [High-Volume Ingestion](/docs/core-concepts/usage-events/high-volume-ingestion)
 
 ### 5. Unexpected Usage Resets
 
@@ -352,8 +351,7 @@ curl -v --request POST \
 
 **Solutions**:
 
-- Use event_id for idempotency
-- Implement proper retry logic
+- Set `event_id` and `timestamp` on every event, and keep both unchanged on retries. A copy collapses into the original only when both match: see [Idempotency and Deduplication](/docs/core-concepts/usage-events/idempotency)
 - Check for duplicate event sources
 
 ## Systematic Debugging Approach
