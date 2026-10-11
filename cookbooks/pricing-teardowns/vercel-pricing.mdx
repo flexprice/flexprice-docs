@@ -1,0 +1,56 @@
+---
+title: "Can Flexprice Handle Vercel's Pricing?"
+sidebarTitle: "Vercel Pricing"
+description: "Recreate Vercel's pricing in Flexprice with Prompt to Plan: per-seat team pricing plus usage meters with monthly allowances and independent overage rates"
+---
+
+Episode 5 of *Can Flexprice Handle It?* recreates Vercel's pricing with Prompt to Plan. Vercel charges a base fee per team seat, then adds usage across bandwidth, function executions, build minutes, image optimizations and edge function invocations. Each meter has a monthly allowance that resets every billing cycle, and overage rates apply to each meter independently.
+
+<Frame>
+  <iframe
+    className="w-full aspect-video rounded-xl"
+    src="https://www.loom.com/embed/cf0a3e54ad9248df860b97b8cf58c54a"
+    title="Recreating Vercel pricing with Flexprice, episode 5"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+    allowFullScreen
+  ></iframe>
+</Frame>
+
+## How Vercel's pricing maps to Flexprice
+
+| Vercel's pricing uses | Flexprice setup |
+| --- | --- |
+| **Base fee per team seat** | [Seat-based pricing](/docs/subscriptions/seat-based-pricing), where the subscription quantity is the seat count |
+| **Usage meters** such as edge requests, data transfer and function invocations | One [metered feature](/docs/product-catalogue/features/create) per meter, with a usage charge for the overage rate |
+| **Monthly allowance** that resets each billing cycle | [Entitlements](/docs/product-catalogue/features/linking-to-plans) with a usage limit and a monthly reset interval |
+| **Included usage credit** on Pro | A recurring credit grant on the plan, which adds credits to the customer's [wallet](/docs/wallet/prepaid-and-promotional) |
+
+Vercel's base cost scales with headcount and consumption at the same time. Seats and usage stay separate charges on one plan, so a new team member changes the seat charge without touching any usage meter.
+
+## Building Vercel's pricing with Prompt to Plan
+
+The episode describes Vercel's plans, including the seat and usage hybrid, in one prompt.
+
+<Steps>
+  <Step title="Open Prompt to Plan">
+    In the Flexprice dashboard, go to **Plans** and click **Create with AI**.
+  </Step>
+  <Step title="Describe the pricing">
+    On the **Set up your pricing** screen, paste the prompt below and submit it.
+  </Step>
+  <Step title="Review and confirm">
+    Flexprice shows a preview of the features, plans and credit grants it will create. Nothing is saved until you confirm. After you confirm, Flexprice builds the configuration and opens your plans.
+  </Step>
+</Steps>
+
+```text Prompt used in the episode wrap
+Create 2 plans for a frontend deployment platform like Vercel.
+
+Hobby (Free): 1M edge requests/mo, 100GB fast data transfer, 4 hrs serverless function CPU, 1M function invocations, 5K image optimizations, 50K web analytics events. For personal/non-commercial use.
+
+Pro at $20/mo with $20 included usage credit: 10M edge requests (then $2/1M), 1TB data transfer (then $0.15/GB), function CPU at $0.128/hr overage, 1M invocations (then $0.60/1M), image optimizations starting at $0.05/1K. This plan also includes team seats at $20/mo each.
+```
+
+## Related recipe
+
+<Card icon="book-open" horizontal={true} href="/cookbooks/billing-recipes/hybrid-pricing" title="Build Hybrid Pricing like Resend" />

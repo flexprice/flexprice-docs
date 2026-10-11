@@ -1,0 +1,57 @@
+---
+title: "Can Flexprice Handle Supabase's Pricing?"
+sidebarTitle: "Supabase Pricing"
+description: "Recreate Supabase's pricing in Flexprice with Prompt to Plan: a base fee per plan, usage meters with free allowances and overage rates, and plan-gated features"
+---
+
+Episode 4 of *Can Flexprice Handle It?* recreates Supabase's pricing with Prompt to Plan, the dashboard's chat-based pricing setup. Supabase charges a base fee, a charge for the size of the compute instance a project runs on, and usage across database storage, egress, file storage, monthly active users, edge function invocations and more. Each usage dimension has its own free allowance and overage rate.
+
+<Frame>
+  <iframe
+    className="w-full aspect-video rounded-xl"
+    src="https://www.loom.com/embed/30b0878a74dd4076939afd517fa2749e"
+    title="Recreating Supabase pricing with Flexprice, episode 4"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+    allowFullScreen
+  ></iframe>
+</Frame>
+
+## How Supabase's pricing maps to Flexprice
+
+| Supabase's pricing uses | Flexprice setup |
+| --- | --- |
+| **Base fee** per plan (Free, Pro, Team) | [Plans](/docs/product-catalogue/plans/overview) with a recurring charge |
+| **Usage dimensions** such as database size, egress and monthly active users | One [metered feature](/docs/product-catalogue/features/create) per dimension, with a usage charge for the overage rate |
+| **Free allowance** per dimension | [Entitlements](/docs/product-catalogue/features/linking-to-plans) with a usage limit for each metered feature |
+| **Compute instance size** | [Addons](/docs/product-catalogue/addons/overview), one per instance size, attached to the subscription |
+| **Plan features** such as SSO, backups and support level | Boolean and static entitlements on each plan |
+
+## Building Supabase's pricing with Prompt to Plan
+
+Instead of the MCP server used in earlier episodes, this episode describes Supabase's pricing in one prompt and lets Prompt to Plan build the configuration.
+
+<Steps>
+  <Step title="Open Prompt to Plan">
+    In the Flexprice dashboard, go to **Plans** and click **Create with AI**.
+  </Step>
+  <Step title="Describe the pricing">
+    On the **Set up your pricing** screen, paste the prompt below and submit it.
+  </Step>
+  <Step title="Review and confirm">
+    Flexprice shows a preview of the features, plans and credit grants it will create. Nothing is saved until you confirm. After you confirm, Flexprice builds the configuration and opens your plans.
+  </Step>
+</Steps>
+
+```text Prompt used in the episode wrap
+Create 3 plans for a developer platform like Supabase.
+
+Free at $0/mo: 500MB database, 5GB egress, 1GB file storage, 50K MAUs, 200 realtime connections, 2M realtime messages, 500K edge function invocations. Max 2 projects, pauses after 1 week inactivity.
+
+Pro at $25/mo: 8GB database ($0.125/GB overage), 250GB egress ($0.09/GB), 100GB storage ($0.021/GB), 100K MAUs ($0.00325/MAU), 500 realtime connections, 5M messages, 2M edge invocations. Daily backups 7 days, email support.
+
+Team at $599/mo: same limits and overage as Pro. Adds SOC2, HIPAA as paid addon, SSO, priority email support with SLA, 14-day backups.
+```
+
+## Related recipe
+
+<Card icon="book-open" horizontal={true} href="/cookbooks/billing-recipes/hybrid-pricing" title="Build Hybrid Pricing like Resend" />
