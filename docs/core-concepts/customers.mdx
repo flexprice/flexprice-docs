@@ -1,0 +1,151 @@
+---
+title: "Provision a Customer"
+sidebarTitle: "Customers"
+description: "Create Flexprice customers whose External IDs match your usage events, keep signup independent of Flexprice, and set the fields billing depends on"
+---
+
+A customer is the account Flexprice bills. Its External ID is the value your usage events carry in `external_customer_id`, and a subscription to one of your plans turns the customer's usage into invoices. If the External ID differs from the value in your events, even only in letter case, that usage never reaches the customer's invoices. Creating customers inside your signup request also puts Flexprice in your signup path.
+
+<Info>
+  Create customers with the [Create customer](/api-reference/customers/create-customer) endpoint or from **Customers** under **Billing** in the dashboard, and look one up with [Get customer by external ID](/api-reference/customers/get-customer-by-external-id). For a dashboard walk-through, see [Creating a customer](/docs/customers/create).
+</Info>
+
+## Choosing an External ID for each customer
+
+The External ID (`external_id`) is the only link between a customer and its usage. Flexprice stores an event without checking whether any customer has its `external_customer_id`. When it computes a subscription's usage, it selects the events whose `external_customer_id` equals the customer's External ID.
+
+<img className="block dark:hidden" src="/images/docs/core-concepts/external-id-light.png" alt="Events whose external_customer_id is acct_8412 are billed to the customer with that External ID, and an event with ACCT_8412 matches no customer" />
+<img className="hidden dark:block" src="/images/docs/core-concepts/external-id-dark.png" alt="Events whose external_customer_id is acct_8412 are billed to the customer with that External ID, and an event with ACCT_8412 matches no customer" />
+
+- **Unique within an environment.** Two customers in one environment can't share an External ID unless one is archived. The same ID can exist once in each environment.
+- **Matched exactly, including case.** `acme-42` and `Acme-42` are different customers, and an event for `ACME-42` counts toward neither.
+- **One per customer.** There are no aliases. If two of your systems identify an account differently, map both to one value before you send events.
+- **Stable.** Use an immutable ID from your own system, such as an account ID, not an email address or a company name.
+
+<Warning>
+  **Don't change an External ID once usage flows.** Flexprice matches usage by the customer's current External ID, so events already sent under the old value stop counting toward the customer.
+</Warning>
+
+## Setting the customer fields that billing reads
+
+These fields decide which usage reaches the customer, what its invoices show, how they're taxed, and which currency they're issued in.
+
+| Field | What it controls |
+| --- | --- |
+| `external_id` | Required. Matches `external_customer_id` on usage events. |
+| `name` | Required, up to 255 characters. The recipient name on the invoice PDF. |
+| `email` | Optional. Shown on the invoice PDF. Must be a valid address, and doesn't have to be unique. |
+| `address_line1`, `address_line2`, `address_city`, `address_state`, `address_postal_code`, `address_country` | Optional. The billing address on the invoice PDF. `address_country` is an ISO 3166-1 alpha-2 code such as `US`. |
+| `timezone` | Optional IANA name such as `Asia/Kolkata`, default `UTC`. |
+| `tax_treatment` | `taxable` (default) or `exempt`. |
+| `billing_currency` | Optional. The currency invoices are converted into at finalization. |
+| `metadata` | Optional string key-value pairs. An update replaces the whole map, so send every key you want to keep. |
+
+### Setting timezone, tax, and currency before the first subscription
+
+Set these before you subscribe the customer:
+
+- **Timezone.** A subscription copies the customer's `timezone` at creation and ignores any `timezone` in the subscription request. Changing the customer's timezone later affects only new subscriptions. With calendar billing, periods start at local midnight, so a customer in India left on `UTC` gets periods that start at 05:30 local time.
+- **Tax.** Unless you send `tax_rate_overrides`, a new customer gets your tenant's auto-applied tax rates, and each new subscription gets the customer's. A rate added to your tenant later doesn't reach existing customers. `tax_treatment` is read for every invoice, and `exempt` zeroes the tax. See [Tax exempt customers](/docs/product-catalogue/taxes/overview#tax-exempt-customers).
+- **Billing currency.** Leave `billing_currency` empty to invoice in the subscription's currency. When it's set, each invoice is converted at finalization, and an invoice whose currency pair has no exchange rate stays in draft. Setting it later needs an exchange rate for each active, trialing, or paused subscription and each active wallet in another currency.
+
+## Creating customers without blocking signup
+
+Your signup flow doesn't have to wait for Flexprice: events for an External ID with no customer yet are stored, and they count once the customer exists (see [Sending usage events before the customer exists](/docs/core-concepts/send-usage-events#sending-usage-events-before-the-customer-exists)).
+
+1. Create the account in your own system, use its ID as the External ID, and start sending usage.
+2. Create the Flexprice customer from a background job or queue, not inside the signup request.
+3. Treat `201` and `409` as success. A `409` with code `already_exists` means a customer with this External ID already exists in the environment, for example from an earlier attempt that succeeded but timed out. Fetch it with [Get customer by external ID](/api-reference/customers/get-customer-by-external-id) instead of creating another.
+4. Retry timeouts and `5xx` responses with backoff. Don't retry a `400`: it fails the same way every time.
+
+```bash
+curl -X POST https://us.api.flexprice.io/v1/customers \
+  -H "x-api-key: $FLEXPRICE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "external_id": "acct_8412",
+    "name": "Acme Robotics",
+    "email": "billing@example.com",
+    "address_line1": "100 Main St",
+    "address_city": "Boston",
+    "address_state": "MA",
+    "address_postal_code": "02110",
+    "address_country": "US",
+    "timezone": "America/New_York",
+    "metadata": { "crm_account_id": "0015g00000XyZ" }
+  }'
+```
+
+A second request with the same `external_id` returns:
+
+```json
+{
+  "code": "already_exists",
+  "message": "A customer with this identifier already exists",
+  "http_status_code": 409,
+  "details": { "external_id": "acct_8412" }
+}
+```
+
+A `409` changes nothing, so the webhook event, onboarding actions, and provider sync below run only once.
+
+## Running onboarding actions for new customers
+
+The `customer_onboarding` setting, the **Customer Onboarding** tab in **Settings**, lists actions that run after a customer is created. It's empty by default.
+
+- `create_wallet` creates a wallet in the configured `currency`, optionally with initial credits.
+- `create_subscription` subscribes the customer to the configured `plan_id` with a monthly billing period.
+- `create_customer` creates customers from usage events, as described below, and must be the first action.
+
+The actions run in the background, and a failed action doesn't undo the customer. Send `"skip_onboarding_workflow": true` to skip them for one customer. To run another list, add it under `custom_workflows` and pass its name as `onboarding_workflow_name`. A name that doesn't exist runs the default actions.
+
+<Warning>
+  A customer can hold more than one subscription. If `create_subscription` is in the list and your code also subscribes the customer, it's billed twice. Send `"skip_onboarding_workflow": true` for customers you subscribe yourself.
+</Warning>
+
+### Creating customers from usage events
+
+With `create_customer` first, Flexprice can create customers from usage. When it processes an event that one of your features counts and no customer has the event's `external_customer_id`, it creates that customer. The new customer is named after the External ID, has no email or address, and uses `UTC`. Flexprice then runs the remaining actions, and a `create_subscription` starts at the event's timestamp unless the action sets a `start_date`. Add the real name, email, and billing address afterwards, because invoices show them.
+
+## Syncing customers with a payment provider
+
+When a Stripe, Razorpay, Chargebee, QuickBooks, Nomod, or Paddle connection has customer outbound sync turned on, Flexprice creates each new customer in that provider and links the two, skipping customers that are already linked. Flexprice also emits the `customer.created` webhook event (see [Customer events](/developers/webhooks/event-catalog#customer-events)).
+
+With [Stripe Tax](/integrations/tax/stripe-tax) as your tax engine, turn on outbound sync for Stripe and send the full billing address when you create the customer. Stripe calculates tax from the address on its own Customer object. Flexprice copies the address there only when it creates the Stripe customer, and only if `address_line1` or `address_city` is set. For a customer missing from Stripe, tax calculation fails with `The customer must exist in Stripe before tax can be calculated for them`.
+
+A customer created in your connected Stripe account reaches Flexprice through Stripe's `customer.created` webhook. Its External ID is the Stripe customer ID (`cus_...`), unless the Stripe customer's metadata has a `flexprice_lookup_key`. Flexprice then uses that value, and links the existing customer with that External ID if there is one. Your usage events must carry the resulting ID. See [Stripe customer sync](/integrations/stripe/customer-sync).
+
+## Modeling parent and child customers
+
+Customers have no parent field. Create each child account as its own customer, and send its usage under its own External ID. The hierarchy lives in the `inheritance` object of [Create subscription](/api-reference/subscriptions/create-subscription):
+
+- On the parent's subscription, `external_customer_ids_to_inherit_subscription` lists the children whose usage rolls up into the parent's subscription and invoice.
+- On a customer's own subscription, `invoicing_customer_external_id` sends its invoices to another customer, the payer.
+
+The parent's subscription is rejected unless each child already exists, sits under no other parent, and has no active, trialing, or draft subscription of its own. See [Customer Hierarchy](/docs/subscriptions/customer-hierarchy).
+
+## Deleting a customer that has subscriptions or wallets
+
+[Delete customer](/api-reference/customers/delete-customer), the **Archive** action in the dashboard, archives the customer instead of erasing it. It fails with `400` and code `invalid_operation` while the customer has:
+
+| Blocker | `message` in the response |
+| --- | --- |
+| A subscription whose status isn't `cancelled` | `Please cancel all subscriptions before deleting the customer` |
+| An active wallet | `Customer cannot be deleted due to associated wallets` |
+
+[Cancel the subscriptions](/api-reference/subscriptions/cancel-subscription) and [terminate the wallets](/api-reference/wallets/terminate-a-wallet) first. An archived customer can't get new subscriptions, and its External ID is free: a new customer can take it, and events that carry it then count toward the new customer.
+
+<CardGroup cols={2}>
+  <Card title="Customers" icon="users" href="/docs/customers/overview">
+    What a customer represents in Flexprice.
+  </Card>
+  <Card title="Creating a Customer" icon="user-plus" href="/docs/customers/create">
+    Add a customer and its billing details from the dashboard.
+  </Card>
+  <Card title="Customer Hierarchy" icon="sitemap" href="/docs/subscriptions/customer-hierarchy">
+    Roll child usage up to a parent, or bill a separate payer.
+  </Card>
+  <Card title="Customer Timezones" icon="globe" href="/docs/customers/timezone-aware-billing">
+    Align billing periods with a customer's local calendar.
+  </Card>
+</CardGroup>

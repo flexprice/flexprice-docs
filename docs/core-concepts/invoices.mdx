@@ -1,0 +1,179 @@
+---
+title: "How Flexprice Invoices Work"
+sidebarTitle: "Invoices"
+description: "How Flexprice builds, finalizes, and corrects invoices, how advance fees and arrears usage share one invoice, and how to bill usage that arrives late"
+---
+
+An invoice bills a [subscription](/docs/core-concepts/subscriptions) for one stretch of time: the fixed fees that fall due and the usage its metered features aggregated, less coupons and wallet credits, plus tax. Subscriptions raise invoices on their own, when they start and at the end of each billing period, which makes invoices the last step of the path that starts with [usage events](/docs/core-concepts/send-usage-events). Mistakes here cost money directly: usage that reaches Flexprice after an invoice is computed isn't on it, and voiding a paid invoice to correct it moves the payment into the customer's wallet.
+
+<Info>
+  Find invoices with [Query invoices](/api-reference/invoices/query-invoices) and [Get invoice](/api-reference/invoices/get-invoice), seal or cancel them with [Finalize invoice](/api-reference/invoices/finalize-invoice) and [Void invoice](/api-reference/invoices/void-invoice), and see the next one early with [Get invoice preview](/api-reference/invoices/get-invoice-preview). For the dashboard, see [Managing Invoices](/docs/invoices/managing). For the arithmetic, see [Invoice Calculation Order](/docs/invoices/calculation).
+</Info>
+
+## Telling invoices apart by billing reason
+
+Every invoice has an `invoice_type` and a `billing_reason`. Filter on `billing_reason` to separate renewals from other invoices, and on `subscription_id` to find everything a subscription billed: a mid-period quantity change, for example, bills on a `ONE_OFF` invoice that carries the subscription's ID.
+
+Each `billing_reason`, when Flexprice creates it, and the `invoice_type` it gets:
+
+- **`SUBSCRIPTION_CREATE`** (`SUBSCRIPTION`): a subscription is created. It bills the first period's advance fees.
+- **`SUBSCRIPTION_CYCLE`** (`SUBSCRIPTION`): a billing period ends.
+- **`SUBSCRIPTION_UPDATE`** (`SUBSCRIPTION` or `ONE_OFF`): a mid-period quantity or plan change charges or credits the difference.
+- **`SUBSCRIPTION_TRIAL_START`** (`SUBSCRIPTION`): a trial starts. It shows the advance fees at zero, previewing the first paid invoice.
+- **`SUBSCRIPTION_TRIAL_END`** (`SUBSCRIPTION`): a trial ends. It bills the first paid period's advance fees.
+- **`PRORATION`** (`SUBSCRIPTION`): a plan change, or an immediate cancellation that asks for a final invoice, cuts a period short.
+- **`AUTO_INVOICE_THRESHOLD`** (`SUBSCRIPTION`): usage crosses `auto_invoice_threshold` mid-period. See [Progressive Billing](/docs/subscriptions/progressive-billing).
+- **`WALLET_AUTO_TOPUP`** (`ONE_OFF`): an invoiced wallet auto top-up runs.
+- **`MANUAL`** (the type you send): you set it on [Create one-off invoice](/api-reference/invoices/create-one-off-invoice). Flexprice never sets it.
+
+Create one-off invoice bills anything else, as `ONE_OFF` or, for a credit adjustment, as `CREDIT`.
+
+## Combining advance fees and arrears usage on a subscription invoice
+
+Each price's `invoice_cadence` decides which invoice bills it (see [Advance vs Arrear](/docs/product-catalogue/plans/charges/advance-vs-arrear)). An `ADVANCE` fee is billed at the start of the period it pays for, and an `ARREAR` charge once its period is over. Usage is always billed in arrears: Flexprice [rejects a usage price](/docs/core-concepts/plans-and-prices#price-combinations-that-flexprice-rejects) with `ADVANCE` cadence. A subscription's regular invoices therefore come in two kinds:
+
+- **`SUBSCRIPTION_CREATE`** is raised when you create the subscription, unless it starts as a draft or in a trial. It bills the first period's `ADVANCE` fees. Without advance fees, its subtotal is zero and Flexprice marks it `SKIPPED`.
+- **`SUBSCRIPTION_CYCLE`** is raised when each period ends. It bills that period's `ARREAR` charges, usage included, and the next period's `ADVANCE` fees.
+
+### Example: a platform fee in advance and API usage in arrears
+
+<img className="block dark:hidden" src="/images/docs/core-concepts/invoice-composition-light.png" alt="The invoice raised on November 1 bills November's platform fee in advance and October's API calls in arrears, 289.00 dollars in total" />
+<img className="hidden dark:block" src="/images/docs/core-concepts/invoice-composition-dark.png" alt="The invoice raised on November 1 bills November's platform fee in advance and October's API calls in arrears, 289.00 dollars in total" />
+
+A monthly subscription starts on October 1 with a \$49 platform fee (`ADVANCE`) and API calls at \$0.002 each (`ARREAR`). On October 1, the `SUBSCRIPTION_CREATE` invoice bills \$49 for October's platform fee. The customer makes 120,000 calls in October. Once finalized, the `SUBSCRIPTION_CYCLE` invoice raised when October ends looks like this, with no coupons, credits, or tax (abbreviated):
+
+```json
+{
+  "billing_reason": "SUBSCRIPTION_CYCLE",
+  "invoice_status": "FINALIZED",
+  "period_start": "2026-10-01T00:00:00Z",  // the period that ended
+  "period_end": "2026-11-01T00:00:00Z",
+  "due_date": "2026-11-02T00:00:00Z",      // period_end + 1 day by default
+  "subtotal": "289",
+  "total": "289",
+  "line_items": [
+    {
+      "display_name": "Platform fee",
+      "price_type": "FIXED",
+      "amount": "49",
+      "period_start": "2026-11-01T00:00:00Z",  // November, in advance
+      "period_end": "2026-12-01T00:00:00Z"
+    },
+    {
+      "display_name": "API calls",
+      "price_type": "USAGE",
+      "quantity": "120000",
+      "amount": "240",
+      "period_start": "2026-10-01T00:00:00Z",  // October, in arrears
+      "period_end": "2026-11-01T00:00:00Z"
+    }
+  ]
+}
+```
+
+The invoice's own period is the one that ended, but its advance fee pays for the next one. Read each line item's period when you match charges to service periods, for example to recognize revenue.
+
+## Moving an invoice from draft to finalized
+
+| `invoice_status` | Meaning | What can still change |
+| --- | --- | --- |
+| `DRAFT` | Being built, with no invoice number | Recomputed (subscription invoices), line items edited, finalized, or voided |
+| `FINALIZED` | Line items and `total` are fixed, and the invoice number is assigned | `due_date` and `metadata` with [Update invoice](/api-reference/invoices/update-invoice), payments, credit notes, or a void |
+| `VOIDED` | Cancelled | Nothing |
+| `SKIPPED` | A subscription invoice with a zero subtotal | Never numbered, finalized, or charged. Invoice lists hide it unless you filter on `invoice_status` |
+
+Most invoices are finalized as soon as Flexprice computes them: a subscription's opening, trial, threshold, cut-short, mid-period change, and replacement invoices, and the `ONE_OFF` and `CREDIT` invoices from Create one-off invoice. A checkout can hold one as a draft until the customer pays. The `SUBSCRIPTION_CYCLE` invoice waits, to leave room for late usage:
+
+1. Within minutes of the period end, Flexprice sets up a draft for the period.
+2. One to five hours later, at a random point, it computes the draft from the usage received so far.
+3. Once `finalization_delay_seconds` (in the `invoice_config` setting, 7,200 seconds by default) has passed since that compute, a job that runs every 30 minutes finalizes the draft as it stands, without recomputing it. Finalizing applies prepaid credits and tax and assigns the invoice number. Flexprice then attempts payment.
+
+<img className="block dark:hidden" src="/images/docs/core-concepts/invoice-timeline-light.png" alt="After a period ends: the draft is computed 1 to 5 hours later and finalized about 2 hours after that; late usage before the compute is included, after it the draft must be recalculated, and after finalization the invoice is voided and replaced" />
+<img className="hidden dark:block" src="/images/docs/core-concepts/invoice-timeline-dark.png" alt="After a period ends: the draft is computed 1 to 5 hours later and finalized about 2 hours after that; late usage before the compute is included, after it the draft must be recalculated, and after finalization the invoice is voided and replaced" />
+
+<Warning>
+  [Finalize invoice](/api-reference/invoices/finalize-invoice) seals a draft as it stands. A period-end draft that Flexprice hasn't computed yet, with an empty `last_computed_at`, has no line items, so finalizing it bills nothing for the period. To close a draft early, use [Recalculate draft invoice](/api-reference/invoices/recalculate-draft-invoice-v2): it recomputes the draft from current usage, then finalizes it.
+</Warning>
+
+## Billing usage that arrives after the invoice is computed
+
+An event counts on the invoice for the period its `timestamp` falls in only if it reaches Flexprice before that invoice is computed. Send late usage within an hour of the period end, before the earliest compute. After that, it depends on the invoice's state:
+
+- **`DRAFT`**: recompute it with Recalculate draft invoice, which also finalizes the invoice unless you pass `finalize=false`.
+- **`SKIPPED` or `FINALIZED`**: the usage isn't billed until you replace the invoice, as described in [Correcting a finalized invoice](#correcting-a-finalized-invoice).
+
+To recompute a draft and keep it open:
+
+```bash
+curl --request POST \
+  --url "https://us.api.flexprice.io/v1/invoices/inv_123/recalculate-v2?finalize=false" \
+  --header "x-api-key: $FLEXPRICE_API_KEY"
+```
+
+[Backfill Past Usage](/docs/core-concepts/usage-events/backfill#how-backfilled-usage-reaches-invoices) covers loading historical usage and getting it onto invoices.
+
+## Applying discounts, wallet credits, and tax to an invoice
+
+Flexprice builds a subscription invoice's amounts in this order. [Invoice Calculation Order](/docs/invoices/calculation) works through examples.
+
+1. **`subtotal`**: the sum of the line items.
+2. **`total_discount`**: line item coupons, then subscription coupons, each applied to what's left.
+3. **`total_prepaid_credits_applied`**: at finalization, the customer's active prepaid wallets in the invoice's currency pay down usage line items, after their discounts. Fixed fees and tax stay in `amount_due`.
+4. **`total_tax`**: calculated on `subtotal` minus `total_discount`, so credits don't lower it. Exclusive tax is added to the total. Inclusive tax is already part of the subtotal.
+5. **`total`**: `subtotal` minus `total_discount` minus `total_prepaid_credits_applied`, plus exclusive tax. `amount_due` starts at `total`, and `amount_remaining` is `amount_due` minus `amount_paid`.
+
+`payment_status` tracks collection separately from `invoice_status`:
+
+- `PENDING`: owed, including after a partial payment.
+- `FAILED`: owed, and the last payment failed.
+- `SUCCEEDED`: paid in full, or finalized with a zero total.
+- `OVERPAID`: `amount_paid` exceeds `amount_due`.
+- `PARTIALLY_REFUNDED` and `REFUNDED`: after a refund credit note or a void.
+
+## Correcting a finalized invoice
+
+A finalized invoice keeps its line items. Choose the fix by what went wrong:
+
+- **Charged too much.** Issue a credit note with [Create credit note](/api-reference/credit-notes/create-credit-note). On an unpaid invoice (`PENDING` or `FAILED`), Flexprice makes it an `ADJUSTMENT` that lowers `amount_due`. On a paid one (`SUCCEEDED` or `PARTIALLY_REFUNDED`), it's a `REFUND` to the customer's prepaid wallet, or to the original card, payment link, or UPI payment when `refund_target` is `BACK_TO_SOURCE`. No credit note line can exceed the invoice line it credits.
+- **Usage or charges missing.** Call [Recalculate invoice](/api-reference/invoices/recalculate-invoice-voided-invoice) on a subscription invoice. In the background, it voids the invoice if it isn't voided yet, creates and finalizes a replacement for the same period from current usage, and stores the replacement's ID in the original's `recalculated_invoice_id`. Each invoice can be recalculated once.
+
+Editing a line item of a finalized invoice with [Execute invoice modification](/api-reference/invoices/execute-invoice-modification) also voids it, and puts the edit on a draft copy for you to finalize.
+
+<Warning>
+  Voiding returns the invoice's `amount_paid` and applied prepaid credits to the customer's prepaid wallet, never to the card. Check `payment_status` before you void, recalculate, or edit a paid invoice. To bill missed usage without touching a paid invoice, put the difference on a one-off invoice.
+</Warning>
+
+## Previewing the next invoice
+
+[Get invoice preview](/api-reference/invoices/get-invoice-preview) builds what a subscription's current period would bill with the usage recorded so far, and saves nothing: the period's `ARREAR` charges, the next period's `ADVANCE` fees, coupons, and tax. It doesn't apply prepaid credits, so a customer with a wallet balance can owe less than the preview's `total`.
+
+```bash
+curl --request POST \
+  --url https://us.api.flexprice.io/v1/invoices/preview \
+  --header 'Content-Type: application/json' \
+  --header "x-api-key: $FLEXPRICE_API_KEY" \
+  --data '{ "subscription_id": "subs_123" }'
+```
+
+Add `period_start` and `period_end` to preview another window.
+
+## Setting invoice due dates and payment terms
+
+A subscription invoice is due a number of days after its `period_end`, which for a `SUBSCRIPTION_CREATE` invoice is the end of the first period. The number is the subscription's `payment_terms` when set (`15 NET` to `90 NET`, in steps of 15), and otherwise `due_date_days` in the [`invoice_config` setting](/docs/settings/settings#invoice-configuration), which is 1 by default. A one-off invoice is due on the `due_date` you send. Update invoice can change either one to a date in the future.
+
+If subscription auto-cancellation is on in `subscription_config` (it's off by default), a finalized subscription invoice still unpaid `grace_period_days` after its `due_date` gets the subscription cancelled immediately and the invoice voided.
+
+<CardGroup cols={2}>
+  <Card title="Invoices" icon="file-invoice" href="/docs/invoices/overview">
+    What an invoice holds and the states it moves through.
+  </Card>
+  <Card title="Invoice Calculation Order" icon="calculator" href="/docs/invoices/calculation">
+    How coupons, wallet credits, and tax combine, with worked examples.
+  </Card>
+  <Card title="Managing Invoices" icon="list-check" href="/docs/invoices/managing">
+    View invoices, update their status, and download PDFs in the dashboard.
+  </Card>
+  <Card title="Backfill Past Usage" icon="clock-rotate-left" href="/docs/core-concepts/usage-events/backfill">
+    Load historical usage and get it onto draft or finalized invoices.
+  </Card>
+</CardGroup>

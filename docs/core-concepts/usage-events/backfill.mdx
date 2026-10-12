@@ -1,0 +1,70 @@
+---
+title: "Backfill Past Usage"
+description: "Load historical usage into Flexprice with the events API, and get backfilled usage onto draft or finalized invoices"
+---
+
+Backfilling sends usage that happened in the past: history from the billing system you're migrating from, or events your pipeline failed to deliver during an outage. A backfill uses the same endpoints as live ingestion. Each event's `timestamp` places the usage in the right billing period, and there is no limit on how old a timestamp can be.
+
+## Backfilling usage events with the bulk endpoint
+
+- **Set `timestamp` to when the usage happened**, not when you send it.
+- **Derive `event_id` from the source record**, such as the row ID in your old billing system's export or the original request ID. A rerun after a failure then collapses with what already arrived instead of counting twice.
+- **Send batches of up to 1000 events** with `POST /v1/events/bulk`. See [High-Volume Ingestion](/docs/core-concepts/usage-events/high-volume-ingestion).
+- **Run it in a sandbox environment first.** Compare totals per customer and feature with your source data, then run the same backfill in production.
+
+```bash
+curl --request POST \
+  --url https://us.api.flexprice.io/v1/events/bulk \
+  --header 'Content-Type: application/json' \
+  --header "x-api-key: $FLEXPRICE_API_KEY" \
+  --data '{
+    "events": [
+      {
+        "event_name": "api_request",
+        "external_customer_id": "cust_123",
+        "event_id": "legacy_row_88412",
+        "timestamp": "2026-08-14T09:21:07Z",
+        "properties": { "bytes": 1024 }
+      },
+      {
+        "event_name": "api_request",
+        "external_customer_id": "cust_123",
+        "event_id": "legacy_row_88413",
+        "timestamp": "2026-08-14T09:21:44Z",
+        "properties": { "bytes": 512 }
+      }
+    ]
+  }'
+```
+
+Flexprice stores events for an external ID that has no customer yet and counts them once the customer exists, so customer creation and the backfill can run in either order. Usage is billed only under a subscription whose billing period covers the event's timestamp.
+
+## How backfilled usage reaches invoices
+
+What happens to backfilled usage depends on the state of the invoice for the billing period its timestamp falls in:
+
+| Invoice for that period | What happens to the backfilled usage |
+| ----------------------- | ------------------------------------ |
+| **Not computed yet** | Included when Flexprice computes the invoice for that period. See [Moving an invoice from draft to finalized](/docs/core-concepts/invoices#moving-an-invoice-from-draft-to-finalized) for when that happens |
+| **Draft** | Recompute the draft with [Recalculate draft invoice](/api-reference/invoices/recalculate-draft-invoice-v2) (`POST /v1/invoices/{id}/recalculate-v2`). It rebuilds a draft subscription invoice's line items from current usage, then finalizes it. Add `?finalize=false` to keep it a draft |
+| **Finalized** | Not billed, because a finalized invoice keeps its line items. To bill the usage, call [Recalculate invoice](/api-reference/invoices/recalculate-invoice-voided-invoice) (`POST /v1/invoices/{id}/recalculate`). It voids the invoice if it isn't voided yet, and creates a finalized replacement for the same billing period from current usage |
+
+<Warning>
+  Voiding an invoice that was paid, or covered by wallet credits, returns that amount to the customer's wallet, and recalculating a finalized invoice voids it. Check the invoice's payment state before you recalculate it.
+</Warning>
+
+## Correcting usage you already sent
+
+Flexprice has no endpoint to edit or delete a usage event, and a negative property value counts as `0`, so a negative event can't cancel usage.
+
+- **Missing usage:** send it as new events with new `event_id` values. The table above decides how it reaches the invoice.
+- **Usage that shouldn't have been counted:** Flexprice keeps the event, so correct the bill instead. Once the invoice is finalized, issue a [credit note](/api-reference/credit-notes/create-credit-note) for the difference.
+
+<CardGroup cols={2}>
+  <Card title="Send Usage Events with the API and SDKs" icon="paper-plane" href="/docs/core-concepts/usage-events/sending-events">
+    Authentication, single and bulk requests, and the responses to handle.
+  </Card>
+  <Card title="Idempotency and Deduplication" icon="clone" href="/docs/core-concepts/usage-events/idempotency">
+    How Flexprice recognizes a copy of an event, and how to make retries and heartbeats safe.
+  </Card>
+</CardGroup>
