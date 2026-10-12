@@ -67,6 +67,10 @@ DynamoDB is the only managed-cloud component in the architecture, and it is enti
 
 Ingestion is the most infrastructure-heavy part of the system, because it is the part that must never lose data. Everything downstream — balances, invoices, analytics, reconciliation — is reconstructable as long as the events survive.
 
+### Ingestion performance
+
+Flexprice processes **40,000+ events per second** and **10 billion+ API requests per month**. Throughput depends on deployment sizing. See the [bulk event API](/docs/event-ingestion/api-reference#bulk-events) for per-request batch limits.
+
 ### Ingestion modes
 
 You choose how events reach Flexprice based on how your systems are already built.
@@ -133,16 +137,20 @@ Most customers never query Flexprice in their hot path at all. Every event enque
 
 These are pushed back to your event bus — API, Kafka, SNS, or SMS — as they happen. The common pattern is for customers to maintain a simple `has_balance` flag per customer in their own Redis, updated from these alerts, and gate actions on that flag. **Flexprice is never in the critical path of the decision.**
 
-### Freshness guarantees
+### Balance freshness
 
-| Tier | Guarantee | How |
+Balance freshness describes how recently ingested usage is reflected in a returned balance. It depends on ingestion, processing, and cache configuration. Any guaranteed reconciliation window is defined in your agreement.
+
+| Deployment | Freshness commitment | How |
 | --- | --- | --- |
-| **Standard** | Balances reconciled within 5 minutes | A fallback cron sweeps the trailing 5-minute window and triggers alerts. |
-| **Enterprise (dedicated)** | Sub-minute SLA, tuned to requirement | Achieved by scaling ingestion parallelism and ClickHouse compute — the two levers that set end-to-end latency. |
+| **Flexprice Cloud** | As specified in your agreement, where applicable | Usage is processed asynchronously. The fetch-balance API uses the maximum acceptable cache age supplied by the caller to decide whether to return a cached value or recompute it from ClickHouse. |
+| **Enterprise (dedicated)** | Tuned to the requirements specified in your agreement | Ingestion parallelism and ClickHouse compute can be scaled to meet the deployment's freshness requirements. |
 
 ## Service-level agreements
 
-Flexprice publishes explicit availability and latency targets for the API service — the only internet-facing component — measured continuously and reported per region. Two operations carry their own latency objectives because they sit in the customer's hot path: checking entitlement and wallet balance, and reporting usage measurements.
+The API service is the internet-facing component customers depend on for reporting usage and checking entitlements and wallet balances. Availability, response latency, and balance freshness describe different aspects of that service and should be evaluated separately.
+
+Availability commitments, support tiers, and service credits are defined in your agreement and applicable order form. Refer to the [published SLA](https://flexprice.io/sla) for the contractual terms. Enterprise agreements may specify custom service levels.
 
 ### Availability
 
@@ -160,7 +168,7 @@ Availability is measured per region in five-minute intervals as `1 − (failed r
 | Entitlement / balance check | **P95 < 500 ms** | API service (server-side), per region, excluding client network time |
 | Usage measurement reporting (event ingestion) | **P95 ≈ 200 ms** | API service (server-side), per region, excluding client network time |
 
-The balance check is the path most customers gate actions on. The ingestion target reflects the lightweight receive path described above: the API acknowledges after the durable write and defers enrichment off the Kafka stream. Response latency is distinct from balance freshness — how recently usage is reflected in the returned number — which is governed by the [freshness tiers](#freshness-guarantees) above, and can be tightened to sub-minute on enterprise dedicated deployments.
+The balance check is the path most customers gate actions on. The ingestion target reflects the lightweight receive path described above: the API acknowledges after the durable write and defers enrichment off the Kafka stream. Response latency is distinct from balance freshness — how recently usage is reflected in the returned number — which is governed by the [balance freshness](#balance-freshness) above, and can be tightened to sub-minute on enterprise dedicated deployments.
 
 ## Multi-region and data residency
 
