@@ -1,0 +1,36 @@
+---
+title: "Can Flexprice Handle Netlify's Pricing?"
+sidebarTitle: "Netlify Pricing"
+description: "Recreate Netlify's pricing in Flexprice with five usage meters, each with its own included allowance and overage rate, plus per-member seat pricing on Pro"
+---
+
+Episode 3 of *Can Flexprice Handle It?* recreates Netlify's pricing in Flexprice. Netlify bills five usage dimensions on the same invoice: bandwidth, build minutes, serverless function invocations, edge functions and form submissions. Each dimension has its own included allowance, overage rate and metering cadence. The episode builds the setup through the Flexprice MCP server.
+
+<Frame>
+  <iframe
+    className="w-full aspect-video rounded-xl"
+    src="https://www.loom.com/embed/9b97041ffc4f4f35b10c4cb55ef060e2"
+    title="Recreating Netlify pricing with Flexprice, episode 3"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+    allowFullScreen
+  ></iframe>
+</Frame>
+
+## How Netlify's pricing maps to Flexprice
+
+| Netlify's pricing uses | Flexprice setup |
+| --- | --- |
+| **Five usage dimensions** on one invoice | One [metered feature](/docs/product-catalogue/features/create) per dimension, each with its own usage charge on the plan |
+| **Included allowance** per dimension | [Entitlements](/docs/product-catalogue/features/linking-to-plans) with a usage limit and reset interval for each metered feature |
+| **Per-member seat price** on the Pro plan | [Seat-based pricing](/docs/subscriptions/seat-based-pricing), where the subscription quantity is the member count |
+| **Overages billed at the account level** | Usage charges, which add up usage for the whole customer, separate from the seat quantity |
+
+The hard part is the layering. The Pro plan bundles usage allowances into a per-member price, but overages are billed for the whole account. Keeping seats and usage as separate charges on one plan keeps each overage tied to the dimension that caused it.
+
+## Building Netlify's pricing with the MCP server
+
+The episode connects Claude to Flexprice through the [MCP server](/docs/connect/mcp-server), the same way as the [Replit](/cookbooks/pricing-teardowns/replit-pricing) and [Cursor](/cookbooks/pricing-teardowns/cursor-pricing) episodes. Claude creates the metered features, plans and charges from a description of Netlify's pricing.
+
+## Related recipe
+
+<Card icon="book-open" horizontal={true} href="/cookbooks/billing-recipes/hybrid-pricing" title="Build Hybrid Pricing like Resend" />

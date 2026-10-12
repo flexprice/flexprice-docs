@@ -1,6 +1,30 @@
 ---
-title: "Clone Cursor pricing"
+title: "Can Flexprice Handle Cursor's Pricing?"
+sidebarTitle: "Cursor Pricing"
+description: "Recreate Cursor 3 pricing in Flexprice with metered features filtered by model, plan request limits as entitlements and overage charges, set up through MCP"
 ---
+
+Episode 2 of *Can Flexprice Handle It?* recreates Cursor's pricing after the Cursor 3 launch. Cursor now prices AI agents whose compute use changes with each task, with model-specific request limits and a usage ceiling that behaves differently for fast and slow requests. The episode builds the setup through the Flexprice [MCP server](/docs/connect/mcp-server).
+
+<Frame>
+  <iframe
+    className="w-full aspect-video rounded-xl"
+    src="https://www.loom.com/embed/40d6fff1c2ca434b8a95dbd2d299914a"
+    title="Recreating Cursor pricing with Flexprice, episode 2"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+    allowFullScreen
+  ></iframe>
+</Frame>
+
+## How Cursor 3 pricing maps to Flexprice
+
+| Cursor's pricing uses | Flexprice setup |
+| --- | --- |
+| **Usage that depends on the model** an agent calls | [Metered features](/docs/product-catalogue/features/create) with a filter on the model property of each event |
+| **Request limits per plan** | [Entitlements](/docs/product-catalogue/features/linking-to-plans) with a usage limit and reset interval |
+| **Overages** beyond the included usage | Usage charges on each metered feature |
+
+## Modeling Cursor's earlier plans
 
 Cursor’s pricing model combines subscription tiers with usage-based metering, allowing developers and teams to scale AI-powered assistance effectively.
 
