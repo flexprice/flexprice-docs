@@ -1,0 +1,34 @@
+---
+title: "Core Concepts"
+description: "How Flexprice turns usage into invoices: usage events, features, plans and prices, customers, subscriptions, and invoices, and how each one feeds the next"
+---
+
+Flexprice bills usage through six concepts that build on each other. Your application sends usage events, features aggregate those events into quantities, and prices put a rate on each quantity. A subscription puts one customer on one plan, and every billing period of that subscription ends in an invoice. The pages in this group cover each concept in that order, with the decisions that keep billing accurate.
+
+<img className="block dark:hidden" src="/images/docs/core-concepts/billing-path-light.png" alt="Flexprice billing path: usage events reach features by event_name and customers by external_customer_id, features are priced on plans, a subscription takes a plan's prices for one customer, and each billing period produces an invoice" />
+<img className="hidden dark:block" src="/images/docs/core-concepts/billing-path-dark.png" alt="Flexprice billing path: usage events reach features by event_name and customers by external_customer_id, features are priced on plans, a subscription takes a plan's prices for one customer, and each billing period produces an invoice" />
+
+## How the core concepts connect
+
+| Concept | What it is | How it connects to the rest |
+| ------- | ---------- | --------------------------- |
+| **[Usage events](/docs/core-concepts/send-usage-events)** | A record of one piece of usage by one customer, sent by your application | Its `event_name` decides which features count it, and its `external_customer_id` decides which customer it belongs to |
+| **[Features](/docs/core-concepts/features)** | Something you meter or grant access to | A metered feature aggregates matching events into a quantity that a usage price charges for |
+| **[Plans and prices](/docs/core-concepts/plans-and-prices)** | A price charges for a feature's usage or a fixed fee, and a plan bundles prices, entitlements, and credit grants | A new subscription copies the plan's matching prices into its own line items |
+| **[Customers](/docs/core-concepts/customers)** | The account you bill, identified by your own External ID | A customer holds subscriptions, and its External ID links it to its usage |
+| **[Subscriptions](/docs/core-concepts/subscriptions)** | One customer on one plan, from a start date, in one currency and billing period | Bills the customer's usage against its line items, and raises an invoice for each billing period |
+| **[Invoices](/docs/core-concepts/invoices)** | The bill for a stretch of time | Collects advance fees and the usage of the period that ended, then applies discounts, credits, and tax |
+
+## Billing mistakes the core concepts prevent
+
+Each of these is accepted without an error and shows up only on an invoice:
+
+| Mistake | What it costs | Where it's covered |
+| ------- | ------------- | ------------------ |
+| Retrying an event without a fixed `event_id` and `timestamp` | The usage counts twice | [Making usage events idempotent](/docs/core-concepts/send-usage-events#making-usage-events-idempotent) |
+| Summing a reading, such as seats in use | Every reading is billed | [Choosing an aggregation](/docs/core-concepts/features#choosing-an-aggregation-for-a-metered-feature) |
+| A metered entitlement with no `usage_limit` on a priced feature | The usage price bills 0 | [Combining entitlements and prices](/docs/core-concepts/plans-and-prices#combining-entitlements-and-prices-on-a-metered-feature) |
+| An External ID that differs from your events, even in letter case | The usage is never billed | [Choosing an External ID](/docs/core-concepts/customers#choosing-an-external-id-for-each-customer) |
+| Two subscriptions for one customer pricing the same feature | The usage is billed twice | [Running several subscriptions](/docs/core-concepts/subscriptions#running-several-subscriptions-for-one-customer) |
+| Cancelling immediately without asking for a final invoice | The current period's usage is never billed | [Cancelling a subscription](/docs/core-concepts/subscriptions#cancelling-a-subscription-without-losing-unbilled-usage) |
+| Sending usage after the period's invoice is computed | The usage misses that invoice | [Billing late usage](/docs/core-concepts/invoices#billing-usage-that-arrives-after-the-invoice-is-computed) |

@@ -14,8 +14,8 @@ The REST API is the source of truth for everything in Flexprice. The [API Refere
 | Request format | JSON bodies with `snake_case` fields. List endpoints are `POST /<resource>/search` with a filter body. | [Introduction](/api-reference/introduction) |
 | Pagination | Offset based. Send `limit` and `offset`, read `pagination.offset` back for the next page, up to 1000 items per page. | [Pagination](/api-reference/pagination) |
 | Errors | `{"success": false, "error": { "message": "..." }}` with a standard HTTP status. `409` is safe to retry. | [Error responses](/api-reference/error-responses) |
-| Idempotency | Events dedupe on `event_id`. Invoices, credit notes, wallet top-ups, and portal payments accept an `idempotency_key` field. | [Idempotency and deduplication](/docs/event-ingestion/sending-events) |
-| Async ingestion | `POST /events` and `POST /events/bulk` return `202 Accepted`. Bulk accepts up to 1000 events per call. | [Event Ingestion API](/docs/event-ingestion/api-reference) |
+| Idempotency | Events dedupe on `event_id` and `timestamp` together. Invoices, credit notes, wallet top-ups, and portal payments accept an `idempotency_key` field. | [Idempotency and deduplication](/docs/core-concepts/usage-events/idempotency) |
+| Async ingestion | `POST /events` and `POST /events/bulk` return `202 Accepted`. Bulk accepts up to 1000 events per call. | [Send Usage Events](/docs/core-concepts/usage-events/sending-events) |
 | Rate limits | `429 Too Many Requests` when you exceed the limit. Back off and retry; the CLI exits with code `5`. | [Error responses](/api-reference/error-responses) |
 
 ## API endpoints by billing lifecycle

@@ -1,0 +1,121 @@
+---
+title: "Send Usage Events"
+sidebarTitle: "Usage Events"
+description: "What to put in a Flexprice usage event, and how to deliver events so each one is counted exactly once: durable queues, safe retries, and idempotent IDs"
+---
+
+Usage events are the input to usage-based billing in Flexprice. Your application sends an event each time a customer uses something you bill for, and metered features aggregate those events into the quantity on each invoice line. A lost event is lost revenue, and an event counted twice is an overcharge. This page covers what to put in a usage event and how to deliver events so that each one is counted exactly once.
+
+<Info>
+  Send usage events with the [Ingest event](/api-reference/events/ingest-event) and [Bulk ingest events](/api-reference/events/bulk-ingest-events) endpoints, the [SDKs](/developers/sdks/usage), or the [Flexprice Collector](/docs/collectors/overview) when events already flow through a stream such as Kafka. For requests, code samples, and responses, see [Send Usage Events with the API and SDKs](/docs/core-concepts/usage-events/sending-events).
+</Info>
+
+## Usage event structure
+
+A usage event is a JSON object:
+
+```json
+{
+  "event_name": "api_request",          // required: a feature's event name
+  "external_customer_id": "cust_123",   // required: your customer ID
+  "event_id": "req_9f3c",               // recommended: unique per usage
+  "timestamp": "2026-10-10T14:03:00Z",  // recommended: when it happened
+  "properties": {                       // values features aggregate
+    "bytes": 1024,
+    "region": "us-east-1"
+  },
+  "source": "api-gateway"               // optional: the sending system
+}
+```
+
+- **`event_name`**
+
+  Flexprice counts the event toward the metered features whose event name matches it exactly, including case. An event whose name matches no feature is still accepted with `202`, so a typo fails silently. A feature's event name can't be changed after the feature is created.
+
+- **`external_customer_id`**
+
+  Your identifier for the customer: the same value as the customer's External ID in Flexprice. Events for an external ID that has no customer yet are stored, and count once a customer with that External ID exists. See [Sending usage events before the customer exists](#sending-usage-events-before-the-customer-exists).
+
+- **`event_id`**
+
+  A unique ID for this piece of usage. Flexprice generates one when you leave it out, but set your own from the usage itself, such as a request ID or a job ID, so that a resent event carries the same ID. Together with `timestamp`, it's how Flexprice recognizes a copy of an event. See [Making usage events idempotent](#making-usage-events-idempotent).
+
+- **`timestamp`**
+
+  When the usage happened, as an [RFC 3339](https://www.rfc-editor.org/rfc/rfc3339) string with a timezone, such as `2026-10-10T14:03:00Z` or `2026-10-10T19:33:00+05:30`. A timestamp in any other format, or without a timezone, fails the whole request with `400`. Flexprice stores the time in UTC and uses it to place the usage in a billing period. When you leave it out, Flexprice uses the time it received the request, so a retried event gets a new timestamp and counts twice. There is no limit on how old a timestamp can be, which is how [backfills](/docs/core-concepts/usage-events/backfill) work.
+
+- **`properties`**
+
+  Key-value pairs that features aggregate (Sum, Max, Latest, and the other [aggregation types](/docs/product-catalogue/features/aggregation/overview)) and filter on. Send numeric values as JSON numbers or numeric strings. A missing or non-numeric value counts as `0`, and so does a negative value. Send more properties than your pricing uses today, such as region or model: a feature added later can only filter on properties that the events already carry.
+
+- **`source`**
+
+  Free text naming the system that sent the event. The [Event Debugger](/docs/event-ingestion/event-debugger) filters on it, which helps when several services send the same event name.
+
+## Queuing and retrying usage events
+
+If your service sends events inline and the call fails, or the process crashes before it sends, that usage is gone. Put each event on a durable queue such as Amazon SQS, Kafka, or RabbitMQ when the usage happens, with its `event_id` and `timestamp` already set, and have a worker send events from the queue to Flexprice.
+
+<img className="block dark:hidden" src="/images/docs/core-concepts/ingestion-pipeline-light.png" alt="A reliable sender: your app puts each event on a durable queue with event_id and timestamp set, a worker sends batches to Flexprice, retries 5xx responses and timeouts with backoff, and moves events rejected with 400 to a dead letter queue" />
+<img className="hidden dark:block" src="/images/docs/core-concepts/ingestion-pipeline-dark.png" alt="A reliable sender: your app puts each event on a durable queue with event_id and timestamp set, a worker sends batches to Flexprice, retries 5xx responses and timeouts with backoff, and moves events rejected with 400 to a dead letter queue" />
+
+- **Retry network errors, timeouts, and `5xx` responses** with exponential backoff until you get `202`. Resend the whole request: copies of an event that share its `event_id` and `timestamp` collapse into one.
+- **Turn on SDK retries.** They are off by default in every SDK: see [Retrying failed SDK requests](/developers/sdks/usage#retrying-failed-sdk-requests).
+- **Expect partly accepted bulk requests.** A `400` caused by one event missing a required field can arrive after earlier events in the same array were accepted. Fix that event and resend the whole batch.
+
+<Warning>
+  **Don't retry a `400` automatically.** The payload fails the same way every time. Move the event to a dead letter queue, raise an alert, and fix the payload before you resend it.
+</Warning>
+
+## Making usage events idempotent
+
+The same usage often reaches Flexprice more than once: a retry after a timeout, a queue that redelivers a message, a heartbeat that fires twice. Flexprice collapses copies of an event into one when they carry the same `event_id` and `timestamp`, so set both on every event:
+
+- **Set both when the usage happens.** Store them with the event in your queue, and never regenerate either one on a retry.
+- **Derive `event_id` from the usage, not from the attempt to send it:** an API gateway's request ID, a batch job's ID plus its chunk number, or an LLM provider's response ID.
+- **Never leave either field out.** Flexprice fills in a missing `event_id` or `timestamp` with a new value for each copy, so a resent copy counts again.
+
+<img className="block dark:hidden" src="/images/docs/core-concepts/dedup-light.png" alt="Retries compared: with event_id and timestamp set at the source, the retry collapses into one event; with the timestamp left out, each copy gets its arrival time and both are counted" />
+<img className="hidden dark:block" src="/images/docs/core-concepts/dedup-dark.png" alt="Retries compared: with event_id and timestamp set at the source, the retry collapses into one event; with the timestamp left out, each copy gets its arrival time and both are counted" />
+
+The API accepts every copy with `202`, and copies collapse later, in storage. [Idempotency and Deduplication](/docs/core-concepts/usage-events/idempotency) covers what happens when either field is missing and where a copy can show up before it collapses.
+
+### Making heartbeat events idempotent
+
+Some usage events report state on a schedule instead of an action: a node reporting its CPU cores every minute, or a nightly snapshot of storage. Make every heartbeat sent in the same measurement period a copy of the same event. Build the `event_id` from the source and the start of the period, and set `timestamp` to that same period start:
+
+```text
+event_id:  <node_id>_<unix_time rounded down to the minute>
+timestamp: that minute as RFC 3339, such as 2026-10-10T14:03:00Z
+```
+
+Round the timestamp as well as the ID. A timestamp read from the clock at send time differs between two heartbeats in the same minute, so both count. With both rounded, send two or more heartbeats per period: the extra copies collapse, and a delayed timer no longer leaves a period unbilled. See [Making heartbeat events idempotent](/docs/core-concepts/usage-events/idempotency#making-heartbeat-events-idempotent) for a full example.
+
+## Logging the usage events you send
+
+Log every event your worker sends, with the response status, while you integrate and after any change to your events. That log is your record of what Flexprice received: compare it with the Event Debugger or usage analytics when a count looks wrong.
+
+## Sending usage events before the customer exists
+
+Flexprice stores events for an `external_customer_id` that has no customer yet, and counts them once a customer with that External ID exists. Signup in your product doesn't have to wait for Flexprice: create the customer in your own system, start sending usage, and create the Flexprice customer asynchronously. The usage is billed once the customer has a subscription whose billing period covers each event's timestamp.
+
+## Changing the shape of usage events
+
+<Warning>
+  A feature counts only the events whose `event_name` and aggregated property match its configuration exactly. Renaming either one in your code silently stops the feature from counting, because Flexprice keeps accepting the renamed events with `202`. Before you change an event, set up the feature that will count the new shape, then confirm in the Event Debugger that the new events are counted.
+</Warning>
+
+<CardGroup cols={2}>
+  <Card title="Send Usage Events with the API and SDKs" icon="paper-plane" href="/docs/core-concepts/usage-events/sending-events">
+    Authentication, single and bulk requests, and the responses to handle.
+  </Card>
+  <Card title="Idempotency and Deduplication" icon="clone" href="/docs/core-concepts/usage-events/idempotency">
+    How Flexprice recognizes a copy of an event, and how to make retries and heartbeats safe.
+  </Card>
+  <Card title="High-Volume Ingestion" icon="gauge-high" href="/docs/core-concepts/usage-events/high-volume-ingestion">
+    Batch events with the bulk endpoint, the SDKs, or the Flexprice Collector.
+  </Card>
+  <Card title="Backfill Past Usage" icon="clock-rotate-left" href="/docs/core-concepts/usage-events/backfill">
+    Load historical usage and get it onto draft or finalized invoices.
+  </Card>
+</CardGroup>

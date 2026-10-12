@@ -1,0 +1,81 @@
+---
+title: "Idempotency and Deduplication"
+description: "How Flexprice recognizes copies of a usage event, and how to set event_id and timestamp so retries, replays, and heartbeats never double count"
+---
+
+The same usage often reaches Flexprice more than once: a retry after a timeout, a queue that redelivers a message, a heartbeat that fires twice in one minute. Flexprice collapses copies of a usage event into one when they carry the same `event_id` and `timestamp`, so you decide what counts as a copy by how you set those two fields.
+
+<img className="block dark:hidden" src="/images/docs/core-concepts/dedup-light.png" alt="Retries compared: with event_id and timestamp set at the source, the retry collapses into one event; with the timestamp left out, each copy gets its arrival time and both are counted" />
+<img className="hidden dark:block" src="/images/docs/core-concepts/dedup-dark.png" alt="Retries compared: with event_id and timestamp set at the source, the retry collapses into one event; with the timestamp left out, each copy gets its arrival time and both are counted" />
+
+## How Flexprice deduplicates usage events
+
+- **Copies match on `event_id` and `timestamp`.** Two events for the same customer with the same `event_id` and the same `timestamp` are stored as one event. An event with the same ID and a different timestamp is a different event.
+- **Deduplication happens in storage, after ingestion.** The API accepts every copy with `202`. Copies collapse when Flexprice merges stored usage, however far apart they arrive.
+- **Invoices are always calculated from deduplicated usage.** Usage analytics, upcoming invoice previews, and wallet balances can include a copy until it collapses.
+- **Count features count distinct event IDs.** A resent event with the same `event_id` never adds to a Count feature. Sum, Max, and the other aggregations that read a property depend on the full `event_id` and `timestamp` match.
+
+## Usage event deduplication when event_id or timestamp is missing
+
+Flexprice fills in whichever field you leave out, and each copy gets a different value:
+
+| Fields you set | What a resent copy does |
+| -------------- | ----------------------- |
+| **`event_id` and `timestamp`** | Collapses into the original. Counted once |
+| **`event_id` only** | Gets the time Flexprice received it as its timestamp, so it is a separate event. Sum and the other property aggregations count it again. Count features don't |
+| **`timestamp` only** | Gets a newly generated `event_id`, so it is a separate event and counts again |
+| **Neither** | Counts again |
+
+## Choosing an event_id for a usage event
+
+Derive the ID from the usage, not from the attempt to send it:
+
+- **API gateway:** the request ID.
+- **Batch job:** the job ID plus the step or chunk number.
+- **LLM call:** the provider's response ID.
+
+Generate the ID once, when the usage happens, store it with the event in your queue, and never regenerate it on a retry. Keep IDs unique within an environment: two different pieces of usage that share an ID and a timestamp merge into one.
+
+## Choosing a timestamp for a usage event
+
+Capture the time once, when the usage happens, and store it with the event. A timestamp read from the clock at send time changes on every retry, which turns each retry into a new event. Every copy of an event must carry exactly the same `timestamp` value.
+
+## Making heartbeat events idempotent
+
+Some usage events report state on a schedule instead of an action: a node reporting its CPU cores every minute, or a nightly snapshot of storage or seats. Give every heartbeat a deterministic `event_id` and `timestamp` for its measurement period, so that every heartbeat sent in the same period is a copy of the same event:
+
+```python
+import time
+from datetime import datetime, timezone
+
+def heartbeat_event(node_id: str, customer_id: str, cpu_cores: int) -> dict:
+    # Round down to the start of the minute, so every heartbeat sent
+    # in the same minute gets the same event_id and timestamp.
+    period_start = int(time.time()) // 60 * 60
+    return {
+        "event_name": "node_heartbeat",
+        "external_customer_id": customer_id,
+        "event_id": f"{node_id}_{period_start}",
+        "timestamp": datetime.fromtimestamp(period_start, tz=timezone.utc).isoformat(),
+        "properties": {"cpu_cores": cpu_cores},
+    }
+```
+
+A Sum feature over `cpu_cores` then counts core-minutes. Send two or more heartbeats per period: the extra copies collapse, and a delayed timer no longer leaves a minute unbilled.
+
+<Warning>
+  **Round the timestamp as well as the ID.** If the timestamp comes from the clock at send time, two heartbeats in the same minute have different timestamps, and both count.
+</Warning>
+
+## Resending a failed bulk request
+
+When a bulk request fails with a network error or a `5xx`, or with a `400` after some events were accepted, resend the whole batch. Events that Flexprice already accepted collapse with their resent copies, as long as every event in the batch carries its own `event_id` and `timestamp`.
+
+<CardGroup cols={2}>
+  <Card title="Send Usage Events" icon="book-open" href="/docs/core-concepts/send-usage-events">
+    What to put in a usage event, and how to queue, retry, and log events.
+  </Card>
+  <Card title="High-Volume Ingestion" icon="gauge-high" href="/docs/core-concepts/usage-events/high-volume-ingestion">
+    Batch events with the bulk endpoint, the SDKs, or the Flexprice Collector.
+  </Card>
+</CardGroup>

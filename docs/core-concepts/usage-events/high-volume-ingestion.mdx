@@ -1,0 +1,124 @@
+---
+title: "High-Volume Ingestion"
+description: "Batch usage events with the bulk endpoint, the SDKs, or the Flexprice Collector, and keep a high-volume sender stable under load"
+---
+
+One request per usage event works while volume is low. Once you send more than a few events per second, batch them: fewer requests, less overhead per event, and one retry covers many events. This page covers high-volume ingestion through the bulk endpoint, the SDKs, and the Flexprice Collector, and how to keep a sender stable when the network or Flexprice slows down.
+
+## Batching usage events with the bulk endpoint
+
+`POST /v1/events/bulk` takes the same event fields as a single event, in an `events` array:
+
+- **Batch size:** 1 to 1000 events per request.
+- **Body size:** up to 32 MiB. A larger body fails with `400` and the message "Request body exceeds the maximum size; split the batch into smaller requests".
+- **Flush policy:** send a batch when it reaches 1000 events or after a fixed interval, such as one or two seconds, whichever comes first, so a quiet period doesn't hold events back.
+
+How a bulk request fails decides what to resend:
+
+- **Invalid JSON, a timestamp that isn't RFC 3339, more than 1000 events, or an oversized body** reject the whole request before any event in it is accepted.
+- **An event missing `event_name` or `external_customer_id`** can fail the request after earlier events in the array were accepted.
+
+In both cases, fix the payload and resend the whole batch. When every event carries its own `event_id` and `timestamp`, the events Flexprice already accepted collapse with their resent copies: see [Idempotency and Deduplication](/docs/core-concepts/usage-events/idempotency).
+
+## Batching usage events with the SDKs
+
+Every SDK has a bulk method. Collect events in your worker and send them in one call:
+
+<CodeGroup>
+```go Go
+resp, err := client.Events.IngestEventsBulk(ctx, types.BulkIngestEventRequest{
+	Events: []types.IngestEventRequest{
+		{
+			EventName:          "api_request",
+			ExternalCustomerID: "cust_123",
+			EventID:            flexprice.String("req_9f3c"),
+			Timestamp:          flexprice.String("2026-10-10T14:03:00Z"),
+			Properties:         map[string]string{"bytes": "1024"},
+		},
+		{
+			EventName:          "api_request",
+			ExternalCustomerID: "cust_123",
+			EventID:            flexprice.String("req_9f3d"),
+			Timestamp:          flexprice.String("2026-10-10T14:03:05Z"),
+			Properties:         map[string]string{"bytes": "2048"},
+		},
+	},
+})
+```
+
+```python Python
+result = client.events.ingest_events_bulk(
+    events=[
+        {
+            "event_name": "api_request",
+            "external_customer_id": "cust_123",
+            "event_id": "req_9f3c",
+            "timestamp": "2026-10-10T14:03:00Z",
+            "properties": {"bytes": "1024"},
+        },
+        {
+            "event_name": "api_request",
+            "external_customer_id": "cust_123",
+            "event_id": "req_9f3d",
+            "timestamp": "2026-10-10T14:03:05Z",
+            "properties": {"bytes": "2048"},
+        },
+    ],
+)
+```
+
+```typescript TypeScript
+const result = await flexprice.events.ingestEventsBulk({
+  events: [
+    {
+      eventName: "api_request",
+      externalCustomerId: "cust_123",
+      eventId: "req_9f3c",
+      timestamp: "2026-10-10T14:03:00Z",
+      properties: { bytes: "1024" },
+    },
+    {
+      eventName: "api_request",
+      externalCustomerId: "cust_123",
+      eventId: "req_9f3d",
+      timestamp: "2026-10-10T14:03:05Z",
+      properties: { bytes: "2048" },
+    },
+  ],
+});
+```
+</CodeGroup>
+
+Retries are off by default in every SDK. Turn them on when you create the client: see [Retrying failed SDK requests](/developers/sdks/usage#retrying-failed-sdk-requests).
+
+### How the Go SDK async client sends usage events
+
+The Go SDK also has an async client (`client.NewAsyncClientWithConfig`) that queues events in process memory and sends them from background goroutines. Know how it delivers before you bill on it:
+
+- It sends each event as its own `POST /v1/events` request, not through the bulk endpoint.
+- It doesn't set an `event_id`. Pass your own with `EnqueueWithOptions`, or a resent event can't be recognized as a copy. When you leave out the timestamp, it stamps the event at enqueue time.
+- An event whose send fails is dropped once the retries configured on the parent client (`WithRetryConfig`) run out. The failure is printed only when `Debug` is on.
+- `Close()` returns without waiting for queued events to be sent, so events still in memory when the process exits can be lost.
+- `Enqueue` blocks while the queue is full (`MaxQueueSize`, 1000 by default).
+
+For usage you bill on, keep events on a durable queue and send them with `IngestEventsBulk` instead.
+
+## Streaming usage events with the Flexprice Collector
+
+If your usage already flows through Kafka or another stream, run the [Flexprice Collector](/docs/collectors/overview) instead of writing a sender. It reads from the stream, transforms each message into a Flexprice event, batches events (10 events or 2 seconds by default), and retries failed requests with exponential backoff. To install it, see [Get Started](/docs/collectors/get-started).
+
+## Keeping a high-volume sender stable
+
+- **Cap concurrency.** Send from a fixed pool of workers, each with one request in flight, instead of opening a request per event.
+- **Back off on failure.** Retry network errors, timeouts, and `5xx` responses with exponential backoff and jitter, so that many workers don't retry in lockstep.
+- **Let the queue absorb outages.** Keep events on a durable queue until Flexprice accepts them, size it for the longest outage you want to ride out, and alert on the age of the oldest event in it.
+- **Watch processing lag.** A `202` means Flexprice accepted the events; metering runs asynchronously behind it. The [Event Monitoring](/docs/event-ingestion/monitoring) endpoint returns `consumption_lag`, the number of accepted events still waiting to be processed in your environment.
+
+<CardGroup cols={2}>
+  <Card title="Send Usage Events with the API and SDKs" icon="paper-plane" href="/docs/core-concepts/usage-events/sending-events">
+    Authentication, single and bulk requests, and the responses to handle.
+  </Card>
+  <Card title="Backfill Past Usage" icon="clock-rotate-left" href="/docs/core-concepts/usage-events/backfill">
+    Load historical usage and get it onto draft or finalized invoices.
+  </Card>
+</CardGroup>

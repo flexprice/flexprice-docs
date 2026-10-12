@@ -63,7 +63,9 @@ Also check `docs/webhook/webhooks.mdx` if the doc involves webhooks, and `docs/w
 | Plans, Features, Coupons | `docs/product-catalogue/` |
 | Subscription workflows | `docs/subscriptions/` |
 | Integrations | `integrations/<provider>/` |
-| Webhooks / events | `docs/webhook/` or `docs/event-ingestion/` |
+| Sending usage events (API, idempotency, volume, backfill) | `docs/core-concepts/usage-events/` |
+| Webhooks, event debugging and monitoring | `docs/webhook/` or `docs/event-ingestion/` |
+| Core Concepts pages (one guided page per concept) | `docs/core-concepts/` |
 | Alerts & notifications | `docs/customers/` (customer-scoped) or nearest feature section |
 
 ### 3. Frontmatter
@@ -228,7 +230,7 @@ Model new webhook events on existing ones — see `docs/wallet/low-balance-alert
 
 After writing a new file, **always add it to `docs.json`**.
 
-The navigation lives in `navigation.tabs[0].groups` (the Documentation tab). Each top-level group is a section heading, in this order: Start Here, Usage Metering, Pricing and Packaging, Entitlements, Customers, Subscriptions, Credits and Wallets, Enterprise Billing, Invoicing and Taxes, Payments and Checkout, Reporting and Data, Self-hosting, Platform and Security. Inside a section, topics are collapsible sub-groups (Usage Metering holds Features, Send Usage Events, Debug and Monitor). Billing recipes and pricing teardowns belong in the Cookbooks tab, not in Documentation. Structure:
+The navigation lives in `navigation.tabs[0].groups` (the Documentation tab). Each top-level group is a section heading, in this order: Start Here, Usage Metering, Pricing and Packaging, Entitlements, Customers, Subscriptions, Credits and Wallets, Enterprise Billing, Invoicing and Taxes, Payments and Checkout, Reporting and Data, Self-hosting, Platform and Security. Start Here holds the Core Concepts group (landing page `docs/core-concepts/overview` as its root): one opinionated guidance page per concept, in the order the data flows (Usage Events, Features, Plans and Prices, Customers, Subscriptions, Invoices), each linking to the detail pages in the topic sections. Usage Events is itself a nested group (root `docs/core-concepts/send-usage-events`) that holds every page about sending events, in `docs/core-concepts/usage-events/`. Inside a section, topics are collapsible sub-groups (Usage Metering holds Features, Flexprice Collector, Debug and Monitor, AI Cost Tracking). Billing recipes and pricing teardowns belong in the Cookbooks tab, not in Documentation. Structure:
 
 ```json
 {
