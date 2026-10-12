@@ -4,6 +4,73 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="October 12th 2026">
+  {/* changelog-coverage: {"version":1,"complete":false,"backend":{"from":"31421e9ff62d00a9f4cdded11d0aad5d32a22f4a","to":"b866da04951bf414f445d7ac78bfa9688bb19bd5"},"frontend":{"from":"f00ba7c9a3e281d280b074cf01531a459f659f62","to":"040dcfebed4360c5bc7b054be947521aca51eb65"}} */}
+
+  ## Bill customers in their own currency
+
+  Customers can now have a billing currency. Their invoices are issued in it, converted from the subscription's currency using the FX rates you configured.
+
+  * **Billing currency**: Set `billing_currency` on a customer, or in the customer form, to a supported fiat currency. Send an empty string on update to clear it. Custom currencies are not accepted. The change is rejected while the customer has an open checkout session, or when an active, trialing, or paused subscription invoiced to the customer, or an active wallet, has no tenant rate to the new currency
+  * **Conversion at finalization**: A draft stays in the subscription's currency and is converted once when it is finalized. The rate is saved on the invoice as `fx_conversion`, each line item keeps its original amounts in its own `fx_conversion`, and tax is recalculated in the billing currency. An invoice that already has a payment is not converted
+  * **Rate resolution**: The most specific rate whose validity window covers the finalization time wins: subscription, then customer, then tenant. If none exists for the pair, finalization fails with `no exchange rate configured` and the invoice stays a draft
+  * **Subscriptions**: Pass `fx_rates` when creating a subscription to set subscription-scope rates, each with an optional validity window. They are rejected when the invoicing customer's billing currency is unset or equal to the subscription currency, or when the pair has no tenant rate. Rates must be positive and their windows must not overlap
+  * **Wallets and checkout**: Creating a wallet for a customer needs a tenant rate from the wallet's currency to the billing currency. Pay-first checkout invoices and wallet top-ups are converted too, and invoice webhooks carry the same `fx_conversion` data
+  * **Voids and refunds**: Voiding a converted invoice, or refunding a credit note to a prepaid wallet, credits the charge-currency wallet at the invoice's saved rate
+  * **Dashboard**: Add global rates under Settings, Billing, Global forex rates. The customer form has a billing currency field, the customer details tab has an FX Overrides section, and the subscription form shows an FX overrides table when the customer's billing currency differs
+
+  <br />
+
+  ## Stripe Tax for invoices and credit notes
+
+  An environment can now let Stripe calculate tax on its invoices and credit notes instead of Flexprice tax rates.
+
+  * **Enable**: Set the `tax_config` setting to `{"enabled": true, "provider": "stripe"}`. Tax calculation then requires a Stripe connection and fails without one, with no fallback to Flexprice rates. With the setting absent or disabled, Flexprice calculates tax as before
+  * **Tax rates**: While Stripe is the engine, creating tax associations, or passing tax rate overrides on a customer or subscription, is rejected, because Stripe resolves tax from your Stripe account
+  * **Credit note preview**: `POST /creditnotes/preview` returns the `subtotal`, `total_tax`, `total_amount`, `currency`, `credit_note_type`, and individual `taxes` a credit note would carry, and writes nothing. It takes the same body as credit note create, and `total_tax` is zero unless the invoice was taxed by Stripe
+  * **Dashboard**: The create credit note page quotes the tax from the preview and shows it when it is above zero
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/integrations/tax/stripe-tax" title="Stripe Tax - Documentation" />
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Expiring wallet credits now always pay for usage before their expiry. The `credit_expiry_settlement_config` setting is removed, existing values under it are ignored, and expiries are processed 2 hours after they occur
+      * Subscription invoices omit usage line items with zero quantity and zero amount. Set `include_zero_value_line_items` to `true` in the `invoice_config` setting to keep them
+      * Usage alert timing is set per environment with the new `usage_alert_config` setting: `schedule_delay_seconds` (30 to 3600) and `stale_after_seconds` (60 to 86400). `0` keeps the deployment default
+      * An event or meter usage batch insert into ClickHouse that stops responding is cut off after 30 seconds, and events lost to a consumer rebalance or shutdown are redelivered instead of being sent to the dead-letter queue
+      * The customer portal payment methods widget shows a provider filter next to Add card when more than one provider supports payment method management
+      * A new dashboard consent screen lets you approve or deny an app's OAuth request to act for your Flexprice user, and pick the environment it uses
+      * Invoice views and the organization card show the tenant billing email instead of the signed-in user's email, and the update drawer edits the billing email, help email, and phone
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * `PUT /tenants/update` no longer replaces the whole `billing_details` object. An omitted billing field keeps its stored value and an empty string clears it, so an address-only save no longer clears the billing email
+      * A credit now pays only invoices whose billing period ends after the credit was added, and expiry settlement skips drafts for periods that ended before it
+      * Edited subscription line items keep their price unit, phase, and addon association, and commitment fields are saved in full on bulk create. Line item updates accept `price_unit_amount` and `price_unit_tiers`
+      * Pay-first wallet top-up invoices are now taxed, instead of going out with no tax
+      * Price edits that would silently drop requested pricing are rejected: amount-only edits on tiered prices, tiers on a non-tiered model, and a switch to tiered without `tier_mode` or to flat fee or package without an amount. The dashboard now sends an explicit billing model and tier mode on price edits
+      * Metered entitlements with a usage limit above about 10 billion no longer fail with a 500 error on create
+      * Stripe, Razorpay, and Chargebee late-capture refunds no longer crash when Redis was unreachable at server startup
+      * Resent verification emails now use the same redirect URL as the original signup email, and the redirect loop between `/` and `/auth` is fixed
+    </Accordion>
+
+    <Accordion title="API">
+      * `billing_currency` is accepted on customer create and update and returned on customers
+      * `fx_rates` is accepted on subscription create
+      * Invoices and invoice line items return `fx_conversion` when they were converted
+      * New `POST /creditnotes/preview` endpoint
+      * New `tax_config` and `usage_alert_config` settings. `credit_expiry_settlement_config` is removed
+      * `include_zero_value_line_items` is added to the `invoice_config` setting
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
 <Update label="October 5th 2026">
   {/* changelog-coverage: {"version":1,"complete":true,"backend":{"from":"5bf18b4dd157ee1fcfadf4c6fa4a8c72ce237b1a","to":"31421e9ff62d00a9f4cdded11d0aad5d32a22f4a"},"frontend":{"from":"bf2885c4d0a3e4ee0586f7fefb991ce878db179a","to":"f00ba7c9a3e281d280b074cf01531a459f659f62"}} */}
 
