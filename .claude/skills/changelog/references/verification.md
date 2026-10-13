@@ -32,7 +32,7 @@ Describe what the code does now. A limit is stated as a limit; never call a beha
 
 Read the relevant section of every proposed card target: an existing page is insufficient if it describes old behavior or does not explain the advertised capability. Link a current, relevant page or omit the card and record the gap.
 
-Compare named endpoints, request/response fields, enums, defaults, and status codes with the spec that `docs.json` at `DOCS_SHA` names as its `openapi` source (currently `/api-reference/openapi.json`), following `$ref` to the actual schema. Generated API pages need no physical `.mdx` file; check the operation, route, and the fields the feature uses before adding an API card, and recheck targets on the actual docs branch before hand-off.
+Compare named endpoints, request/response fields, enums, defaults, and status codes with the spec that `docs.json` at `DOCS_SHA` names as its `openapi` source (currently `https://swagger.flexprice.io`), following `$ref` to the actual schema. Generated API pages need no physical `.mdx` file; check the operation, route, and the fields the feature uses before adding an API card, and recheck targets on the actual docs branch before hand-off.
 
 Triage a mismatch by cause:
 

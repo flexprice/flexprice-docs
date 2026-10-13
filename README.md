@@ -64,7 +64,7 @@ Both should finish with no warnings.
 - Read two nearby pages before writing so tone, structure, and component usage match the existing docs.
 - Put screenshots under `images/` and only reference images that exist in the repo.
 - When removing a page, also remove its entry from `docs.json` and any images only that page used.
-- API reference endpoint pages are generated from the OpenAPI spec hosted on Speakeasy (the `openapi.source` URL in `docs.json`). There is no spec file in this repo; endpoint changes appear once Speakeasy republishes the spec.
+- API reference endpoint pages are generated from the OpenAPI spec hosted at `https://swagger.flexprice.io` (the `openapi.source` URL in `docs.json`). There is no spec file in this repo; endpoint changes appear once the spec at that URL is republished.
 - Add release notes to `docs/changelog.mdx`.
 
 Detailed writing conventions, the supported MDX components, and the changelog format live in `.mintlify/docs-writing-instructions.md` and `.mintlify/changelog-instructions.md`. Keep the `.mintlify/` files in place; Mintlify automation depends on them.
