@@ -75,7 +75,7 @@ Where to look: backend `internal/api/` (handlers, request/response structs), `in
 
 - Inspect a screenshot in `images/docs/` before using it in a `<Frame>`; it must depict the stated UI.
 - Read the relevant guide section before adding a `<Card>`; omit stale or unrelated targets.
-- Compare API claims (operations, fields, values) with the spec that `docs.json` at `DOCS_SHA` names as its `openapi` source (currently `/api-reference/openapi.json`); record missing or lagging contracts separately from factual errors. An API card `href` is the tag directory plus the slugged operation summary (`Execute subscription modification` under Subscriptions is `/api-reference/subscriptions/execute-subscription-modification`); generated API routes need no physical MDX file.
+- Compare API claims (operations, fields, values) with the spec that `docs.json` at `DOCS_SHA` names as its `openapi` source (currently `https://swagger.flexprice.io`); record missing or lagging contracts separately from factual errors. An API card `href` is the tag directory plus the slugged operation summary (`Execute subscription modification` under Subscriptions is `/api-reference/subscriptions/execute-subscription-modification`); generated API routes need no physical MDX file.
 
 Check targets at `DOCS_SHA`; if the user chose an existing branch, recheck them in Step 7. Never add an image, rewrite a guide, or regenerate the schema; missing or misleading targets are omitted.
 
