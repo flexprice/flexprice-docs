@@ -4,6 +4,94 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="October 19th 2026">
+  {/* changelog-coverage: {"version":1,"complete":false,"backend":{"from":"31421e9ff62d00a9f4cdded11d0aad5d32a22f4a","to":"f4d890b76a2c04f54a9640296d45f4340f08d592"},"frontend":{"from":"f00ba7c9a3e281d280b074cf01531a459f659f62","to":"fb07dd5de091dd9f7cfad23e6f531e16e8cb712c"}} */}
+
+  ## Pause and resume subscriptions
+
+  Pause and resume are back in the API, now immediate-only. Earlier pause modes, including scheduled pauses and dry runs, are not part of the new endpoints.
+
+  * **Pause**: `POST /subscriptions/{id}/pause` pauses an active subscription immediately. Usage and arrear fixed charges up to the pause are billed on a closing invoice, and each paused period after it gets a $0 skipped invoice
+  * **Proration**: Send `proration_behavior` on pause. `none` (default) bills arrear fixed charges for the full period and gives no credit, and `create_prorations` bills them for the used part and credits the unused part of advance fixed charges to the wallet
+  * **Resume**: `POST /subscriptions/{id}/resume` resumes a paused subscription now on its existing billing anchor. The first period runs from the resume to the next billing date, and its advance charges are invoiced at once
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/subscriptions/workflows/pause-and-resume" title="Pause and resume - Documentation" />
+
+  <br />
+
+  ## Pay first when a trial ends
+
+  Ending a trial immediately can now require payment first. When the modify request carries checkout parameters, the first paid period is drafted as an invoice behind a pay-first checkout session.
+
+  * **Trial stays intact until payment**: The subscription remains `trialing` while the checkout is open, and the trial ends and the first paid period starts when payment lands. An abandoned checkout keeps the trial
+  * **Zero-amount invoices**: If the first paid period invoices nothing, the trial ends immediately without a checkout
+  * **One checkout at a time**: The session defaults its idempotency key to `trial_end:<subscription_id>`, and trial changes are rejected while a checkout is pending on the subscription
+
+  <br />
+
+  ## End of month payment terms
+
+  Invoices can now fall due at the end of a month instead of a fixed number of days after they are issued.
+
+  * **New terms**: `END_OF_MONTH` and `END_OF_NEXT_MONTH` join the `15 NET` to `90 NET` payment terms. They set the due date to the last day of the issue date's month, or of the following month, in the subscription's timezone
+  * **Tenant default**: Set `payment_terms` in the `invoice_config` setting to apply terms to every subscription without its own
+  * **Resolution order**: A subscription invoice uses the subscription's `payment_terms`, then the tenant's `payment_terms`, then `due_date_days`
+
+  <br />
+
+  ## Discounts on wallet top-ups
+
+  Invoiced credit top-ups can now carry a coupon, so a customer pays less for the same credits.
+
+  * **API**: `POST /wallets/{id}/top-up` accepts `coupons: [{ "coupon_code": "..." }]` for `PURCHASED_CREDIT_INVOICED` top-ups. Coupons discount the top-up invoice before tax, and the credits granted are unchanged. Any invalid coupon rejects the whole top-up
+  * **Ledger facts**: Wallet transactions return `source_type` and `source_id` linking them to the invoice, and debits return a per-batch `consumption_breakdown`. Wallet webhooks carry the same fields
+  * **Fully discounted top-ups**: A top-up invoice that is paid at creation, such as one with a 100% coupon, now grants its credits instead of leaving them pending
+  * **Dashboard**: Add Credits has a Discounts section for purchased credits that links one coupon with a code. The checkout link is disabled while a coupon is picked, and Skip invoice is removed, so purchased credits are always invoiced
+
+  <br />
+
+  ## Sync addon usage prices to subscriptions
+
+  When you change an addon's usage charges, you can now push them to the subscriptions that already hold the addon.
+
+  * **Endpoint**: `POST /addons/{id}/sync/subscriptions` starts a workflow that creates line items for new usage prices and ends line items for expired ones on each active subscription holding the addon
+  * **Safe to repeat**: Associations that are already up to date are skipped, and the sync raises no invoice
+
+  <br />
+
+  ## Re-sync invoices to Zoho Books
+
+  A manual invoice push to Zoho Books can now update an invoice that was already synced.
+
+  * **Opt in**: Send `resync: true` on `POST /integrations/sync`. Flexprice updates the Zoho contact, then rebuilds and updates the Zoho invoice
+  * **Editable invoices only**: Invoices in draft, pending approval, approved, sent, unpaid, overdue, or viewed status are updated. Paid, partially paid, void, and rejected invoices are left untouched
+  * **Automatic sync unchanged**: The automatic path still skips invoices that are already mapped, and Zoho 400 rejections are no longer retried
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Events exports above 500,000 rows are rejected before any file is built, with a hint to narrow the date range or use a scheduled hourly or daily export
+      * Creating an export to a customer-owned S3 bucket now checks that the bucket is reachable with your keys, and fails with a specific message for a missing bucket, denied access, or a wrong region. Connecting customer-owned S3 no longer fails with a bucket validation error
+      * The cost breakdown PDF shows the discount and the total before tax when the invoice has a discount
+      * Plans with charges are no longer shown as disabled in the subscription plan dropdown on tenants with a large price catalog
+    </Accordion>
+
+    <Accordion title="API">
+      * New `POST /subscriptions/{id}/pause` and `POST /subscriptions/{id}/resume` endpoints
+      * New `POST /addons/{id}/sync/subscriptions` endpoint
+      * `END_OF_MONTH` and `END_OF_NEXT_MONTH` are accepted as `payment_terms`, and `payment_terms` is added to the `invoice_config` setting
+      * `coupons` is accepted on `POST /wallets/{id}/top-up`, and wallet transactions return `source_type`, `source_id`, and `consumption_breakdown`
+      * `resync` is accepted on `POST /integrations/sync`
+      * The cancel subscription request documents `cancel_immediately_invoice_policy`. The misspelled `cancel_immediately_inovice_policy` is still accepted
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
 <Update label="October 12th 2026">
   {/* changelog-coverage: {"version":1,"complete":false,"backend":{"from":"31421e9ff62d00a9f4cdded11d0aad5d32a22f4a","to":"b866da04951bf414f445d7ac78bfa9688bb19bd5"},"frontend":{"from":"f00ba7c9a3e281d280b074cf01531a459f659f62","to":"040dcfebed4360c5bc7b054be947521aca51eb65"}} */}
 
