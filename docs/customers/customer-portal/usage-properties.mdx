@@ -1,0 +1,134 @@
+---
+title: "Usage by Properties"
+description: "Let customers group and filter their usage and cost in the Customer Portal by event properties such as region, model or instance"
+---
+
+A usage chart that only splits by feature cannot answer the questions customers actually ask: which region is driving the bill, which model costs the most, which instance spiked last week. With usage properties turned on, customers group and filter their usage and cost in the portal by the properties on your events.
+
+The feature is off by default. You turn it on per environment and choose which properties customers can see.
+
+## What customers see
+
+When the feature is on, the **Usage** section shows a toolbar under the date filter.
+
+| Control | What it does |
+| ------- | ------------ |
+| **Features** | Narrows the section to one or more features. Shown when the customer has usage on two or more features |
+| **Group by** | Splits the chart and the breakdown table by one property, for example `region` |
+| **Filter** | Keeps only usage whose property matches the chosen values, for example `cloud_provider` is `aws`. Values are searchable |
+
+Active filters appear as removable chips under the toolbar, with **Clear all**.
+
+{/* Screenshot placeholder: portal Usage section with the toolbar, a Group by selected and one filter chip. Suggested path: /images/docs/customers/customer-portal/usage-properties-toolbar.png */}
+
+When usage is grouped:
+
+- **The chart shows cost per property value.** Cost adds up across features, where usage in different units does not.
+- **The top 8 values get their own line.** The rest are combined into **Other**.
+- **Usage without the property** appears as **(none)**.
+- **The breakdown table** lists one row per value, sorted by cost.
+- **Metric cards** (total spend, cost, margin) respect the active filters.
+
+{/* Screenshot placeholder: grouped chart and breakdown table, e.g. grouped by region. Suggested path: /images/docs/customers/customer-portal/usage-properties-grouped.png */}
+
+## Turning it on
+
+Go to **Settings**, open the **Customer Portal** tab, and with **Show usage** on, turn on **Group and filter usage by properties**.
+
+| Setting | Effect |
+| ------- | ------ |
+| **Only show these properties** | Customers see only these properties. Leave empty to show all of them |
+| **Always hide these properties** | Customers never see these properties |
+
+Both pickers suggest properties seen in your usage over the last 7 days. You can also type a property name.
+
+{/* Screenshot placeholder: Settings, Customer Portal tab, with the usage properties toggle on and both pickers filled. Suggested path: /images/docs/customers/customer-portal/usage-properties-settings.png */}
+
+The same settings live under `analytics_config` in the `customer_portal_config` setting:
+
+```json
+{
+  "analytics_config": {
+    "usage_properties": {
+      "enabled": true,
+      "allowed_keys": ["region", "model"],
+      "hidden_keys": ["user_email"]
+    }
+  }
+}
+```
+
+<Note>
+**A property in both lists is hidden**
+
+`hidden_keys` always wins over `allowed_keys`.
+</Note>
+
+## Which properties customers can use
+
+A property is available to customers only when all of these hold:
+
+- The feature is turned on, and the property passes your show and hide lists.
+- **It is not an aggregation property.** Properties a meter aggregates on are always hidden: the `field` of a `SUM`, `MAX`, `AVG`, `LATEST` or `SUM_WITH_MULTIPLIER` meter, and any property used in a meter's `expression`. This applies across every meter on the same event. The fields of `COUNT` and `COUNT_UNIQUE` meters are identifiers, not quantities, so they stay available.
+- **Its name uses only letters, numbers, `_` and `.`**
+
+<Warning>
+**Send property values as strings to group or filter by them**
+
+Grouping and filtering read property values as strings. A property sent as a number, such as `"version": 2`, groups everything under **(none)** and matches no filter. Send `"version": "2"` instead.
+</Warning>
+
+The property list in the portal comes from the customer's most recent usage of each meter in the selected date range. A property that only appears on older events may not be listed.
+
+## API
+
+The portal calls these endpoints with its session token. Request bodies take `start_time`, `end_time` and optional `feature_ids`.
+
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| `POST` | `/v1/customer/portal/analytics/properties` | Properties the customer can group and filter by, most used first |
+| `POST` | `/v1/customer/portal/analytics/properties/values` | Values of one property, most used first. Takes `key`, an optional `prefix`, and `limit` (1 to 200, default 50) |
+| `POST` | `/v1/customer/portal/analytics/revenue` | Accepts `group_by: ["properties.<key>"]` and `property_filters` |
+| `POST` | `/v1/customer/portal/analytics/cost` | Accepts `property_filters` |
+
+```bash
+curl --request POST \
+  --url https://api.cloud.flexprice.io/v1/customer/portal/analytics/revenue \
+  --header 'X-Session-Token: <session_token>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "start_time": "2026-10-01T00:00:00Z",
+    "end_time": "2026-10-31T00:00:00Z",
+    "window_size": "DAY",
+    "group_by": ["properties.region"],
+    "property_filters": { "cloud_provider": ["aws"] },
+    "expand": ["price"]
+  }'
+```
+
+A property the customer cannot use returns `400` with `property key "<key>" is not available`.
+
+The same lookups exist for your own API key at `/v1/meter-usage/properties` and `/v1/meter-usage/properties/values`. They take an `external_customer_id` and do not apply the show and hide lists, so you can see every property. Without `external_customer_id`, the properties lookup covers the whole environment.
+
+## Limitations
+
+- Customers group by one property at a time. Use a filter to narrow within it, for example filter `region` to `us-east-1` and group by `instance_id`.
+- Grouping by a property with thousands of values returns every group, which makes the response large and slower to load.
+- After you change the setting, open portal sessions can take up to a minute to reflect it.
+
+## Related resources
+
+<CardGroup cols={2}>
+  <Card title="Customer Portal" icon="browser" href="/docs/customers/customer-portal">
+    Sessions, sections and the security model
+  </Card>
+  <Card title="Portal configuration" icon="sliders" href="/docs/customers/customer-portal/configuration">
+    The full configuration schema and theming
+  </Card>
+  <Card title="Portal API reference" icon="code" href="/docs/customers/customer-portal/api-reference">
+    Every endpoint available to a portal session
+  </Card>
+  <Card title="Metered features" icon="gauge" href="/docs/event-ingestion/creating-a-metered-feature">
+    How meters aggregate event properties
+  </Card>
+</CardGroup>
