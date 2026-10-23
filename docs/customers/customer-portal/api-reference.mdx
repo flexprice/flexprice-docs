@@ -204,8 +204,12 @@ Delete and default both take `payment_provider` and `payment_method_id`. Adding 
 
 | Method | Path | Description |
 | ------ | ---- | ----------- |
-| `POST` | `/analytics/revenue` | Usage and revenue analytics for the customer |
-| `POST` | `/analytics/cost` | Cost analytics for the customer |
+| `POST` | `/analytics/revenue` | Usage and revenue analytics for the customer. Accepts `group_by` and `property_filters` on event properties |
+| `POST` | `/analytics/cost` | Cost analytics for the customer. Accepts `property_filters` |
+| `POST` | `/analytics/properties` | Event properties the customer can group and filter by |
+| `POST` | `/analytics/properties/values` | Values of one event property |
+
+Grouping and filtering by event properties only works when the tenant has turned it on. See [Usage by Properties](/docs/customers/customer-portal/usage-properties).
 
 <Warning>
 Cost analytics returns your cost to serve the customer and your margin on them. Do not render those figures in a customer-facing surface.
