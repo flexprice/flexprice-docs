@@ -262,6 +262,44 @@ The system prioritizes card payments with intelligent wallet fallback:
 - `payment_behavior`: `"allow_incomplete"` | `"error_if_incomplete"` | `"default_active"` | `"default_incomplete"`
 - `gateway_payment_method_id` (optional): Override default payment method
 
+### Record a wallet-only payment against an invoice
+
+To deduct an invoice amount directly from a customer's wallet without attempting a card charge, call `POST /payments` with `payment_method_type: "CREDITS"`. This bypasses the card-first strategy described above. Use it when you want a wallet-only deduction, for example applying wallet credits to an add-on invoice.
+
+**Endpoint**: `POST /v1/payments`
+
+**Request**:
+
+```json
+{
+  "amount": "1000",
+  "currency": "usd",
+  "destination_type": "INVOICE",
+  "destination_id": "inv_123",
+  "payment_method_type": "CREDITS",
+  "payment_method_id": "wallet_456",
+  "process_payment": true
+}
+```
+
+**Parameters**:
+- `destination_type`: `"INVOICE"` — record the payment against a specific invoice.
+- `destination_id`: The invoice ID to apply the payment to.
+- `payment_method_type`: `"CREDITS"` — deducts from the customer's wallet.
+- `payment_method_id` (optional): The wallet ID to charge. If omitted, Flexprice selects an eligible wallet automatically using the wallet selection algorithm above (USAGE wallets first, then FIXED, then ALL, ordered by highest balance).
+- `process_payment` (default: `true`): When `true`, the wallet is debited immediately and the payment is marked succeeded. Set to `false` to create the payment record without processing it, then call `POST /payments/{id}/process` later.
+
+The wallet must be active, have sufficient balance, and its `allowed_price_types` must cover the invoice's charge types. If the wallet cannot cover the full amount, the payment fails.
+
+<Note>
+  This is the supported way to deduct from a wallet without attempting a card charge first. The `POST /subscriptions` and renewal flows always follow the card-first strategy and only use the wallet as a fallback.
+</Note>
+
+**Example: apply wallet credits to an add-on invoice**
+
+1. Add the add-on to the subscription. Flexprice generates an invoice for the add-on charge.
+2. Call `POST /payments` with `destination_id` set to the add-on invoice ID and `payment_method_type: "CREDITS"`.
+3. The wallet balance is reduced by the invoice amount and the invoice is marked paid.
 
 ## Payment Method Strategy
 
