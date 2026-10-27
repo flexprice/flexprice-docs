@@ -53,13 +53,13 @@ Sent once per process start (API, consumer, or worker). Identifies the deploymen
 
 ### System event
 
-Sent when a real event (for example `customer.created` or `wallet.ongoing_balance.updated`) passes through the webhook pipeline.
+Sent for a fixed set of activation/lifecycle events, listed below, not on every webhook event your instance emits.
 
 | Field | Description |
 |-------|-------------|
 | `instance_id`, `deployment_id` | Same as above. |
 | `tenant_id`, `environment_id` | Internal identifiers for the tenant and environment the event belongs to. Not a customer name, email, or any PII. |
-| `event_name` | The webhook event type, e.g. `invoice.created`. |
+| `event_name` | One of the fixed set of events listed below, e.g. `customer.created`. |
 | `event_payload` | The webhook event's payload, with PII and financial fields redacted (see below). |
 | `version`, `build_variant`, `platform`, `cloud` | Same build/host context as the install event, so usage can be broken down by version without a separate lookup. |
 
@@ -69,15 +69,18 @@ Sent when a real event (for example `customer.created` or `wallet.ongoing_balanc
   "deployment_id": "9f2a6e1c3d8b0a71",
   "tenant_id": "00000000-0000-0000-0000-000000000000",
   "environment_id": "env_01KWBQ7VCCZJGXKVPCDFQJND95",
-  "event_name": "wallet.ongoing_balance.updated",
+  "event_name": "customer.created",
   "version": "v1.14.0",
   "build_variant": "Enterprise",
   "platform": "kubernetes",
   "cloud": "gcp",
   "event_payload": {
-    "wallet_id": "wallet_01KZKTMXWZR2AX8DSXB0TFBCSG",
-    "event_type": "wallet.ongoing_balance.updated",
-    "tenant_id": "00000000-0000-0000-0000-000000000000"
+    "event_type": "customer.created",
+    "customer": {
+      "id": "cust_01KZKTMWMMXARG7TX94BVD93HB",
+      "external_id": "ext_01",
+      "timezone": "Asia/Kolkata"
+    }
   }
 }
 ```
@@ -92,25 +95,23 @@ Sent when a real event (for example `customer.created` or `wallet.ongoing_balanc
   **Other**: `payment_gateway`, `gateway_refund_id`, `hosted_invoice_url`, `properties` (freeform event properties), `error` (raw provider error text)
 </Note>
 
-Only two telemetry event *types* exist (`install_init` and `system_event`), there is no per-feature tracking plan. `event_name` on a system event is one of the webhook event names your Flexprice instance already emits:
+Only two telemetry event *types* exist (`install_init` and `system_event`), there is no per-feature tracking plan. `event_name` on a system event is always one of:
 
-<Accordion title="All possible event_name values">
-| Category | Events |
-|----------|--------|
-| Checkout | `checkout.session.completed`, `checkout.session.expired`, `checkout.session.failed`, `checkout.session.initiated` |
-| Credit note | `credit_note.created`, `credit_note.updated` |
-| Customer | `customer.created`, `customer.updated`, `customer.deleted` |
-| Entitlement | `entitlement.created`, `entitlement.updated`, `entitlement.deleted`, `entitlement.grant.exhausted` |
-| Event | `event.rejected` |
-| Feature | `feature.created`, `feature.updated`, `feature.deleted`, `feature.wallet_balance.alert` |
-| Invoice | `invoice.update`, `invoice.update.finalized`, `invoice.update.payment`, `invoice.update.voided`, `invoice.payment.overdue`, `invoice.sync.success`, `invoice.sync.failed`, `invoice.communication.triggered` |
-| Payment | `payment.created`, `payment.updated`, `payment.failed`, `payment.success`, `payment.pending` |
-| Refund | `refund.created`, `refund.succeeded`, `refund.failed` |
-| Subscription | `subscription.created`, `subscription.draft.created`, `subscription.activated`, `subscription.updated`, `subscription.paused`, `subscription.cancelled`, `subscription.resumed`, `subscription.plan_changed`, `subscription.renewal.due`, `subscription.phase.created`, `subscription.phase.updated`, `subscription.phase.deleted`, `subscription.spend.threshold_reached`, `subscription.spend.threshold_recovered`, `subscription.group_spend.threshold_reached`, `subscription.group_spend.threshold_recovered`, `subscription.line_item_spend.threshold_reached`, `subscription.line_item_spend.threshold_recovered` |
-| Wallet | `wallet.created`, `wallet.updated`, `wallet.terminated`, `wallet.transaction.created`, `wallet.transaction.updated`, `wallet.ongoing_balance.updated`, `wallet.ongoing_balance.dropped`, `wallet.ongoing_balance.recovered`, `wallet.credit_balance.dropped`, `wallet.credit_balance.recovered` |
+| Event | Fires when |
+|-------|-------------|
+| `customer.created` | A customer is created. |
+| `customer.deleted` | A customer is deleted. |
+| `subscription.created` | A subscription is created. |
+| `subscription.activated` | A subscription becomes active. |
+| `subscription.cancelled` | A subscription is cancelled. |
+| `credit_note.created` | A credit note is issued. |
+| `invoice.update.finalized` | An invoice is finalized. |
+| `payment.success` | A payment succeeds. |
+| `payment.failed` | A payment fails. |
+| `refund.succeeded` | A refund succeeds. |
+| `wallet.created` | A wallet is created. |
 
-This is the same list your webhook endpoints can subscribe to. See [Webhooks](/docs/webhook/webhooks) for what each one means.
-</Accordion>
+Every other webhook event your instance can emit (checkout, feature, entitlement, the finer-grained invoice/payment/wallet/subscription states, `event.rejected`, etc.) is dropped before `ReportEvent` does any work. See [Webhooks](/docs/webhook/webhooks) for the full set of events your own webhook endpoints can subscribe to, independent of this list.
 
 ## Opting out
 
