@@ -4,6 +4,124 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="October 26th 2026">
+  {/* changelog-coverage: {"version":1,"complete":false,"backend":{"from":"31421e9ff62d00a9f4cdded11d0aad5d32a22f4a","to":"ad335b9efbff2e90bdc192f7ed9c39f1980d9b6e"},"frontend":{"from":"f00ba7c9a3e281d280b074cf01531a459f659f62","to":"619a627aba50a67a7a7b585424f33104fd6142dc"}} */}
+
+  ## Usage by event properties in the customer portal
+
+  Customers can now group and filter their usage and cost in the portal by the properties on your events, such as region or model. The feature is off by default.
+
+  * **Turn it on**: Set `analytics_config.usage_properties.enabled` in the `customer_portal_config` setting, or use the Customer Portal tab under Settings. `allowed_keys` limits what customers see, and `hidden_keys` are always hidden
+  * **Meter quantity stays private**: Properties that hold a meter's quantity are never offered, and a request that groups or filters by one is rejected
+  * **Portal endpoints**: `POST /v1/customer/portal/analytics/properties` and `/analytics/properties/values` list the visible keys and values, and `property_filters` is accepted on portal cost analytics. Keys are read from the most recent 10,000 events per meter, most seen first
+  * **Dashboard lookups**: `POST /v1/meter-usage/properties` and `/properties/values` list property keys and values across the environment, with no customer required
+
+  <br />
+
+  <Frame>
+    <img src="/images/docs/customers/customer-portal/usage-properties-toolbar.png" alt="Customer portal usage section grouped by cloud provider with an environment filter" style={{ borderRadius: '0.5rem' }} />
+  </Frame>
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/customers/customer-portal/usage-properties" title="Usage by properties - Documentation" />
+
+  <br />
+
+  ## Financial reports API
+
+  Run billing, receivables, credit and customer reports through the API, with optional comparison against an earlier period. Reports run only on deployments where the reports database is configured, and other deployments get a 403.
+
+  * **Catalog**: `GET /analytics/reports` lists each report with its category, allowed shapes, dimensions and grains. Reports include total billing, total receivables, receivables aging, days to pay, ARPU, credit consumption, credit top-ups, net billing, active customers and events volume
+  * **Run**: `POST /analytics/reports/{key}/query` takes a `shape` (`timeseries`, `breakdown` or `scalar`), a `range` such as `2026-09-01..2026-10-01` with the end excluded, or `last_N_days`, and optional `grain`, `dimensions`, `filters`, `currency` and `sort`
+  * **Compare**: Set `compare` to `previous_period` or `previous_year` to get the earlier window alongside the result
+  * **Saved views**: `GET`, `PUT` and `DELETE /analytics/views/{id}` and `GET /analytics/views` list, update and delete saved analytics views
+
+  <br />
+
+  ## Hosted invoice links
+
+  Invoices now return `hosted_invoice_url`, a link where your customer can view, download and pay the invoice.
+
+  * **Where the link points**: An invoice synced to Stripe returns its Stripe hosted URL. Otherwise it returns a Flexprice page link, available on deployments that configure a hosted invoice base URL
+  * **Lifetime**: A Flexprice link stays valid for 30 days after the due date, and at least 30 and at most 120 days from when it was created. Changing the due date of a finalized invoice recalculates it
+  * **Where it appears**: Invoice reads and lists, the customer portal and invoice webhooks
+  * **Paying**: The page offers payment through the first payment provider, in alphabetical order, that can create payment links. A link stops working when the invoice moves to a Stripe hosted URL or the tenant is suspended
+
+  <br />
+
+  ## Backdate wallet credits
+
+  Credits added to a wallet can now carry the date they belong to.
+
+  * **API**: `effective_date` on the wallet top-up request is stored as the credit transaction's creation time. It must not be in the future and must be before the credit expiry and any bonus credit expiry. The requested date and the real insert time are kept in the transaction metadata as `requested_effective_date` and `requested_at`
+  * **Dashboard**: The Add Credits card has an Effective Date picker for free and purchased credits, limited to today or earlier. Leave it empty to use the current time
+
+  <br />
+
+  ## Batch addon changes across a group
+
+  A grouped invoicing parent can now change addons on itself and its children in one call, with one invoice or wallet credit settled on the parent.
+
+  * **Request**: Send `POST /subscriptions/{id}/modify/execute` with type `grouped_invoicing` and `action: "modify"`. List each target in `changes` as a `subscription_id` with its `addon_bulk_params`. The path subscription is the parent, and each target is the parent or one of its active or trialing grouped children
+  * **Pay first**: Add `checkout` to open one pay-first checkout for the parent's invoicing customer. Every member's change is applied when it completes. Preview works with the same body on `modify/preview`
+  * **Price overrides**: Price overrides are now accepted on addon changes that go through checkout, including grouped ones. `line_item_commitments` are still rejected with checkout
+  * **Quantity changes**: `quantity_change` is rejected on a grouped child. Use `line_item_change`
+
+  <br />
+
+  ## Coupons on addon and line item changes
+
+  Addon adds and line item changes made through subscription modification can now carry coupons.
+
+  * **Addons**: `coupons` on an addon add attaches to that addon's line items. Send `price_id` to target one price, or omit it to cover all of them
+  * **Line item changes**: `coupons` on a line item change attach to the new line item, and `price_id` is rejected there
+  * **Billing**: Coupons discount the proration charge before credits are netted, so the invoice or wallet credit decision and pay-first gating use the discounted net. Preview invoices include the discount
+
+  <br />
+
+  ## Customer contact persons and Zoho Books
+
+  Customers can now hold up to five contact persons, and they sync to Zoho Books contacts.
+
+  * **API**: `contact_persons` is accepted on customer create and update. Each has `salutation`, `first_name`, `last_name`, `email`, `mobile`, `designation`, `department` and `is_primary`. At most one is primary, and updates replace the whole list
+  * **Zoho sync**: The primary person becomes the Zoho primary contact, and the customer's own email and contact stay primary when none is marked. Updates keep Zoho contact persons in step, creating new ones, updating existing ones and deleting those removed in Flexprice. Persons added directly in Zoho are kept
+  * **Contact details**: Mobile numbers go to Zoho as `+<code>-<number>`. Set `zoho_receivable_account_id` in the customer's metadata to send it as `account_id` on contacts and synced invoices
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * The dashboard can pause an active subscription and resume a paused one from the subscription actions menu. Pause asks for a proration behavior and an optional reason
+      * The addon details page shows how many subscriptions are behind the addon's usage prices and starts the sync. A sync can take up to an hour
+      * Subscription details show the End of month and End of next month payment terms
+      * Settings, Billing has a tax configuration section to choose Stripe as the tax engine, and it warns when the environment has no Stripe connection. Only Super Admins can change it
+      * The Stripe connection drawer can turn on outbound customer sync, which Stripe Tax needs. Stripe Tax also creates the Stripe customer on demand when it is missing, and skips the calculation when the taxable amount is zero
+      * Changing a customer's name, email or address now updates the linked Stripe customer when outbound customer sync is on. A Stripe failure is logged and does not fail the update
+      * The credit top-up and wallet debit exports gain `invoice_period_start` and `invoice_period_end`, blank when there is no linked invoice period. The wallet debit report adds credit, wallet and top-up balances before and after each row, and renames `paid_amount` to `amount_paid` and `topup_used_amount` to `topup_amount_used`
+      * Invoice PDFs print the customer's `po_number` metadata when the invoice has none
+      * Events exports are streamed to storage instead of being held in memory
+      * Install telemetry for self-hosted deployments is opt-in. Set `FLEXPRICE_TELEMETRY_ENABLED=true` to turn it on
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * An invoice already paid in another gateway is no longer pushed to Stripe for collection, so Stripe does not charge it a second time
+      * A checkout session that the payment webhook completed is kept when the gateway call returns an error, and a Razorpay session now expires on `payment_link.expired`
+    </Accordion>
+
+    <Accordion title="API">
+      * New `GET /analytics/reports` and `POST /analytics/reports/{key}/query` endpoints, and `GET`, `PUT` and `DELETE` on `/analytics/views/{id}`
+      * New `POST /meter-usage/properties` and `POST /meter-usage/properties/values` endpoints
+      * `hosted_invoice_url` is returned on invoices
+      * `effective_date` is accepted on wallet top-ups
+      * `contact_persons` is accepted and returned on customers
+      * `action: "modify"` with `changes` is accepted for grouped invoicing, and `coupons` on addon adds and line item changes
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
 <Update label="October 19th 2026">
   {/* changelog-coverage: {"version":1,"complete":false,"backend":{"from":"31421e9ff62d00a9f4cdded11d0aad5d32a22f4a","to":"f4d890b76a2c04f54a9640296d45f4340f08d592"},"frontend":{"from":"f00ba7c9a3e281d280b074cf01531a459f659f62","to":"fb07dd5de091dd9f7cfad23e6f531e16e8cb712c"}} */}
 
