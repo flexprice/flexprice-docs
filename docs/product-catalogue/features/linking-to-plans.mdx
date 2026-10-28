@@ -69,7 +69,9 @@ In **Flexprice**, managing customer access to features is done through **entitle
 
   💡 **Example:** A GPT API plan includes 50,000 tokens a month, with a usage price of \$0.10 per 1,000 tokens. A customer who uses 60,000 tokens in a month is billed \$1.00 for the 10,000 tokens beyond the allowance.
 
-  To stop customers at the value instead, as on a free tier, enforce the cap in your application: block requests when the exhaustion webhook arrives, or when the customer's usage from `GET /customers/usage` reaches their limit. The API's `is_soft_limit` field doesn't change this. It is stored on the entitlement and returned with the customer's usage so your application can tell which allowances to enforce, but Flexprice still bills the overage.
+  To stop customers at the value instead, as on a free tier, enforce the cap in your application. Flexprice updates a window's usage a few minutes after events arrive, so the exhaustion webhook and the usage from `GET /customers/usage` both trail real usage, and anything used in that gap is billed as overage. Once a window is used up, block requests until its `valid_to`, which `GET /customers/usage` returns in `grant_state.allowances`. Flexprice sends nothing when a new window opens, so your application has to lift the block itself.
+
+  The API's `is_soft_limit` field doesn't change any of this. It is stored on the entitlement and returned with the customer's usage so your application can tell which allowances to enforce, but Flexprice still bills the overage.
 
   See [Entitlement grants](/docs/product-catalogue/features/entitlement-grants#soft-limits-with-billed-overage) for windows, stacking, and how overage is billed.
 
