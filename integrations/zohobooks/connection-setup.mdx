@@ -54,7 +54,7 @@ Before setting up your Zoho Books connection, ensure you have:
 Zoho Books uses **webhook rules** (when something happens) and **actions** (for example **notify URL** / POST to an endpoint). For a full integration, configure **two** webhooks:
 
 1. **Invoices** - So Flexprice can process **paid** and **voided** invoice events.
-2. **Customers** - So Flexprice can create **customers** when a **customer is created** in Zoho Books (workflow on the **Customers** module; **customer inbound** sync is **on by default** on the connection).
+2. **Customers** - So Flexprice can create **customers** when a **customer is created** in Zoho Books (workflow on the **Customers** module; turn on **Pull customers**, the customer inbound sync, on the connection).
 
 Both webhooks should use the **same** Flexprice URL pattern below. Use the **tenant** and **environment** IDs from the Flexprice dashboard for the workspace where the connection will live.
 
@@ -88,7 +88,7 @@ Create a **workflow** on the **Invoice** module (for example when an invoice is 
 
 ### Webhook 2 — Customers (Inbound Customer Sync)
 
-Create a second workflow on the **Customers** module for **customer created** (all customers or your criteria), with a webhook action posting to the **same** Flexprice URL as the invoice rule. **Customer inbound** sync is **on by default** on the connection; turn it off only if you do not want new Zoho customers to create Flexprice customers.
+Create a second workflow on the **Customers** module for **customer created** (all customers or your criteria), with a webhook action posting to the **same** Flexprice URL as the invoice rule. Turn on **Pull customers** (customer inbound sync) on the connection; leave it off if you do not want new Zoho customers to create Flexprice customers.
 
 <Frame>
   ![Zoho Books — Customers workflow: customer created triggers webhook to Flexprice](/images/docs/integrations/zoho-books/zoho_customer_webhook.png)
@@ -102,36 +102,47 @@ You can create a Zoho Books connection from the Flexprice dashboard:
 
 <Steps>
   <Step title="Navigate to Integrations">
-    Go to **Flexprice dashboard** → **Integrations** → **Zoho Books** (or **Accounting**) → **Connect** / **Add connection**.
+    In the left sidebar, click **Integrations**, then click **Connect** on the **Zoho** card.
   </Step>
   <Step title="Enter connection details">
-    Fill in **Connection name**, **Client ID**, and **Client Secret** from the Zoho API Console. Add your Zoho Books **organization ID** and the **accounts server** for your region (for example `https://accounts.zoho.in` or `https://accounts.zoho.com`). Copy the **webhook URL** from the modal into each Zoho Books webhook. In **Webhook secret**, **type the same value** you use in Zoho’s webhook / signing-secret field (**character-for-character**). You pick that value yourself—Zoho does not provide one. You can update this field later if you rotate the secret.
+    Add the **Redirect URI** shown at the top of the sheet as an authorised redirect in your Zoho API Console client. Fill in **Connection name**, **Client ID**, and **Client secret** from the Zoho API Console. Add your Zoho Books **Organization ID** and pick the **Accounts server** for your region (for example **India (.in)** or **United States (.com)**). Click **Continue**.
+
+    <Frame>
+      ![Connect Zoho sheet on the Credentials step with the redirect URI, client ID and secret, organization ID, and accounts server](/images/docs/integrations/zoho-books/zoho_flexprice_connection.png)
+    </Frame>
+  </Step>
+  <Step title="Choose what syncs">
+    Turn on **Push invoices** (invoice outbound sync) and **Pull customers** (customer inbound sync) for the syncs you want. Both start off. Click **Continue**. To show online payment options on synced invoices, see [Payment gateways on synced invoices](#payment-gateways-on-synced-invoices).
+
+    <Frame>
+      ![Sync step with the Push invoices and Pull customers switches](/images/docs/integrations/zoho-books/connect-sync.png)
+    </Frame>
+  </Step>
+  <Step title="Add the webhook secret">
+    The **Webhook** step shows the Flexprice webhook URL for your Zoho workflows (Step 2) and the **Invoice** and **Contact** events. Enter the secret you invented in **Webhook signing secret** (recommended).
+
+    <Frame>
+      ![Webhook step with the webhook URL, the Invoice and Contact events, and the webhook signing secret](/images/docs/integrations/zoho-books/connect-webhook.png)
+    </Frame>
   </Step>
   <Step title="Complete OAuth">
-    Complete sign-in and consent in Zoho. Flexprice exchanges the authorization code for tokens, stores them encrypted, and associates the connection with your Zoho **organization**. Access tokens refresh automatically.
-  </Step>
-  <Step title="Review sync settings">
-    **Invoice** outbound sync and **customer** inbound sync are **on by default** for a new connection. Change them only if you do not want invoices pushed to Zoho or new Zoho contacts imported into Flexprice. To show online payment options on synced invoices, see [Payment gateways on synced invoices](#payment-gateways-on-synced-invoices).
+    Click **Continue to Zoho**, then complete sign-in and consent in Zoho. Flexprice exchanges the authorization code for tokens, stores them encrypted, and associates the connection with your Zoho **organization**. Access tokens refresh automatically.
   </Step>
 </Steps>
 
-<Frame>
-  ![Flexprice — Connect to Zoho Books modal (credentials, org ID, accounts server, webhook URL and secret)](/images/docs/integrations/zoho-books/zoho_flexprice_connection.png)
-</Frame>
-
 ## Customer Sync
 
-Flexprice can keep customers aligned **toward Zoho** (with invoice sync) and **from Zoho** (via webhooks). On the connection, **invoice outbound** and **customer inbound** sync are **on by default**; you can turn either off if you do not want that behavior.
+Flexprice can keep customers aligned **toward Zoho** (with invoice sync) and **from Zoho** (via webhooks). In the dashboard, **Push invoices** (invoice outbound) and **Pull customers** (customer inbound) both start off when you connect: turn on the ones you want on the **Sync** step, or later with **Configure** on the Zoho card.
 
 ### Flexprice → Zoho Books (contacts on the Zoho side)
 
-**Default:** **Invoice outbound** sync is **on by default** (see [Sending invoices to Zoho](#sending-invoices-to-zoho-outbound)). If someone turned it off, enable it again on the connection to push invoices—and the related contacts—to Zoho.
+**Setting:** **Push invoices** (invoice outbound sync) must be on (see [Sending invoices to Zoho](#sending-invoices-to-zoho-outbound)). Turn it on in the connection to push invoices, and the related contacts, to Zoho.
 
 **What happens:** Whenever Flexprice **creates an invoice in Zoho Books**, it also **creates or matches a contact** in Zoho for that invoice’s Flexprice customer. You do not maintain that contact separately before the invoice sync runs.
 
 ### Zoho Books → Flexprice (new customers in Flexprice)
 
-**Default:** **Customer inbound** sync is **on by default** on the connection.
+**Setting:** **Pull customers** (customer inbound sync) must be on in the connection.
 
 **Also required in Zoho:** Inbound only works when Zoho can reach Flexprice. In Zoho Books, configure the **customer created** webhook from [Step 2](#step-2-configure-zoho-books-webhooks) so Zoho notifies Flexprice when customers are created.
 
@@ -141,7 +152,7 @@ Flexprice can keep customers aligned **toward Zoho** (with invoice sync) and **f
 
 ### Sending invoices to Zoho (outbound)
 
-**Default:** **Invoice outbound** sync is **on by default** on a new connection. Disable it only if you do not want Flexprice to create invoices in Zoho Books.
+**Setting:** **Push invoices** (invoice outbound sync) starts off on a new connection. Turn it on for Flexprice to create invoices in Zoho Books.
 
 **What happens:** After a Flexprice invoice is **eligible to sync** to your accounting system (same rules as other Flexprice accounting integrations), Flexprice **creates a corresponding invoice** in Zoho Books. You do not manually re-enter that invoice in Zoho.
 
@@ -219,7 +230,7 @@ Other changes in Zoho (edits, partial updates, unrelated fields) are **not** con
 | Invalid webhook signature | Secret mismatch | The string in Zoho’s webhook action and in Flexprice must be **identical**; update both sides if you rotate the secret |
 | Invoice fails to sync to Zoho | Currency or exchange rate | In **Settings → Currencies**, add the invoice currency with a **positive** rate against **base** currency |
 | Invoice fails to sync after selecting payment gateways | A selected gateway is not set up in Zoho Books | Set up the gateway in Zoho Books under **Settings** > **Module Settings** > **Online Payments** > **Customer Payments**, or deselect it on the connection |
-| New Zoho customer does not create Flexprice customer | Inbound off or missing webhook | Confirm **customer inbound** is on (default is on); ensure the **customer created** webhook in Zoho targets the correct Flexprice URL |
+| New Zoho customer does not create Flexprice customer | Inbound off or missing webhook | Confirm **Pull customers** (customer inbound) is on; ensure the **customer created** webhook in Zoho targets the correct Flexprice URL |
 | Paid in Zoho but Flexprice invoice unpaid | Missing entity mapping | The Zoho invoice typically must have been created from Flexprice so entity integration mapping links both sides |
 
 ## Next Steps
