@@ -13,7 +13,7 @@ Expressions are written in **CEL** (Common Expression Language). They are valida
 - **Per-event transforms** — Round, floor, ceil, or clamp before aggregation (`ceil(duration_ms / 1000)`, `min(usage, quota)`)
 - **Unit conversions** — Convert between units per event (`bytes / 1024`, `duration_ms / 1000`)
 - **Validated at save time** — Syntax errors, missing operators, and non-numeric expressions are rejected when the feature is created, not per event
-- **No code deploys** — Change the pricing formula from the dashboard when your metering model evolves
+- **No code deploys**: define the formula on the feature instead of computing the quantity in your own code
 
 <Note>
   Custom Expression is only available for **SUM**, **AVG**, **MAX**, and **LATEST** aggregations. It is not supported for COUNT, COUNT UNIQUE, SUM WITH MULTIPLIER, or WEIGHTED SUM.
@@ -38,7 +38,7 @@ feature_value      = aggregate(per_event_quantity across events)
 
 <Steps>
   <Step title="Navigate to Features">
-    Go to **Product Catalog → Features** and click **Add Feature**.
+    Go to **Product catalog → Features** and click **New feature**.
   </Step>
 
   <Step title="Basic information">
@@ -47,27 +47,26 @@ feature_value      = aggregate(per_event_quantity across events)
   </Step>
 
   <Step title="Event configuration">
-    - **Event Name**: the event you send (e.g. `phone_call`)
-    - **Aggregation Function**: pick **Sum**, **Average**, **Max**, or **Latest**
-    - **Aggregation Field**: the property that would be used if no expression is set (e.g. `tokens`). This is still required as a fallback / label.
+    - **Event name**: the event you send (e.g. `phone_call`)
+    - **Aggregation**: pick **Sum**, **Max**, or **Latest**. Expressions also work with **Average**, which you set through the API as `AVG`.
   </Step>
 
   <Step title="Add the custom expression">
-    Click **+ Custom expression** below the aggregation section.
+    In the **Aggregation** card, select **Use a custom expression**. The **Event field** input becomes a **Custom expression** field.
 
     <Frame>
-      ![Aggregation section with the Custom expression toggle highlighted](/images/docs/product-catalogue/features/custom-expression/switch-from-field-to-cel.png)
+      ![Aggregation card with the Use a custom expression checkbox](/images/docs/product-catalogue/features/custom-expression/use-custom-expression.png)
     </Frame>
 
-    Enter a CEL formula in the **Custom Expression** field. Variables are the top-level property names on your events.
+    Enter a CEL formula in the **Custom expression** field. Variables are the top-level property names on your events. The expression replaces the event field: only the expression is saved.
 
     <Frame>
-      ![Custom Expression field with ceil(duration_ms / 1000) and inline help text listing available functions](/images/docs/product-catalogue/features/custom-expression/input-cel.png)
+      ![Custom expression field with ceil(duration_ms / 1000)](/images/docs/product-catalogue/features/custom-expression/input-cel.png)
     </Frame>
   </Step>
 
   <Step title="Save the feature">
-    On save, the expression is compiled and validated. If it has a syntax error, references no variables, or evaluates to a non-numeric type, saving fails with the error.
+    Click **Create feature**. On save, the expression is compiled and validated. If it has a syntax error, references no variables, or evaluates to a non-numeric type, saving fails with the error. The expression can't be changed after the feature is created.
   </Step>
 </Steps>
 
@@ -299,7 +298,7 @@ Surfaced per event during ingestion.
 - **Missing properties default to `0`**, not an error. If a required property is missing on the event, the expression will still evaluate but the quantity will reflect that zero.
 - **CEL reserved keywords** cannot be property names inside expressions: `as`, `break`, `const`, `continue`, `else`, `false`, `for`, `function`, `if`, `import`, `in`, `let`, `loop`, `package`, `namespace`, `null`, `return`, `true`, `var`, `void`, `while`. Rename the property on your event if it clashes.
 - **Real division** — Integer literals are promoted to doubles, so `total / 1000` returns a real number, not a truncated integer.
-- **Expression changes apply to new events only** — Historical events are not re-evaluated when you edit the expression.
+- **Expressions are fixed after creation**: the expression can't be edited. To use a different formula, create a new feature.
 
 ## Next Steps
 
