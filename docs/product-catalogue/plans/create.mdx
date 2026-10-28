@@ -3,50 +3,56 @@ title: "Creating a plan"
 description: "Follow the steps below to create a pricing plan in Flexprice:"
 ---
 
-* In the main navigation menu, select **Plans** from *Product Catalog.*
+In the main navigation menu, open **Product catalog** → **Plans** and click **New plan** at the top right.
 
-* Click **“Add”** at the top-right of the screen.
+<Frame>
+  ![Plans list with the New plan button](/images/docs/product-catalogue/plans/creating-a-plan/add-plan-button.png)
+</Frame>
 
-  <Frame>
-    ![Add Plan Button](/images/docs/product-catalogue/plans/creating-a-plan/add-plan-button.png)
-  </Frame>
-
-This opens a **two-step form** to configure your plan.
+This opens a **four-step form**: **Basic info**, **Charges**, **Entitlements**, and **Credit grants**. Only the basic info is required; everything else can also be added later from the plan's page.
 
 **Step 1: Enter plan details**
 
 This step captures key identifiers for your pricing plan.
 
-* **Plan Name**: A descriptive name for the plan. This name will be visible to users.
+* **Name**: What the plan is called to customers and on invoices.
 
-* **Lookup Key**: A unique identifier used in API calls and system integrations.
+* **Lookup key** *(Optional)*: A stable identifier for the plan in API calls and system integrations. Use lowercase letters, numbers, hyphens and underscores.
 
-* **Plan Description** *(Optional)*: Provides internal context about the plan.
+* **Description** *(Optional)*: Internal context about the plan, shown alongside it in the dashboard.
+
+* **Metadata** *(Optional)*: Your own key/value fields kept with the plan.
 
   <Frame>
-    ![Plan Details](/images/docs/product-catalogue/plans/creating-a-plan/plan-details.png)
+    ![Plan details with a name, lookup key, and description](/images/docs/product-catalogue/plans/creating-a-plan/plan-details.png)
   </Frame>
+
+Click **Next**.
 
 **Step 2: Define plan charges**
 
-It defines how customers will be charged under this plan. You can add **one or multiple** charges while creating a plan.
+It defines how customers will be charged under this plan. Click **Add charge** and choose **Fixed** or **Usage**. You can add **one or multiple** charges; each one you add is listed in the **Charges** card.
 
 <Frame>
-  ![Plan Charges](/images/docs/product-catalogue/plans/creating-a-plan/plan-charges.png)
+  ![Charges step listing a fixed platform fee and a usage charge for API calls](/images/docs/product-catalogue/plans/creating-a-plan/plan-charges.png)
 </Frame>
 
-* **Setting-up a recurring charge:**
-  Recurring charges are fixed charges that your customers are billed at regular intervals (e.g., $10/month subscription fee).
+* **Setting up a fixed charge:**
+  Fixed charges are amounts your customers are billed at regular intervals (e.g., $49/month platform fee).
 
   <Frame>
-    ![Recurring Charge](/images/docs/product-catalogue/plans/creating-a-plan/recurring-charge.png)
+    ![Fixed charge form with a display name, currency, billing period, invoice timing, free trial, and amount](/images/docs/product-catalogue/plans/creating-a-plan/recurring-charge.png)
   </Frame>
 
-  * **Select billing currency** 
+  * **Display name** *(Optional)*: What the charge is called on an invoice.
+
+  * **Currency**
     Choose the currency in which you want to bill your customers. **Flexprice supports all currencies**, enabling businesses to charge customers globally.
 
-  * **Choose a billable period** 
-    The **billing period** determines when invoices are generated. The **billing period impacts invoice generation, feature limits, and renewals**. You can select from the following plan intervals:
+  * **Billing period**
+    The **billing period** determines when invoices are generated. The **billing period impacts invoice generation, feature limits, and renewals**. You can select from the following intervals:
+
+    * **Daily** → Customers are billed every day.
 
     * **Weekly** → Customers are billed once every week.
 
@@ -54,75 +60,68 @@ It defines how customers will be charged under this plan. You can add **one or 
 
     * **Quarterly** → Charges occur every 3 months.
 
-    * **Half-Yearly** → Customers are billed twice a year (every 6 months).
+    * **Half-yearly** → Customers are billed twice a year (every 6 months).
 
-    * **Yearly** → Customers are billed once per year.
+    * **Annual** → Customers are billed once per year.
 
-  * **Set the Price**
-    Define the **amount** customers will be charged per billing period. The price is set based on the **selected currency and interval**.
+    * **One-time** → The charge is billed once.
 
-  * **Choose billing timing**:Decide when the charge is applied within the billing cycle:
+  * **Price unit** *(Optional)*: Price the charge in credits, tokens, or another custom unit instead of a currency.
 
-    * **Advance Billing** → Customers are charged **at the start** of each billing period.
+  * **Invoice timing**: Decide when the charge is invoiced within the billing period:
 
-    * **Arrears Billing** → Customers are charged **at the end** of each billing period.
+    * **Advance** → Customers are charged **at the start** of each billing period.
 
-  * **Adding trial period** *(Optional)*:
+    * **Arrears** → Customers are charged **at the end** of each billing period.
 
-    * Toggle **on** to enable a **free trial** before billing starts.
+  * **Free trial (days)** *(Optional)*: Enter a trial duration. Subscribers are not billed for this charge during the trial; after the trial ends, the first charge is applied based on the **invoice timing** selected.
 
-    * Enter the **trial period duration** (in days).
+  * **Billing model** and **Amount**: Choose **Flat fee**, **Package**, or **Tiered**, and define the **amount** customers will be charged per billing period in the selected currency.
 
-    * After the trial ends, the first charge is applied based on the **billing timing** selected.
+  * **Minimum quantity** *(Optional)*: The fewest units a subscriber can hold of this charge.
 
-  * Click **Add** to save the recurring charge settings and apply them to the pricing plan.
+  * Click **Add charge** to add the fixed charge to the plan.
 
-* **Setting-up a usage-based charge:**
+* **Setting up a usage-based charge:**
   To incorporate usage-based charges into a plan, you can utilize existing metered features. For instance, you can create charges based on the number of API calls, the number of active users, transactions, compute time, etc.
 
   <Frame>
-    ![Usage Based Charge](/images/docs/product-catalogue/plans/creating-a-plan/usage-based-charge.png)
+    ![Usage charge form with the API calls metered feature, currency, billing period, and a flat fee amount](/images/docs/product-catalogue/plans/creating-a-plan/usage-based-charge.png)
   </Frame>
 
-  * **Select a Metered Feature**
+  * **Metered feature**
     Choose a metered feature that will determine how usage is measured and billed. Features must be pre-configured in your product catalog
-    💡 *Only metered features can be linked to usage-based charges.*
+    💡 *Only metered features can be linked to usage-based charges.*
 
-  * **Choose Billing Currency**
+  * **Display name** *(Optional)*: What the charge is called on an invoice.
+
+  * **Currency**
     Select the currency in which you want to bill your customers. **Flexprice supports all currencies**, enabling businesses to charge customers globally.
 
-  * **Define the Billing Period**
-    The **billing period** determines how frequently usage is calculated and charged. Available intervals include:💡 *The billing period must align with the subscription plan to ensure accurate invoicing.*
+  * **Billing period**
+    The **billing period** determines how frequently usage is calculated and charged, from **Daily** to **Annual**. 💡 *The billing period must align with the subscription plan to ensure accurate invoicing.*
 
-    * **Weekly** → Usage is tracked and billed every week.
-
-    * **Monthly** → The most common cycle, where customers are charged based on monthly usage.
-
-    * **Quarterly** → Charges occur every 3 months based on accumulated usage.
-
-    * **Half-Yearly** → Customers are billed twice a year (every 6 months).
-
-    * **Yearly** → Customers are billed once per year for total usage over the year.
-
-  * **Select a Billing Model**
+  * **Billing model**
     Flexprice allows different pricing models for usage-based billing:💡 *The correct billing model ensures flexibility in pricing strategy and revenue optimization. To read more about different types of charges read in the [Billing Models](/docs/product-catalogue/plans/billing-models/flat-fee) section.*
 
-    * **Flat Fee** → A fixed price per unit of usage (e.g., $0.01 per API call).
+    * **Flat fee** → A fixed price per unit of usage (e.g., $0.01 per API call).
 
-    * **Volume-Based Pricing** → Price changes depending on the volume of usage (e.g., $0.01 per API call for the first 100K calls, then $0.008 for additional calls).
+    * **Package** → Customers pay for usage in predefined bundles (e.g., $50 for 100K API calls).
 
-    * **Package-Based Pricing** → Customers purchase usage in predefined bundles (e.g., $50 for 100K API calls).
+    * **Tiered** → The price changes across usage bands (e.g., \$0.01 per API call for the first 100K calls, then \$0.008 for additional calls).
 
-  * **Set the Price per Unit**
-    Define how much you want to charge **per unit of usage**. The unit is determined by the **metered feature selected** (e.g., per API call, per GB stored, per transaction).
+  * **Amount**
+    Define how much you want to charge. The unit is determined by the **metered feature selected** (e.g., per API call, per GB stored, per transaction).
 
-  * **Choose Billing Timing**
-    Select when the customer should be charged for usage:💡 *Arrears billing is common for metered services like cloud computing and APIs*
+  * **Billing timing**
+    Usage charges are billed in **arrears**, at the end of the period once its usage is known. 💡 *Arrears billing is common for metered services like cloud computing and APIs*
 
-    * **Advance Billing** → Customers will be invoiced as soon as they use a particular feature
+  * Once all configurations are set, click **Add charge** to add the usage-based charge to the plan.
 
-    * **Arrears Billing** → Customers are billed at the end of the cycle based on actual consumption.
+Click **Next**.
 
-  * Once all configurations are set, click **Add** to apply the usage-based charge to the pricing plan.
+**Step 3 and Step 4: Entitlements and credit grants** *(Optional)*
 
-* Click **Save** to finalize the pricing plan.
+Add the features the plan includes in **Entitlements** (see [Link features to plans](/docs/product-catalogue/features/linking-to-plans)) and any credits it hands out in **Credit grants**, or skip both and add them later from the plan's page.
+
+Click **Create plan** to finalize the pricing plan.
