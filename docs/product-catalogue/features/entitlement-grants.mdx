@@ -28,10 +28,10 @@ Entitlements are supported at the plan and addon level, with the same fields on 
 
 <Steps>
   <Step title="Open the plan's entitlements">
-    Go to **Product Catalog** and open the plan, then the **Entitlements** section. Click **Add**.
+    Go to **Product catalog** → **Plans** and open the plan. In the **Entitlements** card, click **Add entitlement**.
 
     <Frame>
-      ![Add an entitlement to a plan](/images/docs/product-catalogue/features/entitlement-grants/select-feature.png)
+      ![Add entitlement dialog with the feature list open](/images/docs/product-catalogue/features/entitlement-grants/select-feature.png)
     </Frame>
   </Step>
 
@@ -52,7 +52,7 @@ Entitlements are supported at the plan and addon level, with the same fields on 
     </Note>
 
     <Frame>
-      ![Configure an entitlement grant](/images/docs/product-catalogue/features/entitlement-grants/add-entitlement.png)
+      ![Add entitlement dialog with 100,000 tokens each hour and Advanced open on Window starts and Stacking](/images/docs/product-catalogue/features/entitlement-grants/grant-allowance.png)
     </Frame>
   </Step>
 
@@ -65,7 +65,7 @@ Entitlements are supported at the plan and addon level, with the same fields on 
   </Step>
 
   <Step title="Save">
-    Click **Add**, then save the plan. The value applies to every customer on the plan, now and on every later subscription.
+    Click **Create entitlement**. The value applies to every customer on the plan, now and on every later subscription.
   </Step>
 </Steps>
 
@@ -96,7 +96,7 @@ An allowance is checked when you save it, and refused if it breaks any of these.
 
 ### Unlimited Allowances
 
-Switch on **Unlimited** to give a customer an uncapped allowance for the billing cycle. The entitlement still reports usage and still appears in the ledger, but no quota is enforced, nothing is ever exhausted, and no overage is billed.
+Switch on **Unlimited** to give a customer an uncapped allowance for the billing cycle. Usage is still tracked and reported, and the window still appears in the API's `grant_state.allowances` with `unlimited: true`, but no quota is enforced, nothing is ever exhausted, and no overage is billed.
 
 This is how you remove a ceiling from a metered entitlement. Use it in place of the legacy `usage_limit` and `usage_reset_period` fields, which metered entitlements are moving off.
 
@@ -143,34 +143,23 @@ Usage is measured against the window's own time range, not accumulated as events
 
 ## Viewing Usage and Windows
 
-A customer's **Entitlements** table lists what they hold and how much of it they have spent.
+The **Entitlements** card on a customer's page lists what they hold and how much of it they have spent.
 
 <Frame>
-  ![Entitlements on a customer, with values, stacking and usage](/images/docs/product-catalogue/features/entitlement-grants/entitlements-table.png)
+  ![Entitlements card on a customer, with source, value, resets and usage for each feature](/images/docs/product-catalogue/features/entitlement-grants/entitlements-table.png)
 </Frame>
 
 | Column | Shows |
 |---|---|
-| Feature | The metered feature the allowance is on |
+| Feature | The feature the allowance is on |
 | Source | Where the allowance comes from: the plan, an addon, or the subscription itself when it was edited there |
-| Value | The allowance and its cadence, such as `100,000 / hour` or `50 / billing period`, or `Unlimited` |
-| Mode | `Additive` or `Parallel` |
-| Measure | `Quantity` or `Amount` |
-| Usage | Consumption against the live allowance |
+| Value | The allowance, such as `250,000`, or `Unlimited`. A static feature shows its value. Marked `(soft)` when the entitlement's `is_soft_limit` was set through the API |
+| Resets | When the allowance next resets. Only entitlements that carry the older `usage_reset_period` field show a date. Those created in the dashboard show a dash, so read their window's end from `valid_to` over the API, as described below |
+| Usage | Consumption against the allowance, such as `148,320 of 250,000 calls` or `3,412 of unlimited users`, in red once it passes the allowance. Marked **Soft limit** when `is_soft_limit` is set |
 
-A parallel feature gets one row per budget, since no single pair of numbers describes them together. In the example above, Image Generations carries 500 per day from the Pro plan and 5,000 per week from the Token Booster addon, each metering the same usage on its own clock.
+Each feature gets one row, however many plans or addons grant it: **Source** shows the first, with a **+N** badge for the rest. A parallel feature's budgets aren't shown separately. For example, a feature with 500 per day from a plan and 5,000 per week from an addon gets one row. While both windows are open, its value is 5,500, the two budgets added together, and its usage is the higher of the two windows' usage, so the row doesn't show how much of either budget is left.
 
-Selecting a row opens **Grants**, the ledger of windows behind that number.
-
-<Frame>
-  ![The grants ledger for a feature, one row per window](/images/docs/product-catalogue/features/entitlement-grants/grants-ledger.png)
-</Frame>
-
-| Status | Meaning |
-|---|---|
-| Active | Open now, with quota left |
-| Exhausted | The value was fully used before the window ended (hover the status to see when it was crossed) |
-| Closed | The window ended without the quota being reached |
+The dashboard doesn't list a feature's individual budgets or windows. Read them over the API, as described below.
 
 ### Reading Windows Over the API
 
