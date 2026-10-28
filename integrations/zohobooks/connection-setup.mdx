@@ -9,6 +9,7 @@ A Zoho Books connection in Flexprice stores encrypted credentials that allow the
 
 - Connecting to Zoho Books using OAuth
 - Syncing invoices from Flexprice to Zoho Books
+- Attaching online payment gateways to synced invoices, so customers can pay from the Zoho invoice
 - Creating and matching contacts in Zoho Books when invoices sync
 - Receiving webhook notifications from Zoho Books
 - Reconciling invoice payments and voids between Zoho Books and Flexprice
@@ -110,7 +111,7 @@ You can create a Zoho Books connection from the Flexprice dashboard:
     Complete sign-in and consent in Zoho. Flexprice exchanges the authorization code for tokens, stores them encrypted, and associates the connection with your Zoho **organization**. Access tokens refresh automatically.
   </Step>
   <Step title="Review sync settings">
-    **Invoice** outbound sync and **customer** inbound sync are **on by default** for a new connection. Change them only if you do not want invoices pushed to Zoho or new Zoho contacts imported into Flexprice.
+    **Invoice** outbound sync and **customer** inbound sync are **on by default** for a new connection. Change them only if you do not want invoices pushed to Zoho or new Zoho contacts imported into Flexprice. To show online payment options on synced invoices, see [Payment gateways on synced invoices](#payment-gateways-on-synced-invoices).
   </Step>
 </Steps>
 
@@ -161,6 +162,30 @@ Zoho Books uses an organization **base currency**. If the Flexprice invoice uses
 
 If this is missing or invalid, Zoho may **reject** the invoice Flexprice tries to create.
 
+### Payment gateways on synced invoices
+
+You can attach online payment gateways to the invoices Flexprice syncs to Zoho Books, so your customers can pay from the Zoho invoice. This setting is off by default.
+
+<Note>
+  Zoho Books collects the payment through its own gateway integration. Flexprice sends only the gateway names, never gateway credentials.
+</Note>
+
+<Steps>
+  <Step title="Set up the gateways in Zoho Books">
+    Set up each gateway you want to offer in Zoho Books by following Zoho's [Online Payments guide](https://www.zoho.com/books/help/online-payments/). Invoices do not sync if a selected gateway is not set up in Zoho Books.
+  </Step>
+  <Step title="Select the gateways on the connection">
+    On the Zoho Books connection in Flexprice, turn on **Attach payment gateways to invoices** under **Sync Configuration**, then select one or more gateways under **Payment gateways**. If you select **PayPal**, also choose the **PayPal payment method** (**Standard** or **Adaptive**).
+  </Step>
+  <Step title="Save">
+    Save the connection.
+  </Step>
+</Steps>
+
+<Info>
+Supported gateways: PayPal, Stripe, Razorpay, Authorize.Net, PayPal Payflow Pro, Braintree, and 2Checkout.
+</Info>
+
 ### Invoice updates from Zoho (webhooks)
 
 This applies when the Zoho invoice was **originally created from Flexprice** (so both systems are linked).
@@ -193,6 +218,7 @@ Other changes in Zoho (edits, partial updates, unrelated fields) are **not** con
 | Webhook does not update Flexprice | Wrong tenant or environment in URL | Use the exact **tenant** and **environment** IDs from Flexprice for the org where the connection exists |
 | Invalid webhook signature | Secret mismatch | The string in Zoho’s webhook action and in Flexprice must be **identical**; update both sides if you rotate the secret |
 | Invoice fails to sync to Zoho | Currency or exchange rate | In **Settings → Currencies**, add the invoice currency with a **positive** rate against **base** currency |
+| Invoice fails to sync after selecting payment gateways | A selected gateway is not set up in Zoho Books | Set up the gateway in Zoho Books ([Online Payments guide](https://www.zoho.com/books/help/online-payments/)), or deselect it on the connection |
 | New Zoho customer does not create Flexprice customer | Inbound off or missing webhook | Confirm **customer inbound** is on (default is on); ensure the **customer created** webhook in Zoho targets the correct Flexprice URL |
 | Paid in Zoho but Flexprice invoice unpaid | Missing entity mapping | The Zoho invoice typically must have been created from Flexprice so entity integration mapping links both sides |
 
