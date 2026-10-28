@@ -42,14 +42,15 @@ Before setting up your Stripe connection, ensure you have:
 | Credential | Location in Stripe Dashboard | Required | Purpose |
 |------------|------------------------------|----------|---------|
 | **Secret Key** | Developers → API Keys | ✅ | Server-side API calls |
+| **Publishable Key** | Developers → API Keys | ✅ | Client-side Stripe calls, such as card collection |
 | **Webhook Secret** | Developers → Webhooks → [Your Endpoint] | ✅ | Webhook signature verification |
 
 ### Finding Your Credentials
 
 1. **API Keys:**
    - Go to Stripe Dashboard → Developers → API Keys
-   - Copy your `Secret key` (starts with `sk_`)
-   - Use test keys (`sk_test_`) for development
+   - Copy your `Secret key` (starts with `sk_`) and your `Publishable key` (starts with `pk_`)
+   - Use test keys (`sk_test_`, `pk_test_`) for development
 
 2. **Webhook Secret:**
    - Go to Stripe Dashboard → Developers → Webhooks
@@ -74,6 +75,7 @@ Configure these events in your Stripe webhook endpoint:
 | `checkout.session *` | Track payment link completions from Stripe Checkout |
 | `customer *` | Synchronize customer data changes between Stripe and Flexprice |
 | `payment_intent *` | Monitor payment processing status and handle payment lifecycle events |
+| `setup_intent.succeeded` | Save the payment method a customer sets up, for later charges |
 
 ### Setting Up the Webhook
 
@@ -84,21 +86,49 @@ Configure these events in your Stripe webhook endpoint:
 5. Click **Add endpoint**
 6. Copy the **Signing secret** for your connection
 
-## Step 3: Create Stripe Connection via API
+## Step 3: Create the Stripe Connection
 
 ### Using Flexprice Dashboard
 
-You can create a Stripe connection directly from the Flexprice dashboard:
+<Steps>
+  <Step title="Open Stripe in Integrations">
+    In the left sidebar, click **Integrations**, then click **Connect** on the **Stripe** card.
+  </Step>
+
+  <Step title="Enter your credentials">
+    Enter a **Connection name**, your **Secret key**, and your **Publishable key**, then click **Continue**. Keys are encrypted and never shown again.
+
+    <Frame>
+      ![Connect Stripe sheet on the Credentials step with the connection name, secret key, and publishable key](/images/docs/integrations/stripe/connection-setup.png)
+    </Frame>
+  </Step>
+
+  <Step title="Choose what syncs">
+    Switch on what should move between Flexprice and Stripe: **Pull plans**, **Pull subscriptions**, **Push invoices**, and **Push prices**. Nothing syncs until you switch it on, and you can change it later. Click **Continue**.
+
+    <Frame>
+      ![Sync step with the Pull plans, Pull subscriptions, Push invoices, and Push prices switches](/images/docs/integrations/stripe/connect-sync.png)
+    </Frame>
+  </Step>
+
+  <Step title="Add the webhook">
+    The **Webhook** step shows your **Webhook URL** and the **Events to send**. Add them to a Stripe webhook as in Step 2, paste the signing secret Stripe gives you into **Webhook signing secret**, and click **Connect Stripe**.
+
+    <Frame>
+      ![Webhook step with the webhook URL, the events to send, and the webhook signing secret](/images/docs/integrations/stripe/connect-webhook.png)
+    </Frame>
+  </Step>
+</Steps>
+
+To change the connection later, click **Configure** on the Stripe card. You can rename it and change what syncs. Keys can't be shown or edited: to change them, disconnect and connect again.
 
 <Frame>
-  <Frame>
-    ![Stripe Connection Setup](/images/docs/integrations/stripe/connection-setup.png)
-  </Frame>
+  ![Stripe connection settings with the name, sync switches, webhook, and Disconnect](/images/docs/integrations/stripe/configure-connection.png)
 </Frame>
 
 ### API Request
 
-**Endpoint:** `POST /api/v1/connections`
+**Endpoint:** `POST /v1/connections`
 
 **Headers:**
 ```http
@@ -115,7 +145,8 @@ X-Environment-ID: your_environment_id
   "provider_type": "stripe",
   "encrypted_secret_data": {
     "secret_key": "sk_live_...",
-    "webhook_secret": "whsec_...",
+    "publishable_key": "pk_live_...",
+    "webhook_secret": "whsec_..."
   }
 }
 ```
