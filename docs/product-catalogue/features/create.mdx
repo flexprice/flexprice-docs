@@ -5,24 +5,27 @@ description: "Create metered, boolean, static and config features in Flexprice, 
 
 Follow the steps below to create a feature in Flexprice:
 
-1. In the main navigation menu, select **Features** from **Product Catalog**.
+1. In the main navigation menu, open **Product catalog** → **Features**.
 
-2. At the top-right of the Feature dashboard, select **Add Feature** to create a new feature.
+2. At the top-right, click **New feature**.
 
 3. Fill in the feature details:
-   - **Feature Name:** Enter a unique and descriptive name for the feature (e.g., "Premium API Access").
-   - **Feature Type:** Select the type of feature:
+   - **Name:** Enter a unique and descriptive name for the feature (e.g., "Premium API Access").
+   - **Type:** Select the type of feature:
      - **Metered:** Tracks quantifiable usage (e.g., number of API calls)
      - **Boolean:** Indicates a simple on/off state (e.g., access to a premium dashboard)
      - **Static:** Represents fixed attributes or entitlements (e.g., priority support)
      - **Config:** Delivers a custom JSON configuration to your application through the customer's entitlements (e.g., feature flags, rate limits, tenant settings)
+   - **Optional details:** Expand it to set a **Lookup key**, **Description**, and **Tag**.
+
+4. Click **Create feature**.
 
 ## How to create a Boolean feature
 
 Select **Boolean** as Type which indicates a simple on/off state (e.g., access to a premium dashboard).
 
 <Frame>
-  ![Boolean Feature Creation](/images/docs/product-catalogue/features/creating-a-feature/boolean-feature.png)
+  ![Create feature form with Boolean selected](/images/docs/product-catalogue/features/creating-a-feature/boolean-feature.png)
 </Frame>
 
 ## How to create a Static feature
@@ -30,7 +33,7 @@ Select **Boolean** as Type which indicates a simple on/off state (e.g., access t
 Select **Static** as feature type which represents fixed attributes or entitlements (e.g., priority support)
 
 <Frame>
-  ![Static Feature Creation](/images/docs/product-catalogue/features/creating-a-feature/static-feature.png)
+  ![Create feature form with Static selected](/images/docs/product-catalogue/features/creating-a-feature/static-feature.png)
 </Frame>
 
 ## How to create a Config feature
@@ -39,7 +42,7 @@ A Config feature lets you attach a JSON object to an entitlement as a `config_va
 
 <Steps>
   <Step title="Select Config as the feature type">
-    In the **Add Feature** form, choose **Config** as the Feature Type.
+    In the **Create feature** form, choose **Config** as the **Type**.
 
     <Note>
       The `config_value` is set at the entitlement level, not on the feature itself. You define it when attaching this feature to a plan.
@@ -47,20 +50,20 @@ A Config feature lets you attach a JSON object to an entitlement as a `config_va
   </Step>
 
   <Step title="Add the feature to a plan">
-    Navigate to the target plan, open the **Entitlements** tab, and select **Add Entitlement**. Choose the Config feature you created.
+    Open the target plan and, in the **Entitlements** card, click **Add entitlement**. Choose the Config feature you created.
 
-    A JSON editor appears. Enter a valid JSON object as the `config_value`. The editor validates the input and blocks submission if the value is not valid JSON.
+    A **Configuration (JSON)** field appears. Enter a valid JSON object as the `config_value`. The form blocks submission if the value is not a valid JSON object.
 
     <Frame>
-      ![Add Entitlement with Config feature JSON editor](/images/docs/product-catalogue/features/creating-a-feature/add-entitlement-feat-config.png)
+      ![Add entitlement dialog with a Config feature and its JSON configuration](/images/docs/product-catalogue/features/creating-a-feature/add-entitlement-config.png)
     </Frame>
   </Step>
 
   <Step title="Save and verify">
-    Click **Add** to save the entitlement. The plan's Entitlements tab displays a truncated JSON preview in the **Value** column. Click the preview to open the full stored config payload.
+    Click **Create entitlement** to save. The plan's **Entitlements** card shows **Configured** in the **Included** column for the Config feature. To see or change the stored JSON, open the entitlement's **⋯** menu and select **Edit**.
 
     <Frame>
-      ![Entitlements tab showing Config feature value](/images/docs/product-catalogue/features/creating-a-feature/view-entitlement-feature-type-config.png)
+      ![Plan Entitlements card with a Config feature marked Configured](/images/docs/product-catalogue/features/creating-a-feature/view-entitlement-feature-type-config.png)
     </Frame>
   </Step>
 </Steps>
@@ -72,16 +75,16 @@ A Config feature lets you attach a JSON object to an entitlement as a `config_va
 ## How to create a Metered feature
 1. Select **Metered** as Type which tracks quantifiable usage (e.g., number of API calls).
 
-2. Optionally edit the singular and plural unit names, for example: "token" and "tokens".
+2. Optionally set the singular and plural unit names under **Units**, for example: "token" and "tokens". A reporting unit and conversion rate show usage in a different unit on reports.
 
 <Frame>
-  ![Metered Feature Creation](/images/docs/product-catalogue/features/creating-a-feature/metered-feature.png)
+  ![Create feature form with Metered selected and the Units card](/images/docs/product-catalogue/features/creating-a-feature/metered-feature.png)
 </Frame>
 
 ### Define Event Details
 
 <Frame>
-  ![Event Details](/images/docs/product-catalogue/features/creating-a-feature/event-details.png)
+  ![Event and Aggregation cards with an event name, a model filter, and a Sum aggregation](/images/docs/product-catalogue/features/creating-a-feature/event-details.png)
 </Frame>
 
 #### Event Name
@@ -91,23 +94,19 @@ For example, suppose you want to track how many tokens users consume while calli
   - Must be unique across your Flexprice account to avoid confusion with other metrics
 
 #### Filters (Optional)
-It is important to note that filters cannot be edited later, so decide up front if you'll need them for billing or reporting.
+Once a feature exists, its filters can only grow: an update can add new properties or values, but can't remove or change existing ones. Decide up front if you'll need them for billing or reporting.
 
 Filters let you **narrow down** which events get counted or summed in this metric. You do not have to add filters if you want to aggregate all events of a given type. However, filters become crucial if you need more granular control, such as billing for only certain AI models or distinguishing usage by environment.
 
 **Example**: If your system supports multiple AI models (`gpt 3`, `llama3.2`, `gpt 4`), and you only want to track usage from GPT models for specialized billing, you can add a filter:
 
-- **Key**: `model`
-- **Values**: `gpt 3`, `gpt 4`
+- **Property**: `model`
+- **Values**: `gpt 3, gpt 4` (comma-separated)
 
 This means Flexprice will only aggregate token usage events where `model` is either `gpt 3` or `gpt 4`.
 
 ### Define Aggregation
-The aggregation settings tell Flexprice how to measure your events.
-
-<Frame>
-  ![Aggregation Settings](/images/docs/product-catalogue/features/creating-a-feature/aggregation-settings.png)
-</Frame>
+The aggregation settings tell Flexprice how to measure your events. They are in the **Aggregation** card, shown in the screenshot above.
 
 #### Function
 Choose one of these aggregation functions (see [Aggregation Overview](/docs/product-catalogue/features/aggregation/overview) for detailed explanations):
@@ -120,8 +119,10 @@ Choose one of these aggregation functions (see [Aggregation Overview](/docs/prod
 - **MAX**: Returns the maximum value of a specified property (supports bucketed calculations)
 - **WEIGHTED SUM**: Time-weighted sum for capacity-based billing where values are prorated by duration
 
+The dashboard offers every function except **AVERAGE**, which you set through the API as `AVG`.
+
 #### Field
-- The property that Flexprice aggregates. Required for all aggregation functions except `COUNT`
+- The property that Flexprice aggregates, set in **Event field**. Required for all aggregation functions except `COUNT`
 - For numeric aggregations (`SUM`, `AVERAGE`, `SUM WITH MULTIPLIER`, `MAX`, `WEIGHTED SUM`): specify a numeric property (e.g., `tokens`, `gb`, `response_time`)
 - For `COUNT UNIQUE`: specify any property whose distinct values you want to count (e.g., `user_id`, `session_id`)
 - For `LATEST`: specify the property whose most recent value you want to track (e.g., `tier_level`, `status`)
@@ -130,6 +131,8 @@ Choose one of these aggregation functions (see [Aggregation Overview](/docs/prod
 #### Usage Reset
 - **Cumulative**: The meter never resets. Usage keeps accumulating across billing cycles, providing a running total. This is useful for features like storage.
 - **Periodic**: Usage resets at each billing period (e.g., monthly). This is ideal for most subscription-based models where usage resets for every billing period
+
+The dashboard creates metered features with **Periodic** usage reset. For **Cumulative**, create the feature through the API with the meter's `reset_usage` set to `NEVER`.
 
 **Example Configuration**:
 - **Aggregation** = `SUM`
