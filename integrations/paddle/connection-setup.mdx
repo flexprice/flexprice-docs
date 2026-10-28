@@ -115,22 +115,37 @@ https://api.cloud.flexprice.io/v1/webhooks/paddle/tenant_01K1TJDVNSN7TWY8CZY870Q
 
 ### Using Flexprice Dashboard
 
-You can create a Paddle connection directly from the Flexprice dashboard:
-
 <Steps>
   <Step title="Navigate to Integrations">
-    Go to **Flexprice dashboard** → **Integrations** → **Paddle** → **Add a connection**.
+    In the left sidebar, click **Integrations**, then click **Connect** on the **Paddle** card.
   </Step>
   <Step title="Enter credentials">
-    Enter your API Key, Webhook Secret, and Client-Side Token (recommended). Optionally add a Redirect URL in metadata for post-payment redirects.
+    Enter a **Connection name** and your **API key**. The **Client-side token** (recommended) and **Redirect URL** (where customers return after paying) are optional. Click **Continue**.
+
+    <Frame>
+      ![Connect Paddle sheet on the Credentials step with the connection name, API key, client-side token, and redirect URL](/images/docs/integrations/paddle/connect-credentials.png)
+    </Frame>
+  </Step>
+  <Step title="Choose what syncs">
+    Switch on **Push invoices** to send Flexprice invoices to Paddle when they are finalised. Nothing syncs until you switch it on, and you can change it later. Click **Continue**.
+
+    <Frame>
+      ![Sync step with the Push invoices switch](/images/docs/integrations/paddle/connect-sync.png)
+    </Frame>
   </Step>
   <Step title="Save connection">
-    Click to create the connection. Flexprice will store your credentials securely.
+    On the **Webhook** step, check the **Webhook URL** and events against your Paddle notification destination (Step 2), enter its secret in **Webhook signing secret**, and click **Connect Paddle**. Flexprice stores your credentials securely.
+
+    <Frame>
+      ![Webhook step with the webhook URL, the transaction.completed and subscription.activated events, and the webhook signing secret](/images/docs/integrations/paddle/connect-webhook.png)
+    </Frame>
   </Step>
 </Steps>
 
+To change the connection later, click **Configure** on the Paddle card. You can rename it and change what syncs. Keys can't be shown or edited: to change them, disconnect and connect again.
+
 <Frame>
-  ![Paddle Connection Setup](/images/docs/integrations/paddle/connection.png)
+  ![Paddle connection settings with the name, Push invoices, webhook, and Disconnect](/images/docs/integrations/paddle/configure-connection.png)
 </Frame>
 
 ```json
