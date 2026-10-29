@@ -111,7 +111,7 @@ Note the plan ID associated with this price (needed for sync).
 ```json
 POST /workflows/search
 {
-  "workflow_type": "PriceSyncWorkflow",
+  "workflow_type": "PriceSyncV2Workflow",
   "entity_id": "<plan_id>",
   "workflow_status": "Running"
 }
@@ -129,11 +129,13 @@ POST /plans/{plan_id}/sync/subscriptions
 Response:
 ```json
 {
-  "workflow_id": "PriceSyncWorkflow-plan_xxx",
+  "workflow_id": "wf_price_sync_plan_<plan_id>",
   "run_id": "run_abc123",
-  "message": "price sync workflow started successfully"
+  "message": "price sync v2 workflow started"
 }
 ```
+
+If a sync for the plan is already running, this call returns `409 Conflict` instead of starting a second one.
 
 **Step 4 — Poll until complete**
 
@@ -151,18 +153,7 @@ Poll every 30 seconds. Terminal states:
 
 **Step 5 — Verify (optional)**
 
-Check the sync summary in the completed workflow response:
-```json
-{
-  "summary": {
-    "line_items_found_for_creation": 120,
-    "line_items_created": 120,
-    "line_items_terminated": 120
-  }
-}
-```
-
-`line_items_terminated` = old price line items closed. `line_items_created` = new price line items added.
+The workflow response doesn't report how many line items changed. To spot-check a subscriber, call `GET /subscriptions/{subscription_id}` and look for a line item whose `price_id` is the new price's ID.
 
 ## What Sync Does After a Price Update
 
