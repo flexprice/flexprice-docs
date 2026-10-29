@@ -11,7 +11,7 @@ A **pricing plan** defines how customers are billed for using your product or se
 
 - **Flexible Pricing Models**: Supports recurring subscriptions, metered billing, and hybrid plans.
 - **Multiple Billing Periods**: Options for daily, weekly, monthly, or yearly cycles.
-- **Multi-Currency Support**: Currently supports INR and USD.
+- **Multi-Currency Support**: Supports any ISO 4217 currency code.
 - **Automated Trial Management**: Enables businesses to offer trial periods before converting to paid plans.
 - **Advanced Charge Configurations**: Supports flat fees, package-based pricing, and volume-based pricing.
 - **Scalable & API-Driven**: Seamless integration with business operations and customer billing workflows.
@@ -35,12 +35,12 @@ Follow the steps below to create a pricing plan in Flexprice:
 
 1. Log in to your **Flexprice Dashboard**.
 
-2. In the left sidebar, go to **Customer Management > Pricing Plan**.
+2. In the left sidebar, go to **Product catalog** > **Plans**.
 
-3. Click **"Add Pricing Plan"** at the top-right of the screen.
-   <Frame>![Add Pricing Plan](/images/docs/product-catalogue/plans/pricing/add-pricing-plan.png)</Frame>
+3. Click **New plan** at the top-right of the screen.
+   <Frame>![Plans list with the New plan button](/images/docs/product-catalogue/plans/pricing/add-pricing-plan.png)</Frame>
 
-This opens a **three-step form** to configure your plan.
+This opens a **four-step form**: basic info, charges, entitlements, and credit grants. Only the basic info is required.
 
 ---
 
@@ -48,102 +48,83 @@ This opens a **three-step form** to configure your plan.
 
 This step captures key identifiers for your pricing plan.
 
-- **Plan Name**: A descriptive name for the plan. This name will be visible to users.
-- **Plan Slug**: A unique identifier used in API calls and system integrations.
-- **Plan Description** _(Optional)_: Provides internal context about the plan.
+- **Name**: What the plan is called to customers and on invoices.
+- **Lookup key** _(Optional)_: A stable identifier used in API calls and system integrations.
+- **Description** _(Optional)_: Provides internal context about the plan.
 
-<Frame>![Plan Details Form](/images/docs/product-catalogue/plans/pricing/plan-details-form.png)</Frame>
-<Frame>![Plan Configuration](/images/docs/product-catalogue/plans/pricing/plan-configuration.png)</Frame>
+<Frame>![Plan details with a name, lookup key, and description](/images/docs/product-catalogue/plans/pricing/plan-details-form.png)</Frame>
 
-## **Step 2: Configure Billing Preferences**
+## **Step 2: Define plan charges**
 
-Billing preferences define when and how the customer will be billed. It includes:
+It defines how customers will be charged under this plan. Click **Add charge** and choose a type. You can add **one or multiple** charges while creating a plan.
 
-- **Choose billing timing**:
+- **Fixed**: Charges billed at regular intervals (e.g., $49/month platform fee).
+- **Usage**: Charges based on actual consumption (e.g., \$0.05 per API call, \$5 per 1,000 tokens).
+
+### Setting-up a fixed charge:
+
+Choose **Fixed** to charge your customers a recurring fee based on the defined billing period. Whenever a customer subscribes to this plan, they are charged this fee and given access to the features that are part of the plan.
+
+<Frame>![Fixed charge form with a display name, currency, billing period, invoice timing, free trial, and amount](/images/docs/product-catalogue/plans/pricing/recurring-charge.png)</Frame>
+
+- **Select billing currency**: Pick any ISO 4217 currency. USD, EUR, GBP, and INR are listed first.
+
+- **Choose a billing period**: The billing period defines when invoices are generated: **Daily**, **Weekly**, **Monthly**, **Quarterly**, **Half-yearly**, **Annual**, or **One-time**.
+
+- **Choose invoice timing**:
   - **Advance:** Customers are billed at the beginning of the billing period.
-  - **Arrears:** Customers are billed at the end of the billing period based on actual usage.
+  - **Arrears:** Customers are billed at the end of the billing period.
 
-- **Adding trial period** _(Optional)_:
-  - Toggle **on** to enable a free trial.
-  - Enter the **trial period duration** in days.
+- **Add a free trial** _(Optional)_: Enter the trial duration in days. The field is hidden when the billing period is **One-time**.
 
-- Click **Next** to continue.
-  <Frame>![Billing Preferences](/images/docs/product-catalogue/plans/pricing/billing-preferences.png)</Frame>
-
-## **Step 3: Define plan charges**
-
-It defines how customers will be charged under this plan. You can add **one or multiple** charges while creating a plan.
-
-- **Select Subscription Type:**
-  - **Recurring Charges**: Fixed charges billed at regular intervals (e.g., $10/month subscription fee).
-  - **Usage-Based Charges**: Charges based on actual consumption (e.g., $0.01 per API call, $5 per 1,000 tokens).
-
-You can create a plan by adding multiple usage-based charges in the same plan as well
-
-<Frame>![Multiple Charges](/images/docs/product-catalogue/plans/pricing/multiple-charges.png)</Frame>
-
-### Setting-up a recurring-based charge:
-
-Select subscription type as Recurring to charge your customers a recurring fee based on the defined billing period. Whenever user purchases this plan, it will be charged a flat fee and given access to the features that will be part of that plan.
-
-<Frame>![Recurring Charge](/images/docs/product-catalogue/plans/pricing/recurring-charge.png)</Frame>
-
-- **Select billing currency**
-  We currently support 2 currencies which includes:
-  - INR (Indian Rupees)
-  - USD (United States Dollars)
-
-- **Choose a billable period**
-  The plan interval corresponds to the billing period and defines when invoices are generated. There are several plan intervals:
-  - **Weekly**: subscription fees and charges are billed on a weekly basis (Monday to Sunday);
-  - **Monthly**: subscription fees and charges are billed on a monthly basis;
-  - **Quarterly**: subscription fees and charges are billed on a quarterly basis (every 3 months); and
-  - **Yearly**: subscription fees are billed on a yearly basis and charges can be billed monthly or annually.
-
-- Add relevant price you want to charge your customer based on the selected billing period and then click on **Add** button.
+- Enter the price you want to charge for the selected billing period, then click **Add charge**.
 
 ### Setting-up a usage-based charge:
 
-To incorporate usage-based charges into a plan, you can utilize existing billable metrics. This enables you to offer "pay-as-you-go" features. For instance, you can create charges based on the number of API calls, the number of active users, transactions, compute time, etc.
+To incorporate usage-based charges into a plan, you can utilize existing metered features. This enables you to offer "pay-as-you-go" features. For instance, you can create charges based on the number of API calls, the number of active users, transactions, compute time, etc. Usage charges are billed in arrears, once the period's usage is known.
 
-- Select the billable metric on which you've created earlier.
-- Define relevant currency and billing period for your plan
-- Select the pricing model.
-  Flexprice currently support 3 types of pricing models:
+- Select the **Metered feature** you created earlier.
+- Define the relevant currency and billing period for your plan.
+- Select the **Billing model**.
+  Flexprice supports 3 billing models:
   - **Flat fee**
-    Select the Flat fee pricing model if you want to charge the **same price for each unit** consumed.
-    **Example:** $0.01 per API call.
+    Select Flat fee if you want to charge the **same price for each unit** consumed.
+    **Example:** $0.05 per API call.
 
-    <Frame>![Flat Fee Pricing](/images/docs/product-catalogue/plans/pricing/flat-fee-pricing.png)</Frame>
+    <Frame>![Usage charge with a flat fee of $0.05 per API call](/images/docs/product-catalogue/plans/pricing/flat-fee-pricing.png)</Frame>
 
-  - **Package pricing**
-    Select the package charge model if you want to apply a **fixed price to a range of units**.
-    **Example:** $5 per 100 API calls.
+  - **Package**
+    Select Package if you want to charge a **fixed price for each package of units**. A partial package is rounded up.
+    **Example:** $50 per 1,000 API calls.
 
-    <Frame>![Package Pricing](/images/docs/product-catalogue/plans/pricing/package-pricing.png)</Frame>
+    <Frame>![Usage charge with a package of 1,000 units for $50](/images/docs/product-catalogue/plans/pricing/package-pricing.png)</Frame>
 
-  - **Volume tiered based pricing**
-    Select the volume charge model if you want to define several price tiers but want to apply a **single unit price based on the total volume**. You can also apply a **flat fee** in addition to the unit price.
+  - **Tiered**
+    Select Tiered with the **Volume** tier mode if you want to define several price tiers but apply a **single unit price based on the total volume**. You can also apply a **flat fee** in addition to the unit price.
 
-    **Example:**- 0 – 10,000 calls → $0.001 per call
-    - 10,001 – ∞ calls → $0.0008 per call
+    **Example:**
+    - 0 – 10,000 calls → $0.001 per call
+    - 10,001 – 50,000 calls → $0.0008 per call
+    - 50,001 – 100,000 calls → $0.0006 per call
+    - 100,001 calls and above → $0.0004 per call
 
       <Frame>
-        ![Volume Tiered Pricing](/images/docs/product-catalogue/plans/pricing/volume-tiered-pricing.png)
+        ![Usage charge with Tiered selected, Volume tier mode, and four tiers](/images/docs/product-catalogue/plans/pricing/volume-tiered-pricing.png)
       </Frame>
 
-    - Click on **Add** to save the charges
+    - Click **Add charge** to save the charge
 
 ### Setting-up hybrid charges:
 
-You can create a single pricing plan which includes multiple charges - Recurring as well usage-based charges.
+You can create a single pricing plan which includes multiple charges: fixed as well as usage-based charges.
 
-<Frame>![Hybrid Charges](/images/docs/product-catalogue/plans/pricing/hybrid-charges.png)</Frame>
+<Frame>![Charges step listing a fixed platform fee and a usage charge for API calls](/images/docs/product-catalogue/plans/pricing/hybrid-charges.png)</Frame>
 
 ### **Review & Save**
 
 - Double-check all entered details.
-- Click **Save** to finalize the pricing plan.
+- Click **Next** to add any **Entitlements** and **Credit grants**, or skip them.
+- Click **Create plan** to finalize the pricing plan.
 
 ---
 
@@ -161,7 +142,7 @@ Once a pricing plan is created and has active subscriptions, you may need to ter
 
 #### **Immediate Price Termination**
 
-To immediately terminate a price:
+To immediately terminate a price (in the dashboard, select **Terminate** in the charge's **⋯** menu on the plan's page):
 
 1. **Navigate to the specific price** in your plan
 2. **Use the DELETE API endpoint**: `DELETE /prices/{price_id}`
@@ -224,7 +205,7 @@ When you terminate a price in a plan:
 
 #### **Running Plan Price Sync**
 
-Use the Plan Price Sync API to synchronize terminated prices across all existing subscriptions:
+Use the Plan Price Sync API to synchronize terminated prices across all existing subscriptions. In the dashboard, select **Sync to contracts** in the plan's **⋯** menu; the sync runs in the background.
 
 **API Endpoint:** `POST /plans/{plan_id}/sync/subscriptions`
 
@@ -264,7 +245,7 @@ The sync process:
    - Verify billing accuracy
 
 4. **Monitor the Process**
-   - Check sync results and statistics
+   - Check that the sync workflow completed
    - Verify line item updates
    - Test billing calculations
 
@@ -275,28 +256,22 @@ The sync process:
 
 #### **Monitoring Sync Results**
 
-The Plan Price Sync API returns detailed statistics:
+The Plan Price Sync API doesn't wait for the sync to finish. It starts the sync as a background workflow and returns the workflow's handle right away:
 
 ```json
 {
-  "message": "Plan prices synchronized successfully",
-  "plan_id": "plan_123",
-  "plan_name": "Premium Plan",
-  "synchronization_summary": {
-    "subscriptions_processed": 150,
-    "prices_added": 25,
-    "prices_removed": 10,
-    "prices_skipped": 115
-  }
+  "message": "price sync v2 workflow started",
+  "workflow_id": "wf_price_sync_plan_plan_01K8ZQ3V6T9M2H4R7C5N1B8XWE",
+  "run_id": "0199f3a4-7c2e-7b1d-9e45-2a6c8d0f1b37"
 }
 ```
 
-**Key Metrics:**
+To follow the sync:
 
-- **Subscriptions Processed**: Total number of subscriptions updated
-- **Prices Added**: New line items created for active prices
-- **Prices Removed**: Line items ended for terminated prices
-- **Prices Skipped**: Line items that didn't require changes
+- **Dashboard**: open **Developers** > **Workflows**.
+- **API**: call `POST /workflows/search` with `{"workflow_id": "<workflow_id>"}` and read the run's `status`. It is `Running` while the sync is in progress and `Completed` once it finishes. `Failed`, `Canceled`, `Terminated`, or `TimedOut` means the sync didn't finish, so run it again.
+
+Only one sync per plan runs at a time. Starting another while one is running returns `409 Conflict` with the message `A workflow is already running for this entity. Try again once it finishes.`
 
 #### **Common Scenarios**
 
@@ -337,7 +312,7 @@ The Plan Price Sync API returns detailed statistics:
    - Ensure sync completed successfully
 
 3. **Billing Discrepancies**
-   - Review sync statistics
+   - Check that the sync workflow's status is `Completed`
    - Check individual subscription line items
    - Verify price end dates are set correctly
 
@@ -359,7 +334,7 @@ The Plan Price Sync API returns detailed statistics:
 **Plan Price Sync:**
 
 - **Endpoint:** `POST /plans/{plan_id}/sync/subscriptions`
-- **Response:** Detailed synchronization summary with statistics
+- **Response:** The sync workflow's `message`, `workflow_id`, and `run_id`. The sync itself runs in the background.
 
 **Get Plan:**
 
