@@ -1,0 +1,138 @@
+---
+title: 'Telemetry'
+description: 'What anonymous usage data Flexprice collects from self-hosted installs, and how to turn it off'
+---
+
+Flexprice is a self-hosted product, which means we normally have no visibility into how it runs in production: which versions are still in use, what platforms people deploy to, or whether a release introduced a regression nobody reported. To close that gap, self-hosted Flexprice sends a small amount of anonymous usage data back to Flexprice by default. This page lists exactly what is collected, why, and how to turn it off.
+
+## Why Flexprice collects this
+
+Without this data, we can't tell how many self-hosted installs exist, which versions they're running, or whether a given release is stable in the wild. The data collected is scoped to answer those questions, not to track what any individual business or customer is doing. Flexprice does not collect financial information such as invoice amounts, wallet balances, or payment details.
+
+<Note>
+  Telemetry is sent to a Flexprice-operated collector, not a third party. The app-side reporter's source is open: [internal/telemetry](https://github.com/flexprice/flexprice/tree/develop/internal/telemetry) in the main repo.
+</Note>
+
+## What gets collected
+
+There are two events.
+
+### Install event
+
+Sent once per process start (API, consumer, or worker). Identifies the deployment and its environment, not any tenant or customer.
+
+| Field | Description |
+|-------|-------------|
+| `instance_id` | The pod/container hostname. |
+| `deployment_id` | A one-way hash of the Postgres host, shared by every replica of one install so a multi-pod deployment doesn't count as multiple installs. |
+| `version`, `git_sha` | The running build. |
+| `build_variant` | OSS, Community, or Enterprise. |
+| `os`, `arch`, `platform`, `cloud` | Host OS/architecture and where it's detected to be running (Kubernetes, Docker, bare binary; AWS, GCP, Azure, or unknown). |
+| `role` | Which process this is: `api`, `consumer`, `temporal_worker`, etc. |
+| `num_cpu` | CPU count visible to the process. |
+| `install_label` | An optional, operator-set label for this install. Blank unless you set one. |
+
+```json
+{
+  "instance_id": "flexprice-api-568f96785b-scklp",
+  "deployment_id": "9f2a6e1c3d8b0a71",
+  "version": "v1.14.0",
+  "git_sha": "c4295aef2b076c61c4f727011e542e3834473ea",
+  "build_variant": "Enterprise",
+  "env": "production",
+  "region": "ap-south-1",
+  "os": "linux",
+  "arch": "amd64",
+  "role": "api",
+  "platform": "kubernetes",
+  "cloud": "gcp",
+  "num_cpu": 2,
+  "install_label": "self/flexprice"
+}
+```
+
+### System event
+
+Sent for a fixed set of activation/lifecycle events, listed below, not on every webhook event your instance emits.
+
+| Field | Description |
+|-------|-------------|
+| `instance_id`, `deployment_id` | Same as above. |
+| `tenant_id`, `environment_id` | Internal identifiers for the tenant and environment the event belongs to. Not a customer name, email, or any PII. |
+| `event_name` | One of the fixed set of events listed below, e.g. `customer.created`. |
+| `event_payload` | The webhook event's payload, with PII and financial fields redacted (see below). |
+| `version`, `build_variant`, `platform`, `cloud` | Same build/host context as the install event, so usage can be broken down by version without a separate lookup. |
+
+```json
+{
+  "instance_id": "flexprice-consumer-59c9c8bd58-z52qq",
+  "deployment_id": "9f2a6e1c3d8b0a71",
+  "tenant_id": "00000000-0000-0000-0000-000000000000",
+  "environment_id": "env_01KWBQ7VCCZJGXKVPCDFQJND95",
+  "event_name": "customer.created",
+  "version": "v1.14.0",
+  "build_variant": "Enterprise",
+  "platform": "kubernetes",
+  "cloud": "gcp",
+  "event_payload": {
+    "event_type": "customer.created",
+    "customer": {
+      "id": "cust_01KZKTMWMMXARG7TX94BVD93HB",
+      "external_id": "ext_01",
+      "timezone": "Asia/Kolkata"
+    }
+  }
+}
+```
+
+<Note>
+  Webhook payloads vary by event type and some carry customer PII or financial amounts directly, for example `wallet.*` events include the wallet's full balance record. Before `event_payload` is sent, Flexprice strips the fields below by key name, at any nesting depth, regardless of which event produced them. Resource IDs, status enums, and timestamps are preserved. The redaction logic is open source: [redact.go](https://github.com/flexprice/flexprice/blob/develop/internal/telemetry/redact.go).
+
+  **PII**: `name`, `email`, `phone`, `address_line1`, `address_line2`, `address_city`, `address_state`, `address_postal_code`, `address_country`, `metadata`
+
+  **Financial amounts and balances**: `amount`, `amount_due`, `amount_paid`, `amount_remaining`, `subtotal`, `total`, `total_tax`, `total_discount`, `total_prepaid_credits_applied`, `settled_amount`, `total_amount`, `balance`, `credit_balance`, `credit_balance_before`, `credit_balance_after`, `credit_amount`, `current_balance`, `current_spend`, `threshold`, `conversion_rate`, `currency`, `value_at_time`
+
+  **Other**: `payment_gateway`, `gateway_refund_id`, `hosted_invoice_url`, `properties` (freeform event properties), `error` (raw provider error text)
+</Note>
+
+Only two telemetry event *types* exist (`install_init` and `system_event`), there is no per-feature tracking plan. `event_name` on a system event is always one of:
+
+| Event | Fires when |
+|-------|-------------|
+| `customer.created` | A customer is created. |
+| `customer.deleted` | A customer is deleted. |
+| `subscription.created` | A subscription is created. |
+| `subscription.activated` | A subscription becomes active. |
+| `subscription.cancelled` | A subscription is cancelled. |
+| `credit_note.created` | A credit note is issued. |
+| `invoice.update.finalized` | An invoice is finalized. |
+| `payment.success` | A payment succeeds. |
+| `payment.failed` | A payment fails. |
+| `refund.succeeded` | A refund succeeds. |
+| `wallet.created` | A wallet is created. |
+
+Every other webhook event your instance can emit (checkout, feature, entitlement, the finer-grained invoice/payment/wallet/subscription states, `event.rejected`, etc.) is dropped before `ReportEvent` does any work. See [Webhooks](/docs/webhook/webhooks) for the full set of events your own webhook endpoints can subscribe to, independent of this list.
+
+## Opting out
+
+Set `FLEXPRICE_TELEMETRY_DISABLED` to `true` on every process (API, consumer, worker) to stop telemetry entirely:
+
+```bash
+FLEXPRICE_TELEMETRY_DISABLED=true
+```
+
+This is checked before any network call is made, so no data leaves your deployment once it's set.
+
+## Related Articles
+
+<CardGroup cols={2}>
+  <Card icon="gear" href="/docs/getting-started/configuration" title="Configuration">
+    The full list of environment variables for a self-hosted install.
+  </Card>
+  <Card icon="server" href="/docs/getting-started/self-hosting-guide" title="Self-Hosting Guide">
+    Deploying Flexprice on your own infrastructure.
+  </Card>
+  <Card icon="sitemap" href="/docs/getting-started/architecture" title="Architecture">
+    How the API, consumer, and worker processes fit together.
+  </Card>
+</CardGroup>
