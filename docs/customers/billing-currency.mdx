@@ -1,0 +1,310 @@
+---
+title: "Billing Currency"
+description: "Invoice a customer in their own currency while your plans stay priced in one. Flexprice converts each invoice at a fixed exchange rate you control when it is finalized."
+---
+
+Pricing a plan in USD is simple until a customer in India needs to be invoiced and pay in INR. Adding an INR price to every plan duplicates your catalogue, and invoicing in USD pushes the currency risk and bank fees onto the customer. A billing currency on the customer solves this: charges are still calculated in the plan's currency, and Flexprice issues the invoice in the customer's currency using exchange rates you set.
+
+---
+
+## How It Works
+
+Two currencies are involved:
+
+- **Charge currency:** the currency of the subscription and its prices (for example, USD). Usage, discounts and prepaid credits are calculated in this currency.
+- **Billing currency:** the currency set on the customer (for example, INR). Invoices are issued and paid in this currency.
+
+When an invoice is finalized, Flexprice converts it from the charge currency to the billing currency:
+
+- **One rate per invoice:** the whole invoice is converted at a single rate, and that rate is fixed on the invoice. Changing your rates later never changes an issued invoice.
+- **Tax in the billing currency:** tax is calculated on the converted amounts, so tax lines are in the billing currency.
+- **Line items add up:** every line item is converted and rounded so the lines add up exactly to the converted total.
+- **Original amounts kept:** the invoice records the charge currency, the rate used and the original amounts in an `fx_conversion` object.
+
+Customers without a billing currency, or whose billing currency matches the subscription currency, are invoiced exactly as before.
+
+### Which rate is used
+
+Rates are set at three levels. When an invoice is finalized, Flexprice uses the most specific rate that is valid at that moment:
+
+| Level | Set from | Applies to |
+| --- | --- | --- |
+| **Subscription override** | Create or edit a subscription | Invoices of that subscription only |
+| **Customer override** | Customer › Information › FX Overrides | All subscriptions of that customer |
+| **Global rate** | Settings › Billing › Global forex rates | Every customer, as the default |
+
+A rate always reads as **1 unit of the from currency = rate units of the to currency**. For example, `USD → INR` at `83` means 1 USD = 83 INR.
+
+Overrides can have a **Valid from** and **Valid until** date. A blank start date has no start limit, and a blank end date never expires. The dates are matched at the moment an invoice is finalized or a checkout is created. Overrides for the same customer or subscription and currency pair can't overlap.
+
+### Checkout, wallets and refunds
+
+- **Pay-first checkout:** the invoice is converted when the checkout is created, so the customer pays the converted amount in the billing currency.
+- **Wallets:** a wallet keeps its own currency. When you create a wallet in a currency other than the billing currency, there must be a rate from the wallet currency to the billing currency. Top-up invoices are then issued in the billing currency.
+- **Refunds:** refunds to a card or payment method are made in the billing currency. Refunds to a wallet go back to the customer's wallet in the charge currency, converted at the rate fixed on the invoice.
+
+---
+
+## Setting Up
+
+Setup takes three steps: add a global rate, set the customer's billing currency, then optionally add overrides.
+
+### Step 1: Add a global rate
+
+Every currency pair you bill across needs a global rate. Overrides fall back to it, and you can't add an override for a pair without one.
+
+```bash
+curl -X POST https://us.api.flexprice.io/v1/forex \
+  -H "x-api-key: <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scope": "tenant",
+    "from_currency": "USD",
+    "to_currency": "INR",
+    "rate": "83"
+  }'
+```
+
+In the dashboard, go to **Settings › Billing › Global forex rates** and click **Add rate**.
+
+<Frame>
+  ![Global forex rates in Settings](/images/docs/customers/billing-currency/global-forex-rates.png)
+</Frame>
+
+<Frame>
+  ![Add forex rate dialog](/images/docs/customers/billing-currency/add-forex-rate.png)
+</Frame>
+
+A global rate applies at all times, so it has no validity dates. There is one global rate per currency pair: to change it, edit its value.
+
+<Warning>
+  Global rates can't be deleted because every override for the pair falls back
+  to them. Update the value instead.
+</Warning>
+
+### Step 2: Set the customer's billing currency
+
+Set `billing_currency` when you create or update a customer:
+
+```bash
+curl -X PUT https://us.api.flexprice.io/v1/customers/{customer_id} \
+  -H "x-api-key: <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "billing_currency": "INR"
+  }'
+```
+
+To stop converting, send `"billing_currency": ""`. Invoices are then issued in the subscription's currency again.
+
+In the dashboard, open the customer, click the edit icon and choose a **Billing Currency**. Choose **None** to clear it.
+
+<Frame>
+  ![Billing Currency field on the Edit Customer drawer](/images/docs/customers/billing-currency/customer-drawer-billing-currency.png)
+</Frame>
+
+Flexprice checks the change before saving it:
+
+- **Rates must exist:** every active, trialing or paused subscription and every wallet of the customer in another currency needs a rate to the new billing currency. If any are missing, the request is rejected with a message that lists the missing currency pairs.
+- **No open checkout:** the billing currency can't change while the customer has an open checkout session. Complete or cancel it first.
+
+<Note>
+  A new billing currency applies to invoices finalized from then on. Issued
+  invoices don't change.
+</Note>
+
+### Step 3 (optional): Add overrides
+
+Use an override when a customer or a contract has a negotiated rate.
+
+**Customer override.** Create a rate with `scope` set to `customer` and the customer ID as `scope_id`:
+
+```bash
+curl -X POST https://us.api.flexprice.io/v1/forex \
+  -H "x-api-key: <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scope": "customer",
+    "scope_id": "cust_01M65YS1NTF2VMAMCC435KA61T",
+    "from_currency": "USD",
+    "to_currency": "INR",
+    "rate": "84",
+    "start_date": "2026-10-01T00:00:00Z",
+    "end_date": "2027-01-01T00:00:00Z"
+  }'
+```
+
+In the dashboard, open the customer's **Information** tab. The **Billing Currency** is shown under Billing Details, and the **FX Overrides** list shows each override as Active, Scheduled or Expired. Click **Add override** to add one.
+
+<Frame>
+  ![Billing currency and FX overrides on the customer Information tab](/images/docs/customers/billing-currency/customer-billing-currency-fx-overrides.png)
+</Frame>
+
+**Subscription override.** Pass `fx_rates` when you create the subscription. Each entry is a rate with optional dates, and the entries can't overlap:
+
+```bash
+curl -X POST https://us.api.flexprice.io/v1/subscriptions \
+  -H "x-api-key: <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_id": "cust_01M65YS1NTF2VMAMCC435KA61T",
+    "plan_id": "plan_01M65YS1TSR1NVBZ75H02QS0Y5",
+    "currency": "USD",
+    "billing_cadence": "RECURRING",
+    "billing_period": "MONTHLY",
+    "billing_period_count": 1,
+    "fx_rates": [
+      {
+        "rate": "83.5",
+        "start_date": "2026-10-30T00:00:00Z",
+        "end_date": "2027-10-30T00:00:00Z"
+      }
+    ]
+  }'
+```
+
+`fx_rates` is accepted only when the subscription's currency differs from the customer's billing currency. It is converted from the subscription's currency to the billing currency of the customer who is invoiced.
+
+In the dashboard, the **Create Subscription** form labels the subscription currency as **Charge Currency** and shows the customer's **Billing Currency** below it. Add rows to the **FX Overrides** table, or leave it empty to use the customer override or the global rate.
+
+<Frame>
+  ![Charge currency, billing currency and FX overrides on Create Subscription](/images/docs/customers/billing-currency/create-subscription-fx.png)
+</Frame>
+
+To manage the rates of an existing subscription, open it, click **Edit** and use the **FX Overrides** card.
+
+<Frame>
+  ![FX Overrides card on Edit Subscription](/images/docs/customers/billing-currency/edit-subscription-fx-overrides.png)
+</Frame>
+
+A subscription override can also be created with `POST /v1/forex`, using `scope` set to `subscription` and the subscription ID as `scope_id`. Its `from_currency` must be the subscription's currency.
+
+---
+
+## Reading a Converted Invoice
+
+A converted invoice has `currency` set to the billing currency, and all amounts are in that currency. The `fx_conversion` object records how it was converted:
+
+```json
+{
+  "currency": "inr",
+  "subtotal": "8350",
+  "total": "8350",
+  "fx_conversion": {
+    "charge_currency": "usd",
+    "billing_currency": "inr",
+    "rate": "83.5",
+    "rate_id": "fxr_01M65YSBE1P927XZ9CV68DEC98",
+    "scope": "subscription",
+    "converted_at": "2026-10-30T08:28:26Z",
+    "source": {
+      "subtotal": "100",
+      "total_discount": "0",
+      "total_prepaid_credits_applied": "0",
+      "net": "100"
+    }
+  }
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `charge_currency` | The currency the charges were calculated in |
+| `billing_currency` | The currency the invoice was issued in |
+| `rate` | The rate used: billing currency units per 1 charge currency unit |
+| `scope` | Which rate was used: `subscription`, `customer` or `tenant` (global) |
+| `converted_at` | When the invoice was converted |
+| `source` | The original amounts in the charge currency, before tax |
+
+Each line item also carries `fx_conversion` with its `charge_currency` and original `source` amounts. Invoices that were never converted have no `fx_conversion`. Invoice webhooks include the same fields.
+
+---
+
+## What Stays the Same
+
+- Plans, prices and usage events don't change. Keep pricing in the currencies you already use.
+- Customers with no billing currency are invoiced exactly as before.
+- Invoices that are already finalized keep their amounts and rate, even if you change a rate or the billing currency later.
+
+---
+
+## Example
+
+A customer, Globex India, has an INR billing currency and subscribes to a $100/month Pro plan. Three rates exist for USD → INR:
+
+| Level | Rate | Valid |
+| --- | --- | --- |
+| Global | 83 | Always |
+| Customer override | 84 | Oct 1, 2026 to Jan 1, 2027 |
+| Subscription override | 83.5 | Oct 30, 2026 to Oct 30, 2027 |
+
+The first invoice is finalized on Oct 30, 2026. All three rates are valid, and the subscription override is the most specific, so it wins:
+
+|  | Without a billing currency | With INR billing currency |
+| --- | --- | --- |
+| Invoice currency | USD | INR |
+| Subtotal | $100.00 | ₹8,350.00 |
+| Rate used | None | 83.5 (subscription override) |
+| Customer pays | $100.00 | ₹8,350.00 |
+
+If the subscription had no override, the customer override (84) would apply and the invoice would be ₹8,400. Without either override, the global rate (83) gives ₹8,300.
+
+---
+
+## Limitations
+
+**Missing rates block finalization**
+
+If no rate is valid for the currency pair when an invoice is finalized, the invoice stays in draft and the request returns an error naming the missing pair. Add the rate, then finalize the invoice again.
+
+**Payments on drafts**
+
+A draft invoice that will be converted can't take a payment yet, because its final amount isn't known. Finalize the invoice first, then record the payment in the billing currency.
+
+<Warning>
+  A draft that was already converted at checkout can't be recalculated. To
+  change it, void it and issue a new invoice.
+</Warning>
+
+**Fixed rates only**
+
+Rates are values you set. Flexprice doesn't fetch market rates. Update your global rate or add an override when the rate you bill at changes.
+
+**Currencies**
+
+Rates support standard ISO fiat currency codes. Custom currencies, such as credits, don't use these rates: they convert through the factor in your custom currency configuration.
+
+---
+
+## Related Articles
+
+<CardGroup cols={2}>
+  <Card icon="users" href="/docs/customers/create" title="Creating a Customer">
+    Create customers and set their billing details.
+  </Card>
+  <Card
+    icon="globe"
+    href="/docs/product-catalogue/plans/localisation"
+    title="Localisation"
+  >
+    Price a plan in several currencies.
+  </Card>
+  <Card
+    icon="credit-card"
+    href="/docs/checkout/pay-first-checkout"
+    title="Pay-First Checkout"
+  >
+    Collect payment before a subscription starts.
+  </Card>
+  <Card icon="wallet" href="/docs/wallet/create" title="Wallets">
+    Create prepaid wallets and top them up.
+  </Card>
+</CardGroup>
+
+---
+
+**API References**
+
+- [Create a Customer](/api-reference/customers/create-customer)
+- [Update a Customer](/api-reference/customers/update-customer)
+- [Create a Subscription](/api-reference/subscriptions/create-subscription)
