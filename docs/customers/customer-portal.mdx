@@ -5,7 +5,7 @@ description: "A self-service billing portal where your customers view their acco
 
 The Customer Portal is a hosted, self-service interface that gives your customers access to their own billing data and payment actions. Customers view subscriptions, invoices, wallet balances and usage, pay outstanding invoices, top up credits, save a card and turn on automatic top-ups, without going through your support or sales team.
 
-The portal authenticates with a short-lived session token that you generate from your backend. You control which sections a customer sees, and the portal renders under your brand colours and logo.
+The portal authenticates with a short-lived session token that you generate from your backend. You control which sections a customer sees, and the portal renders in your brand colour.
 
 **Benefits:**
 
@@ -15,7 +15,7 @@ The portal authenticates with a short-lived session token that you generate from
 - **No card data on your side** - Cards are collected and stored by the payment provider's hosted page, never by Flexprice or by you
 - **Tenant-controlled surface** - Each section is switched on or off per environment
 
-<Frame>![Customer Portal Overview showing the wallet balance, saved payment methods and active subscriptions](/images/docs/customers/customer-portal/customer-portal-overview.png)</Frame>
+<Frame>![Customer Portal Overview showing the amount due, the credit balance, saved payment methods and subscriptions](/images/docs/customers/customer-portal/customer-portal-overview.png)</Frame>
 
 ## What customers can do
 
@@ -23,9 +23,9 @@ The portal is organised into sections shown as tabs across the top. Which sectio
 
 | Section | Contents |
 | ------- | -------- |
-| **Overview** | Wallet balance with top-up actions, saved payment methods, active subscriptions |
-| **Usage** | Account summary, metric cards, usage trend chart, usage breakdown, current usage |
-| **Credits** | Wallet balance, auto top-up settings, full transaction history |
+| **Overview** | Next billing date, amount due with Pay now, credit balance with Add credits, saved payment methods, subscriptions |
+| **Usage** | Spend summary, usage trend chart, usage quota, usage breakdown by feature and group |
+| **Credits** | Balance with credits added and used, auto top-up settings, top-ups and full transaction history |
 | **Invoices** | Invoice list with status, detail drawer, PDF download, Pay now |
 
 Actions available to a customer:
@@ -172,8 +172,8 @@ You can open a customer's portal from the Flexprice dashboard without writing an
 
 1. Go to **Customers**
 2. Find the customer in the table
-3. Click the three-dot menu at the end of the row
-4. Select **Open Customer Portal**
+3. Click the **⋯** menu at the end of the row
+4. Select **Open customer portal**
 
 A session is generated and the portal opens in a new tab.
 
@@ -182,10 +182,10 @@ A session is generated and the portal opens in a new tab.
 ### From the customer details page
 
 1. Go to **Customers** and click a customer
-2. Open the **Information** tab
-3. In the Customer Details section, click the share icon to copy the portal link
+2. Click the **⋯** menu at the top right of the customer's page
+3. Select **Copy portal link**
 
-<Frame>![Customer Details Page](/images/docs/customers/customer-portal/customer-details-page.png)</Frame>
+<Frame>![Customer page menu with Copy portal link](/images/docs/customers/customer-portal/customer-details-page.png)</Frame>
 
 <Tip>
 The copied link contains a session token that expires after 1 hour. Share it through a channel the customer controls, and generate a new one if they come back later.
@@ -197,35 +197,33 @@ The copied link contains a session token that expires after 1 hour. Share it thr
 
 The default landing section. It answers three questions in one screen: what the balance is, how it gets paid, and what the customer is signed up to.
 
-- **Wallet balance** with credits, monetary value, and Add credits and Pay now actions
-- **Payment methods** listing saved cards, with Add card, Set as default and Remove
-- **Subscriptions** showing plan name, status, current period and next billing date
+- **Next billing** date and plan, with a link to the usage so far
+- **Amount due** with **Pay now**, and a banner with a **Pay** button when the last payment failed
+- **Credit balance** in money and credits, with **Add credits**
+- **Payment methods** listing saved cards, with **Add card**, and **Make default** and **Remove card** in each card's menu
+- **Subscriptions** showing plan, status, current period and next billing date
 
-<Frame>![Saved payment methods on Overview, with the default card marked and the row actions open](/images/docs/customers/customer-portal/payment-methods.png)</Frame>
+<Frame>![Saved payment methods on Overview, with the default card marked and a card's menu open on Make default and Remove card](/images/docs/customers/customer-portal/payment-methods.png)</Frame>
 
 ### Usage
 
 Feature-level consumption and cost over a date range. When features are assigned to [groups](/docs/product-catalogue/groups/overview), the usage breakdown is grouped accordingly.
 
-- **Account summary** with balance, amount due and next billing date
-- **Metric cards** for revenue and any custom analytics metrics
-- **Usage trend** chart, with a date preset selector and optional custom range
-- **Usage breakdown** table of feature, total usage, events and total cost
-- **Current usage** for the in-progress billing period
+- **Date range** presets (**Today**, **7d**, **30d**, **This month**, **Last month**) and a custom range
+- **Spend**, **Largest cost** and **Daily average** cards, with spend compared to the previous period and a projection to the next billing date
+- **Usage trend** chart of cost or quantity per day, for all features or one
+- **Usage quota** showing how much of each allowance is used this billing period, and when it resets
+- **Usage breakdown** table of feature, usage, unit cost, cost and share of spend, grouped by group (called tags in the dashboard)
 
-<Frame>![Customer Portal Usage](/images/docs/groups/customer-portal.png)</Frame>
-
-<Warning>
-Cost and margin metric cards are switched off by default. They show your cost to serve the customer and your margin on them, which are not the customer's numbers to see. Turn them on only for an internal-facing portal.
-</Warning>
+<Frame>![Customer Portal Usage tab with spend cards, the usage trend, usage quota and the usage breakdown grouped by tag](/images/docs/customers/customer-portal/usage.png)</Frame>
 
 ### Credits
 
 The prepaid wallet in full.
 
-- **Wallet balance** in credits and monetary value, with the wallet status
-- **Auto top-up** summary and settings
-- **Transaction history** listing each credit and debit with date, expiry, priority and amount
+- **Balance** in money and credits, with the wallet status and the credits added and used since a recent date
+- **Auto top-up** status and settings
+- **Top-ups**, listing each top-up with its credits, what remains, how much is consumed and when it expires, and **All transactions** for the full history
 
 <Frame>![Customer Portal Credits](/images/docs/customers/customer-portal/credits.png)</Frame>
 
@@ -233,14 +231,14 @@ The prepaid wallet in full.
 
 Every invoice raised against the customer.
 
-- **Invoice table** with date, invoice number, status, amount and row actions
+- **Invoice table** with invoice number, issue date, billing period, status and amount, and a row menu with **View invoice**, **Pay now** and **Download**
 - **Detail drawer** showing amount due, billing period, issue and due dates, line items, subtotal, discount, tax and total
 - **Download** as PDF, available once an invoice is finalized
 - **Pay now**, shown when the invoice is awaiting payment and a provider is connected
 
 Invoice rows show each invoice in its own currency, so a customer billed in more than one currency reads the correct symbol on every row.
 
-<Frame>![Customer Portal Invoices with per-row currency and the row action menu showing Pay now](/images/docs/customers/customer-portal/pay-now.png)</Frame>
+<Frame>![Customer Portal Invoices with a row menu open on View invoice, Pay now and Download](/images/docs/customers/customer-portal/pay-now.png)</Frame>
 
 <Frame>![Invoice detail drawer showing amount due, billing period, line items, totals, and the Pay and Download actions](/images/docs/customers/customer-portal/invoice-details-drawer.png)</Frame>
 
