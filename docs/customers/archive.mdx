@@ -5,36 +5,34 @@ description: "Archive a customer you no longer bill in Flexprice, keeping their 
 
 As businesses evolve, some customers may become inactive due to churn, contract expiration, or strategic decisions. Instead of permanently deleting customer data, archiving allows you to preserve historical records while preventing further transactions or modifications. This ensures compliance with data retention policies while keeping your active customer list clean and manageable.
 
+In the dashboard, archive a customer from their page with **Archive customer**. The **Customers** list offers the same action as **Delete customer** in each row's **⋯** menu. Either way, Flexprice keeps the customer's record and marks it archived instead of erasing it.
+
+<Note>
+  Only **Active** contracts and active wallets block archiving: contracts in any other status, such as **Trialing**, **Paused** or **Draft**, don't. When archiving is blocked, the **Archive customer** dialog shows "Could not archive the customer. Try again." and the API returns "Please cancel all subscriptions before deleting the customer" for a contract or "Customer cannot be deleted due to associated wallets" for a wallet. Cancel the active contracts and terminate the active wallets first (terminating a wallet forfeits its remaining credits). A contract cancelled at the end of the current period or on a date stays **Active** until that date, so it blocks archiving until then.
+</Note>
+
 **Steps to archive a customer**
 
-* Click on **Customers** to view the list of registered customers.
+<Steps>
+  <Step title="Open the customer's menu">
+    Open the customer from **Customers**, click the **⋯** menu at the top right of their page, and select **Archive customer**.
 
-* Click on the three-dot menu next to the customer you want to archive
+    <Frame>
+      ![Customer page menu with Archive customer](/images/docs/customers/archive/archive-customer-option.png)
+    </Frame>
+  </Step>
 
+  <Step title="Confirm">
+    In the confirmation dialog, click **Archive customer**, or **Cancel** if you change your mind. The dashboard can't undo this.
 
-
-
-  <Frame>
-    ![Archive Customer Option](/images/docs/customers/archive/archive-customer-option.png)
-  </Frame>
-
-* Select Archive from the dropdown options
-
-* A confirmation dialog will appear asking if you want to archive the customer.&#x20;
-
-
-
-
-  <Frame>
-    ![Confirm Archive](/images/docs/customers/archive/confirm-archive.png)
-  </Frame>
-
-* Click **Archive** to proceed, or **Cancel** if you change your mind.
+    <Frame>
+      ![Archive customer confirmation dialog](/images/docs/customers/archive/confirm-archive.png)
+    </Frame>
+  </Step>
+</Steps>
 
 Please note:
 
 * **No New Transactions**: The customer can no longer be billed or invoiced.
-
-* **Existing Subscriptions End After the Current Cycle**: Any ongoing subscriptions will continue until the end of the current billing period and will not renew.
 
 * **Data Retention**: Customer details, invoices, and payment history remain accessible for reporting purposes.
