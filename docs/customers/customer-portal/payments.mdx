@@ -7,7 +7,7 @@ The Customer Portal turns billing from a support conversation into a self-servic
 
 Every payment action follows the same shape: the portal asks the API to start the action, the API returns a `payment_action` describing what to do next, and the portal opens it. Credits and payment records are written by the provider's webhook once the money actually moves, never optimistically on the customer's screen.
 
-<Frame>![Portal Overview with the wallet balance and Add credits action above the saved payment methods list](/images/docs/customers/customer-portal/customer-portal-overview.png)</Frame>
+<Frame>![Portal Overview with the amount due and Pay now, the credit balance and Add credits, and the saved payment methods list](/images/docs/customers/customer-portal/customer-portal-overview.png)</Frame>
 
 ## Prerequisites
 
@@ -127,11 +127,11 @@ The API rejects a payment and the portal disables the action when:
 - The invoice payment status is already `succeeded`, or a payment is already in flight
 - The invoice belongs to a subscription that is not in a state that allows collection. The portal shows a message asking the customer to contact support
 
-<Frame>![Invoices section with a pending invoice row and its action menu open on Pay now](/images/docs/customers/customer-portal/pay-now.png)</Frame>
+<Frame>![Invoices section with an unpaid invoice row and its menu open on Pay now](/images/docs/customers/customer-portal/pay-now.png)</Frame>
 
 ## Topping up a wallet
 
-**Add credits** on the wallet card opens a top-up dialog. The customer enters a credit amount, sees the exact charge stated above the confirm button, and continues.
+**Add credits** on the **Credit balance** card, or on the **Credits** tab, opens a top-up dialog. The customer picks a preset or enters a credit amount, chooses how to pay under **Pay with**, and sees the exact charge on the confirm button (for example **Pay US$500.00**) before continuing.
 
 **Endpoint:** `POST /v1/customer/portal/wallets/{id}/top-up`
 
@@ -204,7 +204,7 @@ Top-ups below the tenant's per-currency floor are rejected before the customer i
 
 If the customer already has a pending top-up session on the wallet, the API hands back the session already in flight rather than a conflict. The customer can complete the payment they started instead of being blocked by an abandoned tab.
 
-<Frame>![Add credits dialog showing the credit amount, the charge summary, the payment provider choice and the saved-card toggle](/images/docs/customers/customer-portal/add-credits-dialog.png)</Frame>
+<Frame>![Add credits dialog showing preset credit amounts, the Pay with choice between a saved card and hosted checkouts, and the charge summary](/images/docs/customers/customer-portal/add-credits-dialog.png)</Frame>
 
 ## Auto top-up
 
@@ -245,11 +245,13 @@ Auto top-up needs a saved card that can be charged off-session. The portal shows
 
 For the mandate rules behind unattended charging, see [Autopay mandates](/docs/checkout/autopay-mandates).
 
-<Frame>![Auto top-up dialog showing the enable toggle, threshold, top-up amount and the cooloff duration and unit](/images/docs/customers/customer-portal/auto-topup.png)</Frame>
+In the portal, the **Auto top-up** button on the **Credits** tab opens the dialog: **Top up automatically** turns it on, **When balance falls below** sets the threshold, **Add** sets the top-up amount, and **Wait between top-ups** sets the cooldown.
+
+<Frame>![Auto top-up dialog showing Top up automatically, the balance threshold, the top-up amount and Wait between top-ups](/images/docs/customers/customer-portal/auto-topup.png)</Frame>
 
 ## Saved payment methods
 
-The payment methods list sits on Overview, beside the balance it tops up and the subscriptions it pays for. It shows each saved card as brand and last four digits with its expiry, marks the default, and offers **Add card**, **Set as default** and **Remove**.
+The payment methods list sits on Overview, beside the balance it tops up and the subscriptions it pays for. It shows each saved card as brand and last four digits with its expiry, marks the default, and offers **Add card**, plus **Make default** and **Remove card** in each card's **⋯** menu.
 
 **List:** `GET /v1/customer/portal/payment-methods`
 
@@ -314,13 +316,13 @@ The setup URL is an API string. The portal refuses to open anything that is not 
 
 ### Setting a default and removing
 
-**Set default:** `POST /v1/customer/portal/payment-methods/default` with `payment_provider` and `payment_method_id`.
+**Make default:** `POST /v1/customer/portal/payment-methods/default` with `payment_provider` and `payment_method_id`.
 
-**Remove:** `POST /v1/customer/portal/payment-methods/delete` with the same two fields. The portal confirms first, warning that the card will no longer be available for payments or automatic top-ups.
+**Remove card:** `POST /v1/customer/portal/payment-methods/delete` with the same two fields. The portal confirms first, warning that the card will no longer be available for payments or automatic top-ups.
 
 Setting a default requires the `set_default_method` capability. On a provider without it, the portal explains that a default card is not supported rather than offering an action that would fail.
 
-<Frame>![Payment methods listing two saved cards, one marked Default, with Set as default and Remove in the row menu](/images/docs/customers/customer-portal/payment-methods.png)</Frame>
+<Frame>![Payment methods listing saved cards, one marked Default, with Make default and Remove card in a card's menu](/images/docs/customers/customer-portal/payment-methods.png)</Frame>
 
 ## Returning from a hosted checkout
 
