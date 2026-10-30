@@ -3,29 +3,33 @@ title: "Feature grouping"
 description: "Assign features to a group when creating or editing a feature."
 ---
 
-Create a group with **Entity type** **Feature** first ([Creating a group](/docs/product-catalogue/groups/create)). Then assign features to that group using the steps below.
+Create a group with **Entity type** **Feature** first ([Creating a group](/docs/product-catalogue/groups/create)). Then assign features to that group using the steps below. In the dashboard, groups are called **tags**.
 
 ## Workflow
 
 <Steps>
-  <Step title="Assign group when creating a feature">
-    - Go to **Product Catalog** → **Features** → **Create Feature**
-    - In the **Group** field, search or select a group (e.g. "Usage Pricing")
-    - Save; the feature is stored with that group
+  <Step title="Assign a tag when creating a feature">
+    - Go to **Product catalog** → **Features** and click **New feature**
+    - Expand **Optional details** and choose a tag in **Tag** (e.g. "Usage Pricing"). Only tags that hold features are listed
+    - Click **Create feature**; the feature is stored with that tag
     <Frame>
-      ![Create feature with group](/images/docs/groups/create-feature-with-grouping.png)
+      ![Create feature form with a tag chosen under Optional details](/images/docs/groups/feature-tag.png)
     </Frame>
   </Step>
 
-  <Step title="Change group on an existing feature">
-    - Open the feature → **Edit**
-    - In **Group**, set the desired group or **None** to ungroup
-    - Save
+  <Step title="Change the tag on an existing feature">
+    - Open the feature, click the **⋯** menu, and select **Edit details**
+    - Under **Optional details**, set **Tag** to the tag you want
+    - Click **Save changes**
     <Frame>
-      ![Edit feature — Group](/images/docs/groups/edit-feature-group.png)
+      ![Edit feature form with the Tag field under Optional details](/images/docs/groups/feature-edit-tag.png)
     </Frame>
   </Step>
 </Steps>
+
+<Note>
+  The dashboard can't remove a feature's tag. To ungroup a feature, update it through the API with `group_id: ""`.
+</Note>
 
 ## API (features)
 
@@ -46,8 +50,8 @@ Create a group with **Entity type** **Feature** first ([Creating a group](/docs/
 
 ### Where reflected
 
-**Usage Breakdown** in the analytics dashboard and [Customer Portal](/docs/customers/customer-portal#usage) **Usage** tab shows usage and cost by group.
+The **Usage breakdown** on the [Customer Portal](/docs/customers/customer-portal#usage) **Usage** tab groups features by tag, with each tag's total cost. Features without a tag are listed under **Other**.
 
 <Frame>
-  ![Usage breakdown by group](/images/docs/groups/analytics-usage-breakdown.png)
+  ![Customer portal Usage tab with the usage breakdown grouped by tag](/images/docs/groups/usage-by-tag.png)
 </Frame>
