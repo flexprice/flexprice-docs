@@ -4,6 +4,109 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="November 2nd 2026">
+  {/* changelog-coverage: {"version":1,"complete":false,"backend":{"from":"31421e9ff62d00a9f4cdded11d0aad5d32a22f4a","to":"95449c749268b8a340acf946926bf7f147f0787d"},"frontend":{"from":"f00ba7c9a3e281d280b074cf01531a459f659f62","to":"29ac7a50b2c133e37ead09ef11ee98925b0c9b46"}} */}
+
+  ## Commitments API
+
+  Commitments are now their own resource on a subscription. A commitment says how much usage in a scope is covered at a committed rate, and what happens to usage beyond it. The API is off by default: until you turn on the `commitments_v2` setting for the environment, creating, previewing and terminating commitments is rejected.
+
+  * **Create and manage**: `POST /commitments` creates one, `POST /commitments/preview` shows the result without saving, `POST /commitments/search` and `GET /commitments/{id}` read them, and `PUT /commitments/{id}` changes only `name`, `invoice_label`, `invoice_description` and `metadata`. You can also send `commitments` on `POST /subscriptions`
+  * **Scope and size**: `scope` is a `subscription`, `group`, `meter` or `price`. `type` is `amount` or `quantity`, and `measurement` is `billing_period` or `window`. `active_windows` with a `timezone` limit a `window` commitment to certain times of day, and commitments on the same usage stack by `priority`
+  * **Pricing**: A `quantity` commitment takes a `committed_price` and an optional `overage_price`, each `FLAT_FEE`, `PACKAGE` or `TIERED`. A committed `TIERED` price must use `SLAB`. An `amount` commitment takes neither
+  * **Binding commitments**: Set `binding: true` and the unused part is billed as a true-up line each period. Invoices show usage covered by the commitment, the true-up and the overage as separate lines
+  * **Term**: `end_date` is optional and exclusive. Leave it out for an open-ended commitment that runs until it is terminated, and a binding one bills its true-up every period
+  * **Terminate**: `POST /commitments/{id}/terminate` takes an optional `effective_at`. On a binding commitment it also takes a flat `cancellation_fee`, which is billed on its own one-off invoice
+  * **Webhooks and usage**: `commitment.created`, `commitment.updated` and `commitment.terminated` are sent, and `POST /subscriptions/usage` returns a per-commitment `commitments` breakdown
+  * **Limits**: A meter that has an active entitlement on the subscription cannot sit in a commitment's scope. A subscription with subscription entitlement grants cannot also have a commitment
+
+  <br />
+
+  ## Subscription entitlement grants
+
+  A subscription can now carry a dollar allowance shared by all of its usage charges, for example $30 of free usage a month across every feature.
+
+  * **Create**: Send `POST /entitlements` with `entity_type` set to `SUBSCRIPTION`, the subscription ID as `entity_id`, the grant fields and no `feature_id`. To create them with the subscription, use `subscription_entitlement_grants` on `POST /subscriptions`. Both accept `start_date` and `end_date`
+  * **Rules**: Grants are in dollars and need a quota, so unlimited grants are refused. Windows are `subscription_period`, or an hour, day or week shorter than the billing period. Several grants on one subscription are either all additive, with the same window length, or all parallel. A subscription with an active commitment cannot get one
+  * **Billing**: The grant takes off only what it covered inside the invoice period. Additive grants are split across usage lines by their share, and parallel grants take off each line's own spend. Line quantities stay as measured
+  * **One kind of allowance**: A subscription has either subscription entitlement grants or feature usage allowances, not both
+  * **Read and edit**: `GET /subscriptions/{id}/entitlements` returns a `subscription_entitlement_grants` section with each window's quota, usage and status, and `GET /entitlements?grant_scopes=subscription` lists them. Only `grant_quota` can be edited
+  * **Alerts required**: Creating one is refused when entitlement alerts are off for the deployment or the environment
+  * **Dashboard**: The subscription Entitlements section can add, edit and delete them, including while creating a subscription, and the customer usage table and invoice line items show how much the grant took off
+
+  <br />
+
+  ## Delete ingested events
+
+  Remove events that should never have been ingested, together with the usage they produced.
+
+  * **Request**: `POST /events/delete` takes `external_customer_ids` (up to 100), `period_start` and `period_end`, and can narrow by `feature_ids` or by up to 1,000 `event_ids` for a single customer
+  * **Limits**: The period must already be closed and span at most one month. The request is refused when a finalized invoice overlaps the period (with `feature_ids`, a finalized invoice on an affected subscription) or when the customer is a marketplace customer. Only one deletion can run at a time for a customer
+  * **Access**: Only Super Admins can call it, and service accounts get a 403
+  * **Audit**: The deleted events are recorded under the call's `X-Request-ID`. The payload is not kept unless you send `skip_payload: false`
+
+  <br />
+
+  ## Package tiers
+
+  A tier in a `TIERED` price can now bill per package of units instead of per unit.
+
+  * **Package size**: Set `transform_quantity` on a tier with `divide_by` and `round`. The tier charges `unit_amount` for each package of `divide_by` units, and `round` defaults to `up`
+  * **Chargebee**: Syncing a tier to Chargebee sends `divide_by` as the package size
+
+  <br />
+
+  ## Negative quantities in SUM meters
+
+  Events with a negative quantity now count in SUM meters, so a meter can track a balance such as storage that goes up and down.
+
+  * **Net usage**: Events of +100, +20 and -30 give 90, and +50 and -70 give -20. Before, a negative quantity was recorded as zero. Other aggregations still floor at zero
+  * **Allowances**: A quantity allowance becomes available again when usage falls back below its quota, and the grant returns to active at the next evaluation
+  * **Invoices**: Correction lines can be negative, but an invoice total never goes below zero for negative usage, and it does not raise a wallet balance
+  * **Balance across periods**: A SUM meter with `reset_usage` set to `NEVER` keeps its signed running balance across billing periods, so a negative event lowers the carried total
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * The wallet ledger is a new export type. It produces one CSV of every completed credit and debit, ordered by wallet and effective time, with running credit and money balances. A force run can be limited to up to 100 customers with `customer_external_ids`, and the dashboard export drawer has a Wallet Ledger option
+      * Customer and subscription entitlement reads honor `start_date` and `end_date`, so an expired subscription override gives way to the plan entitlement it replaced. Entitlements with grants stay visible until the end of the cycle in which they ended, and billing is unchanged
+      * Zoho Books invoice sync can attach online payment gateways to synced invoices. Choose PayPal, Stripe, Authorize.Net, Payflow Pro, 2Checkout, Braintree or Razorpay in the Zoho Books connection drawer, and pick a Standard or Adaptive PayPal method
+      * The Invoices actions menu has a View hosted invoice option, which is disabled when the invoice has no hosted link
+      * The customer portal usage breakdown shows a unit price column
+      * Saved prices show the formatted amount from the API, so small per-unit rates keep their precision
+      * The price override and price edit dialogs have a None bucket size option, so bucketing can be removed from a price or a subscription line item
+      * Self-hosted deployments can invite users and reset passwords with one-time links. `POST /users/{id}/password-link` creates a link for Super Admins, and the dashboard sidebar has a Change password dialog
+      * Install telemetry for self-hosted deployments is now on by default. Set `FLEXPRICE_TELEMETRY_DISABLED=true` to opt out. This replaces the opt-in `FLEXPRICE_TELEMETRY_ENABLED` setting from the October 26th release
+      * More than 110 ISO currencies were added to the supported list, from the ISO country and currency data
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Removing one of two identical addons keeps the other's allowance quota
+      * Invoices with a negative total or a negative line amount are skipped by provider invoice sync
+      * Resuming a paused subscription keeps the resumed state, instead of leaving it with stale pause fields and a period that starts at the pause
+    </Accordion>
+
+    <Accordion title="Security">
+      * Inbound provider webhooks larger than 5 MiB are rejected with a 413
+      * QuickBooks webhooks without a valid signature are rejected, and each payment event is applied once
+      * Only Super Admins can invite users, and viewing the webhook dashboard link needs write permission on webhooks
+      * Non-local deployments refuse to start with an empty or the shipped default `secrets.encryption_key`
+    </Accordion>
+
+    <Accordion title="API">
+      * New `/commitments` endpoints, `commitments` on `POST /subscriptions`, and a `commitments` breakdown on `POST /subscriptions/usage`, all requiring the `commitments_v2` setting
+      * New `POST /events/delete` endpoint
+      * New `GET /prices/{id}/history` and `GET /subscriptions/lineitems/{id}/history` endpoints return every version of a plan price or a subscription line item, oldest first. Line item versions cancelled before they started are left out unless requested directly
+      * `subscription_entitlement_grants` is accepted on `POST /subscriptions`, `grant_scopes` filters `GET /entitlements`, and subscription entitlements return a `subscription_entitlement_grants` section
+      * `transform_quantity` is accepted on price tiers
+      * New `POST /users/{id}/password-link`, `POST /auth/password/check` and `POST /auth/password` endpoints, and `PUT /users/me/password`
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
 <Update label="October 26th 2026">
   {/* changelog-coverage: {"version":1,"complete":false,"backend":{"from":"31421e9ff62d00a9f4cdded11d0aad5d32a22f4a","to":"ad335b9efbff2e90bdc192f7ed9c39f1980d9b6e"},"frontend":{"from":"f00ba7c9a3e281d280b074cf01531a459f659f62","to":"619a627aba50a67a7a7b585424f33104fd6142dc"}} */}
 
