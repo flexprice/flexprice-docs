@@ -11,27 +11,38 @@ When you send events to Flexprice, they go through multiple processing steps—v
 
 ## Accessing the Event Debugger
 
-Navigate to **Usage Tracking** → **Events Debugger** in your Flexprice dashboard.
+In the dashboard, go to **Developers → Events debugger**.
 
 <Frame>
-  ![Event Debugger](/images/docs/event-ingestion/event-debugger-1.png)
+  ![Events debugger listing events with their timestamp, event name, customer ID, properties, source, and event ID](/images/docs/event-ingestion/event-debugger-1.png)
 </Frame>
 
 ## Viewing Events
 
 ### Event Stream
 
-The Event Debugger displays a real-time stream of events entering your system. Each event shows:
+The Events debugger lists the events entering your system, newest first. Click **Reload** to fetch the latest events. Each event shows:
 
-- Event ID 
-- Event Name
-- Customer Lookup Key
-- Source
 - Timestamp
+- Event (the event name)
+- Customer ID (the `external_customer_id`)
+- Properties
+- Source
+- Event ID
+
+Use **Table options** (the **⋯** button) to hide columns or export the list as CSV.
 
 ### Event Details
 
-Click on any event to view complete details:
+Click any event, or **View event** in its **⋯** menu, to open its details: the event ID, source, customer ID and the Flexprice customer it matched, the idempotency key, and the properties.
+
+**What happened to this event** traces the event through processing: whether it was ingested, matched a customer, matched a meter, found a price, landed on a live contract, and was counted towards usage. Expand **Response** under a check to see the data behind it. If the event wasn't counted, the first failed check shows why.
+
+<Frame>
+  ![Event details panel with the processing checks for an api_call event](/images/docs/event-ingestion/event_details.png)
+</Frame>
+
+The raw event looks like this:
 
 ```json
 {
@@ -47,66 +58,18 @@ Click on any event to view complete details:
 
 ## Sorting Events
 
-Click the Sort button to order events by:
-- Name
-- Email
-- Created At
-- Updated At
-
-The sort order can be ascending or descending.
+Click the **Sort** button to order events by **Time**, ascending or descending. The list starts with the newest events.
 
 ## Filtering Events
 
-Use the Filter button to narrow down events. You can combine multiple filters:
+Type in **Search by event name** to show only the events with that name.
 
-### Filter by Event ID
+Use the **Filter** button to narrow the list further. Click **Add filter** and pick a field:
 
-Search for a specific event by its ID:
+- **Customer ID**: events sent for one `external_customer_id`, such as `cust_new`
+- **Source**: events from one source, such as `onboarding`
 
-```
-event_id contains "123"
-```
-
-### Filter by Event Name
-
-Filter by event type:
-
-```
-event_name contains "api_calls"
-```
-
-### Filter by Customer
-
-Find events for a specific customer:
-
-```
-external_customer_id contains "cust_new"
-```
-
-### Filter by Time Range
-
-Find events after a specific time period using Start Time:
-
-**Start Time (After):**
-```
-start_time after "October 1st, 2025"
-```
-
-Find events before a specific time period using End Time:
-**End Time (Before):**
-```
-end_time before "October 10th, 2025"
-```
-
-### Filter by Source
-
-Filter events by their source:
-
-```
-source contains "onboarding"
-```
-
-You can apply multiple filters simultaneously and click "Add filter" to combine conditions.
+Both match the exact value, and you can combine several filters. The dashboard has no event ID or time filter: the API's event query (`POST /v1/events/query`) filters by event ID, time range, and event properties as well.
 
 ## Common Use Cases
 
@@ -131,18 +94,12 @@ If expected events aren't showing up:
 
 To review all events for a customer:
 
-1. Click the Filter button
-2. Add a filter: External Customer ID contains "your_customer_id"
-3. Click Apply to see filtered results
+1. Click the **Filter** button
+2. Click **Add filter**, choose **Customer ID**, and enter the customer's external ID
 
 ### Review Events in a Time Period
 
-To see events within a specific date range:
-
-1. Click the Filter button
-2. Set Start Time (After) to your beginning date
-3. Set End Time (Before) to your ending date
-4. Apply the filters
+The dashboard lists events newest first, so recent periods are at the top. Sort by **Time** ascending to start from the oldest. For an exact date range, query the API (`POST /v1/events/query`) with `start_time` and `end_time`.
 
 ## Best Practices
 
