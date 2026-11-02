@@ -4,11 +4,11 @@ description: "How Flexprice writes a subscription's annual contract value, plan,
 tag: 'Beta'
 ---
 
-Deal sync keeps the Attio deal that a customer came from in step with the customer's subscription. Flexprice sets the deal's **Deal value** to the subscription's annual contract value and fills four Flexprice attributes on the deal with the subscription's ID, plan, status, and renewal date. Because they are ordinary Attio attributes, you can show them on your pipeline board and filter or report on them like any other attribute. Turn deal sync on with the **Deals** toggle on the [Attio connection](/integrations/attio/connection-setup), or with `sync_config.deal.outbound` in the API.
+Deal sync keeps the Attio deal that a customer came from in step with the customer's subscription. Flexprice sets the deal's **Deal value** to the subscription's annual contract value and fills four Flexprice attributes on the deal with the subscription's ID, plan, status, and renewal date. Because they are ordinary Attio attributes, you can show them on your pipeline board and filter or report on them like any other attribute. Turn deal sync on with **Push deals** on the [Attio connection](/integrations/attio/connection-setup), or with `sync_config.deal.outbound` in the API.
 
 ## When Attio deal sync runs
 
-Deal sync needs the **Deals** toggle on, and a customer with `attio_deal_id` in its metadata. Customers created or linked by [customer sync](/integrations/attio/customer-sync) have it.
+Deal sync needs **Push deals** on, and a customer with `attio_deal_id` in its metadata. Customers created or linked by [customer sync](/integrations/attio/customer-sync) have it.
 
 | Flexprice event | Starts a deal sync |
 |-----------------|--------------------|
@@ -98,7 +98,7 @@ Then set `attio_deal_id` in the customer's metadata to the new deal's record ID,
 
 | Issue | Cause | Solution |
 |-------|-------|----------|
-| The deal shows no Flexprice attributes | The **Deals** toggle is off, the customer has no `attio_deal_id`, or the subscription is still a draft | Turn on the toggle and check the customer's metadata. Activating the draft starts a deal sync. |
+| The deal shows no Flexprice attributes | **Push deals** is off, the customer has no `attio_deal_id`, or the subscription is still a draft | Turn on **Push deals** and check the customer's metadata. Activating the draft starts a deal sync. |
 | **Deal value** does not change | The subscription's currency differs from the currency of **Deal value**, or the subscription only has usage-based or one-time charges | Check the subscription's currency and line items. The Flexprice attributes still update. |
 | Deal sync fails with an attribute error | Your Deals object already has an attribute with one of the Flexprice API slugs but a different type | Rename that attribute's slug in Attio. The next deal sync creates the Flexprice attribute. |
 | A second subscription for the customer does not sync | The deal in `attio_deal_id` is already linked to another subscription | Win a separate deal for it in Attio, or link it by hand as described in [Moving a subscription to a different Attio deal](#moving-a-subscription-to-a-different-attio-deal) |
