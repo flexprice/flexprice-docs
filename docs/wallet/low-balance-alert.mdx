@@ -60,38 +60,35 @@ Each level takes a single **threshold value**, read according to the configured 
 
 Configure only the levels you need, subject to two rules: a critical threshold is required when a warning threshold is set, and thresholds must ascend by severity, so critical is lower than warning and warning is lower than info.
 
-Alerts are turned on or off for a wallet using **Enable wallet alerts** (`alert_enabled` in the API).
+Alerts are turned on or off for a wallet using **Alerts on** in the dashboard (`alert_enabled` in the API).
 
 ## Configuring Wallet Sentinel Alerts
 
 <Steps>
   <Step title="Navigate to Customer Wallet">
-    - Go to **Billing** in the main navigation
-    - Select **Customers**, then the desired customer
-    - Open the **Wallet** tab in the customer profile
+    Go to **Customers**, open the customer, and select the **Wallet** tab.
   </Step>
 
   <Step title="Access Alert Settings">
-    - Click the **three-dot menu (⋮)** in the top right corner of the wallet section 
-    - Select **Alert Settings** from the dropdown
+    Click the **⋯** menu next to **Debit wallet** and select **Alert settings**.
     <Frame>
-      ![Access Alert Settings](/images/docs/wallet/low-balance-alert/access-alert-settings.png)
+      ![Wallet menu with Alert settings](/images/docs/wallet/low-balance-alert/access-alert-settings.png)
     </Frame>
   </Step>
 
   <Step title="Enable Alerts">
-    In the **Wallet Alert Settings** dialog, turn **Enable wallet alerts** on to activate monitoring against your configured thresholds.
+    In the **Alert settings** dialog, turn on **Alerts on** to activate monitoring against your configured thresholds.
     <Frame>
-      ![Enable Alert Settings](/images/docs/wallet/low-balance-alert/enable-alert-settings.png)
+      ![Alert settings dialog with Alerts on turned off](/images/docs/wallet/low-balance-alert/enable-alert-settings.png)
     </Frame>
   </Step>
 
   <Step title="Configure Thresholds">
-    - Choose **Absolute** or **Percentage** under **Threshold type**.
-    - Set a value for the levels you want. Each level triggers when its threshold is breached.
-    - Click **Save Changes** to apply.
+    - Choose **Absolute** or **Percentage** under **Measured as**.
+    - Turn on the levels you want (**Info**, **Warning**, **Critical**). For a low balance alert, choose **Falls below** and enter the threshold. Each level triggers when its threshold is breached.
+    - Click **Create alert** to apply.
     <Frame>
-      ![Configure Alert Settings](/images/docs/wallet/low-balance-alert/configure-alert-settings.png)
+      ![Alert settings dialog with absolute Info, Warning, and Critical thresholds that trigger when the balance falls below them](/images/docs/wallet/low-balance-alert/wallet-alert-settings.png)
     </Frame>
   </Step>
 </Steps>
@@ -113,15 +110,15 @@ Once configured and enabled, the sentinel will:
 
 ### Viewing Current Configuration
 
-Open the customer’s **Wallet** tab, click the **three-dot menu (⋮)** → **Alert Settings**. The dialog shows **Enable wallet alerts**, the selected **Threshold type**, and the threshold levels with their values.
+Open the customer’s **Wallet** tab, click the **⋯** menu, and select **Alert settings**. The dialog shows **Alerts on**, the selected **Measured as** type, and the threshold levels with their values.
 
 ### Changing Thresholds
 
-In the **Alert Settings** dialog box, adjust **Enable wallet alerts**, the **Threshold type**, or any threshold value, then click **Save Changes** to apply.
+In the **Alert settings** dialog, adjust **Alerts on**, **Measured as**, or any threshold value, then click **Save alerts** to apply.
 
 ### Disabling Alerts
 
-Set **Enable wallet alerts** to **off** in the **Alert Settings** dialog and click **Save Changes** (or set `alert_enabled` to `false` via API).
+Turn off **Alerts on** in the **Alert settings** dialog and click **Save alerts** (or set `alert_enabled` to `false` via API).
 
 <Warning>
   The wallet will no longer generate real time balance alerts until you enable them again.
