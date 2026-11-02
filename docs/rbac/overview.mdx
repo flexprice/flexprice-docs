@@ -117,9 +117,14 @@ For services that send events to Flexprice.
 
 **Cannot do:**
 - Read events
+- Read customers, subscriptions, invoices, payments, wallets, credit grants, or tasks
 - Access any other resources
 
 **Use for:** Event ingestion services, usage tracking tools
+
+<Note>
+If the same service also reads wallet balances, invoices, or other billing data, give it a separate key with `all_reader` for those reads. See [Reading billing data](#reading-billing-data).
+</Note>
 
 ### event_reader
 
@@ -130,9 +135,26 @@ For services that read events from Flexprice.
 
 **Cannot do:**
 - Send events
+- Read customers, subscriptions, invoices, payments, wallets, credit grants, or tasks
 - Modify any data
 
 **Use for:** Analytics dashboards, reporting tools
+
+## Reading billing data
+
+Reads of the following resources require read permission, which `super_admin`, `all_writer`, and `all_reader` grant. A key with only `event_ingestor` or `event_reader` gets `403 Forbidden`.
+
+| Resource | Examples |
+|----------|----------|
+| Customers | Get, list, search, lookup by external ID, usage, entitlements, upcoming grants, invoice summary |
+| Subscriptions | Get, list, search, line items, schedules, entitlements, usage, change and modify previews |
+| Invoices | Get, list, search, PDF download, invoice preview |
+| Payments | Get, list |
+| Wallets | Get, list, search, balance, transactions, customer wallets |
+| Credit grants | Get, list |
+| Tasks (imports and exports) | Get, list, download |
+
+To read these resources from a service, create a service account with `all_reader` and use its key for reads. Keep the `event_ingestor` key for sending events.
 
 ## Real-World Use Cases
 
@@ -145,7 +167,7 @@ For services that read events from Flexprice.
 **What happens**:
 - ✅ Your service can send events successfully
 - ❌ If it tries to read events, it gets 403 Forbidden
-- ❌ It cannot access any other resources
+- ❌ If it tries to read customers, wallets, invoices, or other [billing data](#reading-billing-data), it gets 403 Forbidden
 
 ### Use Case 2: Analytics Dashboard  
 
@@ -200,8 +222,7 @@ When a service account tries to access a resource it doesn't have permission for
 
 ```json
 {
-  "error": "Forbidden",
-  "message": "Insufficient permissions to write event"
+  "message": "insufficient permissions"
 }
 ```
 
