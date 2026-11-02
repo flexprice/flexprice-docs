@@ -64,11 +64,15 @@ Flexprice reports usage by authenticating into your GCP project through Workload
 
 <Steps>
   <Step title="Get Flexprice's AWS account ID and role name">
-    Go to your GCP Marketplace connection setup in Flexprice to find the **AWS account ID** and **role name** to trust. You need both to run the setup script below.
+    In the left sidebar of the Flexprice dashboard, click **Integrations**, then click **Connect** on the **GCP Marketplace** card. The **Connect GCP Marketplace** sheet opens with a **Run in Cloud Shell** block: the setup script below, with `FLEXPRICE_AWS_ACCOUNT_ID` and `FLEXPRICE_AWS_ROLE_NAME` already set to Flexprice's AWS account ID and role name. Copy the script with its copy button, or note the two values. If the sheet shows **Setup details are not configured** instead, contact Flexprice support for them.
+
+    <Frame>
+      ![Connect GCP Marketplace sheet with the Run in Cloud Shell script, which sets FLEXPRICE_AWS_ACCOUNT_ID and FLEXPRICE_AWS_ROLE_NAME](/images/docs/marketplace/gcp/gcp-setup-script.png)
+    </Frame>
   </Step>
 
   <Step title="Run the setup script in your GCP project">
-    In your GCP project's Cloud Shell (or a terminal with the `gcloud` CLI authenticated against your project), fill in `GCP_PROJECT_ID`, `GCP_PROJECT_NUMBER`, and `SA_ID`, and set `FLEXPRICE_AWS_ACCOUNT_ID` / `FLEXPRICE_AWS_ROLE_NAME` to the values from the previous step. Then run:
+    In your GCP project's Cloud Shell (or a terminal with the `gcloud` CLI authenticated against your project), fill in `GCP_PROJECT_ID`, `GCP_PROJECT_NUMBER`, and `SA_ID`, and set `FLEXPRICE_AWS_ACCOUNT_ID` / `FLEXPRICE_AWS_ROLE_NAME` to the values from the previous step (the script copied from the sheet already has them). Then run:
 
     ```bash
     GCP_PROJECT_ID="your-gcp-project-id"
@@ -122,10 +126,10 @@ Flexprice reports usage by authenticating into your GCP project through Workload
 
 ### Using Flexprice Dashboard
 
-You can create a GCP Marketplace connection directly from the Flexprice dashboard under **Integrations → GCP Marketplace**. The dashboard walks you through the same setup script and credentials JSON paste described above, with your Flexprice AWS account ID and role name pre-filled.
+Back in the **Connect GCP Marketplace** sheet from Step 2 (reopen it from **Integrations** if you closed it), enter a **Connection name** below the script, paste the full contents of `flexprice-gcp-creds.json` into **Workload identity credentials**, and click **Connect GCP Marketplace**.
 
 <Frame>
-  ![Connect to GCP Marketplace from the Flexprice dashboard](/images/docs/marketplace/gcp/gcp-connection-setup.png)
+  ![Connect GCP Marketplace sheet with the connection name and the workload identity credentials JSON](/images/docs/marketplace/gcp/connect-gcp-marketplace.png)
 </Frame>
 
 ### API Request
