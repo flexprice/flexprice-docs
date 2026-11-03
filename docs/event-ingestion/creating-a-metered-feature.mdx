@@ -10,182 +10,155 @@ description: "Step-by-step guide to create a metered feature for event ingestion
 
 ## Step-by-Step Guide
 
-### 1. Navigate to Features
+<Steps>
+  <Step title="Navigate to Features">
+    In the left sidebar, go to **Product catalog → Features** and click **New feature**.
+  </Step>
 
-1. Log into your Flexprice Admin Dashboard
-2. In the left sidebar, click on **Product Catalog**
-3. Click on **Features**
-4. Click the **"Add Feature"** button
+  <Step title="Basic feature information">
+    Fill in the basic details:
 
-### 2. Basic Feature Information
+    - **Name**: Give your feature a clear, descriptive name (e.g., "Model Usage", "API Calls", "Storage Usage")
+    - **Type**: Select **Metered**
+    - **Unit (singular)** and **Unit (plural)** (optional): how the quantity appears on invoices, such as `credit` and `credits`. Flexprice picks the right form, so invoices show "1 credit" or "5 credits".
 
-Fill in the basic details:
+    <Frame>
+      ![Create feature form with the name Model Usage, the Metered type, and credit units](/images/docs/event-ingestion/create_feature.png)
+    </Frame>
+  </Step>
 
-- **Name**: Give your feature a clear, descriptive name (e.g., "Model Usage", "API Calls", "Storage Usage")
-- **Type**: Select **"Metered"** from the dropdown
+  <Step title="Configure the event">
+    **⚠️ CRITICAL: The event name is the most important setting**
 
-<Frame>
-  ![Create Feature Form](/images/docs/event-ingestion/create_feature.png)
-</Frame>
+    The **Event name** is the identifier that connects your events to this feature:
 
-### 3. Configure Event Name
+    - **Cannot be changed** after creation
+    - **Must match exactly** what you send in your events
+    - **Can be shared**: several features can meter the same event name, each with its own filters
+    - Use lowercase with dots (e.g., `model.usage`, `api.calls`, `storage.gb`)
 
-**⚠️ CRITICAL: This is the most important setting**
+    **Example**: If you set the event name to `model.usage`, every event you transmit must have `"event_name": "model.usage"`.
 
-The **Event Name** is the unique identifier that connects your events to this feature:
+    **Event filters** (optional) count only some of those events. Click **Add filter**, enter the property, and list the values it may take, separated by commas. For example, only count events where `model` is `gpt-4`.
 
-- **Must be unique** across all features in your account
-- **Cannot be changed** after creation
-- **Must match exactly** what you send in your events
-- Use lowercase with dots (e.g., `model.usage`, `api.calls`, `storage.gb`)
+    <Frame>
+      ![Event card with the event name model.usage and a filter on model with the value gpt-4](/images/docs/event-ingestion/setting_event_name.png)
+    </Frame>
+  </Step>
 
-**Example**: If you set Event Name to `model.usage`, every event you transmit must have `"event_name": "model.usage"`.
+  <Step title="Choose the aggregation">
+    In the **Aggregation** card, select how you want to measure usage (see [Aggregation Overview](/docs/product-catalogue/features/aggregation/overview) for detailed explanations):
 
-<Frame>
-  ![Event Name Configuration](/images/docs/event-ingestion/setting_event_name.png)
-</Frame>
+    - **Sum**: Adds up values from a specific property
+    - **Count**: Counts the number of events (no property required)
+    - **Count Unique**: Counts unique values of a property
+    - **Sum with Multiplier**: Sums values and applies a rate multiplier
+    - **Latest**: Takes the most recent value sent
+    - **Max**: Takes the highest value seen in the billing period (supports bucketing)
+    - **Weighted Sum**: Time-weighted sum for capacity-based billing
 
-### 4. Choose Aggregation Function
+    **Average** (the mean value of a property) isn't offered in the dashboard. Create it through the API with the aggregation type `AVG`.
 
-Select how you want to measure usage (see [Aggregation Overview](/docs/product-catalogue/features/aggregation/overview) for detailed explanations):
+    **Example**: If you want to track total credits consumed, choose **Sum**.
 
-- **Count** — Counts the number of events (no property required)
-- **Sum** — Adds up values from a specific property
-- **Average** — Calculates the mean value of a specific property
-- **Count Unique** — Counts unique values of a property
-- **Latest** — Takes the most recent value sent
-- **Sum with Multiplier** — Sums values and applies a rate multiplier
-- **Max** — Takes the highest value seen in the billing period (supports bucketing)
-- **Weighted Sum** — Time-weighted sum for capacity-based billing
+    <Frame>
+      ![Aggregation list open with Sum, Count, Count Unique, Sum with Multiplier, Latest, Max, and Weighted Sum](/images/docs/event-ingestion/aggregation-options.png)
+    </Frame>
+  </Step>
 
-**Example**: If you want to track total credits consumed, choose **Sum**.
+  <Step title="Set the event field">
+    **⚠️ CRITICAL: This must match your event properties exactly**
 
-<Frame>
-  ![Aggregation Function Selection](/images/docs/event-ingestion/aggregation_field.png)
-</Frame>
+    Every aggregation except **Count** needs an **Event field**: the property to aggregate.
 
-### 5. Set Aggregation Field (if required)
+    - **Field name**: The exact property key from your events
+    - **Must match case**: `credits` ≠ `Credits` ≠ `CREDITS`
+    - **Must exist**: Every event must include this property
 
-**⚠️ CRITICAL: This must match your event properties exactly**
+    For **Sum**, **Max**, and **Latest**, you can select **Use a custom expression** instead and compute the value from several properties. See [Custom Expression](/docs/product-catalogue/features/custom-expression).
 
-If you selected Sum, Max, Latest, or Unique Count, you must specify which property to aggregate:
+    **Example**: If you set the event field to `credits`, every event must include:
 
-- **Field Name**: The exact property key from your events
-- **Must match case**: `credits` ≠ `Credits` ≠ `CREDITS`
-- **Must exist**: Every event must include this property
+    ```json
+    {
+      "properties": {
+        "credits": 2
+      }
+    }
+    ```
 
-**Example**: If you set Aggregation Field to `credits`, every event must include:
+    <Frame>
+      ![Aggregation card with Sum and the event field credits](/images/docs/event-ingestion/aggregation_field.png)
+    </Frame>
+  </Step>
 
-```json
-{
-  "properties": {
-    "credits": 2
-  }
-}
-```
+  <Step title="Usage reset">
+    Features created in the dashboard reset usage at the start of each billing period. This suits API calls, monthly limits, and other recurring usage (e.g., a customer gets 1000 API calls per month).
 
-<Frame>
-  ![Aggregation Field Configuration](/images/docs/event-ingestion/aggregation_field.png)
-</Frame>
+    For usage that keeps growing across billing periods, such as total storage used, create the feature through the API with the meter's `reset_usage` set to `NEVER`.
+  </Step>
 
-### 6. Configure Usage Reset
-
-Choose how usage accumulates over time:
-
-- **Periodic** — Usage resets at the start of each billing cycle
-  - Good for: API calls, monthly limits, recurring usage
-  - Example: Customer gets 1000 API calls per month
-- **Cumulative** — Usage keeps growing across billing cycles
-  - Good for: Storage usage, lifetime metrics
-  - Example: Total storage used since account creation
-
-<Frame>
-  ![Usage Reset Configuration](/images/docs/event-ingestion/create_feature.png)
-</Frame>
-
-### 7. Set Unit Name (Optional)
-
-Define how the quantity appears on invoices:
-
-- **Singular**: `credit`, `API call`, `GB`
-- **Plural**: `credits`, `API calls`, `GBs`
-- Flexprice will automatically choose the correct form
-
-**Example**: `credit / credits` will show as "1 credit" or "5 credits" on invoices.
-
-### 8. Add Event Filters (Optional)
-
-If you only want to count certain events, add filters:
-
-- **Key**: Property name to filter on
-- **Values**: Allowed values for that property
-
-**Example**: Only count events where `region = "EU"` or `model = "gpt-4"`.
-
-<Frame>
-  ![Event Filters Configuration](/images/docs/event-ingestion/setting_event_name.png)
-</Frame>
-
-### 9. Save the Feature
-
-Click **"Save Feature"** to create your metered feature.
+  <Step title="Save the feature">
+    Click **Create feature** to create your metered feature.
+  </Step>
+</Steps>
 
 ## After Creation
 
-Once saved, you'll see:
+Once created, the feature's page opens. It shows:
 
-- **Feature ID**: A unique identifier for this feature
-- **Event Name**: The exact string to use in your events
-- **Aggregation Details**: How the feature processes events
+- **ID**: click it to copy the feature's unique identifier
+- **Charges** and **Entitlements**: the plans and add-ons that bill for the feature, and the plans that include it
+- **Send a test event**: a sample request for this event name. Click **Copy cURL** to copy it.
 
-**Important**: Note down the **Event Name** and **Aggregation Field** - you'll need these when transmitting events.
+**Important**: Note down the **Event name** and **Event field**. You'll need them when transmitting events.
 
 ## Common Configuration Examples
 
 ### API Calls (Count)
 
-- **Event Name**: `api.calls`
-- **Aggregation Function**: Count
-- **Usage Reset**: Periodic
-- **Unit Name**: `API call / API calls`
+- **Event name**: `api.calls`
+- **Aggregation**: Count
+- **Usage reset**: Each billing period
+- **Units**: `API call / API calls`
 
 ### Credits Consumed (Sum)
 
-- **Event Name**: `model.usage`
-- **Aggregation Function**: Sum
-- **Aggregation Field**: `credits`
-- **Usage Reset**: Periodic
-- **Unit Name**: `credit / credits`
+- **Event name**: `model.usage`
+- **Aggregation**: Sum
+- **Event field**: `credits`
+- **Usage reset**: Each billing period
+- **Units**: `credit / credits`
 
 ### Storage Usage (Sum)
 
-- **Event Name**: `storage.usage`
-- **Aggregation Function**: Sum
-- **Aggregation Field**: `gb`
-- **Usage Reset**: Cumulative
-- **Unit Name**: `GB`
+- **Event name**: `storage.usage`
+- **Aggregation**: Sum
+- **Event field**: `gb`
+- **Usage reset**: Cumulative (API only: `reset_usage` set to `NEVER`)
+- **Units**: `GB`
 
 ### Peak Concurrent Users (Max)
 
-- **Event Name**: `concurrent.users`
-- **Aggregation Function**: Max
-- **Aggregation Field**: `count`
-- **Usage Reset**: Periodic
-- **Unit Name**: `user / users`
+- **Event name**: `concurrent.users`
+- **Aggregation**: Max
+- **Event field**: `count`
+- **Usage reset**: Each billing period
+- **Units**: `user / users`
 
 ## ⚠️ Critical Warnings
 
 ### Event Name
 
 - **Cannot be changed** after creation
-- Must be **unique** across all features
+- Can be **shared** by several features, each with its own event filters
 - **Case sensitive** — `api.calls` ≠ `API.calls`
 
-### Aggregation Field
+### Event Field
 
 - **Must match exactly** the property name in your events
 - **Case sensitive** — `credits` ≠ `Credits`
-- **Required** for Sum, Max, Latest, and Unique Count functions
+- **Required** for every aggregation except Count
 
 ### Testing
 
@@ -210,12 +183,12 @@ Now that you have a metered feature, you're ready to:
 ### "Events not showing up"
 
 - Check that Event Name matches exactly
-- Verify Aggregation Field exists in your event properties
+- Verify the event field exists in your event properties
 - Ensure the customer exists with the correct `external_customer_id`
 
 ### "Wrong aggregation values"
 
-- Verify Aggregation Field name matches your event properties
+- Verify the event field name matches your event properties
 - Check that property values are the correct data type (numbers for Sum/Max)
 - Confirm Usage Reset setting matches your expectations
 
