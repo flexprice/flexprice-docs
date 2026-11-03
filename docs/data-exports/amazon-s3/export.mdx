@@ -97,9 +97,10 @@ Acme Corporation,cust_ext_123abc,cust_01K4CGWJ4493R9V2Y5PZW7CNRZ,146.00,146.00,1
 
 ## Setting Up S3 Export
 
+In the dashboard, go to **Developers → Exports** and open **Amazon S3**. The page lists your S3 connections.
+
 <Frame>
-  ![S3 Data Exports
-  Page](/images/docs/data-exports/amazon-s3/s3-export-page.png)
+  ![Amazon S3 page listing two S3 connections, each with View exports](/images/docs/data-exports/amazon-s3/s3-export-page.png)
 </Frame>
 
 ### Prerequisites
@@ -115,16 +116,17 @@ Before configuring S3 exports, ensure you have:
 
 An S3 connection stores your AWS credentials and serves as the authentication mechanism for all export operations.
 
+Click **Add connection** and give the connection a **Connection name**.
+
 <Frame>
-  ![Create S3
-  Connection](/images/docs/data-exports/amazon-s3/create-connection.png)
+  ![Connect Amazon S3 dialog with a connection name and AWS keys for your own bucket](/images/docs/data-exports/amazon-s3/create-connection.png)
 </Frame>
 
-Flexprice offers two connection types:
+Flexprice offers two connection types. The **Flexprice-managed bucket** switch picks between them, and **Connect** saves the connection.
 
 #### Option 1: Flexprice-Managed S3 Connection
 
-Use Flexprice's managed S3 infrastructure for hassle-free exports:
+Turn on **Flexprice-managed bucket** to use Flexprice's managed S3 infrastructure for hassle-free exports:
 
 **Benefits:**
 - ✅ No AWS account required
@@ -143,24 +145,24 @@ Use Flexprice's managed S3 infrastructure for hassle-free exports:
 
 #### Option 2: Your Own S3 Connection
 
-Connect to your own AWS S3 bucket for complete control:
+Leave **Flexprice-managed bucket** off to connect to your own AWS S3 bucket for complete control:
 
 **Required Information:**
 
-1. **Connection Name**: A descriptive name for your S3 connection (e.g., "Production S3 Export")
+1. **Connection name**: A descriptive name for your S3 connection (e.g., "Production S3 Export")
 
-2. **AWS Access Key ID**: Your AWS access key ID
+2. **AWS access key ID**: Your AWS access key ID
 
    - Format: Starts with `AKIA` for permanent credentials
    - Format: Starts with `ASIA` for temporary/session credentials
    - Required for authentication
 
-3. **AWS Secret Access Key**: Your AWS secret access key
+3. **AWS secret access key**: Your AWS secret access key
 
    - This credential is encrypted and stored securely
    - Never exposed in API responses
 
-4. **AWS Session Token** (Optional): Required only for temporary credentials
+4. **Session token** (Optional): Required only for temporary credentials
    - Use when working with assumed roles or temporary credentials
    - Leave empty for permanent IAM user credentials
 
@@ -204,23 +206,22 @@ Create an IAM policy with the following permissions:
 
 ### Step 2: Configure a Scheduled Task
 
-Once your S3 connection is established, create a scheduled task to automate exports.
+Once your S3 connection is established, create a scheduled task to automate exports. On the **Amazon S3** page, click **View exports** on the connection, then **Add task**.
 
 <Frame>
-  ![Create Export
-  Task](/images/docs/data-exports/amazon-s3/create-export-task.png)
+  ![Add export task dialog with Invoices data, daily runs, a bucket, a region, and a key prefix](/images/docs/data-exports/amazon-s3/create-export-task.png)
 </Frame>
 
 #### Configuration Options
 
 **1. Connection**
 
-- Select the S3 connection created in Step 1
+- The task uses the connection you added it from (the one created in Step 1)
 - Each scheduled task can use different connections if needed
 
-**2. Entity Type** (Required)
+**2. Data** (Required)
 
-Choose what data to export:
+Choose what data to export. The dashboard names these **Invoices**, **Events**, **Credit top-ups**, **Credit usage**, and **Usage analytics**:
 
 | Entity Type       | Description                | Data Included                                         |
 | ----------------- | -------------------------- | ----------------------------------------------------- |
@@ -228,10 +229,11 @@ Choose what data to export:
 | **events**        | Feature usage events       | Event data, usage metrics, customer activity          |
 | **credit_topups** | Credit wallet transactions | Completed credit top-ups with wallet balance details  |
 | **credit_usage**  | Customer credit balances   | Aggregated current and real-time credit balances across all wallets per customer |
+| **usage_analytics** | Usage and cost per customer | Event count, total usage, and total cost per customer and feature for each window |
 
-**3. Schedule Interval** (Required)
+**3. Runs** (Required)
 
-Select how frequently exports should run:
+Select how frequently exports should run, **Hourly** or **Daily**:
 
 | Interval   | Frequency                      | Cron Schedule | Best For                                     |
 | ---------- | ------------------------------ | ------------- | -------------------------------------------- |
@@ -264,6 +266,7 @@ Configure S3-specific settings for your exports:
 ##### Key Prefix (Optional)
 
 - Directory path prefix for organizing files in your bucket
+- The dashboard asks for one; it's optional only through the API
 - Example: `flexprice-exports/invoices/`
 - Example: `production/events/2024/`
 - Files will be stored as: `{key_prefix}/{filename}.csv`
@@ -275,7 +278,7 @@ Configure S3-specific settings for your exports:
 
 ##### Endpoint URL (Optional)
 
-Custom endpoint URL for S3-compatible storage services:
+Custom endpoint URL for S3-compatible storage services (**Custom endpoint** in the dashboard):
 
 - **Use Case**: Connect to S3-compatible storage providers other than AWS S3
 - **Examples**:
@@ -325,9 +328,11 @@ Secure your data at rest with server-side encryption:
   rest in S3. AES256 is the default and recommended for most use cases.
 </Note>
 
-**5. Enable/Disable Toggle**
+In the dashboard, **Encryption** offers AES-256; the KMS options are set through the API.
 
-- Enable the scheduled task to start automatic exports
+**5. Start Exporting Right Away**
+
+- Leave **Start exporting right away** on to start automatic exports as soon as the task is created, then click **Create export**
 - Disable to pause exports without deleting the configuration
 - Can be toggled at any time
 
@@ -338,23 +343,24 @@ After creating a scheduled task:
 1. **Verify Connection**: Ensure your S3 connection is validated and active
 2. **Check Schedule**: Confirm the interval matches your requirements
 3. **Review S3 Settings**: Double-check bucket name, region, and paths
-4. **Test with Manual Export**: Trigger a manual export to verify the setup
+4. **Test with Run now**: Trigger a manual export to verify the setup
+
+The connection's page lists its export tasks:
 
 <Frame>
-  ![Export Tasks
-  List](/images/docs/data-exports/amazon-s3/export-tasks-list.png)
+  ![Exports table for a connection with each task's data, runs, status, bucket, region, and key prefix](/images/docs/data-exports/amazon-s3/export-tasks-list.png)
 </Frame>
 
 ### Viewing Export Details
 
 Once you've created an export task, you can view its configuration and status by clicking on the task. The export details page shows:
 
-- **Basic Information**: Status, entity type, interval, and connection
+- **Basic information**: Status, data, runs, and connection
 - **S3 Configuration**: Bucket, region, key prefix, compression, and encryption settings
 - **Timestamps**: Creation date and last update time
 
 <Frame>
-  ![Export Details](/images/docs/data-exports/amazon-s3/export-details.png)
+  ![Invoices export Overview tab with basic information, S3 configuration, and timestamps](/images/docs/data-exports/amazon-s3/export-details.png)
 </Frame>
 
 ## Manual Export
@@ -368,11 +374,10 @@ Manual Export allows you to trigger an immediate export without waiting for the 
 
 ### How to Trigger a Manual Export
 
-Navigate to the export details page and click the "Manual Export" button to trigger a manual export.
+On the export details page, click **Run now**. Choose **The current interval** (what the next scheduled run would write) or **A custom window** (re-export a past range), then click **Run export**.
 
 <Frame>
-  ![Manual Export
-  Modal](/images/docs/data-exports/amazon-s3/force-run-modal.png)
+  ![Run export now dialog with The current interval and A custom window](/images/docs/data-exports/amazon-s3/force-run-modal.png)
 </Frame>
 
 #### Option 1: Automatic Time Range (Default)
@@ -453,10 +458,10 @@ Content-Type: application/json
 The Runs tab displays a comprehensive history of all export executions for a scheduled task, including both automatic scheduled runs and manual exports.
 
 <Frame>
-  ![Runs History](/images/docs/data-exports/amazon-s3/runs-history.png)
+  ![Runs tab listing each run's status, data window, start time, records, and run ID](/images/docs/data-exports/amazon-s3/runs-history.png)
 </Frame>
 
-Each run record shows the execution status, time range, file details, and any errors that occurred. Use this to monitor export health and access exported files.
+Each run shows its status, the data window it covers (**Data from** and **Data to**), when it started, how many records it wrote, and its run ID. Use this to monitor export health and access exported files.
 
 ### Downloading Exported Files
 
@@ -472,7 +477,7 @@ You can download exported files directly from the Runs tab for any connection ty
   </Step>
   
   <Step title="Download File">
-    Click the **Download** button next to the run record to download the CSV file.
+    Open the run's **⋯** menu and click **Download file** to download the CSV file. The option is unavailable for a run that wrote no file.
   </Step>
 </Steps>
 
