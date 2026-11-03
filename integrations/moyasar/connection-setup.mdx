@@ -51,10 +51,11 @@ Configure the following events so Flexprice can update invoice status when payme
 | Event Type | Purpose |
 |------------|---------|
 | `payment_paid` | Track successful payment completions |
+| `payment_failed` | Track failed payments |
 
 ### Webhook configuration endpoint URL
 
-In the Moyasar Dashboard, use this Flexprice webhook URL when creating your webhook.
+In the Moyasar Dashboard, use this Flexprice webhook URL when creating your webhook. Flexprice also shows it on the **Webhook** step when you connect Moyasar.
 
 
 
@@ -67,7 +68,7 @@ https://api.cloud.flexprice.io/v1/webhooks/moyasar/tenant_YOUR_TENANT_ID/env_YOU
 
 <Frame>
   <Frame>
-    ![Moyasar Connection Setup](/images/docs/integrations/moyasar/webhook-url-moyasar.png)
+    ![Webhook step of the Connect Moyasar sheet with the webhook URL, the payment_paid and payment_failed events, and the webhook signing secret](/images/docs/integrations/moyasar/webhook-url-moyasar.png)
   </Frame>
 </Frame>
 
@@ -78,7 +79,7 @@ https://api.cloud.flexprice.io/v1/webhooks/moyasar/tenant_YOUR_TENANT_ID/env_YOU
     Go to Moyasar Dashboard → Settings → Webhooks and click **+ Add New Webhook**.
   </Step>
   <Step title="Enter URL and events">
-    Enter the Flexprice webhook endpoint URL (see **Webhook configuration endpoint URL** above) and select `payment_paid`.
+    Enter the Flexprice webhook endpoint URL (see **Webhook configuration endpoint URL** above) and select `payment_paid` and `payment_failed`.
   </Step>
   <Step title="Create and copy secret">
     Click **Create Webhook**, then copy the **Webhook Secret** and save it for your Flexprice connection.
@@ -91,20 +92,31 @@ https://api.cloud.flexprice.io/v1/webhooks/moyasar/tenant_YOUR_TENANT_ID/env_YOU
 
 <Steps>
   <Step title="Navigate to Integrations">
-    Go to **Flexprice dashboard** → **Integrations** → **Moyasar** → **Add a connection**.
+    In the left sidebar, click **Integrations**, then click **Connect** on the **Moyasar** card.
   </Step>
   <Step title="Enter credentials">
-    Enter your Secret Key, Publishable Key, and Webhook Secret.
+    Enter a **Connection name** and your **Secret key**. The **Publishable key** (used to render the secure card form for autopay), **Success URL**, and **Cancel URL** are optional. Click **Continue**.
+
+    <Frame>
+      ![Connect Moyasar sheet on the Credentials step with the connection name, secret key, publishable key, and success and cancel URLs](/images/docs/integrations/moyasar/add-connection-moyasar.png)
+    </Frame>
+  </Step>
+  <Step title="Choose what syncs">
+    Switch on **Push invoices** to send Flexprice invoices to Moyasar when they are finalised. Nothing syncs until you switch it on, and you can change it later. Click **Continue**.
+
+    <Frame>
+      ![Sync step with the Push invoices switch](/images/docs/integrations/moyasar/connect-sync.png)
+    </Frame>
   </Step>
   <Step title="Save connection">
-    Click to create the connection. Flexprice will store your credentials securely.
+    On the **Webhook** step, enter the webhook secret from Moyasar in **Webhook signing secret**, then click **Connect Moyasar**. Flexprice stores your credentials securely.
   </Step>
 </Steps>
 
+To change the connection later, click **Configure** on the Moyasar card. You can rename it and change what syncs. Keys can't be shown or edited: to change them, disconnect and connect again.
+
 <Frame>
-  <Frame>
-    ![Moyasar Connection Setup](/images/docs/integrations/moyasar/add-connection-moyasar.png)
-  </Frame>
+  ![Moyasar connection settings with the name, Push invoices, webhook, and Disconnect](/images/docs/integrations/moyasar/configure-connection.png)
 </Frame>
 
 
