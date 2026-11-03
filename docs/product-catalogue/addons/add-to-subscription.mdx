@@ -3,7 +3,7 @@ title: "Add Addons to a Subscription"
 description: "Attach addons at subscription creation, then add and remove them in batches through the subscription modification API, with cadence, quantity, and proration control"
 ---
 
-You can attach addons when the subscription is created. After that, attach and remove them through the subscription modification API with `type: "addon"` and `addon_bulk_params`. One request can carry any mix of attaches and removals. They apply as a single transaction and settle as one netted charge or credit, which you can preview before applying. The dashboard sends the same request.
+You can attach addons when the subscription is created. After that, attach and remove them through the subscription modification API with `type: "addon"` and `addon_bulk_params`. One request can carry any mix of attaches and removals. They apply as a single transaction and settle as one netted charge or credit, which you can preview before applying.
 
 ## Before you start
 
@@ -133,7 +133,7 @@ To gate a change behind a payment, add a `checkout` object at the top level of t
 
 There is no quantity field on the attach itself. To sell more than one unit:
 
-- **Override the charge quantity**: pass `override_line_items` with the fixed charge's `price_id` and the `quantity`. This is what the dashboard's Quantity input does.
+- **Override the charge quantity**: pass `override_line_items` with the fixed charge's `price_id` and the `quantity`.
 - **Attach the addon again**: list the same `addon_id` more than once in `adds`, or attach it again in a later request. Each attachment is an independent association with its own line items and entitlements, so two attachments of a seat addon are two seats.
 
 Without an override, a fixed charge's quantity defaults to its `min_quantity`, or 1.
@@ -283,40 +283,33 @@ An addon change fires one `subscription.updated` once it is applied, however man
 
 ## Via dashboard
 
-### While creating a subscription
+In the dashboard, subscriptions are called **contracts** and addons are **add-ons**.
 
-After you select a plan in the subscription form, an **Addons** section appears. Click **Add** to open the **Add addons** dialog:
+### While creating a contract
 
-1. Pick an addon under **Addon**. It opens as a card listing the charges compatible with the subscription's billing period and currency. To add more, pick them under **Add another addon**; each gets its own card, and an addon you picked leaves the list.
-2. Set the **Quantity** on each fixed charge. Usage charges show "pay as you go".
-3. Use a charge's row menu for **Override Price**, or **Configure Commitment** on usage charges.
-4. Optionally set a **Start date** on each card, then click **Add addons**.
+On the **Charges & add-ons** step of a new contract, the **Add-ons** card collects the addons to attach:
 
-Each addon becomes a row in the section. The row menu's **Edit** reopens that one addon, and **Remove** takes it off before the subscription is created.
-
-<Frame>
-  ![The Add addons dialog in the subscription form with two addons staged](/images/docs/product-catalogue/addons/subscription-add-addon.png)
-</Frame>
-
-### On an existing subscription
-
-The **Addons** card on the subscription details page is read-only. To manage addons, choose **Edit Subscription** from the menu on the **Subscription details** card; the option is unavailable for cancelled and inherited subscriptions. On the edit page, the **Addons** card shows **Add** while the subscription has no addons and **Modify** once it has some. Both open one dialog that collects every attach and removal and sends them as a single `addon_bulk_params` request when you click **Add** or **Save**:
-
-- **Remove**: under **Current addons**, the trash icon marks an addon for removal. The row is tagged **Removing** and asks when it **Ends**: **End of current period** (preset), **Now**, or a **Custom date** inside the current period. Its **Proration** is preset to **No proration**; choose **Prorate** to credit unused time. **Undo** keeps the addon. An addon already scheduled to end shows its end date and cannot be marked.
-- **Attach**: pick an addon under **Addon** (labelled **Add addon** once the subscription has addons), and more under **Add another addon**. Each opens as a card with its charges, quantities, overrides, and commitments, as in the subscription form. **Starts** sets **Now** (preset), **End of current period**, or a **Custom date**. **Advanced options** holds the **Cadence** (Recurring or One-time) and **Proration** (Prorate or No proration); opening it presets Recurring and No proration.
-
-The dialog sends **Now** and **End of current period** as `change_at`, and a custom date as `start_date` or `effective_date`. One change holds at most 20 addons across attaches and removals. Each addon can be picked once per change; to sell two, raise its **Quantity**, or attach it again in a later change.
-
-The example below makes the swap from [Attach and remove addons in one request](#attach-and-remove-addons-in-one-request): Basic Support ends **Now** and Premium Support starts **Now**, both with **Prorate**.
+1. Pick an addon under **Add-on**. A dialog opens listing the addon's charges in the contract's currency and billing period, including one-time charges.
+2. Optionally, use a charge's **⋯** menu to change how it bills on this contract: **Override price** sets a new billing model and price, and **Add commitment** (usage charges only) sets a [commitment](/docs/subscriptions/commitment/overview). **Reset to add-on price** undoes both.
+3. Click **Add add-on**. The addon joins the card's table, which lists each charge's price and marks a changed one **(changed)**.
+4. To attach more, pick them under **Add another**. Until the contract is created, each addon's **⋯** menu offers **Edit**, which reopens its dialog, and **Remove add-on**.
 
 <Frame>
-  ![The Modify addons dialog on the Edit Subscription page with one addon marked for removal and one being attached](/images/docs/product-catalogue/addons/edit-subscription-modify-addons.png)
+  ![The Add add-on dialog for Advanced analytics on a new contract, with the usage charge's menu showing Override price and Add commitment](/images/docs/product-catalogue/addons/subscription-add-addon.png)
 </Frame>
 
-The row menu of each attached addon also offers two actions, both unavailable for an addon that is already scheduled to end:
+### On an existing contract
 
-- **Configure**: changes the addon's charges on this subscription. A fixed charge takes a new quantity, a new price on a flat-fee charge without a custom price unit, and an effective date; click **Preview** to see the resulting charges or credits, then **Apply changes**. A usage charge opens a price override with an optional effective date and the charge's commitment settings. An addon with several charges lists them first.
-- **Cancel**: removes that one addon. It asks for an **Effective end date** (preset to the current period end and limited to the current period) and a **Proration** choice, preset to None.
+The **Add-ons** section on the contract page lists each attached addon with its status, start date, and end date.
+
+- **Attach**: click **Add add-on** and choose the **Add-on**. Its charges appear below, with the same **Override price** and **Add commitment** options as on a new contract. Click **Add add-on**; the addon starts now, as a recurring addon with no proration.
+- **Remove**: open the addon's **⋯** menu and select **Remove add-on**. It comes off the contract at the end of the current billing period; charges already billed are unaffected.
+
+<Frame>
+  ![The Add add-on dialog on a contract page with Advanced analytics chosen and its fixed charge repriced](/images/docs/product-catalogue/addons/contract-add-addon.png)
+</Frame>
+
+The dashboard attaches or removes one addon at a time. To set a charge quantity, a one-time cadence, a custom start or end date, or proration, or to change several addons in one request, use the API described above.
 
 ## Legacy addon requests
 
