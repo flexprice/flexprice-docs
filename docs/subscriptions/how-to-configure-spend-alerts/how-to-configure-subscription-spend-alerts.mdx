@@ -8,28 +8,21 @@ Subscription spend alerts monitor the **total usage-based spend across an entire
 ## Configuring via the Dashboard
 
 <Steps>
-  <Step title="Open the subscription">
-    Go to **Billing** → **Subscriptions**, or open a customer and select their subscription, from either the **Subscription Details** page or the customer's **Overview** tab subscriptions list.
+  <Step title="Open the contract">
+    In the dashboard, subscriptions are called **contracts**. Go to **Contracts** and open the contract, or open it from the **Contracts** card on the customer's page.
   </Step>
 
-  <Step title="Open Alert Settings">
-    Click the **three-dot menu (⋮)** on the subscription and select **Alert Settings**.
+  <Step title="Open Alert settings">
+    Click the **⋯** menu at the top right of the contract and select **Alert settings**.
     <Frame>
-      ![Open Alert Settings](/images/docs/subscriptions/spend/three-dot-subscription-alert-settings.png)
-    </Frame>
-  </Step>
-
-  <Step title="Enable alerts">
-    Turn **Enable Alerts** on.
-    <Frame>
-      ![Enable Alerts](/images/docs/subscriptions/spend/enable-subscription-alert-settings.png)
+      ![Contract menu with Alert settings](/images/docs/subscriptions/spend/contract-alert-settings-menu.png)
     </Frame>
   </Step>
 
   <Step title="Configure thresholds">
-    Set **Threshold Value** for the levels you want (Critical, Warning, Info). Condition is fixed to **Above**. Use **Remove** to drop a level you don't need, then click **Save Changes**.
+    Keep **Alerts on** turned on and, under **Measured as**, select **Absolute**. A new alert starts on **Percentage**, but Flexprice compares spend with each threshold as an amount in the contract's currency, so a percentage threshold of 80 fires once spend reaches 80. Turn on each level you want (**Info**, **Warning**, **Critical**), keep **Rises above** selected, and enter the threshold amount, then click **Create alert**. Spend alerts support only **Rises above**, so a level set to **Falls below** is rejected when you save. At least one level must be set while alerts are on.
     <Frame>
-      ![Configure thresholds](/images/docs/subscriptions/spend/configure-subscription-alert-settings.png)
+      ![Alert settings dialog with info, warning, and critical thresholds](/images/docs/subscriptions/spend/contract-alert-settings.png)
     </Frame>
   </Step>
 </Steps>
@@ -86,60 +79,60 @@ Once configured and enabled, Flexprice:
 ### Viewing current configuration
 
 <Steps>
-  <Step title="Open the subscription">
-    Open the subscription and click the **three-dot menu (⋮)**.
+  <Step title="Open the contract">
+    Go to **Contracts** and open the contract.
   </Step>
 
-  <Step title="Open Alert Settings">
-    Select **Alert Settings**. The dialog shows **Enable Alerts** and all configured threshold levels with their values.
+  <Step title="Open Alert settings">
+    Click the **⋯** menu at the top right and select **Alert settings**. The dialog shows whether **Alerts on** is on, how thresholds are **Measured as**, and the threshold of each level whose switch is on.
   </Step>
 </Steps>
 
 ### Changing thresholds
 
 <Steps>
-  <Step title="Open Alert Settings">
-    Click the **three-dot menu (⋮)** on the subscription and select **Alert Settings**.
+  <Step title="Open Alert settings">
+    On the contract, click the **⋯** menu and select **Alert settings**.
   </Step>
 
   <Step title="Adjust values">
-    Change **Enable Alerts** or any threshold value in the dialog.
+    Change any level's threshold, keeping **Absolute** and **Rises above** selected. To add a level, turn on its switch.
   </Step>
 
   <Step title="Save">
-    Click **Save Changes**.
+    Click **Save alerts**.
   </Step>
 </Steps>
 
 ### Removing a threshold
 
 <Steps>
-  <Step title="Open Alert Settings">
-    Click the **three-dot menu (⋮)** on the subscription and select **Alert Settings**.
+  <Step title="Open Alert settings">
+    On the contract, click the **⋯** menu and select **Alert settings**.
   </Step>
 
-  <Step title="Remove the level">
-    Click **Remove** on the threshold level you want to drop.
+  <Step title="Turn off the level">
+    Turn off the switch next to the level you want to drop.
   </Step>
 
   <Step title="Save">
-    Click **Save Changes**. Removed thresholds are cleared, not just hidden, so send the complete remaining configuration.
+    Click **Save alerts**. The level is cleared from the setting, not just hidden. Through the API, an update replaces the whole `config`, so send every threshold you want to keep.
   </Step>
 </Steps>
 
 ### Disabling alerts
 
 <Steps>
-  <Step title="Open Alert Settings">
-    Click the **three-dot menu (⋮)** on the subscription and select **Alert Settings**.
+  <Step title="Open Alert settings">
+    On the contract, click the **⋯** menu and select **Alert settings**.
   </Step>
 
-  <Step title="Turn off Enable Alerts">
-    Set **Enable Alerts** to off (or set `alert_enabled` to `false` via API).
+  <Step title="Turn off Alerts on">
+    Turn off **Alerts on** (or set `alert_enabled` to `false` through the API).
   </Step>
 
   <Step title="Save">
-    Click **Save Changes**.
+    Click **Save alerts**. The thresholds are kept, so turning **Alerts on** back on restores them.
   </Step>
 </Steps>
 

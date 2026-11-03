@@ -8,28 +8,28 @@ Line item spend alerts monitor the **usage-based spend of a single line item** o
 ## Configuring via the Dashboard
 
 <Steps>
-  <Step title="Open the subscription for editing">
-    Go to **Billing** → **Subscriptions**, open the subscription, and go to **Edit Subscription**.
+  <Step title="Open the contract's charges">
+    In the dashboard, subscriptions are called **contracts** and their line items are **charges**. Open the contract and go to the **Charges** tab.
   </Step>
 
-  <Step title="Open the line item's menu">
-    Find the line item to monitor, click its **three-dot menu (⋮)**, and select **Alert Settings**. It appears alongside **Edit** and **Terminate** for that line item.
+  <Step title="Open the charge's details">
+    Find the usage charge to monitor, click its **⋯** menu, and select **View details**.
     <Frame>
-      ![Open Alert Settings](/images/docs/subscriptions/spend/three-dot-line-items-settings.png)
+      ![Charge menu with View details](/images/docs/subscriptions/spend/charge-view-details-menu.png)
     </Frame>
   </Step>
 
-  <Step title="Enable alerts">
-    Turn **Enable Alerts** on.
+  <Step title="Add alerts">
+    In the **Alerts** section of the charge's details, click **Add alerts**. The section appears on usage charges.
     <Frame>
-      ![Enable Alerts](/images/docs/subscriptions/spend/enable-line-item-alert-settings.png)
+      ![Charge details with the Alerts section and the Add alerts button](/images/docs/subscriptions/spend/charge-alerts-section.png)
     </Frame>
   </Step>
 
   <Step title="Configure thresholds">
-    Set **Threshold Value** for the levels you want (Critical, Warning, Info). Condition is fixed to **Above**. Use **Remove** to drop a level you don't need, then click **Save Changes**.
+    Keep **Alerts on** turned on and choose whether thresholds are measured as **Absolute** amounts or a **Percentage**. Turn on each level you want (**Info**, **Warning**, **Critical**), keep **Rises above** selected, and enter the threshold, then click **Add alerts**. Spend alerts support only **Rises above**, so a level set to **Falls below** is rejected when you save. At least one level must be set while alerts are on, and a percentage can't exceed 100.
     <Frame>
-      ![Configure thresholds](/images/docs/subscriptions/spend/configure-line-item-alert-settings.png)
+      ![Add alerts dialog with warning and critical thresholds](/images/docs/subscriptions/spend/charge-add-alerts.png)
     </Frame>
   </Step>
 </Steps>
@@ -86,60 +86,64 @@ Usage on a different line item in the same subscription does not affect this ale
 ### Viewing current configuration
 
 <Steps>
-  <Step title="Open the line item's menu">
-    Open **Edit Subscription**, find the line item, and click its **three-dot menu (⋮)**.
+  <Step title="Open the charge's details">
+    Open the contract, go to the **Charges** tab, click the charge's **⋯** menu, and select **View details**.
   </Step>
 
-  <Step title="Open Alert Settings">
-    Select **Alert Settings**. The dialog shows **Enable Alerts** and all configured threshold levels with their values.
+  <Step title="Read the Alerts section">
+    The **Alerts** section lists each level with its condition and threshold. While the charge's alerts are switched off, the section lists none and shows **Add alerts**.
   </Step>
 </Steps>
 
 ### Changing thresholds
 
 <Steps>
-  <Step title="Open Alert Settings">
-    Open **Edit Subscription**, find the line item, click its **three-dot menu (⋮)** → **Alert Settings**.
+  <Step title="Edit the alerts">
+    In the charge's details, click **Edit** in the **Alerts** section.
   </Step>
 
   <Step title="Adjust values">
-    Change **Enable Alerts** or any threshold value in the dialog.
+    Change **Measured as** or any level's threshold, keeping **Rises above** selected. This form shows only the levels already set; to add or drop one, see [Removing a threshold](#removing-a-threshold).
   </Step>
 
   <Step title="Save">
-    Click **Save Changes**.
+    Click **Save alerts**.
   </Step>
 </Steps>
 
 ### Removing a threshold
 
+The **Edit** form has no switch per level, so you remove a level by turning the alerts off and adding them again.
+
 <Steps>
-  <Step title="Open Alert Settings">
-    Open **Edit Subscription**, find the line item, click its **three-dot menu (⋮)** → **Alert Settings**.
+  <Step title="Turn the alerts off">
+    Click **Edit** in the charge's **Alerts** section, turn off **Alerts on**, and click **Save alerts**.
   </Step>
 
-  <Step title="Remove the level">
-    Click **Remove** on the threshold level you want to drop.
+  <Step title="Add the alerts again">
+    Click **Add alerts** in the same section. The form reopens on the stored thresholds, with a switch per level.
   </Step>
 
-  <Step title="Save">
-    Click **Save Changes**. Removed thresholds are cleared, not just hidden, so send the complete remaining configuration.
+  <Step title="Turn off the level">
+    Turn off the switch next to the level you want to drop, and click **Add alerts**. The level is cleared from the setting. The same steps add a level: turn its switch on instead.
   </Step>
 </Steps>
+
+Through the API, send the remaining `config` to `PUT /v1/alerts/setting/:id`. An update replaces the whole `config`, so a threshold left out is cleared.
 
 ### Disabling alerts
 
 <Steps>
-  <Step title="Open Alert Settings">
-    Open **Edit Subscription**, find the line item, click its **three-dot menu (⋮)** → **Alert Settings**.
+  <Step title="Edit the alerts">
+    In the charge's details, click **Edit** in the **Alerts** section.
   </Step>
 
-  <Step title="Turn off Enable Alerts">
-    Set **Enable Alerts** to off (or set `alert_enabled` to `false` via API).
+  <Step title="Turn off Alerts on">
+    Turn off **Alerts on** (or set `alert_enabled` to `false` through the API).
   </Step>
 
   <Step title="Save">
-    Click **Save Changes**.
+    Click **Save alerts**. The section then lists no alerts, but the thresholds are kept: **Add alerts** reopens them.
   </Step>
 </Steps>
 
