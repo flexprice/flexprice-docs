@@ -91,39 +91,53 @@ You can create a QuickBooks connection through OAuth flow in the Flexprice dashb
 
 <Steps>
   <Step title="Navigate to Integrations">
-    Go to **Settings** → **Integrations** → **QuickBooks**
+    In the left sidebar, click **Integrations**, then click **Connect** on the **QuickBooks** card.
+  </Step>
+
+  <Step title="Enter Connection Details">
+    Add the **Redirect URI** shown at the top of the sheet to your QuickBooks app, then fill in the connection form:
+    - **Connection name**: "QuickBooks Production" (or your preferred name)
+    - **Client ID**: From Intuit Developer Portal
+    - **Client secret**: From Intuit Developer Portal
+    - **Environment**: Select **Production** or **Sandbox**
+    - **Income account ID** (optional): Provide any custom income account id that you may have created to track your revenue, by default it is set to `79` (used for creating items)
+
+    Click **Continue**.
+
     <Frame>
-    ![QuickBooks Connection Setup](/images/docs/integrations/quickbooks/QB-Connection-Setup.png)
+      ![Connect QuickBooks sheet on the Credentials step with the redirect URI, client ID and secret, environment, and income account ID](/images/docs/integrations/quickbooks/QB-Connection-Setup.png)
     </Frame>
   </Step>
-  
-  <Step title="Enter Connection Details">
-    Fill in the connection form:
-    - **Connection Name**: "QuickBooks Production" (or your preferred name)
-    - **Client ID**: From Intuit Developer Portal
-    - **Client Secret**: From Intuit Developer Portal
-    - **Environment**: Select "Production" or "Sandbox"
-    - **Webhook Verifier Token**: From webhook configuration (optional)
-    - **Income Account ID**: Provide any custom income account id that you may have created to track your revenue, by default it is set to `79` (used for creating items)
-  </Step>
-  
+
   <Step title="Configure Sync Settings">
-    Enable sync options:
-    - **Invoice Sync**: Enable to automatically sync invoices to QuickBooks
-    - **Payment Sync**: Enable to sync payments from QuickBooks
+    Enable sync options, then click **Continue**:
+    - **Push invoices**: Enable to automatically sync invoices to QuickBooks
+    - **Pull payments**: Enable to sync payments from QuickBooks
+
+    <Frame>
+      ![Sync step with the Push invoices and Pull payments switches](/images/docs/integrations/quickbooks/connect-sync.png)
+    </Frame>
   </Step>
-  
+
+  <Step title="Add the webhook">
+    The **Webhook** step shows the webhook URL to add in Step 2. Enter the **Webhook verifier token**, which is only needed when you sync payments back from QuickBooks.
+
+    <Frame>
+      ![Webhook step with the webhook URL, the Payment.Create event, and the webhook verifier token](/images/docs/integrations/quickbooks/connect-webhook.png)
+    </Frame>
+  </Step>
+
   <Step title="Authorize with QuickBooks">
-    Click **Connect to QuickBooks** to start OAuth flow:
+    Click **Continue to QuickBooks** to start OAuth flow:
     1. You'll be redirected to QuickBooks login
     2. Sign in to your QuickBooks account
     3. Select the company to connect
     4. Authorize Flexprice to access your account
     5. You'll be redirected back to Flexprice
   </Step>
-  
+
   <Step title="Verify Connection">
-    After authorization, verify the connection is active and working
+    After authorization, the QuickBooks card shows **Connected** on the Integrations page. Click **Configure** on it to rename the connection or change what syncs.
   </Step>
 </Steps>
 
