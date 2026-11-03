@@ -14,24 +14,26 @@ Manual top-ups provide flexibility to add credits on demand. You can issue free 
 ### Adding Credits Manually
 
 <Steps>
-  <Step title="Access the Wallet">
-    Navigate to the customer's wallet and click **Top-up Wallet** in the top right corner
-    
+  <Step title="Open the wallet">
+    Open the customer, select the **Wallet** tab, and click **Top up wallet**.
+
     <Frame>
-      ![Top Wallet](/images/docs/wallet/top-up-wallet/top-wallet.png)
+      ![Wallet tab with the Top up wallet button](/images/docs/wallet/top-up-wallet/top-wallet.png)
     </Frame>
   </Step>
-  
-  <Step title="Configure Credit Amount">
-    In the top-up dialog, select your credit type and enter the amount to add to the wallet
-    
+
+  <Step title="Configure the credits">
+    Choose **Purchased** (the customer pays for these) or **Free** (goodwill or promotional), and enter the number of **Credits**. Optionally add a **Note**, an **Expires on** date, a **Priority** (a lower number is used sooner), and a **Reference ID**.
+
+    For purchased credits, **Invoice the customer** raises an invoice for them. With it off, the credits are recorded as already paid.
+
     <Frame>
-      ![Top Up Credit](/images/docs/wallet/top-up-wallet/top-up-credit.png)
+      ![Top up wallet dialog with purchased credits and Invoice the customer turned on](/images/docs/wallet/top-up-wallet/top-up-credit.png)
     </Frame>
   </Step>
-  
+
   <Step title="Confirm">
-    Click **Add Credits** to complete the top-up
+    Click **Top up** to complete the top-up.
   </Step>
 </Steps>
 
@@ -44,29 +46,25 @@ Automatic top-up ensures uninterrupted service by automatically recharging walle
 ### Configuring Auto Top-Up
 
 <Steps>
-  <Step title="Enable Auto Top-Up">
-    During wallet creation, toggle **Recharge Wallet Automatically**
-  </Step>
-  
-  <Step title="Set Trigger Threshold">
-    Define when auto top-up should activate (e.g., when balance falls below $100)
-  </Step>
-  
-  <Step title="Configure Minimum Balance">
-    Enter the minimum balance threshold that triggers automatic recharge
-  </Step>
-  
-  <Step title="Define Top-Up Amount">
-    Specify the amount to add when auto top-up is triggered (e.g., $100, $500)
-  </Step>
-  
-  <Step title="Save">
-    Click **Save changes** to activate auto top-up
+  <Step title="Open the auto top-up settings">
+    On the customer's **Wallet** tab, click the **⋯** menu next to **Debit wallet** and select **Auto top-up settings**.
   </Step>
 
-  <Frame>
-      ![Auto Top Up](/images/docs/wallet/top-up-wallet/auto-top-up.png)
+  <Step title="Set the trigger and amount">
+    Turn on **Top up automatically**. In **Below**, enter the balance in credits that triggers a top-up, and in **Add**, the number of credits to add each time.
+  </Step>
+
+  <Step title="Set the cool-off and invoicing">
+    Optionally set a **Cool-off** and its **Unit** to wait between top-ups. Keep **Invoice each top-up** on to charge the customer for the credits, or turn it off to grant them as free credits.
+  </Step>
+
+  <Step title="Save">
+    Click **Save** to activate auto top-up.
+
+    <Frame>
+      ![Auto top-up dialog with the balance threshold, top-up amount, cool-off, and invoicing](/images/docs/wallet/top-up-wallet/auto-top-up.png)
     </Frame>
+  </Step>
 </Steps>
 
 ---
@@ -99,61 +97,44 @@ The invoice-based top-up workflow provides comprehensive payment tracking and re
 
 ### How It Works
 
-When you select **Purchased Credits** and enable **Generate Invoice**, Flexprice initiates the following flow:
+When you choose **Purchased** and turn on **Invoice the customer** in the top-up dialog, Flexprice initiates the following flow:
 
 <Steps>
   <Step title="Top-Up Initiated">
-    You select **Purchased Credits** and enable **Generate Invoice** in the top-up dialog, then click **Add Credits**
+    You choose **Purchased**, turn on **Invoice the customer**, and click **Top up**
   </Step>
-  
+
   <Step title="Invoice Created">
     An invoice is automatically generated and finalized with payment status `Pending`. The invoice contains the credit purchase details and is visible in your invoice list
   </Step>
-  
+
   <Step title="Transaction Logged">
     A wallet transaction is created with status `pending` and transaction reason `PURCHASED_CREDIT_INVOICED`. The transaction is linked to the generated invoice
-      <Frame>
-      ![Transaction Before](/images/docs/wallet/top-up-wallet/transaction-before.png)
-      </Frame>  
   </Step>
-
-      
 
   <Step title="Credits Hold">
     Credits remain unavailable and are not added to the wallet balance. The wallet balance remains unchanged until payment is confirmed
   </Step>
-  
+
   <Step title="Record Payment">
-      Credits get available only after the payment is followed through. When the invoice payment status becomes `Succeeded`, the wallet balance gets topped-up.
+    Credits become available only after the invoice is paid. When the invoice payment status becomes `Succeeded`, the wallet balance is topped up. Confirm the payment from the invoice's **⋯** menu in one of these ways:
 
-      <Frame>
-      ![Record Payment](/images/docs/wallet/top-up-wallet/record-payment.png)
-      </Frame> 
+    - **Record payment** opens the **Record payment** page. Enter the **Amount**, choose a **Method** such as **Offline (recorded manually)** for a payment made outside Flexprice, and click **Create payment**. The payment record supports tracking and reconciliation.
+    - **Update payment status** opens the **Update payment status** dialog. Under **New payment status**, select **Succeeded** and click **Update status**. The invoice is marked paid in full without a payment record.
+    - **Copy hosted invoice link** gives you a link to the hosted invoice page, where the customer can pay through your connected payment provider. The payment status updates when the provider confirms the payment. For Stripe, see [Stripe Payment Link & Checkout](/integrations/stripe/payment-links).
 
-You can either `Record Payment` or `Update Payment Status` directly to confirm payment.    
-    - **Record Payment** - A payment record is created for the invoice supporting tracking and reconciliation. Payment can be recorded through following methods:
-      - **Offline Payment** - Record payment that was processed outside the system.
-      - **Payment Link** - Generate a payment link for online payment. Payment status gets updated when payment is successfully processed through the payment gateway. If you want to know more about the `payment_link` behavior, check out [Stripe Payment Link & Checkout](/integrations/stripe/payment-links) for configuration instructions.
-      <Frame>
-      ![Top Up Payment Link](/images/docs/wallet/top-up-wallet/top-up-payment-link.png) 
-      </Frame>
-    - **Update Payment Status** - Invoice payment status changes from `Pending` to `SUCCEEDED` for API responses)
-      After the payment is completed, the invoice status is updated to confirm successful payment.
+    <Frame>
+      ![Record payment page with the invoice, amount, and Offline method](/images/docs/wallet/top-up-wallet/record-payment.png)
+    </Frame>
   </Step>
 
-  
   <Step title="Credits Available">
     Once payment is confirmed and the invoice is marked as paid:
     - Transaction status changes from `pending` to `completed`
     - Credits are immediately added to the customer's wallet
     - Wallet balance is updated and credits become available for use
-     <Frame>
-      ![Transaction After](/images/docs/wallet/top-up-wallet/transaction-after.png)
-      </Frame>   
   </Step>
-
-     
-  </Steps>
+</Steps>
 
   For complete transaction lifecycle details, check out [Purchased Credits (Invoiced)](/docs/wallet/transactions#purchased-credits-invoiced) in the Wallet Transactions documentation.
 
