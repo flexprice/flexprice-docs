@@ -29,20 +29,21 @@ To get new permissions, create a new API key with required ones.
 
 ### Via Dashboard
 
-Navigate to **Developers > API Keys** and click **Create** to open the API key creation dialog.
+Navigate to **Developers > API keys** and click **Create API key** to open the creation dialog.
 
 <Frame>
-  ![Create API Key](/images/docs/rbac/service-acc-api-key.png)
+  ![New API key dialog with a name, an optional expiry date, and the Secret key type](/images/docs/rbac/service-acc-api-key.png)
 </Frame>
 
 In the dialog:
 1. **Name**: Give your API key a descriptive name
-2. **Account Type**: Select between User Account or Service Account
-3. **Mapped to Identity**: If Service Account is selected, choose which service account to use
-4. **Expiration**: Set when the key should expire (or select Never)
-5. Click **Create**
+2. **Expires on**: Set when the key should expire, or leave it blank for a key that never expires
+3. **Type**: **Secret key** (it can do anything your account can; keep it on a server) or **Publishable key** (safe to ship in a browser or mobile app; it can only do what a customer may do)
+4. Click **Create key**
 
-The API key will be shown once - make sure to copy and save it securely.
+The API key will be shown once - make sure to copy and save it securely. Click **Copy key**, then **I have saved it**.
+
+The dashboard issues keys for your own user. To issue a key for a service account, use the API with `service_account_id`, as shown in [For a Service Account](#for-a-service-account).
 
 ### Via API - For Your Own Account
 
