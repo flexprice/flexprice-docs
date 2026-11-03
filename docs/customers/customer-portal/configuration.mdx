@@ -3,46 +3,45 @@ title: "Portal Configuration"
 description: "Control which sections your customers see in the Customer Portal, and style it with your own brand"
 ---
 
-The Customer Portal is configured per tenant and environment. You choose which sections appear, which widgets sit inside them, and what colours, logo and font the portal renders with. The configuration is stored under the `customer_portal_config` setting key, and the portal fetches it on load.
+The Customer Portal is configured per tenant and environment. The configuration lists the portal's sections, the widgets inside each section, and three brand colours. It is stored under the `customer_portal_config` setting key, and the portal fetches it on load.
 
 Anything you leave unset falls back to a default, so a tenant that has never touched the configuration still gets a complete portal.
 
-## Settings toggles
+## Dashboard settings
 
-The dashboard exposes the five section-level switches most tenants need. Go to **Settings** and open the **Customer Portal** tab.
+Click your email address at the bottom of the left navigation, select **Settings**, then go to **Customer experience** → **Portal**. The panel edits the same `customer_portal_config` setting that the API writes:
 
-| Toggle | Controls |
-| ------ | -------- |
-| **Show invoices** | The Invoices section, including PDF download and Pay now |
-| **Show wallet balance** | The Credits section, including transaction history and auto top-up |
-| **Show usage** | The Usage section, including charts, breakdown and metric cards. Turning it on also offers **Group and filter usage by properties**. See [Usage by Properties](/docs/customers/customer-portal/usage-properties) |
-| **Show subscriptions** | The subscriptions widget on Overview |
-| **Show payment methods** | Saved card management |
+| Setting | Controls |
+| ------- | -------- |
+| **Sections and tabs** | Every section and the tabs (widgets) inside it. Drag a row to reorder it, and use the eye icon to show or hide it. Hiding a section hides all its tabs |
+| **Cards** | For a metric cards tab, which cards are on: **Cost**, **Custom** and **Revenue** |
+| **Opens on** and **Date range** | For a usage graph tab, the date preset it opens on, and whether customers can pick their own dates |
+| **Theme** | The **Primary**, **Secondary** and **Tertiary colour**, as hex codes |
+| **Reset to defaults** | Deletes the stored configuration, so the server's standard layout applies again |
 
-Changes apply to every portal session opened in that environment from the next page load.
+The top of the panel lists what is **Visible to customers**. Click **Save changes** to apply. Changes apply to every portal session opened in that environment from the next page load.
 
-<Frame>![Settings, Customer Portal tab, showing the five portal visibility toggles](/images/docs/customers/customer-portal/customer-portal-settings.png)</Frame>
+The hosted portal uses only part of what the panel stores: the eye icons on the Usage, Credits and Invoices sections, and the primary colour. Section order, tab settings and the other two colours don't change it. See [What the portal applies](#what-the-portal-applies).
+
+Usage properties have no control in the panel, and the hosted portal shows no property controls. Turn them on through the settings API for a front end you build, as described in [Usage by Properties](/docs/customers/customer-portal/usage-properties#turning-it-on). Saving the panel keeps them, and **Reset to defaults** turns them off.
 
 <Warning>
 **Saving the configuration requires Super Admin**
 
-The portal configuration is stored through the settings API, whose writes are restricted to Super Admin regardless of the `portal:write` permission. A user without it sees the toggles but cannot save.
+The portal configuration is stored through the settings API, whose writes are restricted to Super Admin regardless of the `portal:write` permission. A user without it sees the panel but cannot save. Through the API, use a Super Admin user's API key. A service account key is refused.
 </Warning>
 
 ## Configuration schema
 
-For anything beyond the five toggles, write the configuration directly through the settings API under the key `customer_portal_config`.
+For anything the panel doesn't cover, write the configuration through the settings API with `PUT /v1/settings/customer_portal_config`, sending the configuration as `value`. `GET /v1/settings/customer_portal_config` returns the current configuration, with defaults for anything you haven't stored.
 
 ```json
 {
   "version": "1.0",
   "theme": {
     "primary_color": "#15547c",
-    "background_color": "#ffffff",
-    "surface_color": "#f9fafb",
-    "border_color": "#e5e7eb",
-    "logo_url": "https://yourapp.com/logo.svg",
-    "font_family": "Inter, sans-serif"
+    "secondary_color": "#0e3a56",
+    "tertiary_color": "#e8f1f7"
   },
   "sections": [
     {
@@ -51,40 +50,46 @@ For anything beyond the five toggles, write the configuration directly through t
       "enabled": true,
       "order": 1,
       "tabs": [
-        { "id": "16", "type": "wallet_balance", "enabled": true, "order": 1 },
-        { "id": "17", "type": "payment_methods", "enabled": true, "order": 2 },
-        { "id": "9", "type": "subscriptions", "enabled": true, "order": 3 }
+        { "id": "9", "type": "wallet_balance", "enabled": true, "order": 1 },
+        { "id": "10", "type": "subscriptions", "enabled": true, "order": 2 }
       ]
     }
   ]
 }
 ```
 
+The example shows one section. A write replaces each top-level key it contains (`theme`, `sections`, `analytics_config`) and keeps the keys it leaves out. Nothing below the top level is merged:
+
+- **Send every section.** `sections` replaces the stored array, and once you have stored one, the default sections stop applying. A section you leave out is removed, and the portal hides Usage, Credits or Invoices when its section is missing. An empty array works differently: the server stores no sections, so the defaults come back.
+- **Send all three colours.** `theme` replaces the stored theme, so a colour you leave out is cleared.
+- **Fields outside the schema are dropped.** The server keeps only the fields on this page and discards anything else without an error, such as a `logo_url` in the theme or a `label` on a tab.
+
+Start from the value `GET` returns, change it, and send the whole key back. **Reset to defaults** in the dashboard, or `DELETE /v1/settings/customer_portal_config`, deletes the stored setting, including `analytics_config`.
+
 ### Section fields
 
 | Field | Type | Description |
 | ----- | ---- | ----------- |
-| `id` | string | Section identifier. The known ids are `overview`, `usage`, `credits` and `invoices` |
-| `label` | string | Name shown in the portal's tab bar |
-| `enabled` | boolean | Whether the section appears at all |
-| `order` | number | Position in the tab bar. Standard sections use the product's own ordering |
-| `tabs` | array | Widgets rendered inside the section, sorted by their `order` |
+| `id` | string | Section identifier. The portal knows `overview`, `usage`, `credits` and `invoices`, and ignores any other id |
+| `label` | string | Name shown for the section in the dashboard panel. The portal uses its own tab names |
+| `enabled` | boolean | Whether the portal shows the section's tab. Overview shows either way |
+| `order` | number | Position in the dashboard panel. The portal's tab order is fixed |
+| `tabs` | array | The section's widgets, sorted by their `order` |
 
 ### Widget fields
 
 | Field | Type | Description |
 | ----- | ---- | ----------- |
 | `id` | string | Unique instance key within the section |
-| `type` | string | Which widget to render. See the widget types below |
-| `label` | string | Optional display label, overriding the widget's default title |
-| `enabled` | boolean | Whether the widget renders |
+| `type` | string | Which widget it is. See the widget types below |
+| `enabled` | boolean | Whether the widget is on |
 | `order` | number | Position within the section |
 | `usage_graph` | object | Only read when `type` is `usage_graph` |
 | `metric_cards` | object | Only read when `type` is `metric_cards` |
 
 ## Widget types
 
-| Type | Renders |
+| Type | Widget |
 | ---- | ------- |
 | `account_summary` | Compact strip of balance, amount due and next billing date |
 | `subscriptions` | Active subscriptions with plan, status, period and next billing |
@@ -111,8 +116,7 @@ For anything beyond the five toggles, write the configuration directly through t
     "date_presets": ["today", "last_7_days", "last_30_days", "current_month", "last_month"],
     "default_preset": "last_7_days",
     "allow_custom_date_range": true,
-    "feature_filter_mode": "all",
-    "feature_ids": []
+    "feature_filter_mode": "all"
   }
 }
 ```
@@ -122,8 +126,7 @@ For anything beyond the five toggles, write the configuration directly through t
 | `date_presets` | Which range presets the customer can pick from |
 | `default_preset` | The range selected when the section opens |
 | `allow_custom_date_range` | Whether a custom start and end date picker is offered |
-| `feature_filter_mode` | `all`, `include_list` or `exclude_list` |
-| `feature_ids` | Feature ids used when the mode is `include_list` or `exclude_list` |
+| `feature_filter_mode` | Which features the graph covers, for example `all`. The schema has no field for a list of features |
 
 Valid presets are `today`, `last_7_days`, `last_30_days`, `current_month` and `last_month`.
 
@@ -155,39 +158,32 @@ Valid presets are `today`, `last_7_days`, `last_30_days`, `current_month` and `l
 `show_cost_metrics` exposes your cost to serve this customer and your margin on them. It is off by default. Turn it on only for a portal your own team uses.
 </Warning>
 
-## How your configuration merges with the defaults
+## What the portal applies
 
-Understanding the merge matters when a Flexprice release adds a section or changes one.
+The hosted portal reads two things from the configuration: which sections are on, and the primary colour.
 
-- **Your sections win on content.** Labels, `enabled` and the widgets inside a section are yours.
-- **Standard sections take the product's ordering.** A stored configuration carries the `order` values current when you saved it, so a section later promoted in the defaults would otherwise stay where it was. Sections you add yourself keep their own order and are placed after the standard ones.
-- **New default sections are appended, not dropped.** A wholesale replace would hide any section shipped after you saved, so a section you have never seen is added rather than lost. Express removal as `"enabled": false`, not by deleting the entry.
-- **Overview's composition is fixed.** Overview is balance, payment methods and subscriptions. It is not customisable per tenant, because any analytics widget placed there also renders the section's date filter, which duplicated Usage.
-- **A theme with no values is ignored.** An empty theme object does not override the default light appearance.
+- **The tabs and their order are fixed:** Overview, Usage, Credits, Invoices. A section's `order` and `label` don't change them.
+- **Overview always shows.** The portal hides Usage, Credits or Invoices when its section has `"enabled": false` or is missing from `sections`. It ignores any other section id, including the retired `payment_methods` section.
+- **An empty `sections` array hides nothing.** The server stores no sections, so the defaults apply and every tab shows. To hide a section, keep it in the array with `"enabled": false`.
+- **Each tab shows a fixed set of widgets.** The portal doesn't read `tabs`, so a widget's `enabled` and `order`, the metric cards and the usage graph settings don't change it. Saved payment methods always show on Overview.
+- **`primary_color` is the brand colour.** See [Theming](#theming).
 
-<Note>
-**The Payments section is retired**
-
-Saved cards used to live in a section of their own. They now sit on Overview, beside the balance they top up and the subscriptions they pay for. A stored configuration naming a `payment_methods` section is honoured as hidden. Use the **Show payment methods** toggle to control the widget.
-</Note>
+The rest of the configuration is stored and returned by the [portal config endpoint](#reading-the-configuration-from-the-portal), for a portal front end you build yourself.
 
 ## Theming
 
-Supply four brand colours and the portal derives the rest, including text colours, from the brightness of your background.
+The theme holds three colours, each a hex code such as `#15547c`, or empty:
 
 | Field | Applies to |
 | ----- | ---------- |
-| `primary_color` | Buttons, active tabs and accents |
-| `background_color` | The page background |
-| `surface_color` | Card and panel backgrounds |
-| `border_color` | Card and table borders |
-| `logo_url` | The logo in the portal header |
-| `font_family` | A CSS font stack for portal text |
+| `primary_color` | Buttons, the active tab and focus rings |
+| `secondary_color` | Nothing in the hosted portal. Stored for your own front end |
+| `tertiary_color` | Nothing in the hosted portal. Stored for your own front end |
 
-Leave the whole `theme` object out to use the portal's default light appearance.
+With no primary colour, or a value that isn't a valid colour, the portal uses its own. The portal follows the customer's light or dark system setting, and has no logo or font setting.
 
 <Tip>
-Give `font_family` a real fallback stack, for example `"Inter, system-ui, sans-serif"`. The portal does not load web fonts on your behalf.
+Text on the primary colour is white, so pick a colour dark enough to read white text on.
 </Tip>
 
 ## Reading the configuration from the portal
