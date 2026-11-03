@@ -135,10 +135,6 @@ POST /subscriptions
 `quantity` cannot be set on usage-based (metered) prices. It is only valid on fixed prices with `FLAT_FEE`, `PACKAGE`, or `TIERED` billing models.
 </Info>
 
-<Frame>
-  ![Creating a subscription with seat count](/images/docs/subscriptions/seat-based/create-subscription-seats.png)
-</Frame>
-
 
 ## Step 3: Adjust Seat Count on a Live Subscription
 
@@ -173,10 +169,6 @@ POST /subscriptions/subs_01JVKM6S2BTUV8JKVWX3PFAD7/modify/preview
   }
 }
 ```
-
-<Frame>
-  ![Review changes preview](/images/docs/subscriptions/seat-based/modify-seats-review.png)
-</Frame>
 
 The UI preview shows the old and new line item periods and confirms a proration invoice will be generated. The API returns the same information in `changed_resources`:
 
@@ -308,10 +300,6 @@ What happens internally:
 
 Use this when a customer confirms they'll add seats at the start of next month and you don't want a mid-period invoice now.
 
-<Frame>
-  ![Adjusting seat count in the UI](/images/docs/subscriptions/seat-based/modify-seats-ui.png)
-</Frame>
-
 ### 3e. Collect Payment Before Seats Change
 
 By default the seat change applies immediately and the proration charge is invoiced afterwards, which can leave an unpaid invoice. To require payment first, add a `checkout` object to the execute call:
@@ -426,19 +414,41 @@ To avoid a mid-period invoice entirely, set `effective_date` to the start of the
 
 ## Seat-Based Billing in the UI
 
-You can manage seat counts from the Subscription detail page in the Flexprice dashboard without touching the API.
+You can manage seat counts in the Flexprice dashboard without touching the API. In the dashboard, subscriptions are called **contracts**.
 
-**Viewing seat history:** The subscription timeline shows every quantity change with its effective date and the invoice it triggered.
+<Steps>
+  <Step title="Set the seat count on a new contract">
+    In the **Charges & add-ons** step of a new contract, enter the seat count in the charge's **Quantity** box. Only this contract changes; the plan keeps its own quantity.
+
+    <Frame>
+      ![Charges and add-ons step with the quantity set on a fixed charge](/images/docs/subscriptions/seat-based/contract-charge-quantity.png)
+    </Frame>
+  </Step>
+
+  <Step title="Change the seat count on a live contract">
+    Open the contract and go to the **Charges** tab. Open the charge's **⋯** menu and choose **Edit**. Enter the new **Quantity**, then leave **Effective from** empty to apply the change now, or pick a date in the current billing period. Click **Preview change**.
+
+    <Frame>
+      ![Edit charge dialog with a new quantity](/images/docs/subscriptions/seat-based/edit-charge-quantity.png)
+    </Frame>
+  </Step>
+
+  <Step title="Review and confirm the change">
+    The preview lists the line that ends, the new line that starts, and any invoice or wallet credit the change creates. Click **Confirm change** to apply it, or **Back to edit** to adjust it.
+
+    <Frame>
+      ![Edit charge preview with the ended line, the new line, and its invoice](/images/docs/subscriptions/seat-based/edit-charge-preview.png)
+    </Frame>
+  </Step>
+</Steps>
+
+**Viewing seat history:** A charge that has changed shows a **History** flag on the **Charges** tab. Click it to see each version of the charge with when it started and ended. You can also revert to an earlier version from there.
 
 <Frame>
-  ![Seat change history on subscription](/images/docs/subscriptions/seat-based/seat-history.png)
+  ![History of a charge with its current and ended versions](/images/docs/subscriptions/seat-based/charge-history.png)
 </Frame>
 
 **Viewing the prorated invoice:** When a mid-period seat change generates an invoice, the invoice detail shows two line items: the credit for the old quantity and the charge for the new quantity.
-
-<Frame>
-  ![Invoice line items for a seat change](/images/docs/subscriptions/seat-based/invoice-seat-change.png)
-</Frame>
 
 
 ## Common Patterns
