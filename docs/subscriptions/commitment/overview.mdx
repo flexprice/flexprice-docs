@@ -5,52 +5,118 @@ description: "Commitment-based pricing lets a customer guarantee a minimum spend
 
 Commitment-based pricing is a billing model that lets customers commit to a minimum spend or quantity for each billing period. It gives the business predictable revenue and lets the customer pay for actual usage beyond the commitment at a defined overage rate.
 
-A commitment is configured on a subscription line item and, by default, applies across the entire billing period. To vary the commitment by time of day — for example, higher rates during business hours and lower rates overnight — use [time-of-day buckets](/docs/subscriptions/commitment/time-of-day-buckets).
+A commitment has one of two scopes. A **contract commitment** is one minimum shared by all of a contract's usage charges. A **line-item commitment** is a minimum on a single usage charge. Choose the scope first: each one is set in a different place and bills a different set of charges.
+
+| | Contract commitment | Line-item commitment |
+|---|---|---|
+| **Covers** | All usage charges on the contract, added together | One usage charge |
+| **Commits to** | A spend amount | A spend amount or a number of units |
+| **Dashboard** | **Contract commitment** card, in the **Commitments & benefits** step | **Add commitment** on the charge, in the **Charges & add-ons** step |
+| **API** | `commitment_amount`, `overage_factor`, and `enable_true_up` on the subscription | `line_item_commitments`, keyed by price ID |
+| **True-up** | Billed as a separate line item | Added to the charge's own line item |
+| **Time-of-day buckets** | Not supported | Supported |
+
+A contract uses one scope or the other. Flexprice rejects a contract commitment combined with a line-item commitment, with the message "Use either subscription-level commitment or line-item-level commitment, not both".
 
 ## How Commitment Works
 
-When a commitment is configured on a subscription line item:
+Both scopes apply the same rule:
 
-1. **Commitment amount** — The minimum the customer commits to per billing period (e.g. $1,000/month). This guarantees the revenue floor.
-2. **Overage factor** — A multiplier applied to usage cost above the commitment (e.g. 1.5x). When usage exceeds the commitment, the excess is billed at the overage rate.
+1. **Commitment amount**: The minimum the customer commits to per billing period (e.g. \$1,000/month). This guarantees the revenue floor. A line-item commitment can be a number of units instead, which Flexprice converts to an amount at the charge's price.
+2. **Overage factor**: A multiplier applied to usage cost above the commitment (e.g. 1.5x). When usage exceeds the commitment, the excess is billed at the overage rate.
 3. **Usage calculation**:
    - If total usage cost ≤ commitment: all usage is charged at the base rate.
    - If total usage cost > commitment: the commitment portion is charged at the base rate, and the excess is charged at `base_rate × overage_factor`.
 
-## Steps to Add a Commitment
+The usage cost is the total of every usage charge for a contract commitment, and the cost of one charge for a line-item commitment.
 
-1. Click **Add Subscription**.
-2. Scroll to the **Commitment & Overage** section.
-3. Set the commitment amount and overage factor.
+## Contract Commitment
 
-<Frame>
-   ![Defining Commitment](/images/docs/subscriptions/commitment/commitment.png)
-</Frame>
+A contract commitment sets one minimum spend for the whole contract. Flexprice adds up the cost of every usage charge on the contract and applies the commitment to that total. Fixed charges, such as a platform fee, don't count toward it and are never billed at the overage rate. To set a minimum on one charge instead, use a [line-item commitment](#line-item-commitment).
+
+<Warning>
+  A contract commitment takes effect only when the **Overage factor** is greater than 1. At the default of 1, Flexprice bills usage at the normal rate and adds no true-up.
+</Warning>
+
+### Steps to Add a Contract Commitment
+
+In the dashboard, subscriptions are called **contracts**.
+
+<Steps>
+  <Step title="Start a new contract">
+    Go to **Contracts** and click **New contract**. Choose the customer and plan, then click **Next** until you reach the **Commitments & benefits** step.
+  </Step>
+
+  <Step title="Set the commitment">
+    In the **Contract commitment** card, enter the **Commitment amount** and an **Overage factor** greater than 1. **Commitment period** defaults to the billing period.
+
+    <Frame>
+      ![Contract commitment card with a commitment amount and overage factor](/images/docs/subscriptions/commitment/contract-commitment.png)
+    </Frame>
+  </Step>
+
+  <Step title="Create the contract">
+    Click **Next** through the **Billing** step, review the contract, and click **Create contract**.
+  </Step>
+</Steps>
+
+## Line-Item Commitment
+
+A line-item commitment sets a minimum on one usage charge. Only that charge's usage counts toward it, and only that charge is billed at the overage rate. The contract's other charges bill at their normal rates. Each usage charge can carry its own commitment, and an [add-on's](/docs/product-catalogue/addons/add-to-subscription) usage charges take one the same way.
+
+### Steps to Add a Line-Item Commitment
+
+<Steps>
+  <Step title="Start a new contract">
+    Go to **Contracts** and click **New contract**. Choose the customer and plan, then click **Next** to reach the **Charges & add-ons** step.
+  </Step>
+
+  <Step title="Open the charge's commitment">
+    In the **Charges** card, open the usage charge's **⋯** menu and click **Add commitment**. The dashboard offers it only on a contract with one phase.
+  </Step>
+
+  <Step title="Set the commitment">
+    Under **Committed**, choose **Spend (a money amount)** or **Usage (a number of units)**, and enter the commitment. Set the **Overage factor**: 1 bills usage past the commitment at the normal rate. **Commitment period** defaults to the billing period. Click **Save commitment**.
+
+    <Frame>
+      ![Configure commitment dialog with a spend commitment and an overage factor on one usage charge](/images/docs/subscriptions/commitment/line-item-commitment.png)
+    </Frame>
+  </Step>
+
+  <Step title="Create the contract">
+    Click **Next** through the remaining steps, review the contract, and click **Create contract**.
+  </Step>
+</Steps>
 
 ## Understanding True-Up
 
-True-up ensures the customer pays the full commitment even when actual usage falls short. When true-up is enabled and usage at period end is below the commitment, the shortfall is billed as a separate true-up line item.
+True-up ensures the customer pays the full commitment even when actual usage falls short. Both scopes support it.
 
 ### How True-Up Works
 
-1. **During the billing period** — Flexprice tracks usage and computes the running usage cost.
+1. **During the billing period**: Flexprice tracks usage and computes the running usage cost.
 2. **At invoice generation**:
-   - Usage cost < commitment AND true-up enabled → a true-up line item is added for the shortfall.
-   - Usage cost ≥ commitment → standard commitment-and-overage logic applies; no true-up is needed.
+   - Usage cost < commitment AND true-up enabled: Flexprice bills the shortfall. A contract commitment adds it as a separate line item named after the plan, such as **Developer True Up**. A line-item commitment adds it to that charge's line item, which then bills the full commitment.
+   - Usage cost ≥ commitment: standard commitment-and-overage logic applies, and no true-up is needed.
 
 ### Steps to Add True-Up
 
-1. Click **Add Subscription**.
-2. Scroll to the **Commitment & Overage** section.
-3. Set the commitment amount and overage factor.
-4. Enable true-up using the toggle.
+<Steps>
+  <Step title="Set the commitment">
+    Follow the steps for a [contract commitment](#steps-to-add-a-contract-commitment) or a [line-item commitment](#steps-to-add-a-line-item-commitment).
+  </Step>
 
-<Frame>
-   ![Enabling True-Up](/images/docs/subscriptions/commitment/true-up-enabled.png)
-</Frame>
+  <Step title="Turn on true-up">
+    Turn on **True-up** in the **Contract commitment** card or in the charge's **Configure commitment** dialog, then finish creating the contract. The card's switch stays disabled until you enter a commitment amount.
+
+    <Frame>
+      ![Contract commitment card with true-up turned on](/images/docs/subscriptions/commitment/contract-commitment-true-up.png)
+    </Frame>
+  </Step>
+</Steps>
 
 ## Time-of-Day Commitment Buckets
 
-A line-item commitment applies for all 24 hours of the day. If you need different commitments and prices for different parts of the day — for example, reserved capacity 09:00–17:00 UTC and standard pricing outside — configure [time-of-day buckets](/docs/subscriptions/commitment/time-of-day-buckets) on the line item.
+A line-item commitment applies for all 24 hours of the day. If you need different commitments and prices for different parts of the day, for example reserved capacity from 09:00 to 17:00 UTC and standard pricing outside it, configure [time-of-day buckets](/docs/subscriptions/commitment/time-of-day-buckets) on the line item. In the charge's **Configure commitment** dialog, set a **Bucket size**, turn on **Apply to each bucket**, and add **Time windows**. Contract commitments don't support buckets.
 
 <Card icon="clock" horizontal={true} href="/docs/subscriptions/commitment/time-of-day-buckets" title="Time-of-Day Commitment Buckets" />
