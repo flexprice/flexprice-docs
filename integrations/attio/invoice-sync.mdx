@@ -4,13 +4,13 @@ description: "How Flexprice records each finalized invoice in a Flexprice Invoic
 tag: 'Beta'
 ---
 
-Invoice sync records your Flexprice invoices in Attio, so anyone working a company or deal can see what was billed and what is still owed. Flexprice creates a **Flexprice Invoices** object in your Attio workspace, adds a record for each finalized invoice, and links it to the customer's company, billing contact, and deal. When the invoice is paid or voided in Flexprice, the record in Attio follows. Turn invoice sync on with the **Invoices** toggle on the [Attio connection](/integrations/attio/connection-setup), or with `sync_config.invoice.outbound` in the API.
+Invoice sync records your Flexprice invoices in Attio, so anyone working a company or deal can see what was billed and what is still owed. Flexprice creates a **Flexprice Invoices** object in your Attio workspace, adds a record for each finalized invoice, and links it to the customer's company, billing contact, and deal. When the invoice is paid or voided in Flexprice, the record in Attio follows. Turn invoice sync on with **Push invoices** on the [Attio connection](/integrations/attio/connection-setup), or with `sync_config.invoice.outbound` in the API.
 
 ## When Attio invoice sync runs
 
 Flexprice syncs an invoice when all of these are true:
 
-1. The **Invoices** toggle is on for the Attio connection.
+1. **Push invoices** is on for the Attio connection.
 2. The invoice's customer is linked to an Attio company or person. [Customer sync](/integrations/attio/customer-sync) creates this link, both for customers it creates and for existing customers it matches by email.
 3. The invoice is finalized. Draft invoices are not synced.
 
@@ -95,7 +95,7 @@ The endpoint sends the invoice to every connected provider that has invoice sync
 
 | Issue | Cause | Solution |
 |-------|-------|----------|
-| A finalized invoice is not in Attio | The **Invoices** toggle is off, the customer is not linked to Attio, or **Records** is at **Read** on the token | Fix the cause, then [retry the sync](#retrying-an-attio-invoice-sync) |
+| A finalized invoice is not in Attio | **Push invoices** is off, the customer is not linked to Attio, or **Records** is at **Read** on the token | Fix the cause, then [retry the sync](#retrying-an-attio-invoice-sync) |
 | Invoice sync fails for every invoice | Flexprice could not create the Flexprice Invoices object, because the plan's object limit is reached or **Object Configuration** is at **Read** on the token | Free an object slot in Attio or raise the scope, then retry the sync |
 | A record still shows `Open` after the customer paid | The payment was collected outside Flexprice and not recorded | Record the payment in Flexprice |
 | A record has no **Deal** | The invoice's subscription is not linked to a deal, for example because deal sync is off | Turn on deal sync. The next update to the record fills in **Deal**. |
