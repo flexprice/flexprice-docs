@@ -123,7 +123,7 @@ In this model, credits are deducted when the user does an action (e.g. unlock em
     Create a **Customer** (with External ID for your system).
   </Step>
   <Step title="Credit grant and entitlement">
-    For **plan-based credits:** Add Subscription → choose the plan. The customer gets the plan’s credit grants and feature access. For **direct purchase only**, skip this and top up the wallet in the next step.
+    For **plan-based credits:** Create contract → choose the plan. The customer gets the plan’s credit grants and feature access. For **direct purchase only**, skip this and top up the wallet in the next step.
   </Step>
 </Steps>
 
@@ -139,10 +139,10 @@ To implement Apollo-style credit-based pricing in Flexprice, follow these steps 
     Navigate to **Flexprice Dashboard** → **Product Catalog** → **Features**
 
      <Frame>
-  ![Create Features (metered) for credit-based pricing](/images/docs/subscription-flow/credit-based-features.png)
+  ![Feature form for Contact Export with the contact.export event and Count aggregation](/images/docs/subscription-flow/credit-based-features.png)
   </Frame>
 
-    For each action that costs credits (e.g. Contact Export, Email Enrichment): click **Create Feature**, choose **Metered**, and set **Event Name** and **Aggregation**. Later you’ll link these to the plan and set entitlements (e.g. 50 free, then deduct from credits).
+    For each action that costs credits (e.g. Contact Export, Email Enrichment): click **New feature**, choose **Metered**, and set the **Event name** and **Aggregation**. Later you’ll link these to the plan and set entitlements (e.g. 50 free, then deduct from credits).
 
     For more, see [Creating a feature](/docs/product-catalogue/features/create) and [Linking features to plans](/docs/product-catalogue/features/linking-to-plans).
   </Step>
@@ -151,32 +151,33 @@ To implement Apollo-style credit-based pricing in Flexprice, follow these steps 
     Navigate to **Flexprice Dashboard** → **Product Catalog** → **Plans**
 
      <Frame>
-  ![Add Subscription and credit grants](/images/docs/subscription-flow/add-credit-grant-with-plan.png)
+  ![Add credit grant dialog with a recurring grant of 1,000 credits every month](/images/docs/subscription-flow/add-credit-grant-with-plan.png)
   </Frame>
 
-    **Do this:** (1) Click **Add** and enter plan name and billing (e.g. Basic, annually). (2) Add charges that provide credits (e.g. recurring credit grant per month) or link metered features with pricing. (3) In **Entitlements**, link features so subscribers get the right access and optional free usage. When a customer is assigned this plan, they receive the credit grants you configured (e.g. monthly). For more, see [Creating a Plan](/docs/product-catalogue/plans/create) and [Linking features to plans](/docs/product-catalogue/features/linking-to-plans).
+    **Do this:** (1) Click **New plan**, enter the plan name (e.g. Basic), and add its charges; the billing period is set on each charge (e.g. annually). (2) To give credits, open the plan and click **Add grant** in the **Credit grants** card: choose **Recurring**, name the grant, set the **Credits** (e.g. 1,000) and **Refreshes every** (e.g. Monthly), then click **Create credit grant**. You can also link metered features with pricing. (3) In **Entitlements**, link features so subscribers get the right access and optional free usage. When a customer is assigned this plan, they receive the credit grants you configured (e.g. monthly). For more, see [Creating a Plan](/docs/product-catalogue/plans/create) and [Linking features to plans](/docs/product-catalogue/features/linking-to-plans).
   </Step>
 
    <Step title="Step 3: Credit Grant and Entitlement (Plan-Based Path)">
-    **Do this:** Open the customer → **Add Subscription** → select your plan. **Result:** The customer gets the plan’s credit grants (e.g. monthly) and access to the features you linked to that plan (including any free usage you set).
+    **Do this:** Open the customer → **Create contract** → select your plan. **Result:** The customer gets the plan’s credit grants (e.g. monthly) and access to the features you linked to that plan (including any free usage you set).
+    To give this contract extra credits, click **Add credit grant** on the **Commitments & benefits** step of the wizard.
 
     <Frame>
-  ![Add Subscription and credit grants](/images/docs/subscription-flow/credit-grants.png)
+  ![Add credit grant dialog on the Commitments & benefits step of the New contract wizard](/images/docs/subscription-flow/credit-grants.png)
   </Frame>
 
     For **direct purchase only**, skip this step and top up the wallet in Step 6 (Top Up the Wallet). For more, see [Plans](/docs/product-catalogue/plans/create) and [Linking features to plans](/docs/product-catalogue/features/linking-to-plans).
   </Step>
 
   <Step title="Step 4: Create Customer">
-    Navigate to **Flexprice Dashboard** → **Customer Management** → **Customers**
+    Navigate to **Flexprice Dashboard** → **Customers** and click **New customer**
 
 
      <Frame>
-  ![Create Customer in Flexprice](/images/docs/subscription-flow/credit-based-customer.png)
+  ![Create customer form for Flex Corporation with its external ID and email](/images/docs/subscription-flow/credit-based-customer.png)
   </Frame>
 
 
-    **Enter at least:** Customer Name (e.g. `Flex Corporation`). Add **External ID** if you use it for API lookups.
+    **Enter at least:** **Name** (e.g. `Flex Corporation`) and **External ID** (required: usage events are matched to the customer by it), then click **Create customer**.
 
     For details, see [Customer Management](/docs/customers/create).
   </Step>
