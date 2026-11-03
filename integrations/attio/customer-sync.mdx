@@ -4,7 +4,7 @@ description: "How Flexprice creates or links a customer for the company on each 
 tag: 'Beta'
 ---
 
-Customer sync turns the companies on your won Attio deals into Flexprice customers. When a deal reaches the won stage set on the [Attio connection](/integrations/attio/connection-setup), Flexprice reads the deal's company and people, then creates or links one Flexprice customer for the company. Customer sync runs one way: Flexprice never creates or updates companies or people in Attio. Turn it on with the **Customers** toggle, or with `sync_config.customer.inbound` in the API.
+Customer sync turns the companies on your won Attio deals into Flexprice customers. When a deal reaches the won stage set on the [Attio connection](/integrations/attio/connection-setup), Flexprice reads the deal's company and people, then creates or links one Flexprice customer for the company. Customer sync runs one way: Flexprice never creates or updates companies or people in Attio. Turn it on with **Pull customers**, or with `sync_config.customer.inbound` in the API.
 
 ## When Attio customer sync runs
 
@@ -107,7 +107,7 @@ The Attio link is the item with `provider_type` set to `attio`. Its `provider_en
 
 | Issue | Cause | Solution |
 |-------|-------|----------|
-| A won deal created no customer | The deal reached a stage other than **Won Stage**, **Customers** is off, or the deal has no company and no person | Check **Won Stage** and the **Customers** toggle on the connection, and associate a company with the deal |
+| A won deal created no customer | The deal reached a stage other than **Won stage**, **Pull customers** is off, or the deal has no company and no person | Check **Won stage** and **Pull customers** on the connection, and associate a company with the deal |
 | The customer has no email | No person on the deal had an email address when it was won | Set the customer's email in Flexprice. Later changes in Attio are not copied. |
 | The wrong person is the billing contact | Flexprice uses the first person with an email address under **Associated people** | Change the customer's email in Flexprice, and reorder the deal's people for future deals |
 | Two customers exist for one company | The deals point at two company records in Attio, such as duplicates created from different email domains | Merge the duplicate companies in Attio, then archive the extra customer in Flexprice |

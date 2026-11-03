@@ -10,9 +10,9 @@ The Attio connection links Flexprice to one Attio workspace through an Attio acc
 
 | Sync | Direction | Runs when | Turned on by |
 |------|-----------|-----------|--------------|
-| [Customer sync](/integrations/attio/customer-sync) | Attio to Flexprice | A deal reaches your won stage | The **Customers** toggle |
-| [Deal sync](/integrations/attio/deal-sync) | Flexprice to Attio | A subscription is created, activated, or changed | The **Deals** toggle |
-| [Invoice sync](/integrations/attio/invoice-sync) | Flexprice to Attio | An invoice is finalized, paid, or voided | The **Invoices** toggle |
+| [Customer sync](/integrations/attio/customer-sync) | Attio to Flexprice | A deal reaches your won stage | **Pull customers** |
+| [Deal sync](/integrations/attio/deal-sync) | Flexprice to Attio | A subscription is created, activated, or changed | **Push deals** |
+| [Invoice sync](/integrations/attio/invoice-sync) | Flexprice to Attio | An invoice is finalized, paid, or voided | **Push invoices** |
 
 ```mermaid
 flowchart TD
@@ -64,11 +64,7 @@ Flexprice does not sync plans, prices, or payment methods with Attio, and it doe
 
 Leave every other scope at **Disabled**. In the API, these levels are the scopes `record_permission:read`, `record_permission:read-write`, `object_configuration:read`, `object_configuration:read-write`, and `webhook:read-write`. Deal sync and invoice sync need **Object Configuration** at **Read-write** because Flexprice adds its own attributes to your Deals object and creates its own Flexprice Invoices object. Customer sync needs **Webhooks** at **Read-write** because Flexprice registers its webhook through the Attio API.
 
-The **Required Scopes** panel in the Flexprice connection drawer lists the scopes for the syncs you turn on.
-
-<Frame>
-  ![Required Scopes panel in the Connect to Attio drawer, listing record_permission:read-write, object_configuration:read-write, and webhook:read-write with all three syncs turned on](/images/docs/integrations/attio/required-scopes.png)
-</Frame>
+The **Connect Attio** sheet in Flexprice reminds you to create the token with the Records, Object Configuration, and Webhooks scopes. Use the table above for the level each sync needs.
 
 ## Step 2: Create the Attio connection in Flexprice
 
@@ -76,41 +72,45 @@ The **Required Scopes** panel in the Flexprice connection drawer lists the scope
 
 <Steps>
   <Step title="Open the Attio integration">
-    In the Flexprice dashboard, open **Integrations**, select **Attio**, and click **Add a connection**.
+    In the Flexprice dashboard, open **Integrations** and click **Connect** on the **Attio** card. Set **Category** to **CRM** to find it next to HubSpot.
 
     <Frame>
-      ![Attio card on the Flexprice Integrations page, with the CRM and Sales tags and a Docs link](/images/docs/integrations/attio/integrations-page.png)
+      ![Attio card next to HubSpot on the Integrations page, filtered to the CRM category](/images/docs/integrations/attio/integrations-page.png)
     </Frame>
   </Step>
   <Step title="Enter the name and token">
-    Fill in **Connection Name**, then paste the **Access Token** from Step 1.
-  </Step>
-  <Step title="Pick the won stage">
-    **Won Stage** lists the stages of your Deals object. Pick the stage that marks a deal as won. It defaults to **Won 🎉**, the won stage Attio creates by default. Flexprice stores the stage's ID, so renaming the stage in Attio later does not break customer sync.
+    Fill in **Connection name**, then paste the **Access token** from Step 1.
 
     <Frame>
-      ![Won Stage dropdown in the Connect to Attio drawer, listing the Lead, In Progress, Won, and Lost deal stages with Won selected](/images/docs/integrations/attio/won-stage.png)
+      ![Connect Attio sheet on the Credentials step with the scopes note, the connection name, the masked access token, and the won stage](/images/docs/integrations/attio/connection.png)
+    </Frame>
+  </Step>
+  <Step title="Pick the won stage">
+    **Won stage** lists the stages of your Deals object. Pick the stage that marks a deal as won. It defaults to **Won 🎉**, the won stage Attio creates by default. Flexprice stores the stage's ID, so renaming the stage in Attio later does not break customer sync. Click **Continue**.
+
+    <Frame>
+      ![Won stage list in the Connect Attio sheet with Lead, In Progress, Won, and Lost, and Won selected](/images/docs/integrations/attio/won-stage.png)
     </Frame>
   </Step>
   <Step title="Choose what syncs">
-    Under **Sync Configuration**, turn on **Customers**, **Deals**, and **Invoices** for the syncs you want. All three are off by default.
+    On the **Sync** step, turn on **Pull customers**, **Push deals**, and **Push invoices** for the syncs you want. All three are off by default. Click **Continue**.
 
     <Frame>
-      ![Connect to Attio drawer with the connection name, masked access token, the Won stage, and the Customers, Deals, and Invoices toggles turned on](/images/docs/integrations/attio/connection.png)
+      ![Sync step with the Pull customers, Push deals, and Push invoices switches turned on](/images/docs/integrations/attio/connect-sync.png)
     </Frame>
   </Step>
   <Step title="Review the webhook">
-    Under **Webhook Configuration**, the drawer shows the URL that Flexprice registers in Attio. Expand **Webhook Events** to see the deal events it subscribes to. There is nothing to copy: Flexprice creates the webhook itself when you save the connection with **Customers** turned on.
+    The **Webhook** step shows the URL that Flexprice registers in Attio and the deal events it subscribes to. There is nothing to copy: Flexprice creates the webhook itself when you connect with **Pull customers** on.
 
     <Frame>
-      ![Webhook Configuration section of the drawer, showing the Flexprice webhook URL for Attio and the record.created and record.updated deal events](/images/docs/integrations/attio/webhook-configuration.png)
+      ![Webhook step with the Flexprice webhook URL for Attio and the record.created and record.updated events](/images/docs/integrations/attio/webhook-configuration.png)
     </Frame>
   </Step>
   <Step title="Save the connection">
-    Click **Create Connection**. The connection appears under **Connected Accounts** on the Attio integration page.
+    Click **Connect Attio**. The Attio card moves under **Connected** on the Integrations page.
 
     <Frame>
-      ![Attio integration page in the Flexprice dashboard, listing the Attio Production connection under Connected Accounts](/images/docs/integrations/attio/connected-account.png)
+      ![Integrations page with the Attio card under Connected](/images/docs/integrations/attio/connected-account.png)
     </Frame>
   </Step>
 </Steps>
@@ -119,7 +119,7 @@ The **Required Scopes** panel in the Flexprice connection drawer lists the scope
 
 1. **The token.** Flexprice calls Attio's `GET /v2/self` to confirm the token is active and holds the scopes for the syncs you turned on. If a scope is missing, Flexprice does not save the connection and names the missing scope.
 2. **The won stage.** Flexprice looks up the stage on the `stage` attribute of your Deals object and stores its ID.
-3. **The webhook.** When **Customers** is on, Flexprice creates its webhook with Attio's `POST /v2/webhooks` and stores the signing secret that Attio returns, encrypted.
+3. **The webhook.** When **Pull customers** is on, Flexprice creates its webhook with Attio's `POST /v2/webhooks` and stores the signing secret that Attio returns, encrypted.
 
 ### Creating the Attio connection with the API
 
@@ -177,26 +177,26 @@ The webhook is listed in Attio under **Workspace settings** → **Developers**, 
 
 ## Changing Attio connection settings
 
-To change the connection name, the won stage, or the syncs, open **Integrations** → **Attio** in the Flexprice dashboard and click the pencil icon next to the connection under **Connected Accounts**. The edit drawer does not show the access token field.
+To change the connection name or the syncs, open **Integrations** in the Flexprice dashboard and click **Configure** on the Attio card. The settings sheet does not show the access token or the won stage.
 
 <Frame>
-  ![Edit Attio Connection drawer, showing the connection name, the Won stage, and the sync toggles but no access token field](/images/docs/integrations/attio/edit-connection.png)
+  ![Attio connection settings with the connection name, the sync switches, the webhook, and Disconnect, but no access token or won stage](/images/docs/integrations/attio/edit-connection.png)
 </Frame>
 
-- **Turning Customers off** deletes the Flexprice webhook from Attio. Turning it back on registers a new one.
-- **Turning on Deals or Invoices later** needs the matching scopes. Raise them on the token first, under **Workspace settings** → **Developers** → **Access tokens** in Attio, then turn on the toggle.
+- **Turning off Pull customers** deletes the Flexprice webhook from Attio. Turning it back on registers a new one.
+- **Turning on Push deals or Push invoices later** needs the matching scopes. Raise them on the token first, under **Workspace settings** → **Developers** → **Access tokens** in Attio, then turn on the switch.
 
-To use a different access token, delete the Attio connection and create it again with the new token. Deleting the connection also deletes the Flexprice webhook from Attio. Links between Flexprice customers, subscriptions, and invoices and their Attio records are stored separately from the connection, so they are kept.
+To use a different access token or won stage, click **Disconnect Attio** in the same sheet, then connect Attio again. Disconnecting also deletes the Flexprice webhook from Attio. Links between Flexprice customers, subscriptions, and invoices and their Attio records are stored separately from the connection, so they are kept.
 
 ## Troubleshooting the Attio connection
 
 | Issue | Cause | Solution |
 |-------|-------|----------|
 | Saving the connection fails with a missing scope | The token lacks a scope that one of the turned-on syncs needs | Raise the scope on the token in Attio, then save the connection again |
-| **Won Stage** lists no stages | The Deals object is turned off in Attio, or the token's **Object Configuration** scope is **Disabled** | Turn on Deals in Attio, and set **Object Configuration** to at least **Read** on the token |
-| No customers appear after a deal is won | **Customers** is off, or the deal reached a stage other than the connection's **Won Stage** | Turn on **Customers**, and check **Won Stage** on the connection |
-| Customer sync stopped after working before | The webhook was edited or deleted in Attio, or the token was deleted | Turn **Customers** off and on again to register a new webhook, or recreate the connection with a new token |
-| Deal values or invoices do not appear in Attio | The **Deals** or **Invoices** toggle is off, or **Records** is still at **Read** on the token | Turn on the toggle, and raise **Records** and **Object Configuration** to **Read-write** |
+| **Won stage** lists no stages | The Deals object is turned off in Attio, or the token's **Object Configuration** scope is **Disabled** | Turn on Deals in Attio, and set **Object Configuration** to at least **Read** on the token |
+| No customers appear after a deal is won | **Pull customers** is off, or the deal reached a stage other than the connection's **Won stage** | Turn on **Pull customers**, and check **Won stage** on the connection |
+| Customer sync stopped after working before | The webhook was edited or deleted in Attio, or the token was deleted | Turn **Pull customers** off and on again to register a new webhook, or recreate the connection with a new token |
+| Deal values or invoices do not appear in Attio | **Push deals** or **Push invoices** is off, or **Records** is still at **Read** on the token | Turn on the switch, and raise **Records** and **Object Configuration** to **Read-write** |
 
 ## Attio sync guides
 
