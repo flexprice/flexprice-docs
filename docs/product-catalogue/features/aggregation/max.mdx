@@ -3,32 +3,50 @@ title: "MAX"
 description: "Get the maximum value of a property with optional bucketed or group-by calculations."
 ---
 
-Step-by-Step Setup when creating a MAX-based metered feature:
+Follow these steps to set up a MAX-based metered feature in the dashboard:
 
-1. **Navigate to Features**
-   - Go to Product Catalog → Features
-   - Click "Add Feature"
+<Steps>
+  <Step title="Navigate to Features">
+    Go to **Product catalog → Features** and click **New feature**.
+  </Step>
 
-2. **Basic Information**
-   - **Name**: "Peak Concurrent Users" (or descriptive name)
-   - **Type**: Select "Metered"
+  <Step title="Basic information">
+    - **Name**: descriptive name (e.g. `Peak Resource Usage`)
+    - **Type**: Select **Metered**
+    - **Unit (singular)** and **Unit (plural)**: e.g. `GB`
+  </Step>
 
-3. **Event Configuration**
-   - **Event Name**: `concurrent.users` (must match your event data)
-   - **Aggregation Function**: Max
-   - **Aggregation Field**: `user_count` (the property to find maximum for)
-   - **Bucket Size**: Optional - Leave empty for standard MAX, or select (HOUR, DAY, etc.) for bucketed MAX
-   - **Group By**: Optional - Only used with bucketed MAX. When Bucket Size is set, specify a single property name (e.g. `resource_id`) to compute MAX per group within each time bucket, then sum (per bucket and across buckets)
+  <Step title="Event configuration">
+    - **Event name**: `resource.usage` (must match your event data)
+    - **Aggregation**: **Max**
+    - **Event field**: `data` (the property to find the maximum of)
+    - **Group by** (optional): a single event property name (e.g. `resource_id`). It only takes effect when the charge has a usage window (see the last step). Leave it empty for a plain MAX.
 
-4. **Usage Settings**
-   - **Usage Reset**: Periodic (for peak tracking per period)
-   - **Unit Name**: `user / users`
+    <Frame>
+      ![Aggregation card with Max, the data event field, and resource_id in Group by](/images/docs/product-catalogue/features/aggregations/max-group-by.png)
+    </Frame>
+  </Step>
 
-5. **Save Feature**
+  <Step title="Save the feature">
+    Click **Create feature**. The aggregation, event field and group by can't be changed after the feature is created.
+  </Step>
+
+  <Step title="Set a usage window (optional)">
+    For bucketed MAX, the window is set on the charge, not on the feature. Open the feature, click **Add charge** and choose the plan (or add a usage charge for the feature on the plan). In **Usage window**, pick the bucket size, such as **Hourly**. Leave it at **No window: the whole period** for standard MAX.
+
+    <Frame>
+      ![Add a charge dialog for Peak Resource Usage with the Usage window set to Hourly](/images/docs/product-catalogue/features/aggregations/max-usage-window.png)
+    </Frame>
+  </Step>
+</Steps>
 
 ## MAX - Modes
 
 MAX aggregation can operate in two modes depending on whether `bucket_size` is specified. **`group_by` is only applied when using bucketed MAX** (i.e. when `bucket_size` is set).
+
+<Note>
+`bucket_size` is set on the price: **Usage window** on a usage charge in the dashboard, or `bucket_size` when you create the price through the API. A `bucket_size` on the feature's meter is deprecated. Meters that have one keep billing with it, and a price on such a meter can't set its own.
+</Note>
 
 ### Mode 1: Standard MAX (Non-Bucketed)
 **When:** `bucket_size` is NOT specified (group_by is not used)  
@@ -89,7 +107,7 @@ When **Group By** is also set (a single property name string), within **each tim
 ### Bucketed MAX Example
 
 #### Configuration
-- **Bucket Size:** HOUR
+- **Usage window:** Hourly (`bucket_size: HOUR`)
 - **Slab Pricing:**
   - **0-5 GB:** 0 Rs (free tier)
   - **5-10 GB:** 2 Rs per GB 
@@ -178,15 +196,11 @@ Where each bucket represents a time window defined by `bucket_size`.
 **Group By** is only available with bucketed MAX. When set, within **each time bucket** events are grouped by the chosen property; MAX is computed per group in that bucket, then those group maximums are summed. The final result is the sum of these per-bucket totals. Useful for per-resource or per-entity peak billing within time windows.
 
 #### Configuration
-- **Aggregation Field:** `data`
-- **Bucket Size:** HOUR (required for group_by to apply)
-- **Group By:** `resource_id` (single property name; must exist on event properties)
+- **Event field:** `data`
+- **Group by:** `resource_id` (single property name; must exist on event properties)
+- **Usage window:** Hourly on the charge (`bucket_size: HOUR`, required for group_by to apply)
 
-<Frame>
-  ![MAX feature with Bucket Size and Group By configured](/images/docs/product-catalogue/features/aggregations/max-group-by.png)
-</Frame>
-
-*Screenshot: Metered feature with Aggregation Function = Max, Aggregation Field = data, Bucket Size = HOUR, and Group By = resource_id.*
+This is the feature from the setup steps above.
 
 #### Event Data
 ```json
@@ -301,7 +315,7 @@ Without `group_by`, bucketed MAX would give 20 + 15 = 35 (max per hour). With `g
 
 ### Bucketed MAX with group_by Use Cases
 
-*Requires Bucket Size to be set; group_by is only applied with bucketed MAX.*
+*Requires a usage window (`bucket_size`) on the price; group_by is only applied with bucketed MAX.*
 
 #### Per-Resource or Per-Entity Peak Billing
 **Perfect for**: Billing on the sum of peak usage per resource within each time window (e.g. per resource ID, per project ID, per region)
@@ -343,7 +357,7 @@ Without `group_by`, bucketed MAX would give 20 + 15 = 35 (max per hour). With `g
 - Sum of peaks across time windows
 
 ✅ **Use Bucketed MAX with group_by when:**
-- You already use bucketed MAX (Bucket Size is set) and want per-resource or per-entity breakdown
+- You already use bucketed MAX (a usage window is set) and want per-resource or per-entity breakdown
 - Billing per resource, per project, or per entity **within each time bucket**
 - `group_by` is a single property name string on your events  
 - **Note:** group_by is only applied when bucket_size is set
@@ -352,16 +366,16 @@ Without `group_by`, bucketed MAX would give 20 + 15 = 35 (max per hour). With `g
 
 | Aspect | Standard MAX | Bucketed MAX | Bucketed MAX + group_by |
 |--------|--------------|--------------|--------------------------|
-| **Configuration** | No bucket_size | Requires bucket_size | Requires bucket_size + group_by (single field) |
+| **Configuration** | No bucket_size | Requires bucket_size on the price | Requires bucket_size on the price + group_by on the feature (single field) |
 | **Calculation** | Single maximum value | Sum of bucket maximums | Per bucket: sum of group maximums; then sum across buckets |
 | **Use Case** | Overall peak detection | Cumulative peak billing | Per-resource / per-entity peak within time windows |
 | **Result** | Simple max value | Sum of time-window peaks | Sum of (per-bucket sum of each group’s max) |
 
 ### ⚠️ Critical Notes
 
-- **bucket_size can ONLY be used with MAX aggregation** - No other aggregation supports this
+- **bucket_size can only be used with MAX or SUM aggregation** - The dashboard offers **Usage window** only for MAX and SUM features
 - **Bucketed MAX sums the maximums** - Does NOT return max of maximums
-- **group_by is only applied with bucketed MAX** - You must set Bucket Size for group_by to take effect. Within each time bucket, events are grouped by the `group_by` property; MAX is computed per group, then those group maximums are summed (per bucket), and bucket results are summed
+- **group_by is only applied with bucketed MAX** - You must set a usage window (`bucket_size`) for group_by to take effect. Within each time bucket, events are grouped by the `group_by` property; MAX is computed per group, then those group maximums are summed (per bucket), and bucket results are summed
 
 ## Next Steps
 
