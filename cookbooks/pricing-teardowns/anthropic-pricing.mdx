@@ -1,0 +1,122 @@
+---
+title: "Can Flexprice Handle Anthropic's Pricing?"
+sidebarTitle: "Anthropic Pricing"
+description: "Model Claude API token pricing in Flexprice with separate meters for uncached input, cache writes, cache reads and output"
+---
+
+Anthropic's Claude API charges by model and token category. Input, output, cache writes and cache reads have different rates, so counting all tokens in one meter produces the wrong bill. This guide recreates standard Claude Sonnet 4.6 API pricing with five metered features and a usage-only plan.
+
+<Note>
+  This example covers standard API token charges in USD. It does not recreate Claude app subscriptions, other models, batch or fast processing, partner cloud pricing, tool charges, or negotiated discounts. Those need their own prices or meters. The plan and event names below are examples for your Flexprice account, not Anthropic product names or API payloads.
+</Note>
+
+## Claude Sonnet 4.6 token prices
+
+The [official model pricing table](https://platform.claude.com/docs/en/about-claude/pricing) lists these rates. A million tokens is a price presentation unit, not a minimum purchase: meter raw token counts and use the equivalent decimal per-token rate.
+
+| Token category | USD per million tokens | USD per token |
+| --- | --- | --- |
+| **Uncached input** | $3.00 | $0.000003 |
+| **5-minute cache writes** | $3.75 | $0.00000375 |
+| **1-hour cache writes** | $6.00 | $0.000006 |
+| **Cache hits and refreshes** | $0.30 | $0.0000003 |
+| **Output** | $15.00 | $0.000015 |
+
+Cache writes are not cache reads. A newly cached token uses the write rate for its cache lifetime, while a reused token uses the cache-hit rate. Each input token belongs to one billing category for a request; do not charge a cache write or read again as uncached input.
+
+## How Anthropic's pricing maps to Flexprice
+
+| Anthropic's pricing uses | Flexprice setup |
+| --- | --- |
+| **Different prices for each model** | A model property on the usage event and a model filter on each [metered feature](/docs/product-catalogue/features/create) |
+| **Separate uncached input and output charges** | Two SUM meters over independent numeric token properties |
+| **Cache writes priced by lifetime** | Separate SUM meters for 5-minute and 1-hour cache writes |
+| **Discounted cache hits** | A SUM meter for cache-read tokens with its own usage charge |
+| **Per-token billing** | A [flat-fee usage charge](/docs/product-catalogue/plans/billing-models/flat-fee) for each meter, using the decimal per-token amount |
+
+The example uses a monthly billing cycle with usage billed in arrears. That is a choice for your Flexprice plan, not a claim about Anthropic's payment collection cadence. It has no subscription fee, included allowance, or recurring credit grant. If your product sells prepaid credits, configure the [wallet funding and credit rules](/docs/wallet/prepaid-and-promotional) separately from these token rates.
+
+## Set up the metered features
+
+Create five metered features with **Event Name** `claude_request`, **Aggregation** `SUM`, token units, and periodic usage. Apply the filter `model = claude-sonnet-4-6` to every meter. Each meter sums a different property from the same event.
+
+| Feature name | Aggregation field | Model filter |
+| --- | --- | --- |
+| **Sonnet 4.6 uncached input** | `uncached_input_tokens` | `claude-sonnet-4-6` |
+| **Sonnet 4.6 cache writes, 5 minutes** | `cache_write_5m_tokens` | `claude-sonnet-4-6` |
+| **Sonnet 4.6 cache writes, 1 hour** | `cache_write_1h_tokens` | `claude-sonnet-4-6` |
+| **Sonnet 4.6 cache reads** | `cache_read_tokens` | `claude-sonnet-4-6` |
+| **Sonnet 4.6 output** | `output_tokens` | `claude-sonnet-4-6` |
+
+Read the completed request's usage data on your server and normalize it into these properties. Use the provider's uncached input count, not a total input count that also includes cache reads or writes. Split cache writes by lifetime instead of adding an aggregate cache-write count on top of its lifetime breakdown. See Anthropic's [prompt caching documentation](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) for the usage fields.
+
+| Claude response usage field | Flexprice event property |
+| --- | --- |
+| `input_tokens` | `uncached_input_tokens` |
+| `cache_creation.ephemeral_5m_input_tokens` | `cache_write_5m_tokens` |
+| `cache_creation.ephemeral_1h_input_tokens` | `cache_write_1h_tokens` |
+| `cache_read_input_tokens` | `cache_read_tokens` |
+| `output_tokens` | `output_tokens` |
+
+The aggregate `cache_creation_input_tokens` equals the sum of the two cache-write lifetime fields. Do not send it as another billable meter when you send the breakdown.
+
+## Configure the usage-only plan
+
+Create a [plan](/docs/product-catalogue/plans/create) named **Claude API Standard** with currency **USD** and a **monthly** billing period. Link all five features to it. Add a usage-based flat-fee charge to each feature with these amounts per token:
+
+| Feature | Decimal amount per token | Billing |
+| --- | --- | --- |
+| **Sonnet 4.6 uncached input** | `0.000003` | Monthly, in arrears |
+| **Sonnet 4.6 cache writes, 5 minutes** | `0.00000375` | Monthly, in arrears |
+| **Sonnet 4.6 cache writes, 1 hour** | `0.000006` | Monthly, in arrears |
+| **Sonnet 4.6 cache reads** | `0.0000003` | Monthly, in arrears |
+| **Sonnet 4.6 output** | `0.000015` | Monthly, in arrears |
+
+Use the meter attached to each feature when configuring its price. Do not round the per-token amount to cents, use a package that rounds usage up to a million tokens, or add a free-token allowance. A display unit such as “million tokens” changes reporting presentation, not these billing amounts.
+
+## Send usage and check the arithmetic
+
+Subscribe a customer to the plan, then [send usage events](/docs/core-concepts/usage-events/sending-events) from your server. The following is an illustrative normalized Flexprice event, not an actual Claude response:
+
+```json
+{
+  "event_name": "claude_request",
+  "external_customer_id": "customer_example",
+  "event_id": "claude_request_example_001",
+  "timestamp": "2026-11-04T00:00:00Z",
+  "properties": {
+    "model": "claude-sonnet-4-6",
+    "uncached_input_tokens": 1000,
+    "cache_write_5m_tokens": 200,
+    "cache_write_1h_tokens": 100,
+    "cache_read_tokens": 2000,
+    "output_tokens": 500
+  }
+}
+```
+
+Keep `event_id` stable when retrying the same request and use the actual request timestamp. Send the final token counts once per completed request rather than billing both streaming updates and the final total.
+
+For 1,000 such requests, the aggregate usage and charges are:
+
+| Token category | Tokens | Calculation | USD charge |
+| --- | --- | --- | --- |
+| **Uncached input** | 1,000,000 | 1,000,000 × 0.000003 | $3.00 |
+| **5-minute cache writes** | 200,000 | 200,000 × 0.00000375 | $0.75 |
+| **1-hour cache writes** | 100,000 | 100,000 × 0.000006 | $0.60 |
+| **Cache hits and refreshes** | 2,000,000 | 2,000,000 × 0.0000003 | $0.60 |
+| **Output** | 500,000 | 500,000 × 0.000015 | $7.50 |
+| **Total** | | | **$12.45** |
+
+Compare each feature's usage and charge with this calculation before using the configuration for live billing. This guide describes a setup; it does not claim that resources or invoices have been created in your account.
+
+## Pricing sources
+
+Pricing checked on 2026-11-04.
+
+- [Anthropic model pricing](https://platform.claude.com/docs/en/about-claude/pricing): standard Sonnet 4.6 token rates, USD denomination, and cache-write and cache-hit categories.
+- [Anthropic prompt caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching): cache lifetimes and usage accounting.
+
+## Related recipe
+
+<Card icon="book-open" horizontal={true} href="/cookbooks/billing-recipes/usage-based-pricing" title="Build Usage-Based Pricing" />
