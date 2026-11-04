@@ -5,7 +5,8 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { inspectText, navigationPages, validateArticle } from './validate.mjs';
+import { fileText, inspectText, navigationPages, validateArticle } from './validate.mjs';
+import { deflateSync } from 'node:zlib';
 
 const page = 'cookbooks/pricing-teardowns/example-pricing';
 const nav = { tabs: [{ groups: [{ pages: [page] }] }] };
@@ -67,6 +68,45 @@ test('enforces editorial structure', () => {
 });
 
 const policy = { deny_patterns: ['private-source[.]example', '\\bconfidential-library\\b'] };
+
+function pngChunk(type, data = Buffer.alloc(0)) {
+  const size = Buffer.alloc(4);
+  size.writeUInt32BE(data.length);
+  return Buffer.concat([size, Buffer.from(type), data, Buffer.alloc(4)]);
+}
+
+function png(...chunks) {
+  return Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), ...chunks, pngChunk('IEND')]);
+}
+
+test('does not decode PNG pixel data as prose', () => {
+  const data = png(pngChunk('IDAT', Buffer.from('private-source.example')));
+  assert.equal(inspectText(data.toString('utf8'), policy).length, 1);
+  assert.deepEqual(inspectText(fileText(data), policy), []);
+});
+
+test('scans plain and compressed PNG text metadata', () => {
+  const text = Buffer.from('private-source.example');
+  for (const chunk of [
+    pngChunk('tEXt', Buffer.concat([Buffer.from('Source\0'), text])),
+    pngChunk('zTXt', Buffer.concat([Buffer.from('Source\0\0'), deflateSync(text)])),
+    pngChunk('iTXt', Buffer.concat([Buffer.from('Source\0\0\0\0\0'), text])),
+    pngChunk('iTXt', Buffer.concat([Buffer.from('Source\0\x01\0\0\0'), deflateSync(text)])),
+  ]) assert.equal(inspectText(fileText(png(chunk)), policy).length, 1);
+});
+
+test('fails closed on malformed PNG text and chunk boundaries', () => {
+  assert.throws(() => fileText(png(pngChunk('zTXt', Buffer.from('Source\0\0invalid')))));
+  assert.throws(() => fileText(png(pngChunk('iTXt', Buffer.from('Source\0\x01\0')))));
+  assert.throws(() => fileText(png().subarray(0, 15)));
+  assert.throws(() => fileText(Buffer.concat([png(), Buffer.from('private-source.example')])));
+});
+
+test('scans text even when it has an image filename', t => {
+  const f = fixture(t);
+  writeFileSync(join(f.repo, 'image.png'), 'private-source.example');
+  assert.equal(f.check().status, 1);
+});
 for (const value of ['PRIVATE-SOURCE.example', 'private-source%2Eexample', 'private-source%252Eexample', 'private-source&#46;example', 'private-source&period;example', 'confidential-library']) {
   test(`detects a generic disclosure: ${value}`, () => assert.equal(inspectText(value, policy).length, 1));
 }
@@ -135,6 +175,36 @@ test('CLI scans the index even when working content is clean', t => {
   writeFileSync(path, 'private-source.example');
   f.git('add', 'candidate.txt');
   writeFileSync(path, 'Clean public material');
+  assert.equal(f.check().status, 1);
+});
+
+test('CLI accepts PNG pixels in outgoing history without interpreting them as text', t => {
+  const f = fixture(t);
+  writeFileSync(join(f.repo, 'image.png'), png(pngChunk('IDAT', Buffer.from('private-source.example'))));
+  f.git('add', 'image.png');
+  f.git('commit', '-m', 'Add image');
+  const result = f.check();
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('CLI scans staged PNG metadata even if the working image is clean', t => {
+  const f = fixture(t);
+  const path = join(f.repo, 'image.png');
+  writeFileSync(path, png(pngChunk('zTXt', Buffer.concat([Buffer.from('Source\0\0'), deflateSync('private-source.example')]))));
+  f.git('add', 'image.png');
+  writeFileSync(path, png());
+  assert.equal(f.check().status, 1);
+});
+
+test('CLI catches PNG metadata removed in a later commit', t => {
+  const f = fixture(t);
+  const path = join(f.repo, 'image.png');
+  writeFileSync(path, png(pngChunk('tEXt', Buffer.from('Source\0private-source.example'))));
+  f.git('add', 'image.png');
+  f.git('commit', '-m', 'Add image');
+  writeFileSync(path, png());
+  f.git('add', 'image.png');
+  f.git('commit', '-m', 'Update image');
   assert.equal(f.check().status, 1);
 });
 
