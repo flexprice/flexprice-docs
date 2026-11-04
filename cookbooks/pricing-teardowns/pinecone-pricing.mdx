@@ -1,0 +1,166 @@
+---
+title: "Can Flexprice Handle Pinecone's Pricing?"
+sidebarTitle: "Pinecone Pricing"
+description: "Model Pinecone Standard on-demand database usage in AWS us-east-1 with read, write and reconciled storage meters plus a monthly minimum true-up"
+---
+
+Pinecone Database charges for stored data and database operations. Read units and write units measure different resources, not just request counts. This guide maps the Standard plan's Database On-Demand prices in AWS `us-east-1` to Flexprice using reconciled monthly usage and one organization-wide minimum adjustment.
+
+<Note>
+  The example covers one organization for a full monthly billing period in USD, with only on-demand database reads, writes and index storage. Assume egress stays within Standard's included 100 GB per month. It excludes other regions and plans, dedicated read nodes, pod-based indexes, imports, backups and restores, Inference, Assistant, Nexus, paid support, compliance add-ons, prepaid credits, trial credits, discounts and taxes. It is a configuration recipe, not a live setup or an invoice quote.
+</Note>
+
+## Pinecone Standard database prices
+
+The [official pricing page](https://www.pinecone.io/pricing/?plan=standard&provider=aws&plans=database&scrollTo=product-pricing-modal-section) lists these **Standard, AWS us-east-1, Database On-Demand** rates:
+
+| Dimension | Published USD rate | Equivalent billing amount |
+| --- | --- | --- |
+| **Reads** | $16 per million read units (RUs) | `0.000016` per RU |
+| **Writes** | $4 per million write units (WUs) | `0.000004` per WU |
+| **Index storage** | $0.33 per GB per month | `0.33` per reconciled GB-month |
+| **Monthly minimum** | $50 in eligible usage | Only the shortfall below $50 |
+
+The [cost documentation](https://docs.pinecone.io/guides/manage-cost/understanding-cost) explains that the minimum is a commitment you grow into. With $20 of eligible usage, the shortfall is $30 and the total is $50. With $100 of usage, the total is $100, not $150. The minimum is not a $50 subscription fee or a free $50 usage allowance.
+
+### What the units measure
+
+- **Reads:** A query consumes 1 RU per GB of namespace size, with a minimum of 0.25 RU per query. Fetch consumes 1 RU per 10 records fetched, rounded up, with a minimum of 1 RU. A list request costs 1 RU. A request count alone cannot reproduce these charges.
+- **Writes:** An upsert consumes 1 WU per KB of request data, with a minimum of 5 WUs per request. Replacing a record also counts the existing record's size. Updates count new and existing record data; deletes count deleted record data, each with a 5 WU request minimum. Deleting an entire namespace or using `deleteAll` costs 5 WUs. Preserve Pinecone's request-level rules instead of dividing all monthly bytes by a KB and applying one monthly minimum.
+- **Storage:** An index's size includes its records across **all namespaces**, including IDs, vector data and metadata. Storage has a duration component: Pinecone's [official worked example](https://docs.pinecone.io/guides/optimize/test-at-scale) prorates storage for a four-hour workload. A namespace's query size is not the organization's total stored size.
+
+<Warning>
+  Pinecone tracks fractional RUs, but [API and SDK responses round reported RUs up to whole numbers](https://docs.pinecone.io/guides/manage-cost/monitor-usage-and-costs). A query consuming 0.45 RU can report 1 RU. Do not sum those rounded response fields to reconstruct an exact invoice.
+</Warning>
+
+## How Pinecone's pricing maps to Flexprice
+
+| Pinecone's pricing uses | Flexprice setup |
+| --- | --- |
+| **Independent read and write units** | Two [metered features](/docs/product-catalogue/features/create) using SUM over reconciled `read_units` and `write_units` |
+| **Storage charged over time** | A SUM meter over normalized `storage_gb_months`, not raw byte snapshots |
+| **Different prices by plan, cloud and region** | Filter every meter to the selected Standard on-demand scope and AWS `us-east-1` |
+| **Per-million presentation of RU and WU rates** | [Flat-fee usage charges](/docs/product-catalogue/plans/billing-models/flat-fee) at the exact per-unit decimal amounts |
+| **One $50 minimum across eligible usage** | Calculate the organization-wide shortfall once in your reconciliation job; meter `minimum_shortfall_usd` at $1 per dollar |
+
+This recipe deliberately calculates the cross-meter minimum upstream. It does not attach a $50 commitment to each usage price, add a fixed fee, or configure an additional subscription commitment. The fourth meter records only the already-calculated shortfall. No entitlement allowance or recurring credit grant reduces the three usage charges.
+
+## Set up the monthly usage plan
+
+### 1. Reconcile the billing quantities
+
+Use Pinecone's [Usage dashboard and CSV download](https://docs.pinecone.io/admin/billing/download-usage-report) for the Standard organization. Reports use UTC dates, can break usage down by SKU, project and index, and cost data can lag usage by up to three days. Standard supports console downloads; the Admin API export described on that page is Enterprise-only.
+
+For each full monthly period:
+
+1. Select only the Standard AWS `us-east-1` on-demand database SKUs. Aggregate all indexes and projects in the organization once. Verify that excluded services have no charges and egress remains within the included 100 GB.
+2. Obtain precise billed RU and WU quantities, retaining fractions and Pinecone's operation-level minima. Do not use request counts or rounded response usage.
+3. Normalize reconciled storage to **GB-months**. Respect the report's actual billing unit and duration. If you only have the final pre-tax storage charge for this one SKU, dividing that charge by `0.33` gives its billed GB-month equivalent. This imports Pinecone's storage calculation rather than inventing a sampling rule. The worked example below assumes a constant 100 GB for the entire month, equivalent to 100 GB-months.
+4. Calculate the eligible usage subtotal from these three charges, then calculate `max(50 - subtotal, 0)` once for the organization. Emit one finalized monthly event after reconciling the report. Do not ingest Pinecone's minimum line as usage and also calculate your own shortfall.
+
+Pinecone's [monitoring documentation](https://docs.pinecone.io/guides/production/monitoring) exposes RU/WU counters and a storage-byte gauge. Its example uses a 15-second scrape interval, not a billing interval. Summing cumulative counters or storage gauge samples would overcount. A continuous ingestion pipeline needs reset-aware counter deltas and verified time aggregation; this monthly reconciliation recipe does not implement that pipeline.
+
+### 2. Create four metered features
+
+In **Product Catalog > Features**, create the following features. Set **Event Name** to `pinecone_monthly_usage`, **Aggregation** to `SUM`, and **Usage Reset** to periodic (`BILLING_PERIOD`). Apply both filters to every meter: `pricing_scope = standard_on_demand` and `region = aws_us_east_1`.
+
+| Feature name | Lookup key | Aggregation field | Unit |
+| --- | --- | --- | --- |
+| **Pinecone read units** | `pinecone_standard_reads` | `read_units` | RU |
+| **Pinecone write units** | `pinecone_standard_writes` | `write_units` | WU |
+| **Pinecone storage** | `pinecone_standard_storage` | `storage_gb_months` | GB-month |
+| **Pinecone minimum shortfall** | `pinecone_standard_shortfall` | `minimum_shortfall_usd` | USD of shortfall |
+
+These event names, properties and lookup keys are examples for your Flexprice account, not Pinecone API fields. Leave reporting conversion unset. If you choose to display millions of RUs, a `conversion_rate` of `1000000` displays raw RUs divided by 1,000,000. Reporting conversion does not change the billed quantity or rate.
+
+### 3. Add the plan and usage charges
+
+Create a [plan](/docs/product-catalogue/plans/create) named **Pinecone Standard On-Demand, AWS us-east-1**. Add four usage charges with currency `usd`, price unit type `FIAT`, billing period `MONTHLY`, billing period count `1`, billing model `FLAT_FEE`, type `USAGE` and invoice cadence `ARREAR`.
+
+| Feature | Decimal amount per unit | Timing |
+| --- | --- | --- |
+| **Read units** | `0.000016` | Monthly, in arrears |
+| **Write units** | `0.000004` | Monthly, in arrears |
+| **Storage GB-months** | `0.33` | Monthly, in arrears |
+| **Minimum shortfall USD** | `1` | Monthly, in arrears |
+
+Use each feature's **meter ID**, not its feature ID, when creating prices through the API. Send `amount` as a decimal string. Do not use million-unit packages that round usage up, and do not round the small per-RU or per-WU rates to cents.
+
+Create one [customer subscription](/docs/subscriptions/customers-create-subscription) to this plan for the organization, aligned to the full month you are importing. Keep the billing period open for reconciliation before generating and finalizing its invoice. Do not price the same usage on another subscription. This example does not configure partial-month minimum proration.
+
+## Send the reconciled usage and check the arithmetic
+
+The following illustrative [Flexprice event](/docs/core-concepts/usage-events/sending-events) represents a reconciled October period. Use the actual usage period's timestamp, not the report download date. Keep both `event_id` and `timestamp` stable for retries, and emit the finalized totals only once. Resolve report corrections before invoicing rather than submitting a second full set of totals.
+
+```json
+{
+  "event_name": "pinecone_monthly_usage",
+  "external_customer_id": "pinecone_org_example",
+  "event_id": "pinecone_org_example_2026_10_final",
+  "timestamp": "2026-10-31T23:59:59Z",
+  "properties": {
+    "pricing_scope": "standard_on_demand",
+    "region": "aws_us_east_1",
+    "read_units": 2000000,
+    "write_units": 1000000,
+    "storage_gb_months": 100,
+    "minimum_shortfall_usd": 0
+  }
+}
+```
+
+For that full month, with no excluded charges or credits:
+
+| Charge | Exact calculation | USD |
+| --- | --- | --- |
+| **Reads** | 2,000,000 × 0.000016 | $32.00 |
+| **Writes** | 1,000,000 × 0.000004 | $4.00 |
+| **Storage** | 100 GB-months × 0.33 | $33.00 |
+| **Eligible usage subtotal** | 32 + 4 + 33 | $69.00 |
+| **Minimum shortfall** | max(50 - 69, 0) | $0.00 |
+| **Total** | 69 + 0 | **$69.00** |
+
+Use exact decimal arithmetic in the normalization job. This copyable calculation also checks a below-minimum month:
+
+```python
+from decimal import Decimal
+
+D = Decimal
+READ_RATE = D("16") / D("1000000")
+WRITE_RATE = D("4") / D("1000000")
+STORAGE_RATE = D("0.33")
+MINIMUM = D("50")
+
+def monthly_bill(read_units, write_units, storage_gb_months):
+    subtotal = (
+        D(read_units) * READ_RATE
+        + D(write_units) * WRITE_RATE
+        + D(storage_gb_months) * STORAGE_RATE
+    )
+    shortfall = max(MINIMUM - subtotal, D("0"))
+    return subtotal, shortfall, subtotal + shortfall
+
+assert monthly_bill("2000000", "1000000", "100") == (
+    D("69"), D("0"), D("69")
+)
+assert monthly_bill("500000", "500000", "10") == (
+    D("13.30"), D("36.70"), D("50.00")
+)
+```
+
+In the second month, the event carries `500000` RUs, `500000` WUs, `10` GB-months and `36.70` USD of shortfall. The usage charges are $8 + $2 + $3.30. The fourth charge adds only $36.70, making $50 rather than $63.30. Preserve the provider's reconciled billing precision when normalizing quantities; these examples have exact cent-valued charges and need no fractional-cent rounding assumption.
+
+## Pricing sources
+
+- [Pinecone pricing, Standard Database On-Demand regional table](https://www.pinecone.io/pricing/?plan=standard&provider=aws&plans=database&scrollTo=product-pricing-modal-section): AWS us-east-1 rates, monthly minimum and included egress
+- [Understand Pinecone cost](https://docs.pinecone.io/guides/manage-cost/understanding-cost): RU and WU definitions, storage composition and minimum usage examples
+- [Check usage per request](https://docs.pinecone.io/guides/manage-cost/monitor-usage-and-costs): fractional consumption versus rounded API response counts
+- [Monitor performance](https://docs.pinecone.io/guides/production/monitoring): counter and gauge semantics and example scrape cadence
+- [Download a usage report](https://docs.pinecone.io/admin/billing/download-usage-report): Standard console CSV, UTC dates and reporting delay
+- [Test Pinecone at scale](https://docs.pinecone.io/guides/optimize/test-at-scale): storage duration example
+
+Pricing checked on 2026-11-04.
+
+## Related recipe
+
+<Card icon="book-open" horizontal={true} href="/cookbooks/billing-recipes/usage-based-pricing" title="Build Usage-based Pricing like Vapi.ai" />
