@@ -2,6 +2,48 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { inflateSync } from 'node:zlib';
+
+export function fileText(buffer) {
+  if (!buffer.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex'))) return buffer.toString('utf8');
+  const parts = [];
+  let offset = 8;
+  while (offset + 12 <= buffer.length) {
+    const length = buffer.readUInt32BE(offset);
+    const type = buffer.toString('ascii', offset + 4, offset + 8);
+    const end = offset + 12 + length;
+    if (end > buffer.length) throw new Error('Truncated PNG chunk');
+    const data = buffer.subarray(offset + 8, offset + 8 + length);
+    if (type === 'zTXt' || type === 'iTXt') {
+      const keywordEnd = data.indexOf(0);
+      if (keywordEnd < 1 || keywordEnd > 79) throw new Error('Invalid PNG text keyword');
+      parts.push(data.subarray(0, keywordEnd).toString('utf8'));
+      let textStart = keywordEnd + 2;
+      let compressed = true;
+      if (type === 'iTXt') {
+        compressed = data[keywordEnd + 1] === 1;
+        if (![0, 1].includes(data[keywordEnd + 1]) || data[keywordEnd + 2] !== 0) throw new Error('Invalid PNG text compression');
+        textStart = keywordEnd + 3;
+        for (let field = 0; field < 2; field++) {
+          const fieldEnd = data.indexOf(0, textStart);
+          if (fieldEnd < 0) throw new Error('Invalid PNG international text');
+          parts.push(data.subarray(textStart, fieldEnd).toString('utf8'));
+          textStart = fieldEnd + 1;
+        }
+      } else if (data[keywordEnd + 1] !== 0) throw new Error('Invalid PNG text compression');
+      const text = data.subarray(textStart);
+      parts.push((compressed ? inflateSync(text, { maxOutputLength: 1024 * 1024 }) : text).toString('utf8'));
+    } else if (type !== 'IDAT') {
+      parts.push(data.toString('utf8'));
+    }
+    offset = end;
+    if (type === 'IEND') {
+      if (length !== 0 || offset !== buffer.length) throw new Error('Invalid PNG end');
+      return parts.join('\n');
+    }
+  }
+  throw new Error('Missing PNG end');
+}
 
 export function inspectText(text, policy) {
   let normalized = text.normalize('NFKC');
@@ -88,13 +130,13 @@ export function run(args) {
   const errors = [];
   const navigation = JSON.parse(readFileSync('docs.json', 'utf8')).navigation;
   for (const path of changed) {
-    const content = readFileSync(path, 'utf8');
+    const content = fileText(readFileSync(path));
     if (/^cookbooks\/pricing-teardowns\/[^/]+\.mdx$/.test(path)) {
       errors.push(...validateArticle(content, path.slice(0, -4), navigation).map(e => `${path}: ${e}`));
     }
     if (policy) {
       errors.push(...inspectText(`${path}\n${content}`, policy).map(e => `${path}: ${e}`));
-      if (untracked.includes(path) || /^cookbooks\/pricing-teardowns\//.test(path)) {
+      if (untracked.includes(path) || /^(?:cookbooks|images)\/pricing-teardowns\//.test(path)) {
         errors.push(...inspectText(`${path}\n${content}`, newContentPolicy).map(e => `${path}: ${e}`));
       }
     }
@@ -104,13 +146,20 @@ export function run(args) {
     for (const commit of commits) {
       errors.push(...inspectText(git('show', '-s', '--format=%B', commit), metadataPolicy));
       for (const path of paths(git('diff-tree', '-m', '--no-commit-id', '--name-only', '-z', '--diff-filter=ACMR', '-r', commit))) {
-        const content = `${path}\n${git('show', `${commit}:${path}`)}`;
+        const blob = execFileSync('git', ['show', `${commit}:${path}`], { maxBuffer: 32 * 1024 * 1024 });
+        const content = `${path}\n${fileText(blob)}`;
         errors.push(...inspectText(content, policy));
-        if (/^cookbooks\/pricing-teardowns\//.test(path)) errors.push(...inspectText(content, newContentPolicy));
+        if (/^(?:cookbooks|images)\/pricing-teardowns\//.test(path)) errors.push(...inspectText(content, newContentPolicy));
       }
       errors.push(...inspectText(addedLines(git('show', '-m', '--format=', '--unified=0', '--no-color', '--no-ext-diff', commit)), newContentPolicy));
     }
     errors.push(...inspectText(git('diff', '--cached'), policy));
+    for (const path of paths(git('diff', '--cached', '--name-only', '-z', '--diff-filter=ACMR'))) {
+      const blob = execFileSync('git', ['show', `:${path}`], { maxBuffer: 32 * 1024 * 1024 });
+      const content = `${path}\n${fileText(blob)}`;
+      errors.push(...inspectText(content, policy));
+      if (/^(?:cookbooks|images)\/pricing-teardowns\//.test(path)) errors.push(...inspectText(content, newContentPolicy));
+    }
     errors.push(...inspectText(addedLines(git('diff', '--unified=0', '--no-color', '--no-ext-diff', base)), newContentPolicy));
     errors.push(...inspectText(addedLines(git('diff', '--cached', '--unified=0', '--no-color', '--no-ext-diff')), newContentPolicy));
     errors.push(...inspectText(`${git('branch', '--show-current')}\n${publicText}`, metadataPolicy));
