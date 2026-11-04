@@ -75,9 +75,25 @@ test('does not match unrelated public sources or substrings', () => {
 });
 test('invalid policy patterns fail closed', () => assert.throws(() => inspectText('anything', { deny_patterns: ['['] })));
 
+test('normalizes identifier word boundaries without matching unrelated substrings', () => {
+  const identifierPolicy = { deny_patterns: ['\\bconfidential\\b'] };
+  for (const value of ['confidential_value', 'confidentialOption', 'CONFIDENTIALOption']) {
+    assert.equal(inspectText(value, identifierPolicy).length, 1);
+  }
+  assert.deepEqual(inspectText('nonconfidential', identifierPolicy), []);
+});
+
+test('removes invisible formatting characters', () => {
+  assert.equal(inspectText('private-\u200bsource.example', policy).length, 1);
+});
+
+test('normalizes Unicode compatibility forms', () => {
+  assert.equal(inspectText('ＰＲＩＶＡＴＥ-ＳＯＵＲＣＥ.example', policy).length, 1);
+});
+
 const cli = fileURLToPath(new URL('./validate.mjs', import.meta.url));
 
-function fixture(t) {
+function fixture(t, policyOverrides = {}) {
   const root = mkdtempSync(join(tmpdir(), 'pricing-validator-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const repo = join(root, 'repo');
@@ -95,12 +111,12 @@ function fixture(t) {
     },
   });
   git('init');
-  writeFileSync(join(repo, 'docs.json'), JSON.stringify({ navigation: {} }));
+  writeFileSync(join(repo, 'docs.json'), JSON.stringify({ legacyIntegration: 'second-vendor', navigation: {} }, null, 2));
   git('add', 'docs.json');
   git('commit', '-m', 'Initialize validation fixture');
   const base = git('rev-parse', 'HEAD').trim();
   const policyFile = join(root, 'policy.json');
-  writeFileSync(policyFile, JSON.stringify(policy));
+  writeFileSync(policyFile, JSON.stringify({ ...policy, ...policyOverrides }));
   const check = (...args) => spawnSync(process.execPath, [cli, '--base', base, '--policy', policyFile, ...args], { cwd: repo, encoding: 'utf8' });
   return { root, repo, git, check };
 }
@@ -148,4 +164,43 @@ test('CLI accepts a clean outgoing commit range', t => {
   f.git('commit', '-m', 'Add public example');
   const result = f.check();
   assert.equal(result.status, 0, result.stderr);
+});
+
+const newContentPolicy = { new_content_deny_patterns: ['second-vendor'] };
+
+test('CLI preserves unchanged legacy navigation references', t => {
+  const f = fixture(t, newContentPolicy);
+  writeFileSync(join(f.repo, 'docs.json'), JSON.stringify({ legacyIntegration: 'second-vendor', navigation: {}, note: 'A new public page' }, null, 2));
+  f.git('add', 'docs.json');
+  f.git('commit', '-m', 'Register new page');
+  const result = f.check();
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('CLI rejects newly introduced restricted references', t => {
+  const f = fixture(t, newContentPolicy);
+  writeFileSync(join(f.repo, 'candidate.txt'), 'A second-vendor reference');
+  assert.equal(f.check().status, 1);
+  f.git('add', 'candidate.txt');
+  writeFileSync(join(f.repo, 'candidate.txt'), 'Clean public content');
+  assert.equal(f.check().status, 1);
+});
+
+test('CLI scans restricted references throughout outgoing history', t => {
+  const f = fixture(t, newContentPolicy);
+  const path = join(f.repo, 'candidate.txt');
+  writeFileSync(path, 'second-vendor');
+  f.git('add', 'candidate.txt');
+  f.git('commit', '-m', 'Add candidate');
+  writeFileSync(path, 'Clean public content');
+  f.git('add', 'candidate.txt');
+  f.git('commit', '-m', 'Correct candidate');
+  assert.equal(f.check().status, 1);
+});
+
+test('CLI rejects restricted references in proposed PR text', t => {
+  const f = fixture(t, newContentPolicy);
+  const metadata = join(f.root, 'proposed-pr.txt');
+  writeFileSync(metadata, 'second-vendor');
+  assert.equal(f.check('--public-text', metadata).status, 1);
 });

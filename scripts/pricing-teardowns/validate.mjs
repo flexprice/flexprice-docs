@@ -14,9 +14,10 @@ export function inspectText(text, policy) {
       try { return decodeURIComponent(value); } catch { return value; }
     });
   }
-  normalized = normalized.replace(/\s+/g, ' ');
+  normalized = normalized.replace(/\p{Cf}/gu, '').replace(/\s+/g, ' ');
+  const words = normalized.replace(/([A-Z])([A-Z][a-z])/g, '$1 $2').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_+/g, ' ');
   return policy.deny_patterns.flatMap((pattern, index) =>
-    new RegExp(pattern, 'iu').test(normalized) ? [`private policy rule ${index + 1} matched`] : []);
+    new RegExp(pattern, 'iu').test(normalized) || new RegExp(pattern, 'iu').test(words) ? [`private policy rule ${index + 1} matched`] : []);
 }
 
 export function navigationPages(node) {
@@ -59,6 +60,10 @@ function git(...args) {
 
 function paths(output) { return output.split('\0').filter(Boolean); }
 
+function addedLines(diff) {
+  return diff.split('\n').filter(line => line.startsWith('+') && !line.startsWith('+++')).join('\n');
+}
+
 export function run(args) {
   let base = 'HEAD';
   let policy;
@@ -70,12 +75,16 @@ export function run(args) {
     if (option === '--policy') {
       policy = JSON.parse(readFileSync(args[i], 'utf8'));
       if (!Array.isArray(policy.deny_patterns) || !policy.deny_patterns.length || policy.deny_patterns.some(p => typeof p !== 'string' || !p)) throw new Error('policy must define nonempty deny_patterns');
-      for (const pattern of policy.deny_patterns) new RegExp(pattern, 'iu');
+      if (policy.new_content_deny_patterns !== undefined && (!Array.isArray(policy.new_content_deny_patterns) || policy.new_content_deny_patterns.some(p => typeof p !== 'string' || !p))) throw new Error('new_content_deny_patterns must be an array of nonempty strings');
+      for (const pattern of [...policy.deny_patterns, ...(policy.new_content_deny_patterns ?? [])]) new RegExp(pattern, 'iu');
     }
     if (option === '--public-text') publicText += readFileSync(args[i], 'utf8');
   }
   base = git('rev-parse', '--verify', `${base}^{commit}`).trim();
-  const changed = [...new Set([...paths(git('diff', '--name-only', '-z', '--diff-filter=ACMR', base)), ...paths(git('ls-files', '--others', '--exclude-standard', '-z'))])];
+  const untracked = paths(git('ls-files', '--others', '--exclude-standard', '-z'));
+  const changed = [...new Set([...paths(git('diff', '--name-only', '-z', '--diff-filter=ACMR', base)), ...untracked])];
+  const newContentPolicy = { deny_patterns: policy?.new_content_deny_patterns ?? [] };
+  const metadataPolicy = { deny_patterns: [...(policy?.deny_patterns ?? []), ...newContentPolicy.deny_patterns] };
   const errors = [];
   const navigation = JSON.parse(readFileSync('docs.json', 'utf8')).navigation;
   for (const path of changed) {
@@ -83,18 +92,28 @@ export function run(args) {
     if (/^cookbooks\/pricing-teardowns\/[^/]+\.mdx$/.test(path)) {
       errors.push(...validateArticle(content, path.slice(0, -4), navigation).map(e => `${path}: ${e}`));
     }
-    if (policy) errors.push(...inspectText(`${path}\n${content}`, policy).map(e => `${path}: ${e}`));
+    if (policy) {
+      errors.push(...inspectText(`${path}\n${content}`, policy).map(e => `${path}: ${e}`));
+      if (untracked.includes(path) || /^cookbooks\/pricing-teardowns\//.test(path)) {
+        errors.push(...inspectText(`${path}\n${content}`, newContentPolicy).map(e => `${path}: ${e}`));
+      }
+    }
   }
   if (policy) {
     const commits = git('rev-list', `${base}..HEAD`).trim().split('\n').filter(Boolean);
     for (const commit of commits) {
-      errors.push(...inspectText(git('show', '-s', '--format=%B', commit), policy));
+      errors.push(...inspectText(git('show', '-s', '--format=%B', commit), metadataPolicy));
       for (const path of paths(git('diff-tree', '-m', '--no-commit-id', '--name-only', '-z', '--diff-filter=ACMR', '-r', commit))) {
-        errors.push(...inspectText(`${path}\n${git('show', `${commit}:${path}`)}`, policy));
+        const content = `${path}\n${git('show', `${commit}:${path}`)}`;
+        errors.push(...inspectText(content, policy));
+        if (/^cookbooks\/pricing-teardowns\//.test(path)) errors.push(...inspectText(content, newContentPolicy));
       }
+      errors.push(...inspectText(addedLines(git('show', '-m', '--format=', '--unified=0', '--no-color', '--no-ext-diff', commit)), newContentPolicy));
     }
     errors.push(...inspectText(git('diff', '--cached'), policy));
-    errors.push(...inspectText(`${git('branch', '--show-current')}\n${publicText}`, policy));
+    errors.push(...inspectText(addedLines(git('diff', '--unified=0', '--no-color', '--no-ext-diff', base)), newContentPolicy));
+    errors.push(...inspectText(addedLines(git('diff', '--cached', '--unified=0', '--no-color', '--no-ext-diff')), newContentPolicy));
+    errors.push(...inspectText(`${git('branch', '--show-current')}\n${publicText}`, metadataPolicy));
   }
   for (const error of errors) console.error(error);
   if (!policy) console.log('Content checks only. The author must separately run the private disclosure policy before publication.');
