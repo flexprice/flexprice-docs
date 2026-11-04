@@ -1,0 +1,30 @@
+name: Pricing teardown validation
+
+on:
+  pull_request:
+    paths:
+      - 'cookbooks/pricing-teardowns/**'
+      - 'docs.json'
+      - 'scripts/pricing-teardowns/**'
+      - '.github/workflows/pricing-teardown-validation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test scripts/pricing-teardowns/validate.test.mjs
+      - run: node --check scripts/pricing-teardowns/validate.mjs
+      - run: node scripts/pricing-teardowns/validate.mjs --base "$BASE_SHA"
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
