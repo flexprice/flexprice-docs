@@ -10,6 +10,18 @@ Railway's Hobby plan combines a monthly minimum with resource usage. The $5 subs
   This example covers the standard, unwaived Hobby plan in USD for one workspace and a full monthly billing cycle. It excludes volumes, backups, object storage, sandboxes, VMs, agents, other plans, trial or promotional credits, taxes, plan changes and negotiated terms. Assume those excluded resources incur no charges. The event names and properties below are illustrative Flexprice inputs, not Railway API fields.
 </Note>
 
+## Pricing profile
+
+These labels describe only the unwaived Hobby service CPU, RAM and egress offering modeled here, not Railway's entire product catalog or sales process.
+
+| Dimension | Labels | First-party basis |
+| --- | --- | --- |
+| Pricing model | Hybrid; Subscription; Usage-based | [Hobby subscription and resource charges](https://docs.railway.com/pricing/plans) |
+| Industry | Developer tools | [Services and deployments for application development](https://docs.railway.com/overview/the-basics) |
+| Buyer | Developers | [Hobby is for developers building side projects](https://railway.com/pricing) |
+| Sales motion | Self-serve | [Hobby offers a direct deployment flow](https://railway.com/pricing) |
+| Billing mechanics | Per-second metering; Monthly minimum; Included usage credits; Shared credit pool | [Service rates](https://railway.com/pricing) and [one included allowance against total resource usage](https://docs.railway.com/pricing/plans) |
+
 ## Railway Hobby service pricing
 
 The [official pricing page](https://railway.com/pricing) publishes the following service rates. Use the displayed per-second rates directly rather than deriving them from rounded monthly estimates.
@@ -43,6 +55,14 @@ For example, $3 of usage costs $5 in total; $8 of usage costs $8, not $13. Railw
 | **No carryover** | Grant expiry at the billing-cycle boundary, with a new grant each monthly cycle |
 
 A currency allowance shared across resources is not three independent free-unit entitlements. Do not give each meter $5 of free usage, apply a separate minimum to every resource, or combine this grant with an additional minimum-spend commitment. The recurring charge and usage-only credits together implement the minimum.
+
+## Design takeaways
+
+These are modeling implications of the published terms, not claims about Railway's business intent.
+
+- **Apply the allowance after combining resource costs.** Railway's [included usage applies against total resource usage](https://docs.railway.com/pricing/plans). In Flexprice, one shared currency grant preserves that relationship when the CPU-to-RAM mix changes; three separate resource allowances would change the total discount.
+- **Keep time-based consumption separate from data transfer.** The [service rate table](https://railway.com/pricing) prices CPU and RAM per second, but egress per GB. Separate SUM meters retain those units without treating outbound traffic as a function of uptime or rounding compute into hourly packages.
+- **Treat included usage as cycle-scoped funding, not permanent balance.** Railway's [billing guide](https://docs.railway.com/pricing/understanding-your-bill) says unused included usage does not roll over. A recurring grant with billing-cycle expiry models that reset; a one-time, nonexpiring wallet top-up would not reproduce later cycles.
 
 ## Set up the resource meters
 
@@ -180,6 +200,7 @@ Pricing checked on 2026-11-04.
 - [Railway plans](https://docs.railway.com/pricing/plans): monthly subscription terms, shared included usage, reset behavior and examples below and above the minimum.
 - [Understanding your Railway bill](https://docs.railway.com/pricing/understanding-your-bill): advance subscription billing, arrears overage and application of included usage.
 - [Railway public API](https://docs.railway.com/integrations/api): GraphQL access and authentication reference for building your own collector; it is not an event schema for this guide.
+- [Railway's core concepts](https://docs.railway.com/overview/the-basics): application services and deployments supporting the profile's developer-tools classification.
 
 ## Related recipe
 
