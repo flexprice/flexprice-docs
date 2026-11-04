@@ -11,17 +11,18 @@ The Manual Wallet Debit feature allows you to manually deduct credits from a cus
 - **Billing Adjustments**: Correct incorrect credit allocations
 - **Chargebacks**: Handle payment disputes and chargebacks
 - **Administrative Corrections**: Fix manual entry errors or system issues
-- **Wallet Termination**: Deduct remaining balance when closing a wallet
+
+To close a wallet, terminate it instead (**Terminate wallet** in the wallet's **⋯** menu, or `POST /wallets/{id}/terminate`). Termination debits the remaining balance for you.
 
 ## How Manual Debit Works
 
 When you debit a wallet, Flexprice automatically:
 
-1. **Validates Balance**: Ensures sufficient credits are available before processing
+1. **Validates the Request**: Checks that the credits are positive and the wallet is active
 2. **Consumes Credits**: Deducts credits using a priority-based algorithm (see below)
-3. **Updates Balance**: Reduces the wallet balance by the debited amount
+3. **Updates Balance**: Reduces the wallet balance by the debited amount, even below zero (see [Debits Larger Than the Balance](#debits-larger-than-the-balance))
 4. **Creates Transaction Record**: Maintains a complete audit trail
-5. **Triggers Alerts**: Notifies you if the balance falls below configured thresholds
+5. **Triggers Alerts**: Checks the wallet's low balance alert and auto top-up against the new balance
 
 ## Credit Consumption Algorithm
 
@@ -65,47 +66,36 @@ The wallet will have 30 credits remaining from the third transaction, plus the u
 
 ## Making a Manual Debit via Dashboard
 
-You can easily debit credits from a customer's wallet through the Flexprice dashboard:
+You can debit credits from a customer's wallet through the Flexprice dashboard:
 
-### Step 1: Navigate to the Wallet
+<Steps>
+  <Step title="Navigate to the wallet">
+    Go to **Customers**, open the customer whose wallet you want to debit, and select the **Wallet** tab.
+  </Step>
 
-- Go to **Billing** in the main navigation
-- Select **Customers** from the billing section
-- Select the customer whose wallet you want to debit
-- Navigate to the **Wallet** tab
+  <Step title="Open Debit wallet">
+    Click **Debit wallet** next to **Top up wallet**.
+    <Frame>
+      ![Wallet tab with the Debit wallet button](/images/docs/wallet/manual-debit/go-to-manual-debit.png)
+    </Frame>
+  </Step>
 
-### Step 2: Access Manual Debit
+  <Step title="Enter the debit details">
+    - **Credits**: the number of credits to remove from the wallet
+    - **Note** (optional): why the credits are being removed
 
-- Click the **three-dot menu (⋮)** in the top right corner of the wallet section
-- Select **Manual Debit** from the dropdown menu
+    Click **Debit** to process the debit.
+    <Frame>
+      ![Debit wallet dialog with the credits to remove and a note](/images/docs/wallet/manual-debit/debit.png)
+    </Frame>
+  </Step>
 
-<Frame>
-  ![Manual Debit Menu](/images/docs/wallet/manual-debit/go-to-manual-debit.png)
-</Frame>
+  <Step title="Verify the transaction">
+    The wallet balance drops by the debited credits. The debit doesn't get a row of its own in the wallet's table of top-ups: expand a top-up it drew credits from to see it as a negative line, labelled with your note (or **Manual debit** when the note is empty or looks like an ID).
+  </Step>
+</Steps>
 
-### Step 3: Enter Debit Details
-
-A "Manual Debit" dialog will appear with the following fields:
-
-<Frame>
-  ![Manual Debit Form](/images/docs/wallet/manual-debit/debit.png)
-</Frame>
-
-- **Credits to Deduct**: Enter the number of credits you want to debit from the wallet
-  - The system will show a preview: "$X will be debited from the wallet"
-  
-- **Reference ID (Optional)**: Enter a unique reference ID for this transaction
-  - This serves as the idempotency key to prevent duplicate debits
-  - Useful for linking to invoices, tickets, or other reference systems
-
-- Click **Submit** to process the debit
-
-### Step 4: Verify the Transaction
-
-After submitting:
-- The wallet balance will be updated immediately
-- The debit transaction will appear in the Transactions list
-- You'll see "-X credits" in the transaction history
+The dialog has no reference field: the dashboard generates an idempotency key each time you open **Debit wallet**, so clicking **Debit** again after an error doesn't debit the wallet twice. That key belongs to the dialog alone, so if a retry shows "A wallet transaction with this idempotency key already exists", the earlier attempt went through. To debit from your own systems, use the API and send your own `idempotency_key`, such as the ID of the refund or ticket the debit is for.
 
 ## Making a Manual Debit via API
 
@@ -160,9 +150,6 @@ curl --request POST \
     "balance": "1587",
     "credit_balance": "1587",
     "wallet_status": "active",
-    "auto_topup_trigger": "disabled",
-    "auto_topup_min_balance": "0",
-    "auto_topup_amount": "0",
     "wallet_type": "PRE_PAID",
     "config": {
         "allowed_price_types": [
@@ -170,43 +157,79 @@ curl --request POST \
         ]
     },
     "conversion_rate": "1",
-    "alert_enabled": true,
+    "topup_conversion_rate": "1",
+    "description": "",
+    "metadata": {},
     "alert_state": "ok",
+    "environment_id": "env_0123",
+    "tenant_id": "tenant_0123",
+    "status": "published",
     "created_at": "2025-11-05T13:41:59.256406Z",
-    "updated_at": "2025-11-14T15:55:38.19095Z"
+    "updated_at": "2025-11-14T15:55:38.19095Z",
+    "created_by": "user_0123",
+    "updated_by": "user_0123"
 }
 ```
 
+The response is the updated wallet. It also includes `auto_topup` and `alert_settings` when the wallet has them configured.
+
 ### Error Responses
 
-| Error Code | HTTP Status | Description |
-|------------|-------------|-------------|
-| `INSUFFICIENT_BALANCE` | 400 | Wallet doesn't have enough credits |
-| `INVALID_CREDITS` | 400 | Credits amount must be positive |
-| `MISSING_IDEMPOTENCY_KEY` | 400 | Idempotency key is required |
-| `WALLET_NOT_FOUND` | 404 | Wallet doesn't exist |
-| `WALLET_NOT_ACTIVE` | 400 | Wallet is not in active status |
+| HTTP Status | `code` | `message` | Cause |
+|-------------|--------|-----------|-------|
+| 400 | `validation_error` | Invalid request format | The body can't be parsed, or `idempotency_key` or `transaction_reason` is missing |
+| 400 | `validation_error` | Credits to debit must be a positive value | `credits` is missing, zero, or negative |
+| 400 | `validation_error` | Invalid transaction reason | `transaction_reason` isn't `MANUAL_BALANCE_DEBIT` |
+| 400 | `invalid_operation` | Wallet is not active | The wallet was terminated |
+| 404 | `not_found` | Wallet not found | No wallet has this ID |
+| 409 | `already_exists` | A wallet transaction with this idempotency key already exists | The `idempotency_key` was already used |
+
+A debit larger than the wallet's balance is not an error. See [Debits Larger Than the Balance](#debits-larger-than-the-balance).
 
 ### Example Error Response
 
 ```json
 {
-  "error": {
-    "code": "INSUFFICIENT_BALANCE",
-    "message": "insufficient balance",
-    "hint": "Insufficient balance to process debit operation",
-    "details": {
-      "wallet_id": "wallet_abc123",
-      "amount": "150.50",
-      "available_balance": "100.00"
-    }
+  "code": "already_exists",
+  "message": "A wallet transaction with this idempotency key already exists",
+  "http_status_code": 409,
+  "details": {
+    "amount": "10",
+    "idempotency_key": "refund_inv_123",
+    "type": "debit",
+    "wallet_id": "wallet_0123"
   }
 }
 ```
 
+The `details` repeat the debit you sent, not the transaction that already holds the key.
+
 ## Idempotency
 
 The `idempotency_key` parameter is **required** and ensures that duplicate API requests (e.g., due to network timeouts) don't result in multiple debits.
+
+If a key has already been used, Flexprice rejects the request with 409 `already_exists` and debits nothing. Keys are unique across all wallet transactions in the environment, not per wallet, so the key may belong to an earlier attempt of this debit, or to a top-up or a transaction on another wallet. A 409 alone doesn't tell you which.
+
+To find the transaction that holds the key, search wallet transactions by `idempotency_key`:
+
+```bash
+curl --request POST \
+  --url https://api.cloud.flexprice.io/v1/wallets/transactions/search \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: <api-key>' \
+  --data '{
+  "filters": [
+    {
+      "field": "idempotency_key",
+      "operator": "eq",
+      "data_type": "string",
+      "value": { "string": "refund_inv_123" }
+    }
+  ]
+}'
+```
+
+Treat the debit as done only if the match is a `debit` on the same `wallet_id` for the same `credit_amount`. Otherwise the key belongs to another transaction: send the debit again with a new key.
 
 ### Best Practices for Idempotency Keys
 
@@ -232,13 +255,16 @@ curl --location 'https://api.cloud.flexprice.io/v1/wallets/{id}/debit' \
 
 ## Important Considerations
 
-### Balance Validation
+### Debits Larger Than the Balance
 
-Before processing a debit, Flexprice:
+A manual debit isn't limited to the wallet's balance:
 
-- Checks that the wallet has sufficient **available credits**
-- Excludes expired credits from the calculation
-- Returns an error if insufficient balance is found
+- Flexprice consumes every available, unexpired credit, in the order described above
+- The part of the debit that no credit covers still counts, so the wallet's credit balance goes below zero
+- The API returns success, not an error
+- The next top-up covers the negative amount first, so only the rest of its credits become available
+
+Check the balance before a large debit if the wallet shouldn't go negative.
 
 ### Transaction Atomicity
 
@@ -252,7 +278,7 @@ All debit operations are **atomic**:
 
 Every manual debit creates a complete audit trail:
 
-- Transaction record with type `DEBIT`
+- Transaction record with type `debit`
 - Before and after balances
 - Description and metadata
 - Transaction reason
@@ -263,9 +289,9 @@ Every manual debit creates a complete audit trail:
 
 After a debit, Flexprice automatically:
 
-- Checks the wallet's low balance alert threshold
-- Triggers an alert if the new balance is below the threshold
-- Notifies you through configured alert channels
+- Checks the wallet's [low balance alert](/docs/wallet/low-balance-alert) against the new balance
+- Sends a webhook if the alert state changes
+- Tops up the wallet if [auto top-up](/docs/wallet/auto-top-up) is on and the balance is at or below its threshold
 
 ## Best Practices
 
@@ -275,40 +301,40 @@ After a debit, Flexprice automatically:
 
 💡 **Choose Appropriate Reasons**: Use the correct transaction reason code to categorize debits properly
 
-💡 **Validate Before Debiting**: Check wallet balance before attempting large debits to avoid errors
+💡 **Check the Balance First**: A manual debit larger than the balance still goes through and leaves the wallet below zero
 
-💡 **Handle Errors Gracefully**: Implement proper error handling, especially for `INSUFFICIENT_BALANCE` errors
+💡 **Handle Errors Gracefully**: Don't treat a 409 `already_exists` as proof that the debit went through. Find the transaction that holds the key first (see [Idempotency](#idempotency))
 
 💡 **Monitor Alert Notifications**: Watch for low balance alerts after processing debits
 
 ## Troubleshooting
 
-### Insufficient Balance Error
+### Negative Balance After a Debit
 
-**Problem**: API returns `INSUFFICIENT_BALANCE` error
+**Problem**: The wallet balance is below zero after a manual debit
 
 **Solution**:
-- Check the wallet's current balance before attempting the debit
-- Verify that you're not including expired credits in your calculation
-- Consider splitting large debits across multiple operations if needed
+- Manual debits aren't limited to the balance: the debit used every available credit and recorded the rest as a negative balance
+- Check the wallet's balance before debiting
+- Top up the wallet to bring the balance back up
 
 ### Duplicate Idempotency Key Error
 
-**Problem**: API rejects request due to duplicate idempotency key
+**Problem**: API returns 409 `already_exists` with "A wallet transaction with this idempotency key already exists"
 
 **Solution**:
-- Ensure each unique debit operation has a unique idempotency key
-- Check if the previous operation with the same key completed successfully
-- Generate new idempotency keys for each distinct operation
+- Find the transaction that holds the key by searching wallet transactions by `idempotency_key` (see [Idempotency](#idempotency))
+- If it's a `debit` on the same wallet for the same credits, your earlier request went through, so don't send it again
+- If it's a top-up or a transaction on another wallet, the key is already taken: send the debit again with a new key
+- Generate a new idempotency key for each distinct debit
 
 ### Wallet Not Active Error
 
-**Problem**: API returns `WALLET_NOT_ACTIVE` error
+**Problem**: API returns 400 `invalid_operation` with "Wallet is not active"
 
 **Solution**:
-- Verify the wallet status is `ACTIVE`
-- Check if the wallet has been closed or suspended
-- Reactivate the wallet if necessary before debiting
+- The wallet was terminated, so its `wallet_status` is `closed`
+- Termination already debited the remaining balance, and a closed wallet can't be reopened
 
 ## Related Features
 
