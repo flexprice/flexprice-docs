@@ -1,0 +1,84 @@
+---
+title: "Slack app security and privacy"
+description: "How Flexprice for Slack limits access to each person's own login, what it can't reach, the Slack permissions it asks for, what the AI model sees, and what it stores"
+---
+
+Flexprice for Slack is built so that a Slack workspace never becomes a shortcut into your billing data. Every person signs in with their own Flexprice login, every API call runs with that person's permissions, and every change waits for their **Yes**. This page is for the admins and security reviewers who approve the app.
+
+## Access model for Flexprice for Slack
+
+- **Per person, never shared.** Installing the app grants no access to Flexprice. Each person connects their own login, and their region, tokens, environment, and conversation history are theirs alone. Nothing is shared through the Slack workspace or the Flexprice company.
+- **Your permissions, nothing more.** Calls run as your Flexprice user, so the agent can read and change only what your role allows. A user with `all_reader` can ask questions, but their confirmed changes fail. See [roles](/docs/rbac/overview#available-roles).
+- **One environment at a time.** Calls go to the environment you picked when you connected, or switched to later. Switching needs a confirmation, and only to environments Flexprice lists for you.
+- **No API keys.** Flexprice for Slack uses each person's login tokens and renews them in the background. There is no API key to create, share, or rotate.
+
+## What Flexprice for Slack cannot reach
+
+The agent works from a fixed catalog of API endpoints, built from Flexprice's published OpenAPI spec. A call to anything outside the catalog is refused before it reaches Flexprice.
+
+- **Admin areas are left out entirely:** API keys and secrets, users, roles and permissions, tenants, environments, integrations, marketplaces, webhooks, and import and export tasks.
+- **Writes are left out, except two:** changing when a trial ends, and recording an offline payment on an invoice. Each is fixed to that one kind of change. See [Confirm changes from Slack](/developers/ai/slack/confirm-changes).
+- **IDs must be plain IDs.** A value placed in an API path can contain only letters, digits, and `_ - : .`, so it can't turn one endpoint into another.
+
+## Slack permissions Flexprice requests
+
+Flexprice asks Slack for six bot permissions and no user permissions.
+
+| Slack scope | Why Flexprice needs it |
+| --- | --- |
+| `app_mentions:read` | See messages that mention `@Flexprice` in channels it belongs to |
+| `chat:write` | Post answers, confirmation cards, and Connect buttons |
+| `commands` | Add the `/flexprice` command |
+| `im:history` | Read the messages you send Flexprice in a direct message |
+| `im:read` | See basic details of its own direct messages |
+| `im:write` | Start a direct message with you, such as the welcome message and the connection confirmation |
+
+Flexprice doesn't ask to read channel history, files, user profiles, or email addresses in Slack. It also listens for Slack's uninstall and token-revoked events, so it can delete a workspace's data when the app is removed.
+
+## What the AI model sees
+
+Flexprice for Slack uses Claude, Anthropic's AI model, to understand questions and choose API calls. For each question, the model receives:
+
+- your question, and your own earlier questions and answers in that thread,
+- your Flexprice email, company name, environment name, and today's date,
+- the responses of the API calls it makes, trimmed to fit, and
+- the endpoint catalog and the rules for answering.
+
+The model never receives Slack or Flexprice tokens. It can't send a request itself: Flexprice's code makes every call, and only from the catalog. Text hidden in your billing data, such as instructions in a customer's name, can't make a change on its own: at most, it could lead the agent to draft a card that the requester sees and declines.
+
+## How Flexprice for Slack keeps replies safe
+
+- **No pings or mentions.** All reply text is escaped and sent to Slack as written, so `@here`, `@channel`, a channel name, or a user group handle inside your data shows as plain text.
+- **No clickable links.** Flexprice never writes its own links. A URL from your data, such as an invoice PDF, appears as code you can copy, and Slack link previews are turned off.
+- **Private prompts stay private.** Connect buttons are only ever shown to the person they're for, either in a direct message or as a message only they can see.
+
+## How the Flexprice login works
+
+Flexprice for Slack signs you in through the same Flexprice login and consent page as the [MCP server](/docs/connect/mcp-server), using OAuth 2.1 with PKCE. It registers with Flexprice's login server under the name **Flexprice for Slack**, which is the name you see on the consent page.
+
+- **Connect links are signed** for your Slack user and workspace, expire after 10 minutes, and are shown only to you.
+- **Each login completes once.** The state behind a login link is deleted when it's used, and expires after 10 minutes if it isn't.
+- **The consent page records your environment** for Flexprice for Slack, separately from any environment you picked for other apps.
+
+## Encryption and token handling
+
+- Slack bot tokens, Flexprice access and refresh tokens, and the app's own login credentials are encrypted at rest with AES-256-GCM.
+- Flexprice renews an access token shortly before it expires, one renewal at a time per person. If the login server refuses the renewal, the connection is marked disconnected and the person is asked to connect again.
+- Every request to the Flexprice API carries the person's token and their environment, and goes to the API of the region they connected in.
+
+## What Flexprice stores and for how long
+
+| Data | Why it's kept | How long |
+| --- | --- | --- |
+| **Workspace install:** workspace ID and name, the encrypted bot token, and the installer's Slack user ID | Post answers in your workspace | Until the app is uninstalled |
+| **Your connection:** Slack user ID, Flexprice email, company and environment, region, and encrypted tokens | Call Flexprice as you | Until you disconnect, or the app is uninstalled |
+| **Conversation history:** your questions, the API responses the agent read, and its answers, per thread | Answer follow-up questions | 14 days after the thread's last message, or until the app is uninstalled |
+| **Change requests:** each card's request, who asked, the decision, and Flexprice's response | A record of every change | Kept |
+| **Question times** | Apply the hourly limit | 1 day |
+| **Login in progress** | Finish a login you started | 10 minutes, and deleted once used |
+| **Slack event IDs** | Ignore Slack's repeated deliveries | 1 day |
+
+## Remove access to Flexprice for Slack
+
+- **For yourself:** run `/flexprice disconnect`. Your connection and tokens are deleted right away.
+- **For the whole workspace:** remove the app in Slack's app management. Flexprice deletes the install, every connection, and all conversation history for the workspace, and open cards can no longer be sent.

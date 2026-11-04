@@ -1,0 +1,97 @@
+---
+title: "Ask billing questions in Slack"
+description: "Where to ask Flexprice for Slack, how threads and follow-ups work, example questions for each billing area, how answers are laid out, and the limits that apply"
+---
+
+Ask Flexprice the way you'd ask a teammate who knows your billing data: name the customer, plan, or period, and say what you want to know. The agent looks the answer up through the Flexprice API with your login and replies in a thread under your message. While it works, the reply reads **Looking that up...**.
+
+## Where to ask Flexprice
+
+| Where | How | Who sees the answer |
+| --- | --- | --- |
+| **Direct message** | Open **Flexprice** under **Apps** in the Slack sidebar and send any message. | Only you |
+| **Channel** | Add Flexprice to the channel, then mention `@Flexprice` in your message. | Everyone in the channel |
+
+<Warning>
+  An answer in a channel is visible to everyone in that channel, including people with no Flexprice access. Ask about revenue, customers, or invoices in a direct message unless the whole channel should see the answer.
+</Warning>
+
+In channels, Flexprice reads only the messages that mention it. It never sees the rest of the conversation.
+
+## Follow up in the same thread
+
+Flexprice always answers in a thread. Reply in that thread to build on the answer, for example "What about last month?" or "Only the ones over 1,000 USD". In a channel thread, mention `@Flexprice` in each reply. A new top-level message starts a new conversation.
+
+- **Each person has their own conversation.** When a teammate asks in your thread, Flexprice answers from the teammate's login and doesn't see your earlier questions. A teammate who hasn't connected gets a private Connect prompt.
+- **Threads are remembered for 14 days** after their last message. After that, a reply in the thread starts fresh.
+- **A thread holds 40 of your questions.** After that, Flexprice asks you to start a new message so its answers stay accurate.
+- **Switching environments starts every thread fresh**, because a conversation belongs to one environment.
+
+## Questions you can ask Flexprice
+
+Flexprice can read your revenue, invoices, payments, customers, subscriptions, wallets, usage, and catalog. Ask things like:
+
+| Area | Example questions |
+| --- | --- |
+| **Revenue** | What was my invoiced revenue last month?<br />Show invoiced revenue by month for 2026.<br />How much have we collected this quarter? |
+| **Invoices** | Which invoices are overdue?<br />Show invoice INV-202610-00012.<br />Get the PDF link for Hooli's latest invoice. |
+| **Payments and refunds** | Which payments did we receive this week?<br />List the refunds from October. |
+| **Customers** | How many customers signed up this month?<br />What is Initech entitled to?<br />Which payment methods does Hooli have on file? |
+| **Subscriptions** | Who is on the Growth plan?<br />Which subscriptions are still in trial?<br />Preview Acme's next invoice.<br />What would Acme pay on the Pro plan? |
+| **Wallets and credits** | What's Hooli's wallet balance right now?<br />Show Hooli's top-ups this month.<br />Which credit grants apply to Acme next? |
+| **Usage and events** | How many API calls did Initech make this month?<br />Show usage by meter for Acme's subscription. |
+| **Catalog** | List my plans.<br />What prices does the Pro plan have?<br />Is coupon LAUNCH20 still valid? |
+| **Costs and alerts** | Compare revenue and cost for October.<br />Which alerts fired today? |
+
+Previews, such as the next invoice or a plan change, are read-only: they show what would happen without changing anything. To make a change, see [Confirm changes from Slack](/developers/ai/slack/confirm-changes).
+
+Flexprice can't read API keys, users, roles, environments, integrations, or webhooks. See [What Flexprice for Slack cannot reach](/developers/ai/slack/security-and-privacy#what-flexprice-for-slack-cannot-reach).
+
+## How Flexprice lays out an answer
+
+Every answer follows the same layout, filled with only the parts that fit the question.
+
+1. **Title.** What the answer is about.
+2. **Key numbers.** Up to three, side by side. They stack on a phone, and older Slack apps show them on one line.
+3. **Details or table.** One record's fields, or a table of up to 10 rows.
+4. **Grey line.** The environment the answer came from, then the fine print: the period, and whether amounts are invoiced or collected. When more rows exist, it says so, for example "Showing 10 of 23".
+5. **Follow-up buttons.** The questions you're likely to ask next.
+
+A short sentence of summary appears under the title when it says more than the numbers do. When there's nothing to show, or Flexprice needs you to choose, the answer is just that sentence.
+
+### Conventions in every answer
+
+- **Names, not IDs.** Customers appear by name, else by external ID. Invoices appear by invoice number, and subscriptions as the customer and plan. Ask for IDs when you need them.
+- **Money with its currency.** Amounts read like `1,840 USD`. Amounts in different currencies are never added together: you get one number per currency, or a currency column.
+- **Invoiced or collected.** Revenue is labeled invoiced (draft and finalized invoices) or collected (paid invoices), so it lines up with the right dashboard figure.
+- **Counts that show their work.** When Flexprice adds up records itself instead of reading a total, it says how many records it added.
+- **No clickable links.** Flexprice never writes its own links. A URL from your data, such as an invoice PDF, appears as code you can copy.
+
+## Use follow-up and choice buttons
+
+Clicking a button under an answer asks its question in the same thread, as you, with your own login. It works the same as typing the question, including your hourly limit.
+
+When a name matches several records, for example three customers called Acme, Flexprice asks which one you mean and shows one button per match. Click the right one.
+
+Answers show at most 10 rows and have no paging controls. To see more, ask for the next 10, or narrow the question: "overdue invoices over 1,000 USD" or "only Initech's invoices".
+
+## Get better answers from Flexprice
+
+- **Name the period.** "Last month", "since 1 October", or "in 2026". Flexprice works in UTC dates.
+- **Say invoiced or collected** when you ask about revenue.
+- **Name one customer, plan, or invoice** exactly, or pick from the choice buttons.
+- **Narrow big lists** with a filter or a threshold instead of asking for everything.
+- **Start a new message** for a new topic, so earlier answers don't steer the new one.
+
+## Limits for each person
+
+| Limit | Value |
+| --- | --- |
+| Questions per person | 60 per hour |
+| Questions per person in one thread | 40 |
+| Rows in one answer | 10, ask for the next 10 to see more |
+| Key numbers in one answer | 3 |
+| API calls for one question | 15 |
+| Thread memory | 14 days after the thread's last message |
+
+If a question needs more API calls than the limit, Flexprice answers with what it found, or asks you to narrow the question.

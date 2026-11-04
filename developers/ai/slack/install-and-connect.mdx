@@ -1,0 +1,108 @@
+---
+title: "Install and connect the Slack app"
+description: "Add Flexprice for Slack to a workspace, connect each person's Flexprice login in the right region and environment, and switch, reconnect, or disconnect later"
+---
+
+Setting up Flexprice for Slack has two parts. Someone who can add apps to your Slack workspace installs it once. Then each person who wants answers connects their own Flexprice login. Installing the app gives nobody access to billing data: a teammate who hasn't connected gets a private Connect prompt instead of an answer.
+
+## Install Flexprice in your Slack workspace
+
+<Steps>
+  <Step title="Open the install link">
+    Go to [slack.agents.flexprice.io/slack/install](https://slack.agents.flexprice.io/slack/install). Slack opens its approval page. If you're signed in to several workspaces, choose the one to install into.
+  </Step>
+  <Step title="Review the permissions and click Allow">
+    Slack lists what Flexprice asks for: messages that mention it, its own direct messages, and the `/flexprice` command. It can't read the rest of your channels. See [Slack permissions Flexprice requests](/developers/ai/slack/security-and-privacy#slack-permissions-flexprice-requests).
+  </Step>
+  <Step title="Connect from the welcome message">
+    Your browser shows **Flexprice is installed**, and Flexprice sends you a direct message with Connect buttons. Click **Open Slack**, then follow [Connect your Flexprice login](#connect-your-flexprice-login).
+  </Step>
+</Steps>
+
+<Note>
+  If your workspace requires approval for new apps, ask a Slack admin to approve Flexprice, then open the install link again. Install Flexprice into a single workspace: org-wide installs on Enterprise Grid aren't supported.
+</Note>
+
+Installing again on a workspace that already has Flexprice replaces only the app's Slack token. Everyone's connections and conversations stay as they are.
+
+## Connect your Flexprice login
+
+Everyone connects separately, including the person who installed the app.
+
+<Steps>
+  <Step title="Get your Connect buttons">
+    Run `/flexprice connect` in any conversation. You also get the buttons automatically if you ask a question before connecting. Only you can see them, and their links work for 10 minutes.
+  </Step>
+  <Step title="Pick the region your account is in">
+    Click the button that matches the dashboard you sign in to.
+
+    | Dashboard you sign in to | Button to click |
+    | --- | --- |
+    | `us.flexprice.io` | **Connect Flexprice (US)** |
+    | `admin.flexprice.io` | **Connect Flexprice (India)** |
+  </Step>
+  <Step title="Log in and choose an environment">
+    Your browser opens the Flexprice login page. Log in, and on **Authorize Flexprice for Slack**, pick an environment under **Environment it will work in**. The page starts on the environment your dashboard is using. Click **Authorize**.
+  </Step>
+  <Step title="Go back to Slack">
+    The browser shows **You're connected** with your account, company, environment, and region, and Flexprice sends you a direct message that says the same. Click **Open Slack** and ask a question.
+  </Step>
+</Steps>
+
+<Warning>
+  Each region has its own accounts. A US account can't log in through the India button, and an India account can't log in through the US button. If the login page doesn't accept your account, run `/flexprice connect` again and pick the other region.
+</Warning>
+
+You have one connection per Slack workspace. Connecting again, in either region, replaces it. Your connection is never shared: teammates in the same workspace or the same Flexprice company each connect on their own.
+
+## Check which account and environment you're using
+
+Run `/flexprice status`:
+
+```text
+You're connected as maya@example.com (Acme Inc), environment Production, US region.
+```
+
+Every answer also names its environment in the grey line at the bottom, so you can tell Sandbox data from Production data at a glance.
+
+## Switch between Sandbox and Production
+
+Your Flexprice login works in every environment you can use in your company, so switching doesn't need a new login. It changes only the environment Flexprice sends with your API calls.
+
+<Steps>
+  <Step title="Run the environment command">
+    Run `/flexprice environment`. Flexprice lists your other environments as buttons. To skip the list, add the name, for example `/flexprice environment Production`.
+  </Step>
+  <Step title="Pick an environment">
+    Picking one doesn't switch yet. Flexprice asks you to confirm, and warns you when the target is a production environment: changes you confirm there affect your live billing data.
+  </Step>
+  <Step title="Click Yes, switch">
+    Flexprice answers from the new environment until you switch again. Click **No** to stay where you are.
+  </Step>
+</Steps>
+
+After a switch:
+
+- Answers and confirmed changes use the new environment.
+- Threads you started in the old environment don't carry over. Asking again in one of them starts a fresh conversation.
+- A confirmation card drafted before the switch isn't sent if you click **Yes** on it. Ask again to get a new card.
+
+The list shows only environments Flexprice returns for you: the published environments in your company that you're allowed to use. If you can use only one, Flexprice says so. The agent can't switch for you: if you ask it to, it points you to `/flexprice environment`.
+
+## Reconnect when your login expires
+
+Flexprice renews your login in the background, so you don't need to reconnect on a schedule. If Flexprice can't renew it, for example because the login was revoked, your next question gets this reply, and Connect buttons appear that only you can see:
+
+```text
+Your Flexprice connection has expired. I've sent you a private message to reconnect.
+```
+
+Click the button for your region and log in again.
+
+## Disconnect your Flexprice login
+
+Run `/flexprice disconnect`. Flexprice deletes your connection and its access and refresh tokens right away, and stops answering you until you connect again. Clicking **Yes** on an open confirmation card while you're disconnected sends nothing.
+
+## Uninstall Flexprice from your workspace
+
+When Flexprice is removed from your workspace in Slack's app management, or its tokens are revoked, Flexprice deletes the workspace's install, every person's connection and tokens, and all conversation history for that workspace. Open confirmation cards expire without being sent. See [What Flexprice stores and for how long](/developers/ai/slack/security-and-privacy#what-flexprice-stores-and-for-how-long).

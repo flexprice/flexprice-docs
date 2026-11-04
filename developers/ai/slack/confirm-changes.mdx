@@ -1,0 +1,84 @@
+---
+title: "Confirm changes from Slack"
+description: "The changes Flexprice for Slack can make, how confirmation cards work, who can approve them, and what each outcome on a card means"
+---
+
+Flexprice for Slack can make a small set of changes to your account, and none of them happen inside the conversation. When you ask for a change, the agent drafts the exact API request and posts it as a confirmation card in the thread. Flexprice sends that request only when you click **Yes** on the card, within 15 minutes.
+
+## Changes Flexprice for Slack can make
+
+| Change | Ask something like |
+| --- | --- |
+| **Change when a trial ends** | "Extend Acme's trial to 15 December." |
+| **Record an offline payment on an invoice** | "Record a bank transfer of 1,150 USD on INV-202610-00012, reference UTR 4482." |
+
+Everything else is read-only from Slack. Create customers, cancel subscriptions, top up wallets, and make other changes in the dashboard, or with the [API](/developers/api-reference), [CLI](/docs/cli/overview), or [MCP server](/docs/connect/mcp-server).
+
+### Change when a trial ends
+
+Flexprice moves the trial end of a subscription to the date you give, earlier or later. During a trial the current billing period ends with the trial, so the period end moves with it.
+
+- The subscription must still be in trial.
+- The new date must be in the future, and no later than the subscription's end date if it has one.
+- A subscription that inherits from a parent can't be changed on its own. Change the parent's trial instead.
+
+See [Trials](/docs/subscriptions/workflows/trialing) for what happens when a trial ends.
+
+### Record an offline payment on an invoice
+
+Flexprice records a payment made outside Flexprice, such as a bank transfer or a cheque, against one invoice. An offline payment is marked as succeeded as soon as it's recorded.
+
+- The amount is what's left to pay on the invoice, unless you name an amount.
+- A reference you give, such as a transfer ID, is saved in the payment's metadata.
+- The card's ID travels with the request as its idempotency key, so the same card can never record the payment twice.
+
+See [Partial payments](/docs/invoices/partial-payments) for invoices paid in more than one payment.
+
+## How a confirmation card works
+
+<Steps>
+  <Step title="Ask for the change">
+    Ask in plain English. Flexprice looks up the IDs it needs, such as the invoice or subscription, and drafts the request.
+  </Step>
+  <Step title="Review the card">
+    The card shows a one-line summary, the exact request (method, path, and JSON body), and the time it expires. Check the record and the amount or date. Run `/flexprice status` if you're not sure which environment you're in.
+  </Step>
+  <Step title="Click Yes or No">
+    **Yes** sends the request to Flexprice. **No** cancels it. Either way, the buttons disappear.
+  </Step>
+  <Step title="Read the outcome">
+    The card's last line changes to the outcome, for example **Done, confirmed by @Maya.** followed by the new payment's ID.
+  </Step>
+</Steps>
+
+The agent's reply only ever says that a card is waiting. Check the outcome line on the card to know whether the change was made.
+
+## Who can confirm a change
+
+Only the person who asked can click **Yes** or **No**. In a channel, everyone can see the card, but a teammate who clicks it gets a private note that only the requester can answer. The change is always sent with the requester's own login and permissions.
+
+If your Flexprice role can only read, for example `all_reader`, the card fails with HTTP 403 when you click **Yes**. See [roles](/docs/rbac/overview#available-roles).
+
+## Confirmation card outcomes
+
+| The card says | What happened |
+| --- | --- |
+| **Done, confirmed by @you.** | Flexprice accepted the change. When the response has an ID, the card shows it after **Result**. |
+| **Failed: Flexprice answered HTTP 400.** | Flexprice rejected the request. The card shows Flexprice's error message, such as a subscription that's no longer in trial. |
+| **Cancelled by @you. Nothing was changed.** | You clicked **No**. |
+| **Expired. Nothing was changed.** | The card was answered after its 15 minutes ran out. Ask again to get a new card. |
+| **Not sent.** Your connection changed after this was drafted | You switched environments or reconnected to another company after the card was drafted. Ask again in the current environment. |
+| **Not sent:** your Flexprice connection has expired | Your login couldn't be renewed. Run `/flexprice connect`, then ask again. |
+| **Not sent:** Flexprice is no longer installed | The app was removed from the workspace after the card was drafted. |
+| **Failed: something went wrong while sending this change.** | The request may or may not have reached Flexprice. Check the record in Flexprice before you ask again. |
+
+Clicking a card that was already answered gets a private note that the request was already handled.
+
+## Safeguards on every change
+
+- **Sent exactly as shown.** Flexprice stores the request when it drafts the card and sends that stored request. Nothing can alter it after you've seen it.
+- **One decision per card.** The first click wins. A second click, even a fast double-click, can't send the request again.
+- **An allow-list of changes.** Only the two changes on this page exist in Flexprice for Slack, and each is fixed to its kind: trial end changes only, and offline payments against invoices only. Any other write is refused before a card is drafted.
+- **Same company and environment.** A card drafted in Sandbox can't be sent after you switch to Production, and the other way around.
+- **Your own permissions.** Every change runs with the requester's login, so it can't do more than that person could do in the dashboard.
+- **A record of every request.** Flexprice keeps each card's request, who asked, the decision, and Flexprice's response.

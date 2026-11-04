@@ -1,0 +1,76 @@
+---
+title: "Troubleshoot the Slack app"
+description: "Fix common Flexprice for Slack problems: no reply, expired Connect links, region and environment mix-ups, limits, unexpected numbers, and changes that weren't sent"
+---
+
+Most problems with Flexprice for Slack come down to where you asked, which login and environment you're using, or a limit. Find the message you saw, or the symptom, and follow the fix. Run `/flexprice status` first if you're not sure which account and environment you're connected with.
+
+## Flexprice doesn't reply
+
+| Symptom | Fix |
+| --- | --- |
+| Nothing happens when you post in a channel | Mention `@Flexprice` in the message. Flexprice reads only messages that mention it. |
+| Slack says Flexprice isn't in the channel | Add Flexprice to the channel when Slack offers to, then ask again. |
+| A follow-up in a channel thread gets no answer | Mention `@Flexprice` in every reply in a channel thread. In a direct message, no mention is needed. |
+| Editing your message doesn't change the answer | Flexprice answers new messages only. Send the corrected question as a new message. |
+| `/flexprice` says Flexprice isn't installed in this workspace yet | [Install the app](/developers/ai/slack/install-and-connect#install-flexprice-in-your-slack-workspace) in this workspace. |
+
+## Connect and login problems
+
+| What you see | Why | Fix |
+| --- | --- | --- |
+| **This link has expired** | Connect links work for 10 minutes, and each login goes through once. | Run `/flexprice connect` for new buttons. |
+| The login page doesn't accept your account | You picked the other region's button. | Run `/flexprice connect` and pick the region of the dashboard you sign in to. |
+| **Connection cancelled** | You clicked **Cancel** on the consent page, or the login server refused the request. | Run `/flexprice connect` and click **Authorize** this time. |
+| **No environment was chosen** | The consent page didn't record an environment. | Connect again and pick one under **Environment it will work in**. |
+| **We couldn't load your environments** on the consent page | The consent page couldn't list your environments. | Click **Sign in again**. |
+| **Flexprice didn't accept this login** | The Flexprice API refused the new login with the HTTP status shown. | Contact Flexprice support with the status and your region. |
+| **Install failed** | Slack didn't finish the install, for example an org-wide Enterprise Grid install. | Install into a single workspace, then try again. |
+
+## Connection and environment messages
+
+| Flexprice says | What it means |
+| --- | --- |
+| You're not connected. Run `/flexprice connect`. | You haven't connected in this workspace, or you disconnected. |
+| Your Flexprice connection has expired. | Flexprice couldn't renew your login. Use the Connect buttons it sends you. |
+| Sandbox is the only environment you can use. | Flexprice lists no other environment for you. Ask a Flexprice admin for access to another one. |
+| I couldn't find an environment called "Prod". | No environment has that name. Pick one from the buttons that follow. |
+| That environment isn't available to you anymore, so nothing changed. | The environment was removed or closed to you after the buttons were shown. Run `/flexprice environment` again. |
+| Your Flexprice connection changed in the meantime, so nothing was switched. | You reconnected to another company while the confirmation was open. Run `/flexprice environment` again. |
+| I couldn't get your environments: Flexprice answered HTTP 401. | Flexprice refused to list your environments. Connect again, then retry. |
+
+If answers seem to come from the wrong environment, check the grey line under any answer, or run `/flexprice status`. Then switch with `/flexprice environment`.
+
+## Answer problems
+
+| Flexprice says | Fix |
+| --- | --- |
+| You've reached the limit of 60 questions per hour. | Wait a little. The limit is per person, over the last hour. |
+| This thread is getting long. Please start a new message. | You've asked 40 questions in this thread. Start a new top-level message. |
+| That answer got too long to finish. Please ask a narrower question. | Ask for fewer records, a shorter period, or one customer. |
+| I couldn't finish answering that. Please try a narrower question. | The question needed too many API calls. Split it into smaller questions. |
+| I couldn't put together an answer. Please try rephrasing the question. | Rephrase with the customer, plan, or period named. |
+| I couldn't format that answer. Please ask again. | Ask the same question again. |
+| Sorry, I can't help with that request. | The request was declined. Ask about your Flexprice billing data. |
+| Something went wrong, please try again. | Try again. If it keeps happening, contact support with the time you asked. |
+
+### When numbers don't match the dashboard
+
+- **Invoiced or collected.** Invoiced revenue counts draft and finalized invoices. Collected revenue counts paid invoices only. Ask for the one your dashboard view shows.
+- **The period.** Flexprice works in UTC dates, so a month's first and last day can differ from a dashboard set to another time zone. Name exact dates when it matters.
+- **The environment.** Sandbox and Production hold different data. Check the grey line under the answer.
+- **The row limit.** A table shows at most 10 rows. The grey line says how many exist, for example "Showing 10 of 23".
+
+## Confirmation card problems
+
+| What you see | Fix |
+| --- | --- |
+| Only the person who asked can confirm or cancel this change. | Ask the requester to click, or ask for the change yourself to get your own card. |
+| This request was already handled. | The card was answered already. Read its last line for the outcome. |
+| This request expired, so nothing was changed. | Cards last 15 minutes. Ask again for a new card. |
+| The card says **Failed: Flexprice answered HTTP 403** | Your Flexprice role can't make this change. Ask an admin, or make the change with an account that can. |
+| The card says **Not sent** | See [Confirmation card outcomes](/developers/ai/slack/confirm-changes#confirmation-card-outcomes). |
+
+## Get help with Flexprice for Slack
+
+Email [support@flexprice.io](mailto:support@flexprice.io) or ask in the [community Slack](https://join.slack.com/t/flexpricecommunity/shared_invite/zt-39uat51l0-n8JmSikHZP~bHJNXladeaQ). Include your region, the environment from `/flexprice status`, the time you asked, and the message Flexprice showed. Check the [status page](https://status.flexprice.io) first if Flexprice isn't answering anyone.
