@@ -1,0 +1,186 @@
+---
+title: "Can Flexprice Handle Railway's Pricing?"
+sidebarTitle: "Railway Pricing"
+description: "Model Railway Hobby service CPU, RAM and egress charges with a shared monthly usage credit that preserves the $5 minimum"
+---
+
+Railway's Hobby plan combines a monthly minimum with resource usage. The $5 subscription includes $5 of usage across resources, not a separate allowance for each resource. This guide models service CPU, RAM and network egress in Flexprice with three meters, a recurring charge and one shared usage-credit grant.
+
+<Note>
+  This example covers the standard, unwaived Hobby plan in USD for one workspace and a full monthly billing cycle. It excludes volumes, backups, object storage, sandboxes, VMs, agents, other plans, trial or promotional credits, taxes, plan changes and negotiated terms. Assume those excluded resources incur no charges. The event names and properties below are illustrative Flexprice inputs, not Railway API fields.
+</Note>
+
+## Railway Hobby service pricing
+
+The [official pricing page](https://railway.com/pricing) publishes the following service rates. Use the displayed per-second rates directly rather than deriving them from rounded monthly estimates.
+
+| Component | Published USD price | Billing basis used here |
+| --- | --- | --- |
+| **Hobby subscription** | $5 per month | Includes $5 of monthly resource usage |
+| **Service RAM** | $0.00000386 per GB per second | Integrated memory consumption in GB-seconds |
+| **Service CPU** | $0.00000772 per vCPU per second | Integrated CPU consumption in vCPU-seconds |
+| **Service network egress** | $0.05 per GB | Outbound service data in GB |
+
+Railway's [billing guide](https://docs.railway.com/pricing/understanding-your-bill) explains that the subscription is billed in advance and resource overage in arrears. Unused included usage resets each billing cycle and does not roll over. For total resource cost `U` in one full cycle:
+
+```text
+Included usage applied = min(U, 5.00)
+Usage overage          = max(U - 5.00, 0)
+Cycle cost             = 5.00 + max(U - 5.00, 0)
+                       = max(5.00, U)
+```
+
+For example, $3 of usage costs $5 in total; $8 of usage costs $8, not $13. Railway invoices can combine the next month's subscription with the previous month's overage. The calculation here attributes cost to one service cycle, not to the date cash is collected or to Railway's exact invoice layout.
+
+## How Railway's pricing maps to Flexprice
+
+| Railway's pricing uses | Flexprice setup |
+| --- | --- |
+| **Resource consumption over time** | Separate [metered features](/docs/product-catalogue/features/create) with SUM aggregation over GB-seconds, vCPU-seconds and egress GB |
+| **Per-second service rates** | One [flat-fee usage charge](/docs/product-catalogue/plans/billing-models/flat-fee) per feature, priced per raw unit without package rounding |
+| **$5 subscription in advance** | A monthly fixed charge for `5.00` USD |
+| **$5 shared included usage** | One recurring credit grant of 5 credits at 1 USD per credit, available only for usage charges |
+| **No carryover** | Grant expiry at the billing-cycle boundary, with a new grant each monthly cycle |
+
+A currency allowance shared across resources is not three independent free-unit entitlements. Do not give each meter $5 of free usage, apply a separate minimum to every resource, or combine this grant with an additional minimum-spend commitment. The recurring charge and usage-only credits together implement the minimum.
+
+## Set up the resource meters
+
+Create three metered features with **Event Name** `railway_service_usage`, **Aggregation** `SUM` and usage reset `BILLING_PERIOD`. Apply the filter `resource_scope = hobby_services` to every meter. Use one Flexprice customer for the workspace so usage from all its modeled services shares one credit pool.
+
+| Feature | Aggregation field | Raw unit | Decimal USD price per raw unit |
+| --- | --- | --- | --- |
+| **Railway service RAM** | `memory_gb_seconds` | GB-second | `0.00000386` |
+| **Railway service CPU** | `cpu_vcpu_seconds` | vCPU-second | `0.00000772` |
+| **Railway service egress** | `egress_gb` | GB | `0.05` |
+
+Normalize nonoverlapping measurement intervals before ingestion. For each interval, multiply average memory in GB by elapsed seconds, and average CPU in vCPU by elapsed seconds. For varying consumption, integrate the measurements rather than multiplying a single instantaneous sample by the whole month. A count of requests or service uptime alone is not CPU consumption. Include idle memory and CPU consumption, not just request-serving activity.
+
+Send outbound GB for that interval, not a cumulative network counter. Preserve the source's GB convention when normalizing; do not silently substitute another byte-to-GB conversion. Keep numeric precision through aggregation and pricing. No whole-hour or whole-GB package rounding is configured in this model.
+
+Railway exposes a [GraphQL public API](https://docs.railway.com/integrations/api), but this guide does not provide an automatic telemetry export. Your collector must normalize actual resource measurements into the fields above. It must not assume a dashboard or API quantity already uses these units.
+
+Leave `reporting_unit` unset for this setup. If you later display GB-hours or vCPU-hours, use a `conversion_rate` of `3600`: displayed quantity is raw seconds-based quantity divided by `3600`. This changes reporting only; keep the per-second prices unchanged.
+
+## Configure the plan and included usage
+
+<Steps>
+  <Step title="Create the plan and four charges">
+    Create a [plan](/docs/product-catalogue/plans/create) named **Railway Hobby Services**. Add a monthly USD fixed charge for `5.00`, billed in advance. Link the three metered features and add a monthly usage charge for each at the decimal rates above, billed in arrears.
+
+    For API configuration, each price uses `billing_period: "MONTHLY"`, `billing_period_count: 1`, `billing_model: "FLAT_FEE"`, `price_unit_type: "FIAT"`, `entity_type: "PLAN"` and the plan's `entity_id`. Use `type: "FIXED"` with `invoice_cadence: "ADVANCE"` for the subscription charge. Use `type: "USAGE"`, `invoice_cadence: "ARREAR"` and the corresponding feature's `meter_id` for each resource price. Amounts are decimal strings and `currency` is `"usd"`. Publish the plan before attaching the credit grant.
+  </Step>
+  <Step title="Restrict the credit wallet to usage">
+    Use a dedicated example customer with a USD prepaid wallet, a credit conversion rate of `1` and no other balance or subscriptions. Confirm that the wallet receiving the grant allows only usage charges. An unrestricted wallet could spend the included credit on the fixed fee and remove the minimum.
+
+    Update that wallet through `PUT /v1/wallets/{id}` with:
+
+    ```json
+    {
+      "config": {
+        "allowed_price_types": ["USAGE"]
+      }
+    }
+    ```
+
+    See [wallet credits](/docs/wallet/prepaid-and-promotional) and [wallet payment restrictions](/docs/subscriptions/record-payment) for how credits offset eligible charges. Disable auto top-up for this example. Do not load another $5 manually on top of the recurring grant.
+  </Step>
+  <Step title="Create one recurring grant on the plan">
+    Use `POST /v1/creditgrants` with the actual plan ID in place of `plan_example`:
+
+    ```json
+    {
+      "name": "Railway Hobby included usage",
+      "scope": "PLAN",
+      "plan_id": "plan_example",
+      "cadence": "RECURRING",
+      "period": "MONTHLY",
+      "period_count": 1,
+      "credits": "5",
+      "conversion_rate": "1",
+      "topup_conversion_rate": "1",
+      "expiration_type": "BILLING_CYCLE"
+    }
+    ```
+
+    The grant is shared across the three resource charges. Do not create one grant per feature or use nonexpiring credits. It offsets up to $5 of eligible usage; it is not a refund of the fixed subscription charge.
+  </Step>
+  <Step title="Subscribe the customer and verify the lifecycle">
+    Subscribe the example customer to the plan in USD with monthly anniversary billing and `billing_period_count: 1`. Confirm the initial $5 fixed charge, the monthly grant application and the receiving wallet's usage-only restriction before ingesting events.
+
+    At renewal, verify that the expiring cycle's usage receives only that cycle's included credit, unused credit does not carry over, and one new $5 grant becomes available for the next cycle. Check both below-minimum and above-minimum usage before using the configuration for production billing. The model does not implement Railway's resource provisioning limits or access controls.
+  </Step>
+</Steps>
+
+## Send usage and check the arithmetic
+
+The following normalized event represents a hypothetical 1,000-second interval with average RAM consumption of 1 GB, average CPU consumption of 0.5 vCPU and 0.02 GB of outbound data:
+
+```json
+{
+  "event_name": "railway_service_usage",
+  "external_customer_id": "railway_workspace_example",
+  "event_id": "service_example_interval_001",
+  "timestamp": "2026-11-04T00:16:40Z",
+  "properties": {
+    "resource_scope": "hobby_services",
+    "service_id": "service_example",
+    "memory_gb_seconds": 1000,
+    "cpu_vcpu_seconds": 500,
+    "egress_gb": 0.02
+  }
+}
+```
+
+[Send usage events](/docs/core-concepts/usage-events/sending-events) with a unique event ID for each service interval. Preserve both the event ID and timestamp when retrying that interval. Do not send both cumulative totals and their component intervals as billable events. Split intervals at billing boundaries and attribute each event to its actual measurement period.
+
+Assume 1,000 such nonoverlapping intervals occur within one monthly cycle, with no other resource usage. The totals are 1,000,000 GB-seconds of RAM, 500,000 vCPU-seconds of CPU and 20 GB of egress.
+
+| Component | Exact calculation | USD |
+| --- | --- | --- |
+| **RAM** | 1,000,000 × 0.00000386 | $3.86 |
+| **CPU** | 500,000 × 0.00000772 | $3.86 |
+| **Egress** | 20 × 0.05 | $1.00 |
+| **Gross resource usage** | 3.86 + 3.86 + 1.00 | $8.72 |
+| **Included usage applied** | min(8.72, 5.00) | -$5.00 |
+| **Usage overage** | 8.72 - 5.00 | $3.72 |
+| **Fixed subscription charge** | 5.00 | $5.00 |
+| **Total cycle cost** | 5.00 + 3.72 | **$8.72** |
+
+Use decimal arithmetic to reproduce the calculation without binary floating-point drift:
+
+```python
+from decimal import Decimal
+
+ram = Decimal("1000000") * Decimal("0.00000386")
+cpu = Decimal("500000") * Decimal("0.00000772")
+egress = Decimal("20") * Decimal("0.05")
+usage = ram + cpu + egress
+fee = Decimal("5.00")
+applied_credit = min(usage, fee)
+overage = usage - applied_credit
+total = fee + overage
+
+assert usage == Decimal("8.72")
+assert applied_credit == Decimal("5.00")
+assert overage == Decimal("3.72")
+assert total == Decimal("8.72")
+
+low_usage = Decimal("3.00")
+assert fee + max(low_usage - fee, Decimal("0")) == Decimal("5.00")
+```
+
+These quantities produce exact cent amounts before invoice rounding. Keep the full unit-price precision for other quantities and inspect currency rounding on the resulting invoice. This is a configuration guide and worked example, not a claim that a Railway workspace, Flexprice plan or invoice has been created.
+
+## Pricing sources
+
+Pricing checked on 2026-11-04.
+
+- [Railway pricing](https://railway.com/pricing): Hobby's $5 minimum, included monthly usage and the service RAM, CPU and egress rates used here. Sandbox and VM rates are separate and excluded.
+- [Railway plans](https://docs.railway.com/pricing/plans): monthly subscription terms, shared included usage, reset behavior and examples below and above the minimum.
+- [Understanding your Railway bill](https://docs.railway.com/pricing/understanding-your-bill): advance subscription billing, arrears overage and application of included usage.
+- [Railway public API](https://docs.railway.com/integrations/api): GraphQL access and authentication reference for building your own collector; it is not an event schema for this guide.
+
+## Related recipe
+
+<Card icon="book-open" horizontal={true} href="/cookbooks/billing-recipes/credit-based-pricing" title="Build Credit-Based Pricing" />
