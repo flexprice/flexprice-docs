@@ -55,10 +55,11 @@ What happens to backfilled usage depends on the state of the invoice for the bil
 
 ## Correcting usage you already sent
 
-Flexprice has no endpoint to edit or delete a usage event, and a negative property value counts as `0`, so a negative event can't cancel usage.
+Flexprice has no endpoint to edit a usage event, and a negative property value counts as `0`, so a negative event can't cancel usage.
 
 - **Missing usage:** send it as new events with new `event_id` values. The table above decides how it reaches the invoice.
 - **Usage that shouldn't have been counted:** Flexprice keeps the event, so correct the bill instead. Once the invoice is finalized, issue a [credit note](/api-reference/credit-notes/create-credit-note) for the difference.
+- **Usage that should never have been ingested:** [delete the events](/docs/core-concepts/usage-events/deleting-events) for that customer and period. Deletion is permanent, is refused once a finalized invoice covers the period, and does not change a bill that already exists.
 
 <CardGroup cols={2}>
   <Card title="Send Usage Events with the API and SDKs" icon="paper-plane" href="/docs/core-concepts/usage-events/sending-events">
