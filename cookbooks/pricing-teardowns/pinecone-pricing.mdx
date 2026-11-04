@@ -10,6 +10,18 @@ Pinecone Database charges for stored data and database operations. Read units an
   The example covers one organization for a full monthly billing period in USD, with only on-demand database reads, writes and index storage. Assume egress stays within Standard's included 100 GB per month. It excludes other regions and plans, dedicated read nodes, pod-based indexes, imports, backups and restores, Inference, Assistant, Nexus, paid support, compliance add-ons, prepaid credits, trial credits, discounts and taxes. It is a configuration recipe, not a live setup or an invoice quote.
 </Note>
 
+## Pricing profile
+
+These labels describe only the **Standard on-demand database offering modeled here in AWS us-east-1**, using the self-serve console upgrade path. They do not classify every Pinecone product or purchasing route.
+
+| Dimension | Profile |
+| --- | --- |
+| Pricing model | [Usage-based](https://docs.pinecone.io/guides/manage-cost/understanding-cost) |
+| Industry | [Infrastructure & data](https://docs.pinecone.io/guides/get-started/overview) |
+| Buyer | [Developers](https://docs.pinecone.io/guides/get-started/quickstart) |
+| Sales motion | [Self-serve](https://docs.pinecone.io/admin/billing/upgrade-billing-plan#pay-with-a-creditdebit-card) |
+| Billing mechanics | [Monthly minimum](https://docs.pinecone.io/guides/manage-cost/understanding-cost#minimum-usage); [Regional rates](https://www.pinecone.io/pricing/?plan=standard&provider=aws&plans=database&scrollTo=product-pricing-modal-section); [Read/write units](https://docs.pinecone.io/guides/manage-cost/understanding-cost); [Duration-based storage](https://docs.pinecone.io/guides/optimize/test-at-scale) |
+
 ## Pinecone Standard database prices
 
 The [official pricing page](https://www.pinecone.io/pricing/?plan=standard&provider=aws&plans=database&scrollTo=product-pricing-modal-section) lists these **Standard, AWS us-east-1, Database On-Demand** rates:
@@ -44,6 +56,14 @@ The [cost documentation](https://docs.pinecone.io/guides/manage-cost/understandi
 | **One $50 minimum across eligible usage** | Calculate the organization-wide shortfall once in your reconciliation job; meter `minimum_shortfall_usd` at $1 per dollar |
 
 This recipe deliberately calculates the cross-meter minimum upstream. It does not attach a $50 commitment to each usage price, add a fixed fee, or configure an additional subscription commitment. The fourth meter records only the already-calculated shortfall. No entitlement allowance or recurring credit grant reduces the three usage charges.
+
+## Design takeaways
+
+The following are modeling interpretations of the documented mechanics, not claims about Pinecone's intent:
+
+- **Apply the floor after combining eligible charges.** Pinecone's [minimum-usage examples](https://docs.pinecone.io/guides/manage-cost/understanding-cost#minimum-usage) show one shortfall line for the organization. Keep read, write and storage charges separate for explainability, but calculate their shared shortfall once. Independent $50 floors would introduce a $150 minimum that this offering does not have.
+- **Treat region as part of a price's identity.** The [on-demand rate table](https://www.pinecone.io/pricing/?plan=standard&provider=aws&plans=database&scrollTo=product-pricing-modal-section) varies by cloud and region. Filtering all four meters to the selected scope prevents usage from another region from silently receiving the AWS us-east-1 prices. A region field without a matching meter filter is only a label, not a pricing boundary.
+- **Normalize before using SUM.** [Rounded API read counts](https://docs.pinecone.io/guides/manage-cost/monitor-usage-and-costs) lose fractional consumption, while Pinecone's [storage example](https://docs.pinecone.io/guides/optimize/test-at-scale) depends on elapsed time. SUM is appropriate here because the event carries reconciled RUs, WUs and GB-months, not rounded request responses or repeated storage snapshots. The normalization contract matters as much as the meter's aggregation type.
 
 ## Set up the monthly usage plan
 
@@ -152,6 +172,9 @@ In the second month, the event carries `500000` RUs, `500000` WUs, `10` GB-month
 
 ## Pricing sources
 
+- [Pinecone Database overview](https://docs.pinecone.io/guides/get-started/overview): database infrastructure for application retrieval
+- [Pinecone quickstart](https://docs.pinecone.io/guides/get-started/quickstart): application integration through API keys and developer tooling
+- [Upgrade your billing plan](https://docs.pinecone.io/admin/billing/upgrade-billing-plan#pay-with-a-creditdebit-card): the self-serve Standard console upgrade path used by this profile
 - [Pinecone pricing, Standard Database On-Demand regional table](https://www.pinecone.io/pricing/?plan=standard&provider=aws&plans=database&scrollTo=product-pricing-modal-section): AWS us-east-1 rates, monthly minimum and included egress
 - [Understand Pinecone cost](https://docs.pinecone.io/guides/manage-cost/understanding-cost): RU and WU definitions, storage composition and minimum usage examples
 - [Check usage per request](https://docs.pinecone.io/guides/manage-cost/monitor-usage-and-costs): fractional consumption versus rounded API response counts
