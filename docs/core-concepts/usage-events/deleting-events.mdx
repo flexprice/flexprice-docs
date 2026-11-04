@@ -1,0 +1,112 @@
+---
+title: "Delete Usage Events"
+description: "Permanently remove ingested events and the usage they produced for a customer and a closed period"
+---
+
+Deleting removes usage events and the metered usage behind them. It is permanent: the events are gone from Flexprice and nothing restores them. Use it when usage was ingested that should never have existed, such as a misconfigured integration sending another customer's traffic, or a load test that ran against production keys.
+
+The endpoint is [Delete events](/api-reference/events/delete-events) (`POST /v1/events/delete`).
+
+<Warning>
+  Deleting events does not change a bill that already exists. A finalized invoice keeps its line items whether or not the usage behind them still exists, and Flexprice refuses to delete a period that a finalized invoice covers.
+</Warning>
+
+## When to use it
+
+- **Wrong data was ingested.** A bad integration, a replayed queue, or a test harness sent events that do not represent real usage.
+- **A customer's data must be erased.** A request that has to remove the raw usage, not just stop billing for it.
+- **Usage landed on the wrong customer.** Delete it, then send it again with the correct `external_customer_id`.
+
+## When not to use it
+
+- **To correct an invoice.** Issue a [credit note](/api-reference/credit-notes/create-credit-note) instead, or follow [Correcting usage you already sent](/docs/core-concepts/usage-events/backfill#correcting-usage-you-already-sent).
+- **To reduce a customer's usage total.** Deletion is not an adjustment mechanism. Price the usage correctly instead.
+- **For the current period while traffic is live.** `period_end` must already be in the past.
+
+## Who can call it
+
+The caller must hold the `super_admin` role. An API key works when the user who created it holds that role. A key minted for a service account is refused whatever roles it carries, and so is any caller without the role. Both get `403`.
+
+## Deleting events
+
+```bash
+curl --request POST \
+  --url https://us.api.flexprice.io/v1/events/delete \
+  --header 'Content-Type: application/json' \
+  --header "x-api-key: $FLEXPRICE_API_KEY" \
+  --data '{
+    "external_customer_ids": ["cust_123"],
+    "period_start": "2026-03-01T00:00:00Z",
+    "period_end": "2026-03-15T00:00:00Z"
+  }'
+```
+
+```json
+{
+  "deleted_events": 4312,
+  "deleted_meter_usage_rows": 5108
+}
+```
+
+A request that matches no events returns `200` with zero counts.
+
+### Request fields
+
+| Field | Description |
+|-------|-------------|
+| `external_customer_ids` | Required. The customers whose events to delete, 1 to 100. Every id must exist in the environment |
+| `period_start`, `period_end` | Required. The window to delete, matched on each event's own `timestamp`. Half-open, so an event at exactly `period_end` is not deleted |
+| `feature_ids` | Optional. Narrows the deletion to the meters these features resolve to. Up to 100, and each must be a metered feature |
+| `event_ids` | Optional. Deletes only these events. Up to 1000, and requires exactly one `external_customer_id` |
+| `skip_payload` | Optional, defaults to `true`. See below |
+
+Without `feature_ids` or `event_ids`, every event for those customers in that period is deleted.
+
+<Info>
+  **`skip_payload` controls the audit record, not the deletion.** Flexprice keeps an internal record of every deleted event. `skip_payload` defaults to `true`, which leaves the event's `properties` out of that record, so a deletion made to satisfy an erasure obligation keeps no copy of the usage. Send `false` to keep the properties.
+</Info>
+
+### Rules the request must satisfy
+
+| Rule | Why |
+|------|-----|
+| `period_end` must be in the past | Deleting a period that is still receiving traffic would hold the customer's live ingestion |
+| The period is at most one month | Bounds how much a single request can remove |
+| `event_ids` cannot be combined with `feature_ids` | Narrow by one or the other |
+| `event_ids` requires exactly one customer | Event ids are not scoped to a customer |
+
+## What Flexprice refuses
+
+A refused request deletes nothing and records nothing.
+
+| Refusal | Meaning |
+|---------|---------|
+| `FINALIZED_INVOICE_EXISTS` | A finalized invoice overlaps the period. Naming `feature_ids` narrows this check to the subscriptions that bill those features. Voiding the invoice first lets the deletion through, so read [the warning on voiding](/docs/core-concepts/usage-events/backfill) before you do |
+| `MULTIPLE_METERS_PER_EVENT` | Only when `feature_ids` is set. A matched event also feeds a meter the request did not name, so deleting it would silently remove usage you did not ask about. Name every feature those events feed, or delete by `event_ids` |
+| `DELETION_IN_PROGRESS` | Another deletion is already running for one of these customers. Wait for it to finish |
+| `MARKETPLACE_CUSTOMER` | The customer reports usage through AWS, GCP, or Azure Marketplace, where it has already been billed outside Flexprice |
+| `TOO_MANY_EVENTS` | The period resolved to more than 1,000,000 events. Split it into smaller periods |
+
+## While a deletion runs
+
+The request stays open until the deletion finishes. It takes at least 30 seconds, and longer as the number of events grows.
+
+- **Ingestion is refused for that customer, in that period only.** A backdated event whose `timestamp` falls inside the window gets `409`, and a bulk request carrying one is refused. Part of that batch may already have been accepted, so retry the whole batch once the deletion finishes: the events that got through collapse into themselves as long as you set `event_id` and `timestamp`. The same customer keeps ingesting everything outside the period, and other customers are unaffected.
+- **Invoices overlapping that period are held in draft.** Finalizing one, or paying one in full, is refused with `409` until the deletion closes. Scheduled finalization skips the invoice and picks it up afterwards.
+- **Draft invoices are recomputed when the deletion completes**, so they stop charging for the deleted usage.
+
+<Info>
+  **Deleted events can be sent again.** Flexprice normally collapses a resent `event_id` into the stored original, but deletion removes that original, so re-sending the same `event_id` and `timestamp` counts as new usage.
+</Info>
+
+<CardGroup cols={2}>
+  <Card title="Delete events API reference" icon="code" href="/api-reference/events/delete-events">
+    Full request and response schema for `POST /v1/events/delete`.
+  </Card>
+  <Card title="Backfill Past Usage" icon="clock-rotate-left" href="/docs/core-concepts/usage-events/backfill">
+    Loading historical usage, and how it reaches draft and finalized invoices.
+  </Card>
+  <Card title="Idempotency and Deduplication" icon="clone" href="/docs/core-concepts/usage-events/idempotency">
+    How Flexprice recognizes a copy of an event, and how to make retries safe.
+  </Card>
+</CardGroup>
