@@ -1,0 +1,170 @@
+---
+title: "Can Flexprice Handle Render's Pricing?"
+sidebarTitle: "Render Pricing"
+description: "Model Render Pro's workspace fee, per-service cron runtime minimums and shared outbound bandwidth allowance in Flexprice"
+---
+
+Render combines a workspace subscription with separately billed compute and network usage. A cron job adds another boundary: its monthly minimum belongs to that service, while included outbound bandwidth belongs to the workspace. Recreating this model means keeping those scopes separate on the same invoice.
+
+<Frame caption="Render workspace plans, captured from its official pricing page on November 4, 2026. This teardown models Pro's $25 monthly workspace fee and pooled 25 GB bandwidth allowance only; other plans and promotional credits are excluded.">
+  ![Render workspace plan cards showing Pro at $25 per month plus compute, with unlimited seats and services and 25 GB of included bandwidth](/images/pricing-teardowns/render/workspace-plan-cards-2026-11-04.png)
+</Frame>
+
+<Frame caption="Render's cron-job section and the modeled 512 MB instance row, captured on November 4, 2026. The rate is $0.00016 per minute, prorated by the second; other instance sizes and compute products are excluded. The per-service minimum is documented in the text below.">
+  ![Render Cron Jobs pricing showing second-prorated billing and a $0.00016 per minute rate for the less-than-one-CPU, 512 MB RAM instance](/images/pricing-teardowns/render/cron-runtime-rate-2026-11-04.png)
+</Frame>
+
+Source: [Render's official pricing page](https://render.com/pricing).
+
+This walkthrough models **one Pro workspace with two cron job services on the 512 MB, less-than-one-CPU instance type, plus public-internet outbound bandwidth**. Both services and the workspace subscription remain active for the full calendar month. It excludes other compute types, web services, databases, disks, workflows, sandboxes, build pipeline charges, custom-domain charges, private-link traffic, taxes and negotiated terms. It describes a configuration to build, not an executed setup.
+
+## Pricing profile
+
+These labels describe the offering modeled here, not Render's entire catalog or sales process.
+
+| Dimension | Labels | First-party basis |
+| --- | --- | --- |
+| Pricing model | Hybrid; Subscription; Usage-based | [Pro combines a monthly workspace fee with compute](https://render.com/pricing) |
+| Industry | Cloud application hosting | [Render's service types include hosted applications and scheduled jobs](https://render.com/docs/faq) |
+| Buyer | Developers; Application teams | [Pro targets teams deploying production apps](https://render.com/pricing) |
+| Sales motion | Self-serve | [Pro offers a plan-selection flow alongside published prices](https://render.com/pricing) |
+| Billing mechanics | Monthly workspace fee; Runtime billing; Per-service minimum; Shared bandwidth allowance; Graduated overage | [Cron billing defines a service-level minimum](https://render.com/docs/cronjobs), while [bandwidth is pooled monthly by workspace](https://render.com/docs/outbound-bandwidth) |
+
+## Published pricing used here
+
+| Charge or allowance | Published term | Source |
+| --- | --- | --- |
+| Pro workspace | $25 per month, plus compute; unlimited team members | [Workspace plan update](https://render.com/changelog/updated-plans-for-render-workspaces) |
+| Selected cron compute | $0.00016 per minute for the 512 MB, less-than-one-CPU instance type | [Cron Jobs rate table](https://render.com/pricing) |
+| Cron runtime precision | Prorated by the second, based on active running time | [Cron job billing](https://render.com/docs/cronjobs) |
+| Cron minimum | $1 per cron job service per month | [Cron job billing](https://render.com/docs/cronjobs) |
+| Pro outbound bandwidth | 25 GB included per workspace per month | [Monthly included bandwidth](https://render.com/docs/outbound-bandwidth) |
+| Public-internet bandwidth overage | $0.15 per additional GB; unused allowance does not roll over | [Outbound bandwidth](https://render.com/docs/outbound-bandwidth) |
+
+The current Pro fee is flat, not per seat. Render's [workspace plan update](https://render.com/changelog/updated-plans-for-render-workspaces) replaces the legacy per-member plan and moves bandwidth overage from 100 GB increments to per-GB billing. Do not recreate the retired seat fee or package rounding.
+
+## Design takeaways
+
+- **The customer boundary and the resource boundary are different.** Render pools [bandwidth across the workspace](https://render.com/docs/faq), but applies a [minimum to each cron job service](https://render.com/docs/cronjobs). Model the workspace as one customer and keep each job's runtime on its own usage line. Combining both jobs into one minimum would let a busy job hide an idle job's shortfall.
+- **A monthly subscription is not an included compute wallet.** The [Pro price is explicitly plus compute](https://render.com/pricing). Keep the $25 workspace charge separate from runtime and bandwidth; do not turn it into credits that offset those charges. Unlimited team members also means the workspace fee should not multiply with headcount.
+- **A rate's display unit does not determine its billing increment.** Render publishes cron prices [per minute](https://render.com/pricing) but bills [by the second](https://render.com/docs/cronjobs). Preserve fractional minutes instead of rounding each run up. Likewise, apply the workspace's [per-GB bandwidth overage](https://render.com/changelog/updated-plans-for-render-workspaces) without 100 GB packages.
+
+## How Render's pricing maps to Flexprice
+
+| Render's pricing uses | Flexprice setup |
+| --- | --- |
+| One Pro workspace fee | A $25 monthly recurring charge with quantity 1 |
+| Active runtime for each cron service | One filtered [SUM meter](/docs/product-catalogue/features/aggregation/sum) per job, priced at $0.00016 per runtime minute |
+| A $1 minimum per cron service | A separate [line-item commitment with true-up](/docs/subscriptions/commitment/overview) on each job's usage price; overage factor 1.0 |
+| 25 GB shared by the workspace | One customer-level bandwidth meter with a zero-priced first tier through 25 GB |
+| $0.15 per GB above that allowance | Graduated pricing on the bandwidth meter; no second deduction through an entitlement or wallet |
+| Monthly allowance reset | Calendar-month usage periods; discard unused bandwidth allowance rather than carrying a balance |
+
+## Set up Render Pro in Flexprice
+
+### 1. Keep one customer per workspace
+
+Create a customer for the workspace and a USD plan called `Render Pro Cron Example`. Add a **monthly recurring charge of $25**, quantity 1. Use monthly calendar billing for this example and align usage windows to the same month.
+
+This example assumes a full month with no service additions, deletions, instance-size changes or plan changes. Validate those lifecycle and proration cases separately before extending the model.
+
+### 2. Create the runtime and bandwidth meters
+
+In **Product Catalog > Features**, create these [metered features](/docs/product-catalogue/features/create). All three use SUM aggregation and the same workspace customer identifier.
+
+| Feature | Event name | SUM property | Required filters |
+| --- | --- | --- | --- |
+| Cron job A runtime | `render.cron.runtime` | `runtime_minutes` | `job_id = job_a`; `instance_type = cron_512mb` |
+| Cron job B runtime | `render.cron.runtime` | `runtime_minutes` | `job_id = job_b`; `instance_type = cron_512mb` |
+| Workspace public bandwidth | `render.bandwidth` | `gb` | `traffic_class = billable_public_internet` |
+
+Your collector measures actual running seconds and converts them to fractional minutes using decimal arithmetic: `runtime_minutes = runtime_seconds / 60`. Preserve precision through aggregation; do not round each run up to a whole minute. For example, 90 seconds contributes 1.5 minutes. Reporting-unit conversion alone does not change the billable quantity.
+
+Emit incremental usage with stable, unique event IDs. Do not repeatedly send a month-to-date total into a SUM meter. Split intervals at the month boundary so usage lands in the correct period.
+
+```json Example runtime event
+{
+  "event_id": "job_a_run_001",
+  "event_name": "render.cron.runtime",
+  "external_customer_id": "render_workspace_example",
+  "timestamp": "2026-11-04T04:00:00Z",
+  "properties": {
+    "job_id": "job_a",
+    "instance_type": "cron_512mb",
+    "runtime_minutes": 1.5
+  }
+}
+```
+
+The bandwidth collector must classify traffic before emission. Render's [outbound-bandwidth rules](https://render.com/docs/outbound-bandwidth) exclude inbound traffic, same-region private-network traffic and other listed exceptions. Do not send those bytes into the billable public-internet meter. Keep the collector's byte-to-GB convention consistent with the upstream usage measurement; this example starts from quantities already measured in GB.
+
+### 3. Price each meter without duplicating allowances
+
+Add the following monthly usage charges to the plan, billed in arrears:
+
+| Usage charge | Configuration |
+| --- | --- |
+| Job A runtime | Per-unit price of $0.00016 per minute |
+| Job B runtime | Per-unit price of $0.00016 per minute |
+| Public bandwidth | **Graduated**, not volume pricing: first 25 GB at $0; all additional GB at $0.15; no tier flat fees |
+
+Attach usage entitlements that allow continued usage. Keep the bandwidth billing allowance only in its graduated price. Adding a second 25 GB deduction through an entitlement would make the first 50 GB free. The free tier is shared across both jobs because they belong to one customer and one bandwidth meter.
+
+### 4. Apply the minimum to each cron line item
+
+When creating the workspace subscription, configure **line-item commitments** keyed by the two actual runtime price IDs. Set `commitment_amount` to `"1"`, `overage_factor` to `"1.0"` and `enable_true_up` to `true` for each. The minimum applies once per month per service, not once per run.
+
+This is a configuration fragment, not a complete subscription request. Replace the placeholder keys with the price IDs created in the previous step.
+
+```json Per-job commitment fragment
+{
+  "line_item_commitments": {
+    "<job_a_price_id>": {
+      "commitment_amount": "1",
+      "overage_factor": "1.0",
+      "enable_true_up": true
+    },
+    "<job_b_price_id>": {
+      "commitment_amount": "1",
+      "overage_factor": "1.0",
+      "enable_true_up": true
+    }
+  }
+}
+```
+
+Use these line-item settings, not a subscription-wide minimum. Leave the workspace fee and bandwidth line outside both commitments. Do not also add a $1 recurring charge per job: the floor is `max($1, runtime cost)`, not `$1 + runtime cost`. For more jobs, create distinct filtered runtime prices and commitments so each service retains its own floor.
+
+### 5. Check boundaries before using the model
+
+Verify that a full-month job with zero runtime still bills $1. Test both sides of the minimum: 6,250 minutes costs exactly $1; 6,251 minutes costs $1.00016 before invoice currency rounding. The overage factor of 1.0 must preserve the published runtime rate above the floor.
+
+For bandwidth, verify that 25 GB costs $0 and 26 GB costs $0.15. A new calendar month starts with a fresh 25 GB allowance, not last month's unused balance. Check that increasing the workspace's member count does not change the $25 fee.
+
+## Worked monthly invoice
+
+Assume both cron services use the selected instance type for the full month. Job A records 12,000 runtime minutes and job B records 500 runtime minutes. Together, the workspace's services emit 80 GB of billable public-internet outbound traffic. All excluded charges are zero.
+
+| Line | Calculation | Amount |
+| --- | --- | --- |
+| Pro workspace | 1 × $25 | $25.00 |
+| Job A compute | max($1, 12,000 × $0.00016) | $1.92 |
+| Job B compute | max($1, 500 × $0.00016) | $1.00 |
+| Public bandwidth | max(0, 80 − 25) × $0.15 | $8.25 |
+| **Total before tax** | $25 + $1.92 + $1 + $8.25 | **$36.17** |
+
+Job B's $0.08 runtime cost leaves a $0.92 true-up to reach its $1 floor. Job A's higher usage does not absorb that shortfall. The 25 GB bandwidth allowance is deducted once for the workspace, not once for each job.
+
+## Pricing sources
+
+- [Render pricing](https://render.com/pricing): current Pro workspace fee and selected cron compute rate
+- [Render cron jobs](https://render.com/docs/cronjobs): second-level runtime proration and per-service monthly minimum
+- [Render outbound bandwidth](https://render.com/docs/outbound-bandwidth): included Pro bandwidth, public-internet overage, exclusions and no rollover
+- [Render FAQ](https://render.com/docs/faq): workspace billing scope and shared bandwidth usage
+- [Updated plans for Render workspaces](https://render.com/changelog/updated-plans-for-render-workspaces): flat workspace fees, unlimited team members and per-GB overage
+
+Pricing checked on 2026-11-04.
+
+## Related recipe
+
+<Card icon="book-open" horizontal={true} href="/cookbooks/billing-recipes/hybrid-pricing" title="Build Hybrid Pricing like Resend" />
