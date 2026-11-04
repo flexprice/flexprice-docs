@@ -1,0 +1,100 @@
+---
+title: "Flexprice for Slack"
+description: "Ask about your billing data in plain English from Slack, answered with your own Flexprice login, and approve every change with one click"
+---
+
+Flexprice for Slack is an AI agent that answers questions about your billing data where your team already works. Ask it what you invoiced last month, which invoices are overdue, or who is on a plan, and it looks the answer up in your Flexprice account and replies in the thread. Each person connects their own Flexprice login, so the agent sees only what that person can see, in the environment they picked.
+
+It reads freely and changes carefully. When you ask for a change, such as extending a trial, the agent drafts the exact API request and posts it as a card. Nothing changes until you click **Yes**.
+
+<CardGroup cols={2}>
+  <Card icon="/images/developers/icons/chart-bar.svg" title="Ask in plain English">
+    Revenue, invoices, customers, subscriptions, wallets, usage, and your catalog.
+  </Card>
+  <Card icon="/images/developers/icons/users.svg" title="Your own login">
+    Every answer runs with your Flexprice permissions, never a shared key.
+  </Card>
+  <Card icon="/images/developers/icons/signature.svg" title="Changes wait for a Yes">
+    Writes become a confirmation card that only the person who asked can approve.
+  </Card>
+  <Card icon="/images/developers/icons/rotate.svg" title="Sandbox or Production">
+    Switch environments with one command, without logging in again.
+  </Card>
+</CardGroup>
+
+## Get started with Flexprice for Slack
+
+<Steps>
+  <Step title="Add the app to your workspace">
+    Anyone allowed to add apps to your Slack workspace installs Flexprice once. Open the install link, review the permissions, and click **Allow**.
+
+    <Card title="Add Flexprice to Slack" icon="/images/developers/icons/slack.svg" href="https://slack.agents.flexprice.io/slack/install" horizontal>
+      Opens Slack's approval page for your workspace.
+    </Card>
+  </Step>
+  <Step title="Connect your Flexprice login">
+    Flexprice sends the installer a direct message with Connect buttons. Everyone else runs `/flexprice connect`. Click the button for your region, log in, pick the environment Flexprice should work in, and click **Authorize**. See [Install and connect the Slack app](/developers/ai/slack/install-and-connect).
+  </Step>
+  <Step title="Ask your first question">
+    Send Flexprice a direct message, or mention `@Flexprice` in a channel it belongs to:
+
+    ```text
+    What was my invoiced revenue last month?
+    ```
+
+    The answer arrives in a thread under your message. Reply in that thread to follow up.
+  </Step>
+</Steps>
+
+## How Flexprice for Slack answers a question
+
+1. **You ask.** Flexprice reads direct messages sent to it and channel messages that mention it. It never reads the rest of a channel.
+2. **The agent plans the lookup.** Claude, Anthropic's AI model, reads the question and picks calls from a fixed allow-list of Flexprice API endpoints. It can't call anything outside that list.
+3. **Reads run as you.** Each call goes to your region's Flexprice API with your own access token and your environment. The model sees the results, never the token.
+4. **The answer arrives in the thread.** The key numbers come first, then a table or one record's details, the environment the answer came from, and buttons for the questions you're likely to ask next.
+5. **Changes wait for you.** A change is never sent from the conversation. It becomes a confirmation card, and Flexprice sends the stored request only when the person who asked clicks **Yes**.
+
+## Flexprice for Slack commands
+
+Use the `/flexprice` command anywhere in Slack. Its replies are visible only to you.
+
+| Command | What it does |
+| --- | --- |
+| `/flexprice connect` | Shows your private Connect buttons, one per region. |
+| `/flexprice status` | Shows the account, company, environment, and region you're connected with. |
+| `/flexprice environment` | Lists the other environments you can switch to. Add a name to go straight to the confirmation, for example `/flexprice environment Production`. `/flexprice env` works too. |
+| `/flexprice disconnect` | Deletes your Flexprice tokens. Run `/flexprice connect` to connect again. |
+| `/flexprice help` | Shows how to ask and the list of commands. |
+
+## Flexprice for Slack compared with the MCP server
+
+Both connect AI to the same Flexprice API with the same login page. They suit different people.
+
+| | Flexprice for Slack | [MCP server](/docs/connect/mcp-server) |
+| --- | --- | --- |
+| **Where you use it** | Slack direct messages and channels | Claude, Cursor, VS Code, and other MCP clients |
+| **Built for** | Finance, support, and operations teams | Developers and coding agents |
+| **Sign-in** | Each person's own Flexprice login | Browser login or an API key |
+| **Reads** | An allow-list of read endpoints | Every API operation |
+| **Changes** | Two kinds, each confirmed on a card in Slack | Every write tool, confirmed if your client asks |
+| **Switching environment** | `/flexprice environment` | Remove the server and add it again |
+
+## Flexprice for Slack guides
+
+<CardGroup cols={2}>
+  <Card icon="/images/developers/icons/plug.svg" title="Install and connect" href="/developers/ai/slack/install-and-connect">
+    Add the app, connect your login, and switch environments.
+  </Card>
+  <Card icon="/images/developers/icons/chart-bar.svg" title="Ask billing questions" href="/developers/ai/slack/ask-questions">
+    Where to ask, follow-ups, examples, and how answers look.
+  </Card>
+  <Card icon="/images/developers/icons/signature.svg" title="Confirm changes" href="/developers/ai/slack/confirm-changes">
+    The changes it can make and how confirmation cards work.
+  </Card>
+  <Card icon="/images/developers/icons/shield.svg" title="Security and privacy" href="/developers/ai/slack/security-and-privacy">
+    Permissions, tokens, AI processing, and data retention.
+  </Card>
+  <Card icon="/images/developers/icons/terminal-debug.svg" title="Troubleshooting" href="/developers/ai/slack/troubleshooting">
+    What each message means and how to fix it.
+  </Card>
+</CardGroup>
