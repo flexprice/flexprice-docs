@@ -10,6 +10,18 @@ Deepgram prices speech-to-text by model, processing mode and audio duration. Its
   This example covers hosted, mono audio using `flux-general-multi`, with English and Spanish language hints, in USD. It excludes pre-recorded or batch transcription, the English-only Flux model, Nova models, multichannel audio, paid add-ons, Audio Intelligence, text-to-speech, Voice Agent bundles, self-hosting, promotional credits, Growth commitments and Enterprise agreements. It also excludes request options that change the published base rate. The configuration names below are examples, not Deepgram product identifiers.
 </Note>
 
+## Pricing profile
+
+These labels describe only the mono Flux Multilingual Pay as you go streaming offering modeled here, not Deepgram as a whole.
+
+| Dimension | Offering profile |
+| --- | --- |
+| Pricing model | [Usage-based](https://deepgram.com/pricing) |
+| Industry | [AI](https://deepgram.com/product/speech-to-text) |
+| Buyer | [Developers](https://deepgram.com/product/speech-to-text) |
+| Sales motion | [Self-serve](https://deepgram.com/pricing) |
+| Billing mechanics | [Per-second metering; No duration minimum; No block rounding](https://deepgram.com/pricing) |
+
 ## Flux Multilingual streaming prices
 
 On the [official pricing page](https://deepgram.com/pricing), select **Speech-to-text**, then **Streaming**. Use the **Flux STT Multilingual** row and the **Pay as you go** column, not a pre-recorded or English-only rate.
@@ -151,6 +163,13 @@ assert total_seconds * per_second == Decimal("7.80")
 
 Do not round the $0.00182 short-request charge to cents before aggregation. A 14-second request is not a full-minute package. Compare the meter's raw seconds, displayed minutes and usage charge against these values before enabling live billing. This guide describes a configuration; no live resources or invoices have been created.
 
+## Design takeaways
+
+These are modeling interpretations of the sourced mechanics, not claims about Deepgram's intent.
+
+- **Keep display units out of the billing calculation.** The [pricing page](https://deepgram.com/pricing) presents minute rates but bills normal audio requests per second without block rounding. Here that means summing raw seconds and applying an exact per-second charge; reporting minutes should not introduce a package boundary.
+- **Route usage by requested model, not detected language.** [Language hints](https://developers.deepgram.com/docs/flux/language-prompting) operate within the multilingual model, while the [rate table](https://deepgram.com/pricing) prices Flux English and Multilingual separately. Filter the Flexprice meter by requested model and streaming scope so English speech processed by `flux-general-multi` cannot accidentally receive the English-only rate.
+
 ## Pricing sources
 
 Pricing checked on 2026-11-04.
@@ -159,6 +178,7 @@ Pricing checked on 2026-11-04.
 - [Flux quickstart](https://developers.deepgram.com/docs/flux/quickstart): hosted `/v2/listen` endpoint, model selection and raw audio format requirements.
 - [Flux Multilingual and Language Prompting](https://developers.deepgram.com/docs/flux/language-prompting): supported languages and English/Spanish hint configuration.
 - [Get a Project Request](https://developers.deepgram.com/reference/manage/requests/get): request-level usage information for reconciliation.
+- [Deepgram speech-to-text product guide](https://deepgram.com/product/speech-to-text): conversational AI use cases, Flux model positioning and the developer audience for the API.
 
 ## Related recipe
 
