@@ -1,0 +1,165 @@
+---
+title: "Can Flexprice Handle Deepgram's Pricing?"
+sidebarTitle: "Deepgram Pricing"
+description: "Model Deepgram Flux Multilingual streaming transcription on Pay as you go with a seconds meter and an exact per-second usage price in Flexprice"
+---
+
+Deepgram prices speech-to-text by model, processing mode and audio duration. Its rate table displays prices per minute, but normal audio requests are billed per second without rounding up to a minute. This guide models **Flux STT Multilingual streaming on Pay as you go** with one metered feature and one usage charge.
+
+<Note>
+  This example covers hosted, mono audio using `flux-general-multi`, with English and Spanish language hints, in USD. It excludes pre-recorded or batch transcription, the English-only Flux model, Nova models, multichannel audio, paid add-ons, Audio Intelligence, text-to-speech, Voice Agent bundles, self-hosting, promotional credits, Growth commitments and Enterprise agreements. It also excludes request options that change the published base rate. The configuration names below are examples, not Deepgram product identifiers.
+</Note>
+
+## Flux Multilingual streaming prices
+
+On the [official pricing page](https://deepgram.com/pricing), select **Speech-to-text**, then **Streaming**. Use the **Flux STT Multilingual** row and the **Pay as you go** column, not a pre-recorded or English-only rate.
+
+| Pricing dimension | Selected scope |
+| --- | --- |
+| **Published rate** | $0.0078 per minute of processed audio |
+| **Billing unit** | Seconds of processed audio |
+| **Equivalent price per second** | $0.0078 ÷ 60 = $0.00013 |
+| **Duration minimum** | None for normal audio requests |
+| **Block rounding** | None; do not round each request up to a minute |
+| **Plan commitment** | None on Pay as you go |
+
+The price is for the multilingual **model**, not the detected language of each turn. Supplying only an English hint does not select the separately priced English-only model. The [Flux language guide](https://developers.deepgram.com/docs/flux/language-prompting) documents `flux-general-multi`, its ten supported languages and optional language hints.
+
+For this example, your application connects to the hosted streaming endpoint documented in the [Flux quickstart](https://developers.deepgram.com/docs/flux/quickstart):
+
+```text
+wss://api.deepgram.com/v2/listen?model=flux-general-multi&language_hint=en&language_hint=es&encoding=linear16&sample_rate=16000
+```
+
+This URL assumes mono, raw 16-bit PCM audio at 16 kHz. It is not the `/v1/listen` pre-recorded endpoint. Language hints bias recognition; they do not restrict all speech to those languages.
+
+## How Deepgram's pricing maps to Flexprice
+
+| Deepgram's pricing uses | Flexprice setup |
+| --- | --- |
+| **A rate specific to the model and streaming mode** | A [metered feature](/docs/product-catalogue/features/create) filtered to `model = flux-general-multi`, `mode = streaming` and the selected mono base-rate scope |
+| **Processed audio seconds** | A SUM meter over the normalized `billable_seconds` property, not COUNT of requests or transcript turns |
+| **A displayed per-minute rate without minute blocks** | A [flat-fee usage charge](/docs/product-catalogue/plans/billing-models/flat-fee) of `0.00013` USD per raw second, without a package transform |
+| **No duration minimum** | No minimum quantity or minimum-spend commitment on this charge |
+| **No included monthly minutes in this example** | An unlimited metered entitlement for access, with every recorded second priced by the usage charge |
+
+The example uses **monthly usage billing in arrears** in Flexprice. That is an implementation choice, not Deepgram's payment cadence: Deepgram says Pay as you go usage draws down credits. Its advertised $200 starting credit is outside this example and must not become a recurring monthly free-minute allowance. Model any prepaid funding separately with [wallet credits](/docs/wallet/prepaid-and-promotional).
+
+## Set up the seconds meter
+
+In **Product Catalog → Features → Add Feature**, create a metered feature named **Flux Multilingual streaming seconds**. Use these settings, or the equivalent feature configuration through the API:
+
+```json
+{
+  "name": "Flux Multilingual streaming seconds",
+  "lookup_key": "flux_multilingual_streaming_seconds",
+  "type": "metered",
+  "unit_singular": "second",
+  "unit_plural": "seconds",
+  "meter": {
+    "name": "Flux Multilingual streaming seconds",
+    "event_name": "deepgram_audio_processed",
+    "reset_usage": "BILLING_PERIOD",
+    "aggregation": {
+      "type": "SUM",
+      "field": "billable_seconds"
+    },
+    "filters": [
+      { "key": "model", "values": ["flux-general-multi"] },
+      { "key": "mode", "values": ["streaming"] },
+      { "key": "audio_scope", "values": ["mono_base"] }
+    ]
+  },
+  "reporting_unit": {
+    "unit_singular": "minute",
+    "unit_plural": "minutes",
+    "conversion_rate": 60
+  }
+}
+```
+
+The event properties and `mono_base` label are your integration's conventions. Only label a request `mono_base` after verifying that it matches the mono base-rate scope, without paid extras. Route other models, modes and options to their own meters and prices.
+
+The optional reporting unit displays **raw seconds ÷ 60** as minutes. For example, 6,000 seconds displays as 100 minutes. It does not change the SUM meter or the per-second price. Do not divide usage by 60 again before applying that price.
+
+## Configure the usage-only plan
+
+Create a [plan](/docs/product-catalogue/plans/create) named **Flux Multilingual PAYG Example**. Add the feature as a usage-based flat-fee charge with the following configuration:
+
+| Setting | Value |
+| --- | --- |
+| **Currency / price unit type** | `usd` / `FIAT` |
+| **Charge type / billing model** | `USAGE` / `FLAT_FEE` |
+| **Amount per second** | Decimal string `"0.00013"` |
+| **Billing period / count** | `MONTHLY` / `1` |
+| **Invoice cadence** | `ARREAR` |
+| **Meter** | The meter attached to the feature created above |
+| **Minimum quantity, tiers and package transform** | Omit; no minimum or block rounding |
+| **Recurring fee or spend commitment** | None |
+
+When using the prices API, set `entity_type` to `PLAN`, `entity_id` to the created plan's ID and `meter_id` to the returned meter ID. Use `billing_period`, not a differently named interval field. Preserve the decimal amount rather than rounding the per-second rate to cents.
+
+In the plan's **Entitlements** tab, [add the feature](/docs/product-catalogue/features/linking-to-plans) with unlimited metered access (**Set to Infinite**). This permits access without a usage cap; it does not make usage free. Do not add a free-usage tier, recurring credit grant or minimum-spend commitment to this scoped example.
+
+## Send usage and verify the arithmetic
+
+Subscribe a customer to the plan and [send usage events](/docs/core-concepts/usage-events/sending-events) from your server. Normalize each completed streaming request into one event, such as this illustrative 14-second request:
+
+```json
+{
+  "event_name": "deepgram_audio_processed",
+  "external_customer_id": "customer_example",
+  "event_id": "deepgram_request_example_001",
+  "timestamp": "2026-11-04T00:00:00Z",
+  "properties": {
+    "model": "flux-general-multi",
+    "mode": "streaming",
+    "audio_scope": "mono_base",
+    "billable_seconds": "14"
+  }
+}
+```
+
+`billable_seconds` is a normalized application property, not a claimed Flux response field. Supply the processed-audio duration from your integration and reconcile it with Deepgram's [request usage information](https://developers.deepgram.com/reference/manage/requests/get) before billing. Do not infer billable duration from transcript word timestamps or use WebSocket connection time, which the pricing page specifies for the separate Voice Agent product. This example assumes the durations below are already verified billable seconds; it does not define an additional duration-rounding rule.
+
+Keep a stable `event_id` derived from the provider request identifier when retrying event delivery. Emit the final usage once per request, not once per interim transcript, final turn and session total. A new upstream request is distinct from retrying delivery of the same usage event.
+
+Use decimal arithmetic to check both a short request and a monthly aggregate of 1,000 requests at 14 seconds plus 500 requests at 92 seconds:
+
+```python
+from decimal import Decimal
+
+per_minute = Decimal("0.0078")
+per_second = per_minute / Decimal("60")
+assert per_second == Decimal("0.00013")
+
+short_request = Decimal("14") * per_second
+assert short_request == Decimal("0.00182")
+
+total_seconds = Decimal("1000") * Decimal("14") + Decimal("500") * Decimal("92")
+assert total_seconds == Decimal("60000")
+assert total_seconds / Decimal("60") == Decimal("1000")
+assert total_seconds * per_second == Decimal("7.80")
+```
+
+| Usage | Processed seconds | Calculation | USD charge before invoice rounding |
+| --- | --- | --- | --- |
+| **One short request** | 14 | 14 × 0.00013 | $0.00182 |
+| **1,000 short requests** | 14,000 | 14,000 × 0.00013 | $1.82 |
+| **500 longer requests** | 46,000 | 46,000 × 0.00013 | $5.98 |
+| **Monthly total, excluding the separate single-request check** | 60,000 | 60,000 × 0.00013 | **$7.80** |
+
+Do not round the $0.00182 short-request charge to cents before aggregation. A 14-second request is not a full-minute package. Compare the meter's raw seconds, displayed minutes and usage charge against these values before enabling live billing. This guide describes a configuration; no live resources or invoices have been created.
+
+## Pricing sources
+
+Pricing checked on 2026-11-04.
+
+- [Deepgram pricing](https://deepgram.com/pricing): Speech-to-text → Streaming → Flux STT Multilingual → Pay as you go rate; per-second billing, no duration minimum or block rounding, credit-based payment and starting credit.
+- [Flux quickstart](https://developers.deepgram.com/docs/flux/quickstart): hosted `/v2/listen` endpoint, model selection and raw audio format requirements.
+- [Flux Multilingual and Language Prompting](https://developers.deepgram.com/docs/flux/language-prompting): supported languages and English/Spanish hint configuration.
+- [Get a Project Request](https://developers.deepgram.com/reference/manage/requests/get): request-level usage information for reconciliation.
+
+## Related recipe
+
+<Card icon="book-open" horizontal={true} href="/cookbooks/billing-recipes/usage-based-pricing" title="Build Usage-Based Pricing" />
