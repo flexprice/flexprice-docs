@@ -1,0 +1,281 @@
+---
+title: "Subscription Commitments"
+description: "Create commitments as their own resource on a subscription, with a scope, committed and overage prices, stacking by priority, and a true-up or billing terms to collect what a binding commitment owes"
+---
+
+A subscription commitment is a resource of its own on a subscription. It covers the usage in a scope (the whole subscription, a price group, a meter, or one price) up to a capacity, bills that usage at a committed rate, and bills usage beyond it at an overage rate. A binding commitment is owed in full whether or not it is used. Flexprice collects it as a true-up on each period's invoice, or through [billing terms](/docs/subscriptions/commitment/billing-terms) such as "\$300 upfront, the rest monthly".
+
+**Benefits:**
+
+- **Pooled scopes**: One commitment covers every usage price on a subscription, a price group, or a meter, including prices added later
+- **Reserved and on-demand rates**: A quantity commitment has its own committed price and overage price, independent of the line item's price
+- **Capacity per hour or per period**: Check capacity once per billing period, or in every bucket of a bucketed price, limited to certain times of day if needed
+- **Stacking**: Several commitments on the same usage fill in priority order, so a base reservation and a daytime burst reservation can sit on one meter
+- **Invoice lines per commitment**: Usage within the commitment, the true-up and the overage are separate lines, each traced back to its commitment
+
+Commitments configured on a subscription line item ([line item commitments](/docs/subscriptions/commitment/overview)) keep working alongside subscription commitments. The two never price the same usage: a price that carries a line item commitment can't be in a subscription commitment's scope.
+
+## Concepts
+
+| Term | Meaning |
+| --- | --- |
+| **Scope** | The usage a commitment covers: a `subscription`, `group`, `meter` or `price`. It is resolved on every invoice, so prices added later to the subscription or the group are covered. Fixed charges are never in scope. |
+| **Type** | `amount`: `value` is money. `quantity`: `value` is units of the scope's meter. |
+| **Measurement** | `billing_period`: capacity is `value` once per commitment period. `window`: capacity is `value` in every bucket of the scope's bucketed prices, for example every hour. |
+| **Commitment period** | A billing period cut to the commitment's dates. A commitment starting 15 Jan on a monthly subscription billed on the 1st has a first period of 15 Jan to 1 Feb. |
+| **Committed price** | The rate for usage within a `quantity` commitment. An `amount` commitment values usage at each line item's own price. |
+| **Overage price** | The rate for usage beyond every commitment on the same usage. It defaults to the line item's own price. |
+| **Binding** | `true`: the full commitment is owed. `false` (default): usage within it gets the committed rate, and unused capacity costs nothing. |
+| **Collection method** | How a binding commitment is collected: `per_period` (default) bills a true-up on each period's invoice, `billing_terms` bills it through [instalments](/docs/subscriptions/commitment/billing-terms). |
+| **Commitment value** | What the commitment is worth over its whole term: the sum of its period amounts. Returned as `commitment_value`. An open-ended commitment has none. |
+
+## Creating a Commitment
+
+Create a commitment with [Create commitment](/api-reference/commitments/create-commitment). This one reserves 8 GPUs every hour of 2027, at \$2.40 per GPU hour, with usage beyond 8 GPUs billed at \$3.00:
+
+```bash
+curl -X POST "https://us.api.flexprice.io/v1/commitments" \
+  -H "x-api-key: $FLEXPRICE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subscription_id": "subs_01KYARKSC3GVX64QEF4T4ABS9X",
+    "name": "H100 base reservation",
+    "invoice_label": "8x H100 reserved",
+    "invoice_description": "8 GPUs reserved around the clock at $2.40 per GPU hour",
+    "scope": { "entity_type": "meter", "entity_id": "meter_gpu_hours" },
+    "type": "quantity",
+    "value": "8",
+    "measurement": "window",
+    "committed_price": { "billing_model": "FLAT_FEE", "amount": "2.40" },
+    "overage_price": { "billing_model": "FLAT_FEE", "amount": "3.00" },
+    "binding": true,
+    "start_date": "2027-01-01T00:00:00Z",
+    "end_date": "2028-01-01T00:00:00Z"
+  }'
+```
+
+The meter's price on the subscription is bucketed by the hour, so `value: 8` is the capacity of each hour. The response is the commitment with its `commitment_value`, and `commitment.created` is sent.
+
+### Commitment Fields
+
+| Field | Description |
+| --- | --- |
+| `subscription_id` | Required. The subscription must be `active` or `trialing`. Set by Flexprice on commitments created with a subscription |
+| `name` | Required. Shown in the dashboard and API. Up to 255 characters |
+| `invoice_label` | Title of the commitment's invoice lines. Defaults to `name`. Up to 255 characters |
+| `invoice_description` | Second row under the title on the commitment's invoice lines. Up to 500 characters |
+| `scope` | Required. `entity_type` (`subscription`, `group`, `meter` or `price`) and `entity_id` |
+| `type` | Required. `amount` or `quantity` |
+| `value` | Required. Capacity per period or per bucket, greater than 0. Money for `amount`, meter units for `quantity` |
+| `measurement` | Required. `billing_period` or `window` |
+| `committed_price` | Required on `quantity` commitments and not allowed on `amount` ones. See [Committed and overage prices](#committed-and-overage-prices) |
+| `overage_price` | Optional, `quantity` commitments only. Same shape as `committed_price` |
+| `active_windows` | `window` measurement only. Daily time ranges the commitment applies in. See [Measurement and active windows](#measurement-and-active-windows) |
+| `timezone` | IANA time zone `active_windows` are read in. Defaults to `UTC` |
+| `priority` | Stacking order, 0 or greater. The lowest number fills first. Defaults to 0 |
+| `binding` | `true` or `false`. Defaults to `false` |
+| `collection_method` | Binding commitments only. `per_period` (default) or `billing_terms` |
+| `billing_terms`, `instalment_invoicing` | `collection_method: billing_terms` only. See [Billing Terms](/docs/subscriptions/commitment/billing-terms) |
+| `start_date` | Required. On or after the subscription start and before the subscription end |
+| `end_date` | Optional and exclusive: a commitment "through 31 Dec" ends at `2028-01-01T00:00:00Z`. Never after the subscription end. Leave it out for an open-ended commitment, which runs until it is terminated |
+| `idempotency_key` | Up to 128 characters, unique per subscription. Retrying a create with the same key returns the existing commitment |
+| `metadata` | Key-value pairs stored with the commitment |
+
+`start_date` and `end_date` can fall mid-period. The first and last commitment periods are prorated.
+
+### Committed and Overage Prices
+
+`committed_price` and `overage_price` are created as prices on the subscription, and the commitment stores their IDs as `committed_price_id` and `overage_price_id`.
+
+| Field | Description |
+| --- | --- |
+| `billing_model` | `FLAT_FEE` (default), `PACKAGE` or `TIERED` |
+| `amount` | `FLAT_FEE` and `PACKAGE`. Greater than 0 on a committed price, 0 or greater on an overage price |
+| `transform_quantity` | Required for `PACKAGE` |
+| `tier_mode`, `tiers` | Required for `TIERED`. A committed price must use `SLAB` tiers, because `VOLUME` tiers would price the committed units at the rate of the last tier reached |
+
+### Creating Commitments With a Subscription
+
+Send the same objects in `commitments` on [Create subscription](/api-reference/subscriptions/create-subscription). Flexprice sets `subscription_id`, and a `subscription` scope can leave out `entity_id`. The commitments are created after the subscription's line items, and the create response returns them in `commitments`.
+
+### Previewing a Commitment
+
+[Preview commitment](/api-reference/commitments/preview-commitment) takes the same body, runs every validation, and returns the commitment with its `commitment_value` without saving anything. For a commitment with billing terms, it also returns the terms and every instalment they produce.
+
+## Scope
+
+| `scope.entity_type` | Usage covered |
+| --- | --- |
+| `subscription` | Every usage price on the subscription, including prices added later. `entity_id` is the subscription ID |
+| `group` | The usage prices in a price group |
+| `meter` | The usage prices on a meter |
+| `price` | One usage price |
+
+<Warning>
+  A scope is rejected when:
+
+  - It covers no usage prices on the subscription.
+  - It is a `quantity` commitment, or has an `overage_price`, and the scope covers more than one meter.
+  - A price in scope doesn't bill every subscription period, or already carries a line item commitment.
+  - A meter in scope has an active entitlement on the subscription.
+  - The subscription has a subscription-level commitment (`commitment_amount`) or a subscription entitlement grant.
+</Warning>
+
+## Measurement and Active Windows
+
+With `measurement: billing_period`, usage is the period's total quantity (`quantity` commitments) or its total cost at the line items' prices (`amount` commitments), and the capacity is `value` once per commitment period.
+
+With `measurement: window`, the capacity is `value` in every bucket of the scope's bucketed prices. Usage is read per bucket, an empty bucket counts as zero, and unused capacity in one bucket doesn't carry over to the next. Every price in scope must be bucketed with the same bucket size. Weekly and monthly buckets, and prices bucketed by a group-by property, are rejected.
+
+`active_windows` limits a `window` commitment to certain times of day. A bucket counts only when its start, in `timezone`, falls inside a range. Outside the ranges the commitment has no capacity, and the usage is billed at the overage price. Ranges are half-open, may wrap past midnight, and must not overlap. This adds 32 GPUs from 09:00 to 21:00 India time:
+
+```json
+{
+  "type": "quantity",
+  "value": "32",
+  "measurement": "window",
+  "active_windows": [
+    { "start": { "hour": 9, "minute": 0 }, "end": { "hour": 21, "minute": 0 } }
+  ],
+  "timezone": "Asia/Kolkata",
+  "priority": 1
+}
+```
+
+<Note>
+  Billing periods follow the subscription. `active_windows` are read in the commitment's `timezone`, which defaults to `UTC` like line item time-of-day buckets.
+</Note>
+
+## Stacking
+
+Commitments that overlap in time and share usage fill in `priority` order, lowest first. Each commitment fills to its capacity before the next one receives anything. What is left after the last commitment is overage, billed at the overage price.
+
+Two commitments reserve 10 units each on the same price, C1 with `priority: 0` and C2 with `priority: 1`:
+
+| Usage in the bucket | C1 used | C2 used | Overage |
+| --- | --- | --- | --- |
+| 6 | 6 of 10 | 0 of 10 | 0 |
+| 15 | 10 of 10 | 5 of 10 | 0 |
+| 24 | 10 of 10 | 10 of 10 | 4 |
+
+Commitments that overlap in time on the same usage must have different priorities, and the same `type`, `measurement`, bucket size and overage price.
+
+## Commitment Value
+
+Each commitment period has an amount:
+
+| `type` | `billing_period` | `window` |
+| --- | --- | --- |
+| `amount` | `value`, prorated by the part of the period inside the commitment's dates | `value` × buckets in the period that fall inside `active_windows` |
+| `quantity` | `value` units at the committed price, prorated the same way | `value` units at the committed price × buckets in the period inside `active_windows` |
+
+`commitment_value` is the sum over every period of the term:
+
+- **\$100 a month from 1 Jan 2027 to 1 Jan 2028**: 12 periods of \$100, a value of \$1,200.
+- **The same commitment starting 15 Jan**: the first period, 15 Jan to 1 Feb, covers 17 of January's 31 days and is worth \$54.84. With 11 full periods of \$100, the value is \$1,154.84.
+- **The GPU reservation above**: January has 744 hours, so its period is worth 8 × \$2.40 × 744 = \$14,284.80.
+
+## How Commitments Appear on Invoices
+
+The usage lines in a commitment's scope are replaced by commitment lines on each period's invoice:
+
+| Line | Non-binding | Binding, `per_period` | Binding, `billing_terms` |
+| --- | --- | --- | --- |
+| Usage within the commitment | Committed price (`quantity`) or the line item's price (`amount`) | Same | \$0, titled with the `invoice_label` followed by "(covered by commitment)" |
+| True-up | None | The unused part of the period's amount | None. The value is billed through instalments |
+| Overage | Overage price | Overage price | Overage price |
+
+Every commitment line carries `commitment_id`. Lines within the commitment and true-up lines are titled with the commitment's `invoice_label` and carry its `invoice_description`. Overage lines keep the price's own name, because overage belongs to all the commitments stacked on that usage.
+
+Creating a commitment with a past `start_date`, or terminating one with a past `effective_at`, recomputes the subscription's draft invoices for later periods. Finalized invoices are not changed; [recalculate](/docs/invoices/overview) them when needed.
+
+### Usage and Utilization
+
+[Get subscription usage](/api-reference/subscriptions/get-usage-by-subscription) returns a `commitments` breakdown for the queried window, one entry per commitment:
+
+| Field | Description |
+| --- | --- |
+| `commitment_id`, `invoice_label`, `type`, `measurement`, `binding`, `currency` | The commitment |
+| `applies_from`, `applies_to` | The part of the window the commitment covers |
+| `committed` | The full capacity for that part, as a quantity and an amount |
+| `used` | The capacity consumed so far and its value within the commitment |
+| `unused` | The capacity not consumed. For a binding `per_period` commitment, the true-up still owed |
+| `billed_amount` | What the commitment bills for the window: `used` plus, when binding, the true-up. 0 under `billing_terms`, where the value is billed through instalments |
+
+## Updating a Commitment
+
+[Update commitment](/api-reference/commitments/update-commitment) changes `name`, `invoice_label`, `invoice_description` and `metadata`. The new label and description apply to invoices generated afterwards. Everything else, including the scope, value, prices, dates, binding and collection method, can't change. Sending `end_date` returns `changing end_date is not supported yet`: terminate the commitment to end it early.
+
+## Terminating a Commitment
+
+[Terminate commitment](/api-reference/commitments/terminate-commitment) ends an active commitment immediately:
+
+```bash
+curl -X POST "https://us.api.flexprice.io/v1/commitments/$COMMITMENT_ID/terminate" \
+  -H "x-api-key: $FLEXPRICE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cancellation_fee": { "type": "fixed", "value": "500" }
+  }'
+```
+
+| Field | Description |
+| --- | --- |
+| `effective_at` | When the commitment ends. Defaults to now. A future date returns `future-dated termination is not supported yet`. It must be before the commitment's end |
+| `cancellation_fee` | Binding commitments only. `type` is `fixed`, and `value` is the amount in the commitment's currency. `type: percentage` returns `percentage cancellation fees are not supported yet` |
+
+- The commitment's capacity stops at `effective_at`. The period holding it bills a floor prorated to that moment, and later periods bill no true-up.
+- The cancellation fee is billed on its own `ONE_OFF` invoice with billing reason `COMMITMENT_TERMINATION`, returned as `termination_invoice_id`. With a fee, `effective_at` can't be before the start of the current billing period.
+- Under billing terms, scheduled instalments are cancelled and those already due are billed on the same invoice as the fee. See [Terminating a commitment with billing terms](/docs/subscriptions/commitment/billing-terms#terminating-a-commitment).
+- The commitment's `commitment_status` becomes `terminated`, `terminated_at` is set, and `commitment.terminated` is sent.
+
+Cancelling the subscription or changing its plan terminates its commitments when the change takes effect.
+
+## Webhooks
+
+| Event | Fires when |
+| --- | --- |
+| [`commitment.created`](/api-reference/webhook-events/commitmentcreated) | A commitment is created, on its own or with a subscription. `subscription.updated` is sent with it |
+| [`commitment.updated`](/api-reference/webhook-events/commitmentupdated) | A commitment's `name`, `invoice_label`, `invoice_description` or `metadata` changes |
+| [`commitment.terminated`](/api-reference/webhook-events/commitmentterminated) | A commitment is terminated |
+
+The payload carries the commitment as the API returns it:
+
+```json
+{
+  "event_type": "commitment.created",
+  "commitment": {
+    "id": "cmt_01KZ3M8Q1T0V6X2B4D7F9H1J3K",
+    "subscription_id": "subs_01KYARKSC3GVX64QEF4T4ABS9X",
+    "customer_id": "cust_01KYARB3TVZ0RZPDGC5P40NHHC",
+    "name": "H100 base reservation",
+    "invoice_label": "8x H100 reserved",
+    "currency": "usd",
+    "scope_entity_type": "meter",
+    "scope_entity_id": "meter_gpu_hours",
+    "type": "quantity",
+    "value": "8",
+    "committed_price_id": "price_01KZ3M8Q2A5C7E9G1J3L5N7Q9S",
+    "overage_price_id": "price_01KZ3M8Q2B6D8F0H2K4M6P8R0T",
+    "measurement": "window",
+    "timezone": "UTC",
+    "priority": 0,
+    "binding": true,
+    "collection_method": "per_period",
+    "start_date": "2027-01-01T00:00:00Z",
+    "end_date": "2028-01-01T00:00:00Z",
+    "commitment_status": "active",
+    "commitment_value": "168192"
+  }
+}
+```
+
+## Not Supported Yet
+
+- Changing `end_date` on an existing commitment
+- Termination with a future `effective_at`
+- Percentage cancellation fees
+- Renewal. A follow-on contract is a new commitment
+
+<Card icon="book-open" horizontal={true} href="/docs/subscriptions/commitment/billing-terms" title="Billing Terms" />
+<Card icon="book-open" horizontal={true} href="/docs/subscriptions/commitment/overview" title="Line Item Commitments" />

@@ -1,0 +1,373 @@
+---
+title: "Billing Terms"
+description: "Collect a binding commitment through dated instalments, such as an upfront payment and the rest monthly, billed on the subscription invoice or on their own invoices"
+---
+
+Billing terms say how a binding [subscription commitment](/docs/subscriptions/commitment/subscription-commitments) is paid: when, how much, and on which invoice. Each term is a rule, such as "\$300 upfront" or "the rest monthly in arrears". Flexprice expands the terms into instalments, each one dated amount, and the instalments always add up to the commitment's value. Usage within the commitment is then billed at \$0, so the commitment is paid only through its instalments.
+
+**Benefits:**
+
+- **Contract-shaped schedules**: Upfront payments, deposits, quarterly payments in advance, milestones, or any mix of them
+- **Exact totals**: A remainder term takes whatever the other terms leave, and its last instalment absorbs rounding
+- **Delivery per term**: Bill instalments on the subscription invoice, or on their own invoice on the exact date
+- **Preview before saving**: See every instalment, with its date, amount and invoice label, before the commitment is created or the terms are changed
+- **Editable**: Replace the terms of an active commitment. Instalments already invoiced and their invoices are kept
+- **Traceable invoice lines**: Every instalment line points to its instalment, and from there to its term and commitment
+
+## Concepts
+
+| Term | Meaning |
+| --- | --- |
+| **Billing term** | One rule for collecting part of the commitment value. A `once` term bills one instalment, a `recurring` term bills a series |
+| **Instalment** | One dated amount produced from the terms. It is billed when its `bill_on` date is reached |
+| **Total amount** | The commitment value when the commitment is created, stored as `total_amount`. The instalments that are not cancelled always add up to it |
+| **Remainder** | A term without a value. Its amount is the total minus every other term |
+| **Step** | The span one instalment of a recurring term pays for: `period_count` consecutive periods |
+| **Settlement** | An instalment added when a commitment is terminated. It bills the instalments that were already due but not yet invoiced |
+
+## Requirements
+
+- The commitment is binding (`binding: true`) with `collection_method: billing_terms`.
+- The commitment has an `end_date`. An open-ended commitment has no finite value to split.
+- The request carries 1 to 100 billing terms.
+
+## Creating a Commitment With Billing Terms
+
+Send `billing_terms` with [Create commitment](/api-reference/commitments/create-commitment), or inside `commitments` on [Create subscription](/api-reference/subscriptions/create-subscription). This commitment is worth \$100 a month for 2027, a total of \$1,200, paid as \$300 at signing and the rest at the end of every month:
+
+```bash
+curl -X POST "https://us.api.flexprice.io/v1/commitments" \
+  -H "x-api-key: $FLEXPRICE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subscription_id": "subs_01KYARKSC3GVX64QEF4T4ABS9X",
+    "name": "Platform commitment",
+    "invoice_label": "Platform",
+    "scope": { "entity_type": "subscription", "entity_id": "subs_01KYARKSC3GVX64QEF4T4ABS9X" },
+    "type": "amount",
+    "value": "100",
+    "measurement": "billing_period",
+    "binding": true,
+    "collection_method": "billing_terms",
+    "instalment_invoicing": "subscription_invoice",
+    "start_date": "2027-01-01T00:00:00Z",
+    "end_date": "2028-01-01T00:00:00Z",
+    "billing_terms": [
+      { "kind": "once", "value_type": "fixed", "value": "300", "invoice_label": "Signing" },
+      { "kind": "recurring", "value_type": "remainder", "invoice_cadence": "ARREAR" }
+    ]
+  }'
+```
+
+The terms produce 13 instalments: \$300 on 1 Jan 2027, then 12 instalments of \$75 on the 1st of each month from February 2027 to January 2028. The response returns the commitment with its `billing_terms` and `instalments`, and `commitment.created`, `billing_terms.created` and one `billing_instalment.created` per instalment are sent.
+
+Use [Preview commitment](/api-reference/commitments/preview-commitment) with the same body to see the instalments without creating anything.
+
+## Billing Term Fields
+
+| Field | `once` | `recurring` |
+| --- | --- | --- |
+| `kind` | Required | Required |
+| `value_type` | Required. `fixed` or `remainder` | Required. `fixed` or `remainder` |
+| `value` | `fixed`: the instalment's amount. Absent for `remainder` | `fixed`: the amount of **each** instalment. Absent for `remainder` |
+| `bill_trigger` | `date` (default) or `manual` for a [milestone](#triggering-a-milestone) | Not allowed |
+| `bill_on` | When the instalment is billed, within the commitment's dates. Defaults to the commitment start. Absent when `bill_trigger` is `manual` | Not allowed |
+| `start_date`, `end_date` | Not allowed | The first step's start and the last step's end. Both must be period edges. Default to the period holding the commitment start and the commitment end |
+| `period_count` | Not allowed | Periods per step. Defaults to 1. `3` on a monthly subscription bills quarterly |
+| `invoice_cadence` | Not allowed | Required. `ADVANCE` bills each step at its start, `ARREAR` at its end |
+| `split` | Not allowed | `remainder` terms only. `even` (default) or `proportional` |
+| `instalment_invoicing` | `subscription_invoice` or `separate_invoice`. Defaults to the commitment's | Same |
+| `invoice_label` | The instalment's label on invoices. Defaults to `Instalment {n} of {of}`. Up to 255 characters | Same |
+| `metadata` | Key-value pairs | Same |
+
+### Amounts
+
+- A `fixed` value is money in the commitment's currency, greater than 0, with no more decimals than the currency allows.
+- On a `recurring` term, the fixed `value` is per instalment, so the term's amount is `value` × the number of steps.
+- At most one term is the `remainder`. Its amount is `total_amount` minus every other term, and it must be greater than 0.
+- Without a remainder term, the terms must add up to `total_amount` exactly.
+- A recurring remainder is divided across its steps. `even` gives every step the same amount. `proportional` sizes each step by the commitment's value in it, so a short first month bills less than a full one. Either way, the last instalment absorbs the rounding: \$1,000 over 3 months is \$333.33, \$333.33 and \$333.34.
+
+<Note>
+  `value_type: percentage` is reserved. A percentage term returns `percentage terms are not supported yet`.
+</Note>
+
+### Steps of a Recurring Term
+
+A recurring term cuts its `[start_date, end_date)` window into steps of `period_count` periods. The last step can be shorter. Which periods it counts depends on where the instalments are billed:
+
+- **On the subscription invoice**: the subscription's billing periods, cut to the commitment's dates. A monthly term on a subscription billed on the 1st, for a commitment starting 15 Jan, bills a 15 Jan to 1 Feb step, then one step per month.
+- **On separate invoices**: periods of the subscription's billing period length, counted from the commitment start. The same term bills on the 15th of each month.
+
+### Common Arrangements
+
+All of these collect the \$1,200 commitment above:
+
+| Arrangement | Terms | Instalments |
+| --- | --- | --- |
+| Full upfront | `once`, `remainder` | \$1,200 on 1 Jan |
+| Upfront, then monthly | `once` fixed 300, and `recurring` `remainder` `ARREAR` | \$300 on 1 Jan, then 12 × \$75 at each month end |
+| Deposit, then monthly from April | `once` fixed 300, and `recurring` fixed 100 `ARREAR` with `start_date` 1 Apr | \$300 on 1 Jan, then \$100 at the end of each month from April to December |
+| Quarterly in advance | `recurring` fixed 300 `ADVANCE` with `period_count: 3` | \$300 on 1 Jan, 1 Apr, 1 Jul and 1 Oct |
+| Signing, go-live and final payment | `once` fixed 360, `once` fixed 600 with `bill_trigger: manual`, and `once` `remainder` with `bill_on` 1 Dec | \$360 on 1 Jan, \$600 when go-live is triggered, \$240 on 1 Dec |
+| Payments on fixed dates | One `once` term per payment, each with its `bill_on` | One instalment per term |
+
+```json
+{
+  "billing_terms": [
+    { "kind": "once", "value_type": "fixed", "value": "360", "invoice_label": "Signing" },
+    { "kind": "once", "value_type": "fixed", "value": "600", "bill_trigger": "manual", "invoice_label": "Go-live" },
+    { "kind": "once", "value_type": "remainder", "bill_on": "2027-12-01T00:00:00Z", "invoice_label": "Final payment" }
+  ]
+}
+```
+
+## How Instalments Are Billed
+
+`instalment_invoicing` on the commitment sets where instalments are billed, and a term can set its own.
+
+### On the Subscription Invoice
+
+With `subscription_invoice` (the default), each subscription invoice carries the instalments whose `bill_on` is on or before its billing period boundary:
+
+- An `ADVANCE` step lands on the invoice that opens it, and an `ARREAR` step on the invoice that closes it.
+- A `once` instalment dated mid-period lands on the next period's invoice.
+- An instalment dated in the past, after an edit or a late trigger, lands on the next invoice.
+
+### On Separate Invoices
+
+With `separate_invoice`, Flexprice checks for due instalments every 15 minutes. It issues one finalized `ONE_OFF` invoice per instalment, with billing reason `BILLING_TERMS`, once its `bill_on` is reached. Use this to bill on the exact date, for example an upfront payment on signing while the monthly instalments go on the subscription invoices.
+
+### Invoice Lines
+
+An instalment line has no price. It carries `commitment_id` and `billing_instalment_id`, and its service period is the instalment's. The line is titled with the commitment's `invoice_label`, a dash, and the instalment's label, and carries the commitment's `invoice_description`:
+
+| Instalment | Invoice line |
+| --- | --- |
+| The \$300 signing payment | Platform - Signing |
+| The third monthly payment | Platform - Instalment 3 of 12 |
+
+`{n}` and `{of}` in a label number every instalment of the commitment whose label uses them, `once` and `recurring` together, in billing order. Without the custom "Signing" label, the same commitment bills "Instalment 1 of 13" through "Instalment 13 of 13".
+
+Usage within the commitment appears at \$0, titled with the `invoice_label` followed by "(covered by commitment)". No true-up is billed. Usage beyond the commitment is billed at the overage price as usual.
+
+<Warning>
+  Changing the amount or quantity of an instalment line on a draft invoice returns `an instalment line's amount comes from the commitment's billing terms`. Edit the billing terms instead. The line's name, description and period can still be edited.
+</Warning>
+
+### When an Instalment Counts as Invoiced
+
+An instalment is `invoiced` only when the invoice carrying it is **finalized**. Computing a draft invoice doesn't change it. Finalizing sets `instalment_status: invoiced` and `invoice_id`, and sends `billing_instalment.invoiced`.
+
+- **Trials and pauses**: instalments wait while the subscription is trialing or paused. They are billed on the first invoice after the trial or pause ends. Separate invoices are issued only for `active` subscriptions.
+- **Voided invoices**: voiding an invoice puts its instalments back to `scheduled`, so they are billed on the recalculated invoice or the next one.
+- **Credit notes**: a credit note doesn't change instalments. A credited instalment stays `invoiced`.
+
+## Viewing Instalments
+
+[Get billing terms](/api-reference/commitments/get-billing-terms) returns the commitment's current terms with its scheduled and invoiced instalments. [List instalments](/api-reference/commitments/list-instalments) returns every instalment, cancelled ones included, and filters by `status`:
+
+```bash
+curl "https://us.api.flexprice.io/v1/commitments/$COMMITMENT_ID/instalments?status=scheduled&status=invoiced" \
+  -H "x-api-key: $FLEXPRICE_API_KEY"
+```
+
+### Instalment Object
+
+| Field | Description |
+| --- | --- |
+| `id` | Instalment identifier (`binst_` prefix). Instalments are listed by `bill_on`, then `id` |
+| `owner_type`, `owner_id` | `commitment` and the commitment ID |
+| `billing_term_id` | The term that produced it (`bterm_` prefix). Absent on a settlement |
+| `customer_id`, `subscription_id`, `currency` | Copied from the commitment |
+| `kind` | `instalment`, or `settlement` for one added at termination |
+| `bill_trigger` | `date` or `manual` |
+| `bill_on` | When it becomes billable. An untriggered milestone waits at the commitment's `end_date` |
+| `triggered_at` | When a milestone was triggered |
+| `amount` | The amount, rounded to the currency's precision |
+| `invoice_label` | The label after numbering, for example `Instalment 3 of 12` |
+| `service_period_start`, `service_period_end` | What it pays for: the step, or the commitment's whole term for a `once` term |
+| `delivery` | `subscription_invoice` or `separate_invoice` |
+| `instalment_status` | `scheduled`, `invoiced` or `cancelled` |
+| `invoice_id` | The finalized invoice that billed it |
+
+## Editing Billing Terms
+
+Terms set up wrong, or a renegotiated payment schedule, are changed with [Edit billing terms](/api-reference/commitments/edit-billing-terms). An edit replaces the whole set of terms of an active commitment:
+
+1. Every `scheduled` instalment is cancelled, and the current terms are archived.
+2. The new terms are expanded against what the `invoiced` instalments leave of `total_amount`. A remainder term takes what is left after the invoiced instalments and the other new terms.
+3. A new term without `bill_on` or `start_date` starts at the billing period holding the moment of the edit, or the commitment start once the commitment's term has ended. A recurring term billed on separate invoices starts at the anniversary period holding the edit.
+4. New instalments are numbered after the invoiced ones.
+
+Invoiced instalments and their invoices are never changed. Draft invoices drop the cancelled instalments when they are finalized.
+
+On the \$1,200 commitment above, the \$300 signing payment and the January to April instalments (\$600) are on finalized invoices by 10 May. That day the rest moves to quarterly payments in advance:
+
+```bash
+curl -X PUT "https://us.api.flexprice.io/v1/commitments/$COMMITMENT_ID/billing-terms" \
+  -H "x-api-key: $FLEXPRICE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "billing_terms": [
+      { "kind": "recurring", "value_type": "remainder", "invoice_cadence": "ADVANCE", "period_count": 3 }
+    ]
+  }'
+```
+
+The eight scheduled \$75 instalments are cancelled. The new term covers the \$600 left, from 1 May to the end of the commitment, in steps of May to July, August to October, and November to December. It bills \$200 on 1 May, 1 Aug and 1 Nov. The 1 May instalment is already due, so it goes on the next invoice.
+
+[Preview billing terms edit](/api-reference/commitments/preview-billing-terms-edit) takes the same body and returns the result without saving. Both return the new terms with the invoiced and new instalments, and an edit sends `billing_terms.updated`, plus `billing_instalment.cancelled` and `billing_instalment.created` for each instalment it changes.
+
+<Warning>
+  An edit is refused when:
+
+  - The commitment is fully invoiced: `billing_terms: the commitment is fully invoiced; nothing is left to plan`.
+  - A draft invoice carrying the commitment's instalments has a payment that is pending, processing or succeeded. Edit once the invoice is finalized or the payment fails.
+</Warning>
+
+### Billing the Whole Total Again
+
+An edit plans only what invoiced instalments leave. To bill the full `total_amount` again, for example after an upfront amount was entered wrong and invoiced:
+
+1. Void the invoices that carry the commitment's instalments. Their instalments go back to `scheduled`. A paid invoice can be voided too.
+2. Edit the billing terms. The edit cancels every scheduled instalment, the voided ones included, and the new terms cover the full total.
+
+Void first, then edit. Editing first plans only what is left, and the voided instalments then come back on top of the new ones.
+
+## Triggering a Milestone
+
+A `once` term with `bill_trigger: manual` is a milestone, such as a payment due at go-live. Its instalment waits with `bill_on` set to the commitment's `end_date`, so it bills at the end of the term if it is never triggered. [Trigger instalment](/api-reference/commitments/trigger-instalment) bills it earlier:
+
+```bash
+curl -X POST "https://us.api.flexprice.io/v1/commitments/$COMMITMENT_ID/instalments/$INSTALMENT_ID/trigger" \
+  -H "x-api-key: $FLEXPRICE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+- `bill_on` defaults to now and must fall within the commitment's dates.
+- A trigger can only move `bill_on` earlier. To bill a milestone later, edit the billing terms.
+- The instalment is then billed like any other: on the next subscription invoice, or on its own invoice once due when its delivery is `separate_invoice`.
+- `billing_instalment.updated` is sent.
+
+## Terminating a Commitment
+
+[Terminating](/docs/subscriptions/commitment/subscription-commitments#terminating-a-commitment) a commitment with billing terms:
+
+1. Cancels every scheduled instalment.
+2. Bills the cancelled instalments that were already due (`bill_on` on or before `effective_at`) as one `settlement` instalment, labeled "Settlement".
+3. Bills the settlement and the cancellation fee, if any, together on one `ONE_OFF` invoice with billing reason `COMMITMENT_TERMINATION`.
+
+Instalments due after `effective_at` are not billed, and nothing is refunded. The cancellation fee is how a tenant charges for an early end. For a \$1,200 commitment terminated on 1 May:
+
+| Billing terms | Already invoiced | Billed at termination |
+| --- | --- | --- |
+| All upfront | \$1,200 | Nothing, besides the fee |
+| \$300 upfront and 12 × \$75 in arrears | \$600 | Nothing, besides the fee. The 8 later instalments are cancelled |
+| 12 × \$100 in arrears, none invoiced yet | \$0 | A \$400 settlement for the 4 instalments due by 1 May |
+| Everything at the end of the term | \$0 | Nothing, besides the fee |
+
+To give back an instalment billed before the termination, issue a credit note against its invoice. Voiding the invoice instead puts the instalment back on schedule, and it is billed again.
+
+### Subscription Cancellation
+
+- **At period end or on a date**: the commitment and its instalments keep billing until the cancellation takes effect. Then the commitment is terminated as above.
+- **Immediately**: the commitment is terminated at once. The settlement is billed on its own invoice even when the cancellation issues no final invoice.
+- **A commitment that already ended**: its instalments still scheduled are settled at the commitment's end.
+
+## Webhooks
+
+| Event | Fires when |
+| --- | --- |
+| [`billing_terms.created`](/api-reference/webhook-events/billing_termscreated) | Billing terms are saved with a new commitment |
+| [`billing_terms.updated`](/api-reference/webhook-events/billing_termsupdated) | An edit replaces a commitment's billing terms |
+| [`billing_instalment.created`](/api-reference/webhook-events/billing_instalmentcreated) | An instalment is added, on create, on an edit, or as a settlement |
+| [`billing_instalment.updated`](/api-reference/webhook-events/billing_instalmentupdated) | A trigger moves its `bill_on`, or a voided invoice puts it back on schedule |
+| [`billing_instalment.cancelled`](/api-reference/webhook-events/billing_instalmentcancelled) | An edit or a termination cancels it |
+| [`billing_instalment.invoiced`](/api-reference/webhook-events/billing_instalmentinvoiced) | The invoice carrying it is finalized |
+
+A `billing_terms.*` payload carries the owner's current terms:
+
+```json
+{
+  "event_type": "billing_terms.created",
+  "owner_type": "commitment",
+  "owner_id": "cmt_01KZ3M8Q1T0V6X2B4D7F9H1J3K",
+  "billing_terms": [
+    {
+      "id": "bterm_01KZ3M8Q3C7E9G1J3L5N7Q9S1U",
+      "owner_type": "commitment",
+      "owner_id": "cmt_01KZ3M8Q1T0V6X2B4D7F9H1J3K",
+      "kind": "once",
+      "value_type": "fixed",
+      "value": "300",
+      "invoice_label": "Signing",
+      "status": "published"
+    },
+    {
+      "id": "bterm_01KZ3M8Q3D8F0H2K4M6P8R0T2V",
+      "owner_type": "commitment",
+      "owner_id": "cmt_01KZ3M8Q1T0V6X2B4D7F9H1J3K",
+      "kind": "recurring",
+      "value_type": "remainder",
+      "invoice_cadence": "ARREAR",
+      "status": "published"
+    }
+  ]
+}
+```
+
+Terms are stored as they were sent. Defaults, such as a `once` term's `bill_on`, are applied when the terms are expanded, and show on the instalments. After an edit, the replaced terms have `status: archived`.
+
+A `billing_instalment.*` payload carries the instalment:
+
+```json
+{
+  "event_type": "billing_instalment.invoiced",
+  "instalment": {
+    "id": "binst_01KZ3M8Q4E9G1J3L5N7Q9S1U3W",
+    "owner_type": "commitment",
+    "owner_id": "cmt_01KZ3M8Q1T0V6X2B4D7F9H1J3K",
+    "billing_term_id": "bterm_01KZ3M8Q3D8F0H2K4M6P8R0T2V",
+    "customer_id": "cust_01KYARB3TVZ0RZPDGC5P40NHHC",
+    "subscription_id": "subs_01KYARKSC3GVX64QEF4T4ABS9X",
+    "currency": "usd",
+    "kind": "instalment",
+    "bill_trigger": "date",
+    "bill_on": "2027-02-01T00:00:00Z",
+    "amount": "75",
+    "invoice_label": "Instalment 1 of 12",
+    "service_period_start": "2027-01-01T00:00:00Z",
+    "service_period_end": "2027-02-01T00:00:00Z",
+    "delivery": "subscription_invoice",
+    "instalment_status": "invoiced",
+    "invoice_id": "inv_01KZ9T2B6C8E0G2J4L6N8Q0S2U"
+  }
+}
+```
+
+## Validation Errors
+
+| Condition | Error |
+| --- | --- |
+| `billing_terms` without `collection_method: billing_terms` | `billing_terms require collection_method billing_terms` |
+| `collection_method: billing_terms` without an `end_date` | `collection_method billing_terms requires an end_date` |
+| A percentage term | `percentage terms are not supported yet` |
+| More than one remainder term | `only one term can be the remainder` |
+| A remainder term with a `value` | `a remainder term takes no value` |
+| Fixed terms that don't add up to the total, with no remainder | `the terms add up to X, not the total of Y; adjust them or add a remainder term` |
+| Fixed terms that leave nothing for the remainder | `the other terms add up to X and leave nothing of the total of Y for the remainder` |
+| More than 500 instalments, invoiced ones included | `billing_terms: expand to N instalments, more than the 500 allowed` |
+
+Errors about one term name its position and field, for example `billing_terms[1].split`.
+
+## Not Supported Yet
+
+- Percentage terms and percentage cancellation fees
+- Billing terms on open-ended commitments
+- Automatic refunds or credit notes on termination or edit. Issue credit notes against the invoices instead
+- A split that keeps full periods equal and prorates only the first and last. Use a `once` term for each partial period and a fixed recurring term for the rest
+
+<Card icon="book-open" horizontal={true} href="/docs/subscriptions/commitment/subscription-commitments" title="Subscription Commitments" />
+<Card icon="book-open" horizontal={true} href="/developers/webhooks/event-catalog" title="Webhook event catalog" />
