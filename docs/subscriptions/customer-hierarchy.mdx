@@ -100,25 +100,17 @@ flowchart TB
   usagePath --> invoices
 ```
 
-### Dashboard: add customers to inherit
+### Dashboard: inherited customers
 
-Use the **Add customers to inherit** flow when linking child customers to the parent subscription (wording and entry point may vary slightly by dashboard version).
-
-<Frame>
-  ![Add customers to inherit
-  modal](/images/docs/customer-hierarchy/add-customers-to-inherit.png)
-</Frame>
-
-### Dashboard: inherited subscription on a child
-
-On a **child** customer, the **Inherited subscriptions** view shows the parent they inherit from, the plan, and key dates.
+In the dashboard, subscriptions are called **contracts**. You link child customers in the **Billing** step of a new contract: the **Customer hierarchy** card has an **Inherited customers** field where you add each child.
 
 <Frame>
-  ![Inherited subscriptions table on a child
-  customer](/images/docs/customer-hierarchy/inherited-subscriptions-table.png)
+  ![Customer hierarchy card on the Billing step of a new contract, with two inherited customers](/images/docs/customer-hierarchy/contract-inherited-customers.png)
 </Frame>
 
-The **parent subscription** creation screen (with inheritance configured) is shown in [Step 2: Create the parent subscription](#step-2-create-the-parent-subscription) below.
+The picker lists customers by name, but it only shows customers that have an external ID. A customer that already has a contract of its own, or already inherits another customer's contract, is listed greyed out and cannot be picked.
+
+The full steps are in [Step 2: Create the parent subscription](#step-2-create-the-parent-subscription) below.
 
 ## Usage tracking behavior (inherited subscriptions)
 
@@ -182,13 +174,14 @@ Create the parent customer and each child customer through the Dashboard or API.
 
 <Tabs>
   <Tab title="Dashboard">
-    1. Navigate to **Subscriptions** and click **Create Subscription**
-    2. Select the **parent customer** and choose a plan
-    3. In the **Customer Hierarchy** section, add the external IDs of the child customers who will inherit this subscription
-    4. Click **Create Subscription**
+    1. Go to **Contracts** and click **New contract**
+    2. In the **Contract** step, select the **parent customer** and choose a plan
+    3. Click **Next** until you reach the **Billing** step
+    4. In the **Customer hierarchy** card, keep **Billing customer** on **Same customer**, then add each child customer in **Inherited customers**
+    5. Click **Next**, review the contract, and click **Create contract**
 
     <Frame>
-      ![Subscription create form showing Customer Hierarchy section with child customer IDs](/images/docs/customer-hierarchy/inherited-cust-subscription-creation.png)
+      ![Customer hierarchy card on the Billing step of a new contract, with two inherited customers](/images/docs/customer-hierarchy/contract-inherited-customers.png)
     </Frame>
 
   </Tab>
@@ -239,11 +232,16 @@ Create the subscription owner (child) and the billing customer separately. Neith
 
 <Tabs>
   <Tab title="Dashboard">
-    1. Navigate to **Subscriptions** and click **Create Subscription**
-    2. Select the **child customer** as the subscription owner
-    3. Choose a plan
-    4. In the **Invoice To** field, select or enter the delegated payer's external ID (the customer who will receive the invoice)
-    5. Click **Create Subscription**
+    1. Go to **Contracts** and click **New contract**
+    2. In the **Contract** step, select the **child customer** as the contract owner and choose a plan
+    3. Click **Next** until you reach the **Billing** step
+    4. In the **Customer hierarchy** card, set **Billing customer** to **Another customer**
+    5. In **Invoiced to**, pick the delegated payer (the customer who will receive the invoice)
+    6. Click **Next**, review the contract, and click **Create contract**
+
+    <Frame>
+      ![Customer hierarchy card with Another customer selected and a customer in Invoiced to](/images/docs/customer-hierarchy/contract-invoiced-to.png)
+    </Frame>
 
   </Tab>
   <Tab title="API">

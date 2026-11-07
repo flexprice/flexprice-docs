@@ -52,12 +52,8 @@ Flexprice does not sync payments, plans, or prices with HubSpot, and it does not
 | Quote sync | `crm.objects.quotes.read`, `crm.objects.quotes.write`, `crm.schemas.quotes.read`, `crm.schemas.quotes.write`, `crm.objects.line_items.read`, `crm.objects.line_items.write` |
 
 <Note>
-  The **Required Scopes** panel in the Flexprice connection drawer lists the scopes for the syncs you turn on. It lists `crm.objects.deals.read` only when deal sync is on, but customer sync also needs it to read each deal and its contacts. HubSpot prompts you to add it when you subscribe to deal events in Step 4.
+  The **Connect HubSpot** sheet in Flexprice only reminds you to create a private app with the CRM contacts, line items, deals, and quotes scopes. Use the table above for the exact scopes each sync needs. Customer sync needs `crm.objects.deals.read` even when deal sync is off, to read each deal and its contacts. HubSpot prompts you to add it when you subscribe to deal events in Step 4.
 </Note>
-
-<Frame>
-  ![Required Scopes panel in the Connect to HubSpot drawer, listing the scopes for invoice, deal, and quote sync](/images/docs/integrations/hubspot/required-scopes.png)
-</Frame>
 
 ## Step 2: Copy the HubSpot access token and client secret
 
@@ -78,30 +74,34 @@ Open your app from **Development** → **Legacy apps**, then click the **Auth** 
 
 <Steps>
   <Step title="Open the HubSpot integration">
-    In the Flexprice dashboard, open **Integrations**, select **HubSpot**, and click **Add a connection**.
+    In the Flexprice dashboard, open **Integrations** and click **Connect** on the **HubSpot** card.
   </Step>
   <Step title="Enter the credentials">
-    Fill in **Connection Name**, then paste the **Access Token** and **Client Secret** from Step 2.
-  </Step>
-  <Step title="Choose what Flexprice pushes to HubSpot">
-    Under **Sync Configuration**, turn on **Invoices**, **Deals**, and **Quotes** for the syncs you want. All three are off by default.
+    Fill in **Connection name**, then paste the **Private app access token** and **Client secret** from Step 2. Click **Continue**.
 
     <Frame>
-      ![Connect to HubSpot drawer with the connection name, masked access token and client secret, and the Invoices, Deals, and Quotes toggles turned on](/images/docs/integrations/hubspot/connection.png)
+      ![Connect HubSpot sheet on the Credentials step with the connection name, masked access token, and client secret](/images/docs/integrations/hubspot/connection.png)
+    </Frame>
+  </Step>
+  <Step title="Choose what Flexprice pushes to HubSpot">
+    On the **Sync** step, turn on **Push invoices**, **Push deals**, and **Push quotes** for the syncs you want. All three are off by default. Click **Continue**.
+
+    <Frame>
+      ![Sync step with the Push invoices, Push deals, and Push quotes switches](/images/docs/integrations/hubspot/connect-sync.png)
     </Frame>
   </Step>
   <Step title="Copy the webhook URL">
-    Under **Webhook Configuration**, click **Copy** next to the webhook URL. You paste it into HubSpot in Step 4. Expand **Webhook Events to Subscribe** to see the deal event HubSpot needs to send.
+    The **Webhook** step shows the webhook URL and the deal event HubSpot needs to send. Click the copy icon next to **Webhook URL**: you paste it into HubSpot in Step 4.
 
     <Frame>
-      ![Webhook Configuration section of the drawer, showing the Flexprice webhook URL and the dealstage deal.propertyChange event to subscribe to](/images/docs/integrations/hubspot/webhook-configuration.png)
+      ![Webhook step with the Flexprice webhook URL and the dealstage deal.propertyChange event to subscribe to](/images/docs/integrations/hubspot/webhook-configuration.png)
     </Frame>
   </Step>
   <Step title="Save the connection">
-    Click **Create Connection**. The connection appears under **Connected Accounts** on the HubSpot integration page.
+    Click **Connect HubSpot**. The HubSpot card moves under **Connected** on the Integrations page.
 
     <Frame>
-      ![HubSpot integration page in the Flexprice dashboard, listing the HubSpot Production connection under Connected Accounts](/images/docs/integrations/hubspot/connected-account.png)
+      ![Integrations page with the HubSpot card under Connected](/images/docs/integrations/hubspot/connected-account.png)
     </Frame>
   </Step>
 </Steps>
@@ -191,13 +191,13 @@ Flexprice answers every request from HubSpot with `200 OK`, including requests i
 
 ## Changing HubSpot connection settings and credentials
 
-To change the connection name or turn syncs on or off, open **Integrations** → **HubSpot** in the Flexprice dashboard and click the pencil icon next to the connection under **Connected Accounts**. The edit drawer does not show the access token or client secret fields.
+To change the connection name or turn syncs on or off, open **Integrations** in the Flexprice dashboard and click **Configure** on the HubSpot card. The settings sheet does not show the access token or client secret.
 
 <Frame>
-  ![Edit HubSpot Connection drawer, showing the connection name and the sync toggles but no access token or client secret fields](/images/docs/integrations/hubspot/edit-connection.png)
+  ![HubSpot connection settings with the connection name, sync switches, webhook, and Disconnect, but no access token or client secret fields](/images/docs/integrations/hubspot/edit-connection.png)
 </Frame>
 
-To use a new access token or client secret, delete the HubSpot connection and create it again with the new values. Links between Flexprice customers and HubSpot contacts, invoices, and line items are stored separately from the connection, so they are kept.
+To use a new access token or client secret, click **Disconnect HubSpot** in the same sheet, then connect HubSpot again with the new values. Links between Flexprice customers and HubSpot contacts, invoices, and line items are stored separately from the connection, so they are kept.
 
 <Check>
   When you rotate the access token in HubSpot, choose **Rotate and expire later**. The old token keeps working for 7 days, which gives you time to recreate the connection before it expires.

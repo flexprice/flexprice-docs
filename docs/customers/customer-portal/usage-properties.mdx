@@ -1,27 +1,33 @@
 ---
 title: "Usage by Properties"
-description: "Let customers group and filter their usage and cost in the Customer Portal by event properties such as region, model or instance"
+description: "Group and filter a customer's usage and cost by event properties such as region, model or instance, through the portal analytics API"
 ---
 
-A usage chart that only splits by feature cannot answer the questions customers actually ask: which region is driving the bill, which model costs the most, which instance spiked last week. With usage properties turned on, customers group and filter their usage and cost in the portal by the properties on your events.
+A usage chart that only splits by feature cannot answer the questions customers actually ask: which region is driving the bill, which model costs the most, which instance spiked last week. With usage properties turned on, the portal analytics API groups and filters a customer's usage and cost by the properties on your events, so a portal front end you build can answer them.
 
 The feature is off by default. You turn it on per environment and choose which properties customers can see.
 
-## What customers see
+<Note>
+**The hosted portal has no property controls**
 
-When the feature is on, the **Usage** section shows a toolbar under the date filter.
+The hosted Customer Portal doesn't group or filter by event property, and turning on usage properties adds no toolbar to it. The setting applies to the portal analytics endpoints, for a portal front end you build on the API.
+</Note>
 
-| Control | What it does |
-| ------- | ------------ |
-| **Features** | Narrows the section to one or more features. Shown when the customer has usage on two or more features |
-| **Group by** | Splits the chart and the breakdown table by one property, for example `region` |
-| **Filter** | Keeps only usage whose property matches the chosen values, for example `cloud_provider` is `aws`. Values are searchable |
+## Building property controls
 
-Active filters appear as removable chips under the toolbar, with **Clear all**.
+A portal front end can offer three controls on these endpoints. The example below groups usage by `cloud_provider` with an `env` filter.
 
-<Frame>![Usage section grouped by cloud_provider with an env filter, showing cost per provider in the chart and the breakdown table](/images/docs/customers/customer-portal/usage-properties-toolbar.png)</Frame>
+| Control | What it does | Request field |
+| ------- | ------------ | ------------- |
+| **Features** | Narrows the view to one or more features. Useful when the customer has usage on two or more features | `feature_ids` |
+| **Group by** | Splits the chart and the breakdown table by one property, for example `region` | `group_by` |
+| **Filter** | Keeps only usage whose property matches the chosen values, for example `cloud_provider` is `aws`. The values endpoint takes a `prefix` for search | `property_filters` |
 
-When usage is grouped:
+To drill down, combine the two: filter `region` to `us-east-1` and group by `instance_id`. In the example, active filters appear as removable chips under the toolbar, with **Clear all**.
+
+<Frame>![Example property toolbar: usage grouped by cloud_provider with an env filter, showing cost per provider in the chart and the breakdown table](/images/docs/customers/customer-portal/usage-properties-toolbar.png)</Frame>
+
+When usage is grouped in the example:
 
 - **The chart shows cost per property value.** Cost adds up across features, where usage in different units does not.
 - **The top 8 values get their own line.** The rest are combined into **Other**.
@@ -31,30 +37,37 @@ When usage is grouped:
 
 ## Turning it on
 
-Go to **Settings**, open the **Customer Portal** tab, and with **Show usage** on, turn on **Group and filter usage by properties**.
+The dashboard has no control for usage properties. Turn them on through the settings API by writing `analytics_config` into the `customer_portal_config` setting. This changes what the portal analytics endpoints accept, not what the hosted portal shows:
 
-| Setting | Effect |
-| ------- | ------ |
-| **Only show these properties** | Customers see only these properties. Leave empty to show all of them |
-| **Always hide these properties** | Customers never see these properties |
-
-Both pickers suggest properties seen in your usage over the last 7 days. You can also type a property name.
-
-<Frame>![Settings, Customer Portal tab, with Group and filter usage by properties turned on and both property lists filled](/images/docs/customers/customer-portal/usage-properties-settings.png)</Frame>
-
-The same settings live under `analytics_config` in the `customer_portal_config` setting:
-
-```json
-{
-  "analytics_config": {
-    "usage_properties": {
-      "enabled": true,
-      "allowed_keys": ["region", "model"],
-      "hidden_keys": ["user_email"]
+```bash
+curl --request PUT \
+  --url https://api.cloud.flexprice.io/v1/settings/customer_portal_config \
+  --header 'x-api-key: <your_api_key>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "value": {
+      "analytics_config": {
+        "usage_properties": {
+          "enabled": true,
+          "allowed_keys": ["region", "model"],
+          "hidden_keys": ["user_email"]
+        }
+      }
     }
-  }
-}
+  }'
 ```
+
+| Field | Effect |
+| ----- | ------ |
+| `enabled` | Turns the feature on. It stays off until you set it to `true` |
+| `allowed_keys` | Customers see only these properties. Leave empty to show all of them |
+| `hidden_keys` | Customers never see these properties |
+
+The write replaces `analytics_config` as a whole and leaves the rest of the setting, such as your sections and theme, as it is. Send all three fields every time, because a field you leave out is cleared.
+
+Settings writes need a Super Admin user's API key. A service account key is refused. Saving the portal panel in the dashboard keeps this setting, but the panel's **Reset to defaults** deletes it.
+
+To find property names for the lists, call `POST /v1/meter-usage/properties` with your API key. See [API](#api).
 
 <Note>
 **A property in both lists is hidden**
@@ -73,14 +86,14 @@ A property is available to customers only when all of these hold:
 <Warning>
 **Send property values as strings to group or filter by them**
 
-Grouping and filtering read property values as strings. A property sent as a number, such as `"version": 2`, groups everything under **(none)** and matches no filter. Send `"version": "2"` instead.
+Grouping and filtering read property values as strings. A property sent as a number, such as `"version": 2`, groups as if the property were missing and matches no filter. Send `"version": "2"` instead.
 </Warning>
 
-The property list in the portal comes from the customer's most recent usage of each meter in the selected date range. A property that only appears on older events may not be listed.
+The properties endpoint builds its list from the customer's most recent usage of each meter in the requested date range. A property that only appears on older events may not be listed.
 
 ## API
 
-The portal calls these endpoints with its session token. Request bodies take `start_time`, `end_time` and optional `feature_ids`.
+A portal front end calls these endpoints with the customer's session token. Request bodies take `start_time`, `end_time` and optional `feature_ids`.
 
 | Method | Path | Description |
 | ------ | ---- | ----------- |
@@ -110,7 +123,6 @@ The same lookups exist for your own API key at `/v1/meter-usage/properties` and 
 
 ## Limitations
 
-- Customers group by one property at a time. Use a filter to narrow within it, for example filter `region` to `us-east-1` and group by `instance_id`.
 - Grouping by a property with thousands of values returns every group, which makes the response large and slower to load.
 - After you change the setting, open portal sessions can take up to a minute to reflect it.
 

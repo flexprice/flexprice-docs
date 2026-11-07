@@ -69,7 +69,7 @@ In Flexprice you control this by **linking features to plans** (entitlements): s
 
 Resend does **not** automatically charge for excess usage. When you exceed your monthly quota, you are notified and prompted to upgrade; if you repeatedly exceed limits without upgrading, Resend may temporarily pause sending.
 
-In Flexprice you can choose **soft limit** (overage allowed, with or without extra charge) or **hard limit** (strict cap). Configure limits and overage per plan when [linking features to plans](/docs/product-catalogue/features/linking-to-plans).
+In Flexprice, usage above an entitlement's value bills at the plan's usage price, and Flexprice never blocks it. The entitlement's limit type (`is_soft_limit`) tells your application what to do at the value: with a **soft limit**, let the customer continue and bill the overage; with a **hard limit**, stop them and prompt an upgrade, as Resend does. Configure limits and overage per plan when [linking features to plans](/docs/product-catalogue/features/linking-to-plans).
 
 ---
 
@@ -103,16 +103,16 @@ flowchart LR
     Define the usage dimensions (e.g. Emails Sent) as **metered features** with event names and aggregation.
   </Step>
   <Step title="Create plan with hybrid charges">
-    Create a **plan** (e.g. Transactional Pro). Add a **recurring charge** (e.g. $20/month) and **usage-based charge(s)** for the metered feature(s) (e.g. included 50k emails, then overage or tiered pricing).
+    Create a **plan** (e.g. Transactional Pro). Add a **recurring charge** (e.g. \$20/month) and **usage-based charge(s)** for the metered feature(s) (e.g. \$0.20 per 1,000 emails). The included emails come from the entitlement in the next step, not from the charge.
   </Step>
   <Step title="Set entitlements">
     **Link features to the plan.** Set included quantity, usage reset (e.g. monthly), and soft or hard limit for metered features. Add boolean/static features if you gate capabilities by tier.
   </Step>
   <Step title="Create customer">
-    Create a **customer** (name, External ID) in Customer Management.
+    Create a **customer** (name, External ID) in Customers.
   </Step>
   <Step title="Create subscription">
-    **Add subscription** for the customer and select the plan. Start date determines billing and when entitlements apply.
+    **Create a contract** (subscription) for the customer and select the plan. Start date determines billing and when entitlements apply.
   </Step>
   <Step title="Usage and billing">
     Send **usage events** that match the metered feature event names. Usage is billed per the plan’s usage-based charges and respects entitlements. Invoices are generated per billing cycle.
@@ -128,18 +128,18 @@ To implement Resend-style hybrid pricing in Flexprice (Transactional track), fol
     Navigate to **Flexprice Dashboard** → **Product Catalog** → **Features**
 
     <Frame>
-      ![Create a feature](/images/docs/subscription-flow/boiler-plate-create-feature.png)
+      ![Feature form for Emails Sent with the emails.sent event and Count aggregation](/images/docs/subscription-flow/boiler-plate-create-feature.png)
     </Frame>
 
-    Click **Create Feature** (or **Add**) to create a metered feature. Enter **Name** and **Lookup Key**; the Lookup Key is immutable and unique.
+    Click **New feature** to create a metered feature. Enter a **Name**; the **Lookup key** (under **Optional details**) is immutable and unique.
 
     **Feature 1: Emails Sent (Transactional)**
-    - **Feature Name**: `Emails Sent`
-    - **Feature Lookup Key**: `emails_sent` (immutable, unique)
-    - **Feature Type**: `Metered`
-    - **Event Name**: e.g. `emails.sent` (must match exactly when sending events)
-    - **Aggregation**: `Count` (e.g. over `Sum` or `emails`)
-    - **Unit**: `email` or `emails`
+    - **Name**: `Emails Sent`
+    - **Lookup key**: `emails_sent` (immutable, unique)
+    - **Type**: `Metered`
+    - **Event name**: e.g. `emails.sent` (must match exactly when sending events)
+    - **Aggregation**: `Count` (each event is one email, so no event field is needed)
+    - **Unit (singular)** and **Unit (plural)**: `email` and `emails`
 
     > **Note:** The Event Name must match exactly when you send usage events via API. Save it for later use.
 
@@ -153,80 +153,88 @@ To implement Resend-style hybrid pricing in Flexprice (Transactional track), fol
     Navigate to **Flexprice Dashboard** → **Product Catalog** → **Plans**
 
     <Frame>
-      ![Create a plan](/images/docs/subscription-flow/plan-charges.png)
+      ![Charges step of the Pro plan with a 20 USD monthly fixed charge and the Emails Sent usage charge](/images/docs/subscription-flow/plan-charges.png)
     </Frame>
 
-    Click **Add** at the top-right to create a new plan. Enter plan details, then click **Next** to configure charges.
+    Click **New plan** to create a new plan. Enter plan details, then click **Next** to configure charges.
 
     **Plan details:**
-    - **Plan Name**: `Pro`
-    - **Lookup Key**: e.g. `plan-pro` (Auto-generated)
-    - **Billing period**: e.g. Monthly
+    - **Name**: `Pro`
+    - **Lookup key**: e.g. `plan-pro`
+    - **Billing period**: set on each charge (e.g. Monthly)
 
     **Add hybrid charges:**
-    1. **Recurring charge:** Add a **recurring** charge (e.g. $20/month). This is the base subscription fee for the tier. Click **Add** to save.
-    2. **Usage-based charge:** Add a **usage-based** charge for the metered feature **Emails Sent**. Set pricing (e.g. flat fee per email, or package/tiered with included quantity and overage). Example: first 50,000 emails included, then $0.2 per 1,000 emails. Click **Add**, then **Save** to finalize the plan.
+    1. **Fixed charge:** Click **Add charge** and add a **Fixed** charge (e.g. \$20/month). This is the base subscription fee for the tier. Leave **Invoice timing** on **Advance**, the default, so each month's fee is invoiced at the start of that month. Click **Add charge** to save.
+    2. **Usage charge:** Click **Add charge**, choose **Usage**, and pick the metered feature **Emails Sent**. Choose **Package** at \$0.20 per 1,000 emails. Leave the 50,000 included emails out of the price: the entitlement in Step 3 includes them, and Flexprice bills only the usage above it. Click **Add charge**, then **Next** through the remaining steps and **Create plan** to finalize the plan.
+
+    <Warning>
+      Don't also give this charge a \$0 first tier. The entitlement's 50,000 emails come off billed usage before the price applies, so a free tier up to 50,000 on top of it makes the first 100,000 emails free.
+    </Warning>
+
+    To keep the allowance in the price instead, choose **Tiered** for this charge and skip the Emails Sent entitlement in Step 3. Change **Tier mode** from its default, **Volume**, to **Slab: each band at its own rate**. Volume prices every email at the rate of the tier the total reaches, so 62,000 emails would all bill at the paid rate. Then add two tiers: up to 50,000 at a price of 0, and the rest at 0.0002 per email (\$0.20 per 1,000).
 
     For more, check-out [Creating a Plan](/docs/product-catalogue/plans/create) and [Plans pricing](/docs/product-catalogue/plans/pricing) (recurring and hybrid charges).
 
   </Step>
 
   <Step title="Step 3: Set entitlements">
-    Open the plan you created → **Entitlements** section. Click **Add** to link features to the plan.
+    Open the plan you created. In the **Entitlements** card, click **Add entitlement** to link features to the plan.
 
     <Frame>
-      ![Add entitlement to plan](/images/docs/subscription-flow/boiler-plate-add-entitlement.png)
+      ![Add entitlement dialog for Emails Sent with 50000 emails every billing period](/images/docs/subscription-flow/boiler-plate-add-entitlement.png)
     </Frame>
 
     **Link the metered feature** (Emails Sent) to the plan:
-    - Set **included quantity** (e.g. 50,000 emails per month) or leave uncapped.
-    - Set **usage reset** (e.g. monthly) so limits reset each billing period.
-    - Choose **soft limit** (overage allowed, with billing per plan) or **hard limit** (strict cap).
+    - Set the **Value** to 50,000. Leave **Unlimited** off: an unlimited entitlement makes the usage charge bill 0.
+    - Set **Usage resets** to **Every billing period** so the 50,000 emails renew each billing period.
+    - Usage beyond the value is billed at the plan's usage price: 62,000 emails in a billing period bill 12,000 (\$2.40). For how entitlements and prices combine, see [Plans and Prices](/docs/core-concepts/plans-and-prices#combining-entitlements-and-prices-on-a-metered-feature).
 
-    If you created **boolean or static features** (e.g. Analytics, Slack support), add them to the plan and set grant/restrict so higher tiers get access. Click **Save**.
+    If you created **boolean or static features** (e.g. Analytics, Slack support), add them to the plan and set grant/restrict so higher tiers get access. Click **Create entitlement**.
+
+    The dashboard saves the entitlement as a hard limit (`is_soft_limit: false`). Flexprice doesn't block usage either way, but your application reads the flag from [Get customer entitlements](/api-reference/customers/get-customer-entitlements), and an app that enforces hard limits stops customers at 50,000 emails. Because this plan bills the overage, mark the limit soft: send `"is_soft_limit": true` to [Update entitlement](/api-reference/entitlements/update-entitlement), or set it when you create the entitlement with [Create entitlement](/api-reference/entitlements/create-entitlement).
 
     For more, check-out [Linking features to plans](/docs/product-catalogue/features/linking-to-plans).
 
   </Step>
 
   <Step title="Step 4: Create customer">
-    Navigate to **Flexprice Dashboard** → **Customer Management** → **Customers**
+    Navigate to **Flexprice Dashboard** → **Customers**
 
-    Click **Add Customer**. Enter **Customer Name** and **External ID** (your system’s identifier; use this in APIs for usage and lookups).
+    Click **New customer**. Enter **Name** and **External ID** (your system’s identifier; use this in APIs for usage and lookups).
 
     **Required:**
-    - **Customer Name**: e.g. `flexprice organisation`
+    - **Name**: e.g. `flexprice organisation`
     - **External ID**: e.g. `cust-flexprice-organisation`
 
-    Click **Save** to create the customer. For more, check-out [Customer Management](/docs/customers/create).
+    Click **Create customer** to create the customer. For more, check-out [Customer Management](/docs/customers/create).
 
   </Step>
 
   <Step title="Step 5: Create subscription">
-    Open the customer you created, then click **Add Subscription**.
+    Open the customer you created, then click **Create contract** (in the dashboard, subscriptions are called contracts).
 
     <Frame>
-      ![Add subscription to customer](/images/docs/subscription-flow/boiler-plate-add-subscription.png)
+      ![New contract wizard with the Pro plan selected](/images/docs/subscription-flow/boiler-plate-add-subscription.png)
     </Frame>
 
-    - **Select plan**: Choose **Transactional Pro** (or the plan you created).
-    - **Start date**: Set subscription start (billing and entitlements apply from this date).
+    - **Plan**: Choose **Pro** (or the plan you created).
+    - **Starts**: Set the contract start (billing and entitlements apply from this date).
 
-    Click **Save** (or **Add Subscription**). The customer now has the plan’s recurring charge and entitlement to the linked features and usage limits. For more, check-out [Create Subscription](/docs/subscriptions/customers-create-subscription).
+    Click **Next** through the remaining steps, then **Create contract** on the **Review** step. Creating the contract issues its first invoice right away: \$20 for the first month's fixed charge, billed in advance, with no usage line. The customer now has the plan’s recurring charge and entitlement to the linked features and usage limits. For more, check-out [Create Subscription](/docs/subscriptions/customers-create-subscription).
 
   </Step>
 
   <Step title="Step 6: Usage and billing">
-    Send **usage events** to Flexprice with the same **event name** as the metered feature (e.g. `emails.sent`). Usage is aggregated and billed according to the plan’s usage-based charges and respects the entitlements (included quantity, soft/hard limit).
+    Send **usage events** to Flexprice with the same **event name** as the metered feature (e.g. `emails.sent`). Flexprice aggregates the usage and bills the part above the entitlement's included quantity with the plan's usage-based charge.
 
-    - **Verify events:** Use the Event Debugger or usage views to confirm events are received and attributed to the customer.
+    - **Verify events:** Use **Developers → Events debugger** or the customer's **Analytics** tab to confirm events are received and attributed to the customer.
      <Frame>
-      ![usage Events](/images/docs/subscription-flow/usage-event.png)
+      ![Events debugger listing emails.sent events for cust-flexprice-organisation](/images/docs/subscription-flow/usage-event.png)
     </Frame>
 
-    - **Invoices:** Generated at the end of each billing cycle; they include the recurring fee and usage-based line items.
+    - **Invoices:** At the end of each billing period, Flexprice invoices the usage from the period that just ended (usage bills in arrears) together with the fixed charge for the period that starts. For a contract that starts on October 1 and sends 62,000 emails in October, the November 1 invoice bills the 12,000 emails above the entitlement at \$0.20 per 1,000 (\$2.40, for October 1 to November 1) plus \$20 for November 1 to December 1, \$22.40 in total.
      <Frame>
-      ![Subscription Invoice](/images/docs/subscription-flow/subscription-invoice.png)
+      ![November 1 invoice for 22.40 USD: the 20 USD Pro plan fixed charge for November and 12000 billable Emails Sent for October, 2.40 USD](/images/docs/subscription-flow/subscription-invoice.png)
     </Frame>
     For more, check-out [Connecting to Billing](/docs/core-concepts/usage-events/connecting-to-billing) and your API reference for sending usage events.
 

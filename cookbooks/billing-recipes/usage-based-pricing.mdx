@@ -123,22 +123,21 @@ To configure Vapi's usage-based pricing in Flexprice, follow these steps in orde
   <Step title="Step 1: Create Features">
     Navigate to **Flexprice Dashboard** → **Product Catalog** → **Features**
     
-    Click **"Create Feature"** to start creating features. You need to create two metered features:
+    Click **New feature** to start creating features. You need to create two metered features:
 
 <Frame>
-  ![Feature
-  Module](/images/docs/subscription-flow/create-feature-example.png)
+  ![Feature form for SMS / Chat Hosting with the sms.chat.message event, Sum, and the messages field](/images/docs/subscription-flow/create-feature-example.png)
 </Frame>
 
     **Feature 1: SMS / Chat Hosting**
-    - **Feature Name**: `SMS / Chat Hosting`
-    - **Feature Lookup_key**: `sms_chat_hosting` (immutable, unique identifier)
-    - **Feature Type**: `Metered`
-    - **Event Name**: `sms.chat.message` (must match exactly when sending events)
-    - **Aggregation Method**: `Sum`
-    - **Aggregation Field**: `messages`
-    - **Unit**: `message` or `msg`
-    - **Description**: `Vapi hosting cost for SMS and chat messages - covers message delivery, session handling, and conversational state management`
+    - **Name**: `SMS / Chat Hosting`
+    - **Lookup key** (under **Optional details**): `sms_chat_hosting` (immutable, unique identifier)
+    - **Type**: `Metered`
+    - **Event name**: `sms.chat.message` (must match exactly when sending events)
+    - **Aggregation**: `Sum`
+    - **Event field**: `messages`
+    - **Unit (singular)** and **Unit (plural)**: `message` and `messages`
+    - **Description** (under **Optional details**): `Vapi hosting cost for SMS and chat messages - covers message delivery, session handling, and conversational state management`
 
     >  **Note**: The Event Name must match exactly when you send usage events via API. Save these event names for later use.
 
@@ -149,81 +148,78 @@ To configure Vapi's usage-based pricing in Flexprice, follow these steps in orde
   <Step title="Step 2: Create Pricing Plans">
     Navigate to **Flexprice Dashboard** → **Product Catalog** → **Plans**
     
-    Click **"Add"** at the top-right to create a new plan.
+    Click **New plan** to create a new plan.
 
     **Create Pay As You Go Plan:**
 
 <Frame>
-  ![Feature
-  Module](/images/docs/subscription-flow/create-plan-example.png)
+  ![Usage charge for SMS / Chat Hosting at 0.005 USD on the Pay As You Go plan](/images/docs/subscription-flow/create-plan-example.png)
 </Frame>
 
     **Step 2.1: Plan Details**
-    - **Plan Name**: `Pay As You Go`
-    - **Lookup Key**: `pay_as_you_go` (immutable, unique identifier)
-    - **Plan Description**: `Usage-based pricing plan with flat fees for call minutes and SMS/chat messages`
+    - **Name**: `Pay As You Go`
+    - **Lookup key**: `pay_as_you_go` (immutable, unique identifier)
+    - **Description**: `Usage-based pricing plan with flat fees for call minutes and SMS/chat messages`
     - Click **Next** to proceed to charge configuration
 
     **Step 2.2: Define Usage-Based Charges**
 
     **Charge 1: SMS / Chat Hosting**
-    - **Select Metered Feature**: `SMS / Chat Hosting` (sms_chat_hosting)
-    - **Billing Currency**: `USD`
-    - **Billing Period**: `Monthly`
-    - **Billing Model**: `Flat Fee`
-    - **Price per Unit**: `0.005` (per message)
-    - **Billing Timing**: `Arrears Billing` (bill at end of cycle)
-    - Click **Add** to save this charge
+    - **Metered feature**: `SMS / Chat Hosting` (sms_chat_hosting)
+    - **Currency**: `USD`
+    - **Billing period**: `Monthly`
+    - **Billing model**: `Flat fee`
+    - **Amount**: `0.005` (per message)
+    - Usage charges always bill in arrears, at the end of the billing period
+    - Click **Add charge** to save this charge
 
-    Click **Save** to finalize the Pay As You Go plan.
+    Click **Next** through the remaining steps, then **Create plan** to finalize the Pay As You Go plan.
 
     For comprehensive information on creating plans, see [Creating a Plan](/docs/product-catalogue/plans/create).
 
   </Step>
 
   <Step title="Step 3: Create Customer">
-    Navigate to **Flexprice Dashboard** → **Customer Management** → **Customers**
+    Navigate to **Flexprice Dashboard** → **Customers**
     
-    Click **"Add Customer"** to create a new customer.
+    Click **New customer** to create a new customer.
 
     **Required Fields:**
-    - **Customer Name**: `Acme Corporation` (or your customer's name)
+    - **Name**: `Acme Corporation` (or your customer's name)
     - **External ID**: `cust_acme_001` (unique identifier from your system)
 
     **Optional Fields:**
     - **Email**: Customer's email address
-    - **Phone**: Customer's phone number
-    - **Address**: Customer's billing address
+    - **More details**: billing address, timezone, and tax treatment
 
     > **Important**: The External ID is what you'll use when sending usage events. Make sure it matches exactly.
 
-    Click **Save** to create the customer.
+    Click **Create customer** to create the customer.
 
     For comprehensive information on creating customers, see [Customer Management](/docs/customers/create).
 
   </Step>
 
   <Step title="Step 4: Create Subscription">
-    Navigate to **Flexprice Dashboard** → **Customer Management** → **Customers**
+    Navigate to **Flexprice Dashboard** → **Customers**
     
     Click on the customer you created to open their details page.
 
-    Click **"Add Subscription"** button.
+    Click **Create contract**. In the dashboard, subscriptions are called **contracts**.
 
     **Subscription Configuration:**
-    - **Select Plan**: Choose `Pay As You Go` from the dropdown
-    - **Subscription Start Date**: Select the start date for billing (e.g., today's date)
-    - **Subscription End Date**: Leave as "Forever" for ongoing subscriptions, or set a specific end date
-    - **Billing Cycle**: This determines when billing cycles start (usually the start date)
+    - **Plan**: Choose `Pay As You Go` from the dropdown
+    - **Starts**: Select the start date for billing (e.g., today's date)
+    - **Ends**: Leave it empty (runs until cancelled) for ongoing contracts, or set a specific end date
+    - **Bill on**: When billing cycles start: the contract start date (the default), the 1st of every month, or a custom date
 
-    The subscription preview will show:
+    The **Charges** step then lists:
     - All recurring charges (if any)
     - Usage-based charges that will be billed based on consumption
-    - Estimated costs for the billing period
 
-    Click **Add Subscription** to save.
+    Click **Next** through the remaining steps, then **Create contract** on the **Review** step.
 
-    The subscription will now appear under the customer's details with status "Active".
+    The contract now appears in the **Contracts** card on the customer's page, with status Active.
 
     For comprehensive information on creating subscriptions, see [Create Subscription](/docs/subscriptions/customers-create-subscription).
 
@@ -319,7 +315,7 @@ To configure Vapi's usage-based pricing in Flexprice, follow these steps in orde
     **View Events:**
     The Event Debugger displays a real-time stream of events with:
     - **Event ID**: Unique identifier for each event
-    - **Event Name**: The feature being tracked (`call.minutes` or `sms.chat.message`)
+    - **Event name**: The feature being tracked (`call.minutes` or `sms.chat.message`)
     - **Customer Lookup Key**: Customer's External ID
     - **Source**: Origin of the event
     - **Timestamp**: When the event occurred

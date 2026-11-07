@@ -25,110 +25,113 @@ The complete flow from events to invoices:
 
 ### Navigate to Plans
 
-1. Log into your Flexprice Admin Dashboard
-2. In the left sidebar, click on **Product Catalog**
-3. Click on **Plans**
-4. Click **"Create Plan"**
+1. Log into your Flexprice dashboard
+2. In the left sidebar, go to **Product catalog** → **Plans**
+3. Click **New plan**
 
 ### Configure the Plan
 
-1. **Plan Name**: Give your plan a descriptive name (e.g., "Basic Plan", "Pro Plan")
-2. **Description**: Optional description of what the plan includes
-3. **Billing Cycle**: Choose how often customers are billed (monthly, annually, etc.)
+1. **Name**: Give your plan a descriptive name (e.g., "Basic Plan", "Pro Plan")
+2. **Lookup key**: A unique identifier for the plan in API calls
+3. **Description**: Optional description of what the plan includes
+
+Click **Next**. How often customers are billed (monthly, annually, etc.) is set on each charge, not on the plan.
 
 ### Add Your Feature
 
-1. Click **"Add Feature"** or **"Add Charge"**
-2. Select your metered feature from the list
+1. On the **Charges** step, click **Add charge** and choose **Usage**
+2. In **Metered feature**, select your metered feature
 3. Configure the pricing:
 
-**For Usage-Based Pricing:**
+- **Currency** and **Billing period**: how the charge is billed (e.g., USD, monthly)
+- **Billing model**: **Flat fee** for a price per unit
+- **Amount**: Set the price per unit (e.g., \$1 per credit)
+- For free usage before billing starts, use the **Tiered** billing model, set **Tier mode** to **Slab**, and price the first tier at 0. The default mode, **Volume**, bills the whole quantity at one rate, so once usage passes the first tier, the free units are billed too.
 
-- **Price Model**: Choose "Usage Based"
-- **Price**: Set the price per unit (e.g., $1 per credit)
-- **Free Tier**: Optional free usage before billing starts
+Then click **Add charge**.
 
 **Example Configuration:**
 
 - Feature: Model Usage
-- Price: $1.00 per credit
-- Free Tier: 100 credits per month
+- Billing model: Flat fee
+- Amount: \$1.00 per credit
 
 <Frame>
-  ![Plan Configuration](/images/docs/event-ingestion/create_feature.png)
+  ![Usage charge for the Model Usage feature with a flat fee of 1.00 USD](/images/docs/event-ingestion/plan-usage-charge.png)
 </Frame>
 
 ### Advanced Pricing Options
 
-**Tiered Pricing:**
+**Tiered** (tier mode **Slab**: each band at its own rate):
 
 - First 1000 credits: $1.00 each
 - Next 1000 credits: $0.80 each
 - Additional credits: $0.60 each
 
-**Package Pricing:**
+**Package**:
 
-- 1000 credits for $800 (effective $0.80 per credit)
+- 1000 credits for \$800 (effective \$0.80 per credit)
 
-**Volume Discounts:**
+**Tiered** with tier mode **Volume**:
 
-- Set percentage discounts based on usage volume
+- One rate for the whole quantity, chosen by the total. With the tiers above, 1500 credits are all billed at \$0.80 each.
 
 ### Save the Plan
 
-Click **"Save Plan"** to create your pricing plan.
+Click **Next** through the remaining steps, then click **Create plan** to create your pricing plan.
 
 ## Step 2: Assign Plan to Customer
+
+In the dashboard, subscriptions are called **contracts**.
 
 ### Create Subscription
 
 1. Go to **Customers** in the left sidebar
 2. Find and click on your customer
-3. Click **"Create Subscription"**
-4. Select the plan you just created
-5. Set the subscription start date
-6. Click **"Create Subscription"**
+3. Click **Create contract**
+4. In **Plan**, select the plan you just created
+5. Set when the contract **Starts**
+6. Click **Next** through the remaining steps, then click **Create contract** on the **Review** step
 
 <Frame>
-  ![Create Subscription](/images/docs/event-ingestion/setting_event_name.png)
+  ![New contract wizard with Basic Plan selected, a monthly billing period, and the start date](/images/docs/event-ingestion/create-contract.png)
 </Frame>
 
 ### Verify Subscription
 
-After creating the subscription, you should see:
+After creating the contract, it appears in the **Contracts** card on the customer's page. Open it to see:
 
-- Subscription status: Active
-- Plan name and billing cycle
-- Next billing date
+- Status: Active
+- Plan name, billing period, and currency
+- The upcoming invoice and the date it will be billed
 
 ## Step 3: Monitor Usage and Billing
 
 ### Check Upcoming Invoices
 
-1. Go to the customer's subscription page
-2. Click on **"Upcoming Invoices"** tab
-3. You'll view a preview of the next invoice with:
+1. Open the contract from the customer's page, or from **Contracts** in the left sidebar
+2. The **Overview** tab opens with the **Upcoming invoice**: a preview of the next invoice with:
    - Usage quantities from your events
    - Calculated amounts based on your pricing
-   - Billing period information
+   - The billing period of each charge
 
 <Frame>
-  ![Upcoming Invoices](/images/docs/event-ingestion/upcoming_invoices.png)
+  ![Contract Overview tab with the upcoming invoice preview](/images/docs/event-ingestion/upcoming_invoices.png)
 </Frame>
 
 **Example Invoice Preview:**
 
 ```
-Subscription    Description     Interval        Quantity    Amount
-Test Feature    Usage Based     Aug 22 - Sep 22    2         $2
+Description   Period                     Qty   Unit price   Amount
+Model Usage   Oct 1, 2026 - Nov 1, 2026  2     $1.00        $2.00
 ```
 
 ### Understanding the Billing
 
+- **Description**: The charge's name, with its billing period underneath
 - **Quantity**: Total usage aggregated from your events
+- **Unit price**: The price per unit from your plan
 - **Amount**: Calculated based on your pricing plan
-- **Interval**: Current billing period
-- **Description**: Shows "Usage Based" for metered features
 
 ## Real-World Example
 
@@ -228,13 +231,13 @@ Total: $60.50
 
 ### Usage Trends
 
-1. Go to **Usage Tracking** → **Query**
-2. Select your feature and customer
+1. Go to **Customers** and open the customer
+2. Open the **Analytics** tab, then pick the feature and date range
 3. View usage over time to identify patterns
 
 ### Billing Analytics
 
-1. Go to **Invoices** section
+1. Go to **Billing** → **Invoices**
 2. View historical invoices and revenue
 3. Analyze customer usage patterns
 

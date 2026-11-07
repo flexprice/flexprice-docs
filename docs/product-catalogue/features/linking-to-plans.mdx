@@ -1,40 +1,38 @@
 ---
 title: "Link features to plans"
-description: "Link features to a plan with entitlements: grant boolean access, set metered usage limits with soft or hard caps and reset intervals, and add static values"
+description: "Link features to a plan with entitlements: grant boolean access, set metered allowances that reset on a schedule and bill overage, and add static values"
 ---
 
 In **Flexprice**, managing customer access to features is done through **entitlements**. An **entitlement** defines which features a customer can access based on their subscription plan. This ensures that each customer receives the correct level of access, allowing precise control over feature availability and usage limits.
 
 **Linking Features to Plans through Entitlements**
 
-* Choose the plan to which you want to link features.
+* Open the plan to which you want to link features (**Product catalog** → **Plans**).
 
-* Navigate to the **Entitlements** section within the selected plan.
-
-* Click **Add** to add the desired features to the plan.
+* In the plan's **Entitlements** card, click **Add entitlement**.
 
   <Frame>
-    ![Add Entitlement](/images/docs/product-catalogue/features/link-features-to-plans/add-entitlement.png)
+    ![Plan Entitlements card with the Add entitlement button](/images/docs/product-catalogue/features/link-features-to-plans/add-entitlement.png)
   </Frame>
 
-* Configure access parameters, including usage limits, permissions, and other relevant settings.
+* In **Feature**, choose the feature to include. Features already on the plan aren't listed.
 
   <Frame>
-    ![Configure Entitlement](/images/docs/product-catalogue/features/link-features-to-plans/configure-entitlement.png)
+    ![Add entitlement dialog with the feature list open](/images/docs/product-catalogue/features/link-features-to-plans/configure-entitlement.png)
   </Frame>
 
-* Click **Save**, and the entitlements will be applied to all customers on this plan.
+* Configure access parameters for the feature type (below), then click **Create entitlement**. The entitlement applies to all customers on this plan.
 
 **Configuring Entitlements for Different Feature Types**
 
 * **Boolean Features**
 
-  * Selecting a Boolean feature **grants or restricts** access for customers on this plan.
+  * Turn **Enabled on this plan** on to grant access for customers on this plan, or off to restrict it.
 
-  * No further configuration is required—just **Add** or **Cancel**.
+  * No further configuration is required.
 
     <Frame>
-      ![Boolean Entitlement](/images/docs/product-catalogue/features/link-features-to-plans/boolean-entitlement.png)
+      ![Add entitlement dialog for a boolean feature with Enabled on this plan](/images/docs/product-catalogue/features/link-features-to-plans/boolean-entitlement.png)
     </Frame>
 
 * **Metered features**
@@ -42,55 +40,48 @@ In **Flexprice**, managing customer access to features is done through **entitle
   * **Setting the Value**
 
     <Frame>
-      ![Metered Entitlement Value](/images/docs/product-catalogue/features/link-features-to-plans/metered-entitlement-value.png)
+      ![Add entitlement dialog for a metered feature with a value of 50,000 calls](/images/docs/product-catalogue/features/link-features-to-plans/metered-entitlement-value.png)
     </Frame>
 
-    * Enter the maximum usage limit a customer is allowed before restrictions apply.
+    * Choose the **Value type**: **Quantity** counts units of usage (e.g. 10,000 API calls), and **Amount** counts the priced value of that usage.
 
-    * If there is no cap, select Set to Infinite.
+    * Enter the **Value**: the usage a customer is allowed in each window.
+
+    * If there is no cap, turn on **Unlimited**.
 
   * **Usage reset**
 
     <Frame>
-      ![Metered Usage Reset](/images/docs/product-catalogue/features/link-features-to-plans/metered-usage-reset.png)
+      ![Usage resets options: Every billing period, Hourly, Daily, and Weekly](/images/docs/product-catalogue/features/link-features-to-plans/metered-usage-reset.png)
     </Frame>
 
-    * By default, metered features reset at the start of each billing period.
+    * **Every billing period** grants the allowance once per billing period.
 
-    * If needed, you can configure a separate reset interval, independent of the billing period.
+    * **Hourly**, **Daily**, or **Weekly** grant it again each hour, day, or week, independent of the billing period.
 
-    * When enabled, usage resets to zero at the specified interval, regardless of when the billing cycle occurs.
+    * **Advanced** holds **Window starts** and **Stacking**.
 
-💡 **Example:** A plan is billed **annually**, but API call limits **reset every month**. Setting a **monthly reset** ensures that users get a fresh allocation of calls each month.
+💡 **Example:** A plan is billed **monthly**, but API call limits **reset every day**. Setting **Daily** ensures that users get a fresh allocation of calls each day.
 
-* **Soft Limit vs. Hard Limit**
-  Once a customer reaches their allocated limit, there are two ways to handle additional usage:
+* **Overage and hard limits**
 
-  * Soft Limit (Overage Allowed)
+  Flexprice never blocks usage. Usage up to the **Value** in each window is included in the plan, and usage beyond it is billed as overage at the plan's usage price for the feature, on the subscription's arrears invoice. When a window's value is used up, Flexprice sends the `entitlement.grant.exhausted` webhook.
 
-    * Customers can exceed their limit.
+  💡 **Example:** A GPT API plan includes 50,000 tokens a month, with a usage price of \$0.10 per 1,000 tokens. A customer who uses 60,000 tokens in a month is billed \$1.00 for the 10,000 tokens beyond the allowance.
 
-    * Excess usage may be charged separately (based on pricing rules).
+  To stop customers at the value instead, as on a free tier, enforce the cap in your application. Flexprice updates a window's usage a few minutes after events arrive, so the exhaustion webhook and the usage from `GET /customers/usage` both trail real usage, and anything used in that gap is billed as overage. Once a window is used up, block requests until its `valid_to`, which `GET /customers/usage` returns in `grant_state.allowances`. Flexprice sends nothing when a new window opens, so your application has to lift the block itself.
 
-    * Common for pay-as-you-go models.
+  The API's `is_soft_limit` field doesn't change any of this. It is stored on the entitlement and returned with the customer's usage so your application can tell which allowances to enforce, but Flexprice still bills the overage.
 
-💡 Example: A GPT API plan allows 50,000 tokens/month, but if exceeded, additional tokens are charged $0.10 per 1,000 tokens.
-
-* Hard Limit (Strict Cap)
-
-  * Customers cannot exceed the limit.
-
-  * Once they reach their limit, requests are blocked.
-
-  * Typically used for free tiers or strict allowances.
+  See [Entitlement grants](/docs/product-catalogue/features/entitlement-grants#soft-limits-with-billed-overage) for windows, stacking, and how overage is billed.
 
 * **Static Features**
 
   <Frame>
-    ![Static Entitlement](/images/docs/product-catalogue/features/link-features-to-plans/static-entitlement.png)
+    ![Add entitlement dialog for a static feature with a value of 25](/images/docs/product-catalogue/features/link-features-to-plans/static-entitlement.png)
   </Frame>
 
-  * Instead of setting limits, define a custom value.
+  * Instead of setting limits, enter a custom **Value**.
 
   * Example: 24/7 support, premium customer service, AI model access.
 

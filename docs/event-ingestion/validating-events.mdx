@@ -13,50 +13,54 @@ After transmitting events to Flexprice, it's crucial to verify that they're bein
 
 ## Checking Event Ingestion
 
-### 1. Navigate to Events Dashboard
+### 1. Navigate to the Events Debugger
 
-1. Log into your Flexprice Admin Dashboard
-2. In the left sidebar, click on **Developers**
-3. Click on **[Event Debugger](https://admin.flexprice.io/usage-tracking/events?page=1)**
+1. Log into your Flexprice dashboard
+2. In the left sidebar, click **Developers**
+3. Click **Events debugger**
 
 You'll see a list of all ingested events with key information:
 
-- **Event ID**: Unique identifier for each event
-- **Event Name**: The feature being tracked
-- **External Customer ID**: Customer associated with the event
-- **Source**: Origin of the event (if provided)
 - **Timestamp**: When the event occurred
+- **Event**: The event name
+- **Customer ID**: The `external_customer_id` the event was sent for
+- **Properties**: The properties sent with the event
+- **Source**: Origin of the event (if provided)
+- **Event ID**: Unique identifier for each event
+
+Type your event name in **Search by event name** to see only those events.
 
 <Frame>
-  ![Events Dashboard](/images/docs/event-ingestion/query_tab.png)
+  ![Events debugger searched for the api_call event name](/images/docs/event-ingestion/events-search.png)
 </Frame>
 
 ### 2. View Event Details
 
-Click on any event in the list to view the complete payload that was transmitted:
+Click any event in the list to open its details:
 
 <Frame>
-  ![Event Details Modal](/images/docs/event-ingestion/event_details.png)
+  ![Event details panel with the processing checks for an api_call event](/images/docs/event-ingestion/event_details.png)
 </Frame>
 
-This displays the exact JSON payload that Flexprice received, including:
+The panel shows what Flexprice received:
 
+- The event ID, source, and idempotency key
+- The customer ID and the Flexprice customer it matched
 - All properties transmitted with the event
-- Timestamp information
-- Customer details
-- Any additional metadata
 
-**Important**: Verify that the `properties` object contains the correct aggregation field with the expected value.
+**What happened to this event** shows whether the event was ingested, matched a customer and a meter, found a price on a live contract, and was counted towards usage. If the event wasn't counted, the first failed check shows why.
+
+**Important**: Verify that the properties contain the feature's event field with the expected value.
 
 ## Using the Event Debugger
 
 The Event Debugger provides real-time insights into event processing:
 
-1. Go to **Usage Tracking** → **Event Debugger**
-2. You can see:
-   - Events being processed in real-time
-   - Any errors or warnings
-   - Processing status and timing
+1. Go to **Developers** → **Events debugger**
+2. Click an event to see:
+   - Whether it was ingested, matched to a customer and a meter, and counted
+   - The first failed check, if any
+   - When it was ingested
 
 This is especially useful for debugging issues with event ingestion.
 
@@ -64,19 +68,19 @@ This is especially useful for debugging issues with event ingestion.
 
 ### Check Feature Configuration
 
-1. Go to **Product Catalog** → **Features**
-2. Find your metered feature
+1. Go to **Product catalog** → **Features**
+2. Open your metered feature
 3. Verify the configuration:
-   - **Event Name** matches what you're transmitting
-   - **Aggregation Function** is set correctly
-   - **Aggregation Field** exists in your event properties
+   - **Event name** matches what you're transmitting
+   - **Aggregation** is set correctly
+   - **Event field** exists in your event properties
 
 ### Verify Event Properties
 
 In the Events dashboard, check that:
 
 1. **Event Name** matches your feature exactly
-2. **Properties** contain the aggregation field
+2. **Properties** contain the event field
 3. **Property values** are the correct data type
 
 **Example**: If your feature aggregates `credits`, ensure every event has:
@@ -111,7 +115,7 @@ In the Events dashboard, check that:
 
 **Possible Causes:**
 
-- Aggregation field name mismatch
+- Event field name mismatch
 - Incorrect data types
 - Missing properties
 
@@ -179,15 +183,15 @@ Use this checklist to systematically debug event ingestion issues:
 
 - Feature exists and is active
 - Event Name matches exactly
-- Aggregation Function is correct
-- Aggregation Field is set (if required)
+- Aggregation is correct
+- Event field is set (if required)
 
 ### ✅ Event Payload
 
 - All required fields present
 - Event Name matches feature
 - External Customer ID exists
-- Properties contain aggregation field
+- Properties contain the event field
 - Property values are correct data type
 
 ### ✅ Customer Setup
@@ -216,15 +220,15 @@ You can filter events by customer to see all usage for a specific account:
 
 ### Check Aggregated Usage
 
-1. Go to **Usage Tracking** → **Query**
-2. Select your feature
-3. Choose the customer and time period
-4. View aggregated usage values
+1. Go to **Customers** and open the customer
+2. Open the **Analytics** tab
+3. Pick the feature (or keep **All features**) and the date range
+4. View the aggregated usage for each feature, and the **Usage breakdown** table
 
-This displays how Flexprice is calculating the total usage for billing.
+This displays the usage Flexprice aggregated from the customer's events, with the revenue and cost for each feature.
 
 <Frame>
-  ![Query Tab Event Preview](/images/docs/event-ingestion/query_tab_event_preview.png)
+  ![Customer Analytics tab with usage per feature, a usage chart, and the usage breakdown](/images/docs/event-ingestion/customer-analytics.png)
 </Frame>
 
 ### Validate Billing Periods
@@ -247,7 +251,7 @@ For **Cumulative** usage reset:
 
 **Check**:
 
-1. Feature configuration (Event Name, Aggregation Field)
+1. Feature configuration (event name, event field)
 2. Event properties (correct field name and data type)
 3. Customer subscription status
 4. Plan configuration
@@ -258,7 +262,7 @@ For **Cumulative** usage reset:
 
 **Check**:
 
-1. Aggregation Field name matches exactly
+1. Event field name matches exactly
 2. Property values are correct data type
 3. No duplicate or conflicting events
 4. Usage Reset configuration
