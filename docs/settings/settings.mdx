@@ -18,7 +18,7 @@ Settings in Flexprice control behavior for respective environment against tenant
 Flexprice supports the following setting keys:
 
 - **Subscription Configuration** (`subscription_config`): controls subscription auto-cancellation for unpaid invoices
-- **Invoice Configuration** (`invoice_config`): controls invoice number generation and due date calculation
+- **Invoice Configuration** (`invoice_config`): controls invoice number generation, due date calculation, and whether period-end invoices are finalized automatically
 - **Wallet Balance Alert Configuration** (`wallet_balance_alert_config`): wallet balance alert thresholds configurations per tenant per environment
 - **Bonus Credits Topup Configuration** (`bonus_credits_topup_config`): slab-based bonus credit rules applied automatically to purchased wallet top-ups
 - **Custom Currency Configuration** (`custom_currency_config`): currencies of your own that the catalogue can be priced in, and the fiat currency invoices are denominated in
@@ -75,7 +75,7 @@ When you enable auto-cancellation and set a grace period:
 
 **Key:** `invoice_config`
 
-Controls invoice number generation (prefix, format, sequence, timezone) and due date calculation.
+Controls invoice number generation (prefix, format, sequence, timezone), due date calculation, and automatic finalization of period-end invoices.
 
 ### Schema
 
@@ -87,7 +87,9 @@ Controls invoice number generation (prefix, format, sequence, timezone) and due 
   "timezone": string,
   "separator": string,
   "suffix_length": number,
-  "due_date_days": number
+  "due_date_days": number,
+  "finalization_delay_seconds": number,
+  "auto_finalize": boolean
 }
 ```
 
@@ -98,6 +100,8 @@ Controls invoice number generation (prefix, format, sequence, timezone) and due 
 - **`separator`** — Required for new settings; optional on update. String (empty allowed). Character(s) between prefix, date, and sequence (e.g. `"-"`).
 - **`suffix_length`** — Required for new settings; optional on update. Integer 1–10. Number of digits for sequence (padded with zeros).
 - **`due_date_days`** — Optional; defaults to `1`. Integer ≥ 0, no decimals. Number of days after invoice creation to set due date.
+- **`finalization_delay_seconds`**: Optional, defaults to `7200`. Integer, in seconds. How long Flexprice waits before finalizing a draft invoice on its own. For a `SUBSCRIPTION_CYCLE` draft, the wait starts at the period end or the draft's creation, whichever is later. For any other draft, it starts at the draft's last compute.
+- **`auto_finalize`**: Optional, defaults to `true`. Boolean. Whether Flexprice finalizes `SUBSCRIPTION_CYCLE` draft invoices on its own. See [Automatic Finalization](#automatic-finalization).
 
 ### Default Values
 
@@ -111,7 +115,9 @@ When creating a new setting via API, defaults are:
   "timezone": "UTC",
   "separator": "-",
   "suffix_length": 5,
-  "due_date_days": 1
+  "due_date_days": 1,
+  "finalization_delay_seconds": 7200,
+  "auto_finalize": true
 }
 ```
 
@@ -136,10 +142,17 @@ Generated: `INV20250100001`, `INV20250100002`.
 - **IANA names (recommended):** `America/New_York`, `Europe/London`, `Asia/Tokyo`, `UTC`.
 - **Common abbreviations:** `EST`, `CST`, `MST`, `PST`, `GMT`, `CET`, `EET`, `IST`, `JST`, `KST`, `AEST`, `AWST`, and more.
 
-### Validation
+### Automatic Finalization
 
-- **New settings:** All fields except `due_date_days` required; see constraints above.
-- **Updates:** Partial updates allowed; same rules for provided fields; omitted fields unchanged.
+`auto_finalize` controls whether Flexprice finalizes the period-end `SUBSCRIPTION_CYCLE` invoice on its own. It is enabled by default.
+
+- **When enabled**: Flexprice finalizes the period-end invoice once `finalization_delay_seconds` has passed, with no action from you.
+- **When disabled**: The period-end invoice is created and computed as usual but stays `DRAFT` until you finalize it with [Finalize invoice](/api-reference/invoices/finalize-invoice) or [Recalculate draft invoice](/api-reference/invoices/recalculate-draft-invoice-v2).
+- **Daily recompute**: With `draft_invoice_recompute_config` enabled (`"enabled": true`, off by default), drafts that are not yet finalized are recomputed once a day, including drafts for billing periods that have already ended.
+
+<Info>
+  Only the `SUBSCRIPTION_CYCLE` invoice is affected. Every other invoice, such as `SUBSCRIPTION_CREATE`, `SUBSCRIPTION_TRIAL_END`, `AUTO_INVOICE_THRESHOLD`, `PRORATION`, `ONE_OFF` and `CREDIT`, is finalized as before.
+</Info>
 
 ---
 

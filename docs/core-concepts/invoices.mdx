@@ -86,7 +86,11 @@ Most invoices are finalized as soon as Flexprice computes them: a subscription's
 
 1. Within minutes of the period end, Flexprice sets up a draft for the period.
 2. One to five hours later, at a random point, it computes the draft from the usage received so far.
-3. Once `finalization_delay_seconds` (in the `invoice_config` setting, 7,200 seconds by default) has passed since that compute, a job that runs every 30 minutes finalizes the draft as it stands, without recomputing it. Finalizing applies prepaid credits and tax and assigns the invoice number. Flexprice then attempts payment.
+3. Once `finalization_delay_seconds` (in the [`invoice_config` setting](/docs/settings/settings#invoice-configuration), 7,200 seconds by default) has passed since the period end or the draft's creation, whichever is later, a job that runs every 30 minutes finalizes the draft as it stands, without recomputing it. Finalizing applies prepaid credits and tax and assigns the invoice number. Flexprice then attempts payment.
+
+<Info>
+  To review period-end invoices before they are finalized, turn off [`auto_finalize`](/docs/settings/settings#automatic-finalization) in the `invoice_config` setting. Flexprice then keeps the draft open until you finalize it.
+</Info>
 
 <img className="block dark:hidden" src="/images/docs/core-concepts/invoice-timeline-light.png" alt="After a period ends: the draft is computed 1 to 5 hours later and finalized about 2 hours after that; late usage before the compute is included, after it the draft must be recalculated, and after finalization the invoice is voided and replaced" />
 <img className="hidden dark:block" src="/images/docs/core-concepts/invoice-timeline-dark.png" alt="After a period ends: the draft is computed 1 to 5 hours later and finalized about 2 hours after that; late usage before the compute is included, after it the draft must be recalculated, and after finalization the invoice is voided and replaced" />
