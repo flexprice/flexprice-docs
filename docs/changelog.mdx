@@ -4,6 +4,79 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="November 9th 2026">
+  {/* changelog-coverage: {"version":1,"complete":false,"backend":{"from":"31421e9ff62d00a9f4cdded11d0aad5d32a22f4a","to":"1eb798226482cf9a2245a908bfa966605f040db8"},"frontend":{"from":"f00ba7c9a3e281d280b074cf01531a459f659f62","to":"5db1aa60b53401bad8c6dfd36b83a3a53f52573b"}} */}
+
+  ## Billing terms for commitments
+
+  A binding commitment can now be collected through dated instalments, such as an upfront payment with the rest billed monthly, instead of a true-up each period.
+
+  * **Collection method**: Create the commitment with `collection_method: billing_terms` and 1 to 100 `billing_terms`. It needs `binding: true` and an `end_date`, and, like the rest of the Commitments API, the `commitments_v2` setting
+  * **Terms**: Each term is `once` or `recurring`, with a `fixed` value or a `remainder` that takes whatever the other terms leave. Percentage terms are not supported yet
+  * **Delivery**: `instalment_invoicing` bills instalments on the subscription invoice (default) or on their own invoice, and a term can set its own
+  * **Milestones**: A term with `bill_trigger: manual` waits until you call `POST /commitments/{id}/instalments/{instalment_id}/trigger`. A trigger can only bill a milestone earlier than its scheduled date
+  * **Preview and edit**: `POST /commitments/{id}/billing-terms/preview` shows the instalments before you save, and `PUT /commitments/{id}/billing-terms` replaces the terms. Instalments already invoiced are kept
+  * **Termination**: Terminating cancels the scheduled instalments and bills only those already due by `effective_at` as one settlement, together with any `cancellation_fee`. Later instalments are not billed and nothing is refunded
+
+  <br />
+
+  <Card icon="book-open" horizontal={true} href="/docs/subscriptions/commitment/billing-terms" title="Billing terms - Documentation" />
+
+  <br />
+
+  ## Charge a saved card or UPI mandate with Razorpay
+
+  `POST /payments` can now charge a customer's saved Razorpay method against an invoice.
+
+  * **Request**: Send `payment_method_type` `CARD` or `UPI` with `payment_gateway` set to `razorpay` and an invoice destination. UPI works with Razorpay only, and `payment_method_id` is not accepted because the customer's active mandate for that method is used
+  * **Status**: The payment stays `PROCESSING` until the Razorpay webhook settles it. A customer with no usable mandate gets a `FAILED` payment with a hint to use `PAYMENT_LINK`, which still creates a link and never auto-charges
+  * **Declined attempts**: A new `payment.attempt.failed` webhook is sent whenever a payment attempt is recorded as failed, such as a declined Razorpay attempt on a payment link, and payment attempts now return `gateway_attempt_id`
+  * **Dashboard**: The Record Payment dialog has a Charge Saved Method option that lists the customer's saved cards or UPI mandates for the chosen provider. Stripe charges the card you pick, and Razorpay is offered only for INR invoices
+
+  <br />
+
+  <Card icon="code" horizontal={true} href="/api-reference/payments/create-payment" title="Create payment - API Reference" />
+
+  <br />
+
+  ## Invoice auto-finalization setting
+
+  Scheduled billing finalizes computed draft invoices by default. You can now turn that off so drafts stay in `DRAFT` until someone finalizes them.
+
+  * **Setting**: Set `auto_finalize` to `false` in the `invoice_config` setting for the environment. It defaults to `true`, and `finalization_delay_seconds` still sets how long a draft waits before it is finalized
+  * **Manual finalization**: With it off, drafts stay open for edits and are finalized with **Finalize invoice** in the dashboard or the finalize endpoint
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Customer cost analytics now cost costsheet meters that are not on the customer's plan, such as per-vendor meters that share one event, and label each row with the meter's own name
+      * Stripe payments and invoice sync convert amounts using each currency's smallest unit, so zero-decimal and three-decimal currencies are no longer treated as hundredths
+      * Invoices for subscriptions sold through the AWS, GCP or Azure marketplace are not synced to Stripe, so the buyer is only collected from once
+      * Invoice PDFs and the dashboard's line item service periods show a four-digit year
+      * The create subscription form shows one Entitlements section for plan, addon and subscription entitlements, with a single Add button
+      * New subscriptions start on a whole second, and so do their billing anchor, trial and phase dates
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Child subscriptions in grouped invoicing now keep their `proration_behavior`, so a mid-period charge is no longer skipped
+      * Archiving a checkout parent subscription also archives its draft grouped invoicing children
+      * Cancelling a subscription when an invoice already exists for the cancellation period returns a 409 instead of an unpredictable error status
+      * Updating an S3 connection requires both AWS keys, and an omitted session token is cleared so a stale temporary token does not outlive its keys
+    </Accordion>
+
+    <Accordion title="API">
+      * New `GET` and `PUT /commitments/{id}/billing-terms`, `POST /commitments/{id}/billing-terms/preview`, `GET /commitments/{id}/instalments` and `POST /commitments/{id}/instalments/{instalment_id}/trigger` endpoints, plus `collection_method`, `billing_terms` and `instalment_invoicing` on `POST /commitments`
+      * `POST /payments` accepts Razorpay for `CARD` and `UPI` charges, and the `payment.attempt.failed` webhook event is new
+      * `auto_finalize` is a new field of the `invoice_config` setting
+      * `proration_behavior` is accepted on grouped invoicing child subscriptions and on `PUT /subscriptions/{id}`
+      * `POST /subscriptions/{id}/cancel` documents a 409 response
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
 <Update label="November 2nd 2026">
   {/* changelog-coverage: {"version":1,"complete":false,"backend":{"from":"31421e9ff62d00a9f4cdded11d0aad5d32a22f4a","to":"95449c749268b8a340acf946926bf7f147f0787d"},"frontend":{"from":"f00ba7c9a3e281d280b074cf01531a459f659f62","to":"29ac7a50b2c133e37ead09ef11ee98925b0c9b46"}} */}
 
