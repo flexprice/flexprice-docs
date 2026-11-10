@@ -69,9 +69,9 @@ const flexprice = new Flexprice({
 ```
 </CodeGroup>
 
-The server URL is the full base URL including `/v1`, with no trailing slash. Use `https://api.cloud.flexprice.io/v1` for tenants in the India region.
+The server URL is the full base URL including `/v1`, with no trailing slash. Use `https://api.cloud.flexprice.io/v1` for tenants in the India region, `https://canada.api.flexprice.io/v1` for Canada, and `https://eu.api.flexprice.io/v1` for the EU.
 
-- **Go:** omit `WithServerURL`, or pass an empty string, to use the default US region. `flexprice.WithServerIndex(1)` picks the India region from the spec's server list.
+- **Go:** omit `WithServerURL`, or pass an empty string, to use the default US region. `flexprice.WithServerIndex` picks a region by its position in the spec's server list: `1` for India, `2` for Canada, `3` for the EU.
 - **Python:** the client is also a context manager. `with Flexprice(server_url=..., api_key_auth=...) as client:` closes the underlying HTTP connection pool on exit.
 
 ## Creating a customer and sending usage events with the SDK
