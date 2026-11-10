@@ -1,0 +1,78 @@
+---
+title: 'Zoho Books Webhooks and Customer Sync'
+description: 'How invoices paid or voided in Zoho Books, and customers created there, update Flexprice'
+---
+
+Your team will still record some things directly in Zoho Books: a bank transfer reconciled against an invoice, an invoice voided by finance, or a new customer added by sales. Zoho Books webhooks bring those changes back to Flexprice, so collections, dunning and customer lists do not drift apart.
+
+To register the webhooks in Zoho Books, follow [Connection Setup, Step 4](/integrations/zohobooks/connection-setup#step-4-register-the-webhooks-in-zoho-books).
+
+## What Flexprice Handles
+
+| Zoho Books change | Flexprice action |
+|---|---|
+| Invoice status becomes **Paid** | Records the payment on the linked Flexprice invoice |
+| Invoice status becomes **Void** | Voids the linked Flexprice invoice |
+| A **customer** is created | Creates a Flexprice customer, when **Pull customers** is on |
+| Anything else | Ignored |
+
+Invoice webhooks only act on Zoho invoices that Flexprice created through [invoice sync](/integrations/zohobooks/invoice-sync). Invoices created by hand in Zoho Books are ignored.
+
+## Invoices Paid in Zoho
+
+When a synced invoice is marked paid in Zoho Books, Flexprice:
+
+1. Records a payment on the Flexprice invoice for the amount Zoho reports as paid.
+2. Marks the payment succeeded, which updates the invoice's payment status.
+
+Zoho sometimes sends the same webhook more than once. Each Zoho invoice produces at most one Flexprice payment, so repeats are harmless.
+
+Partially paid and overdue statuses are ignored. Flexprice only acts once the Zoho invoice is fully paid.
+
+## Invoices Voided in Zoho
+
+When a synced invoice is voided in Zoho Books, Flexprice voids the linked invoice and records `void_source: zoho_books_webhook` and the Zoho invoice ID in its metadata. An invoice already void in Flexprice is left as it is.
+
+Voiding works in this direction only. Voiding an invoice in Flexprice does not void it in Zoho Books.
+
+## Customers Created in Zoho
+
+With **Pull customers** on, a customer created in Zoho Books becomes a Flexprice customer:
+
+| Flexprice field | Value |
+|---|---|
+| External ID | `zoho_books_<zoho_contact_id>` |
+| Name | Zoho contact name, or the email if the name is empty |
+| Email | Contact email, or the first contact person's email |
+| Metadata | `source: zoho_books_webhook`, `zoho_contact_id`, `zoho_contact_type` |
+
+The new customer is linked to the Zoho contact, so its invoices sync to that contact.
+
+Flexprice skips the contact when:
+
+- It is a **vendor**.
+- It has no email address.
+- A Flexprice customer with the same email already exists. Link them by hand if needed.
+- It is already linked to a Flexprice customer.
+
+Only the create event is used. Later edits to the contact in Zoho Books do not change the Flexprice customer. Changes go the other way: [updating the Flexprice customer updates the Zoho contact](/integrations/zohobooks/invoice-sync#contacts).
+
+## Webhook Security
+
+Zoho Books signs each webhook with the secret set on the workflow's webhook action, and sends the signature in the `X-Zoho-Webhook-Signature` header. Flexprice accepts a webhook only when:
+
+- The signature matches the **Webhook signing secret** saved on the Zoho Books connection.
+- The webhook comes from the Zoho Books organization that is connected.
+
+Webhooks that fail either check are rejected and change nothing in Flexprice. If you change the secret, update it in Zoho Books and on the connection together.
+
+## Related Articles
+
+<CardGroup cols={2}>
+  <Card icon="plug" href="/integrations/zohobooks/connection-setup" title="Connection Setup">
+    Connect Zoho Books and register the webhooks.
+  </Card>
+  <Card icon="file-invoice" href="/integrations/zohobooks/invoice-sync" title="Invoice Sync">
+    What Flexprice sends to Zoho Books.
+  </Card>
+</CardGroup>
