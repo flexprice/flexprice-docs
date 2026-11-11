@@ -1,0 +1,161 @@
+---
+title: "Incomplete Subscriptions"
+description: "Hold a subscription's access, credits and billing until its invoice is paid, and resume them as soon as it is."
+---
+
+Some plans should not start until the customer pays. If a subscription goes live the moment it is created, the customer gets the plan's features and credits before any money changes hands, and you have to claw them back when the payment never arrives. An incomplete subscription closes that gap: Flexprice creates the subscription and its first invoice, but holds entitlements, credit grants and period-end billing until the invoice is paid in full.
+
+## How It Works
+
+A subscription's `payment_behavior` and `collection_method` decide whether it waits for payment. Only the combinations below are accepted; any other pairing fails with HTTP 400 and no subscription is created.
+
+| `collection_method` | `payment_behavior` | When the first invoice is unpaid |
+| --- | --- | --- |
+| `charge_automatically` (default) | `default_active` (default) | Subscription is `active`. Payment is not required. |
+| `charge_automatically` | `allow_incomplete` | Flexprice tries to charge the invoice. If the charge fails, the subscription is created as `incomplete`. |
+| `charge_automatically` | `error_if_incomplete` | Flexprice tries to charge the invoice. If the charge fails, the request fails with HTTP 400 and no subscription is created. |
+| `send_invoice` | `default_active` | Subscription is `active`. The invoice is sent for payment. |
+| `send_invoice` | `default_incomplete` | Subscription is `incomplete` until the invoice is paid. No charge is attempted. |
+
+If the first invoice is paid at creation, or there is nothing to pay up front (for example, a `$0` plan), the subscription is `active` straight away, whichever behavior you chose.
+
+While a subscription is `incomplete`:
+
+- **Entitlements:** the plan's features are not returned by [Get customer entitlements](/api-reference/customers/get-customer-entitlements).
+- **Credit grants:** the plan's credit grants are held and are not added to the customer's wallet.
+- **Billing periods:** the subscription does not move to its next billing period or raise period-end invoices.
+- **Search results:** [Query subscriptions](/api-reference/subscriptions/query-subscriptions) returns only `active` subscriptions by default. Pass `"subscription_status": ["incomplete"]` to list incomplete ones.
+
+## Creating a Subscription That Waits for Payment
+
+To charge a saved payment method and wait for the charge to succeed, use `allow_incomplete`:
+
+```bash
+curl -X POST https://api.flexprice.io/v1/subscriptions \
+  -H "x-api-key: <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_id": "cust_123",
+    "plan_id": "plan_456",
+    "currency": "usd",
+    "billing_cadence": "RECURRING",
+    "billing_period": "MONTHLY",
+    "billing_period_count": 1,
+    "collection_method": "charge_automatically",
+    "payment_behavior": "allow_incomplete"
+  }'
+```
+
+If the charge fails, the response returns the subscription as `incomplete` along with its first invoice:
+
+```json
+{
+  "id": "subs_789",
+  "subscription_status": "incomplete",
+  "payment_behavior": "allow_incomplete",
+  "collection_method": "charge_automatically",
+  "latest_invoice": {
+    "id": "inv_101",
+    "billing_reason": "SUBSCRIPTION_CREATE",
+    "invoice_status": "FINALIZED",
+    "payment_status": "PENDING",
+    "amount_due": "20",
+    "amount_remaining": "20"
+  }
+}
+```
+
+To send the invoice to the customer instead of charging it, use `"collection_method": "send_invoice"` with `"payment_behavior": "default_incomplete"`.
+
+To reject the signup when the charge fails, use `error_if_incomplete`. The request returns:
+
+```json
+{
+  "code": "invalid_operation",
+  "message": "Subscription creation failed due to payment failure",
+  "http_status_code": 400
+}
+```
+
+## Activating an Incomplete Subscription
+
+The subscription becomes `active` as soon as its first invoice is paid in full, whether the payment comes from a gateway or is recorded against the invoice. To record a payment made outside Flexprice, such as a bank transfer:
+
+```bash
+curl -X POST https://api.flexprice.io/v1/payments \
+  -H "x-api-key: <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "destination_type": "INVOICE",
+    "destination_id": "inv_101",
+    "payment_method_type": "OFFLINE",
+    "amount": "20",
+    "currency": "usd",
+    "process_payment": true
+  }'
+```
+
+When the invoice is fully paid, Flexprice:
+
+1. Sets the subscription to `active`.
+2. Makes the plan's entitlements available to the customer.
+3. Applies the plan's held credit grants to the customer's wallet.
+4. Sends the [`subscription.activated`](/api-reference/webhook-events/subscriptionactivated) webhook.
+
+<Warning>
+  A partial payment does not activate the subscription. It stays `incomplete` and the invoice stays `PENDING` until `amount_remaining` reaches `0`.
+</Warning>
+
+## When an Active Subscription Becomes Incomplete
+
+Subscriptions created with `allow_incomplete`, `error_if_incomplete` or `default_incomplete` keep waiting for payment at every renewal, not only at signup. An active subscription moves back to `incomplete` when its renewal invoice goes unpaid:
+
+- **`charge_automatically`:** as soon as the renewal charge fails.
+- **`send_invoice`:** shortly after the renewal invoice passes its due date.
+
+Recurring credit grants for the new period are held until the renewal invoice is paid. When the subscription moves back to `incomplete`, Flexprice sends the [`subscription.updated`](/api-reference/webhook-events/subscriptionupdated) webhook. Paying the renewal invoice in full makes the subscription `active` again and applies the held credits.
+
+With `error_if_incomplete`, a failed renewal charge never returns an error, because renewals run in the background. It follows the `allow_incomplete` path above.
+
+Subscriptions created with `default_active` stay `active` when a renewal invoice is unpaid.
+
+## Ending an Incomplete Subscription
+
+An incomplete subscription does not expire. It stays `incomplete` until the invoice is paid or the subscription is cancelled.
+
+- **Cancel it:** call [Cancel subscription](/api-reference/subscriptions/cancel-subscription). An incomplete subscription can be cancelled like any other.
+- **Cancel it automatically:** enable `auto_cancellation_enabled` in the [`subscription_config` setting](/docs/settings/settings). Flexprice cancels subscriptions whose invoices are still unpaid `grace_period_days` after the due date.
+
+<Note>
+  Voiding the first invoice does not activate or cancel the subscription. It stays `incomplete`, so cancel it as well if the customer is not going ahead.
+</Note>
+
+## Limitations
+
+- **Customer portal:** the first invoice of an incomplete subscription cannot be paid from the customer portal. Collect the payment through your gateway or record it with [Create payment](/api-reference/payments/create-payment). Renewal invoices can be paid from the portal.
+- **Stripe invoice sync:** when Stripe invoice sync is enabled, Stripe collects the payment and Flexprice does not charge the invoice itself. An `allow_incomplete` or `error_if_incomplete` subscription with an amount due is then created as `incomplete`, even with `error_if_incomplete`, and becomes `active` when the invoice is paid.
+- **Fixed combinations:** `default_incomplete` works only with `send_invoice`. `allow_incomplete` and `error_if_incomplete` work only with `charge_automatically`.
+
+## Related Articles
+
+<CardGroup cols={2}>
+  <Card icon="credit-card" href="/docs/subscriptions/record-payment" title="Record Payment for Subscription">
+    How collection methods, payment behaviors and wallet payments combine.
+  </Card>
+  <Card icon="hourglass" href="/docs/subscriptions/workflows/trialing" title="Trialing">
+    How a trial subscription waits for its first paid invoice when the trial ends.
+  </Card>
+  <Card icon="file-invoice" href="/docs/core-concepts/subscriptions" title="Subscriptions">
+    Subscription statuses and how Flexprice bills each one.
+  </Card>
+  <Card icon="gear" href="/docs/settings/settings" title="Settings">
+    Configure the grace period and auto-cancellation for unpaid invoices.
+  </Card>
+</CardGroup>
+
+**API References**
+- [Create subscription](/api-reference/subscriptions/create-subscription)
+- [Query subscriptions](/api-reference/subscriptions/query-subscriptions)
+- [Create payment](/api-reference/payments/create-payment)
+- [Cancel subscription](/api-reference/subscriptions/cancel-subscription)
+- [Get customer entitlements](/api-reference/customers/get-customer-entitlements)
