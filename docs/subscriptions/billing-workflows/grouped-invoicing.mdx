@@ -63,9 +63,10 @@ Before adding a subscription to a grouped invoicing group, all of the following 
 | Parent subscription status   | Must be `active` or `trialing`                                                        |
 | Billing period               | Child and parent must have the **same** `billing_period` (for example both `month`)   |
 | Billing period count         | Child and parent must have the **same** `billing_period_count` (for example both `1`) |
-| Billing anchor               | Child and parent must share the **same** day-of-month and time-of-day billing anchor  |
+| Billing anchor               | Child and parent must share the **same** day-of-month and time-of-day billing anchor, down to the second |
 | Currency                     | Child and parent must use the **same** currency                                       |
 | Start date                   | Child `start_date` must be **on or after** parent `start_date`                        |
+| Billing entity               | If billing entities are enabled and the child belongs to a different customer, both customers must belong to the **same** billing entity |
 
 <Warning>
   Flexprice validates all of these requirements before adding a subscription to
@@ -211,6 +212,75 @@ Adding or removing group membership is done with the modify API (`Option B` and 
   regardless of when during the period the removal occurred.
 </Note>
 
+## Credit notes and payments
+
+A grouped invoice is one invoice with one balance. Each child's line items carry the child's `subscription_id`, so you can see which subscription a charge came from, but payments, refunds, and dunning apply to the invoice as a whole.
+
+### Payments
+
+- **Payments apply to the whole invoice.** A payment is never allocated to a specific subscription or line item. A customer cannot pay off one child's charges while leaving another's unpaid.
+- **Partial payments keep the invoice pending.** After a partial payment, `amount_paid` goes up, `amount_remaining` goes down, and `payment_status` stays `PENDING` until the invoice is paid in full.
+- **Full payment is required before follow-up actions.** Anything that waits for the invoice to be paid, such as activating a subscription, runs only when `amount_remaining` reaches zero.
+
+### Credit notes
+
+Credit notes on a grouped invoice work line by line. To credit one subscription, reference that subscription's line items in `line_items`:
+
+```bash
+curl -X POST https://us.api.flexprice.io/v1/creditnotes \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "invoice_id": "inv_grouped",
+    "reason": "SERVICE_ISSUE",
+    "memo": "Startup plan outage",
+    "line_items": [
+      {
+        "invoice_line_item_id": "inv_line_startup",
+        "display_name": "Startup daily fee",
+        "amount": "50"
+      }
+    ]
+  }'
+```
+
+The invoice's `payment_status` decides the credit note type and how much you can credit:
+
+| Invoice `payment_status`             | Credit note type | Maximum credit                         | Effect on the invoice                                                                 |
+| ------------------------------------ | ---------------- | -------------------------------------- | ------------------------------------------------------------------------------------- |
+| `PENDING`, `PROCESSING`, or `FAILED` | `ADJUSTMENT`     | `total` minus `adjustment_amount` minus `amount_paid` | Lowers `amount_due` and `amount_remaining`. `payment_status` stays `PENDING`. |
+| `SUCCEEDED` or `PARTIALLY_REFUNDED`  | `REFUND`         | `amount_paid` minus `refunded_amount`  | Refunds money already paid. `payment_status` becomes `PARTIALLY_REFUNDED` or `REFUNDED`. |
+
+You also cannot credit more on a line item than that line was charged.
+
+<Warning>
+  **A partially paid invoice only accepts adjustments.** While any balance is
+  left, the invoice is `PENDING`, so a credit note can only reduce what is still
+  owed. The amount already paid cannot be refunded until the invoice is paid in
+  full. For example, on a $340 invoice with $100 paid, you can adjust up to $240
+  but refund nothing.
+</Warning>
+
+<Note>
+  **Refunds go to whoever paid the invoice.** A refund credit note is settled
+  against the payments made on the grouped invoice, even if you credited a single
+  child's line item. The money goes back to the parent subscription's invoicing
+  customer, not to the child's customer. A refund of an offline payment is added
+  to that customer's prepaid wallet.
+</Note>
+
+### Example
+
+A customer has a Pro subscription ($200) as the parent and a Startup subscription ($50) as a grouped child. With tax, the grouped invoice comes to $340.
+
+| Step                                    | `amount_due` | `amount_paid` | `amount_remaining` | `payment_status`     |
+| --------------------------------------- | ------------ | ------------- | ------------------ | -------------------- |
+| Invoice finalized                       | 340          | 0             | 340                | `PENDING`            |
+| $100 partial payment                    | 340          | 100           | 240                | `PENDING`            |
+| $50 adjustment on the Startup line      | 290          | 100           | 190                | `PENDING`            |
+| $190 payment                            | 290          | 290           | 0                  | `SUCCEEDED`          |
+| $50 refund credit note on the Pro line  | 290          | 290           | 0                  | `PARTIALLY_REFUNDED` |
+
 ## Analytics
 
 Each subscription in the group has its own usage tracking. Query each subscription owner's `external_customer_id` individually. There is no `include_children` flag for grouped invoicing; that flag is for consolidated billing and inherited subscriptions only.
@@ -223,6 +293,13 @@ Each subscription in the group has its own usage tracking. Query each subscripti
   time-of-day (hour:minute:second). Year and month are ignored, so a child added
   later in the year is accepted when its intra-cycle cadence aligns.
 </Warning>
+
+<Tip>
+  Two subscriptions created at different times on the same day have different
+  billing anchors and cannot be grouped, even though they renew on the same
+  date. To group them, pass the same `billing_anchor` when you create each
+  subscription.
+</Tip>
 
 <Warning>
   **Cannot combine with consolidated billing at creation.**
@@ -245,8 +322,18 @@ Each subscription in the group has its own usage tracking. Query each subscripti
   </Accordion>
 
 <Accordion title="What happens if I cancel one child subscription in the group?">
-  The cancelled child generates its own final invoice for the current period.
-  The remaining children and the parent continue their normal billing cycle.
+  The child stops immediately and leaves the group's future invoices. It does
+  not get a final invoice of its own. With `proration_behavior` set to
+  `create_prorations`, the unused part of charges already billed in advance is
+  credited to the customer's prepaid wallet. The remaining children and the
+  parent continue their normal billing cycle.
+</Accordion>
+
+<Accordion title="Can I refund only one subscription's charges on a grouped invoice?">
+  Yes. Create a credit note that references only that subscription's line
+  items. Payments are not tracked per subscription, though, so the refund is
+  settled against the invoice's payments and goes to the customer who paid the
+  invoice.
 </Accordion>
 
   <Accordion title="Can I have both grouped invoicing children and inherited children under the same parent subscription?">
