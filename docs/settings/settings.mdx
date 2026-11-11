@@ -1,21 +1,67 @@
 ---
 title: "Settings"
-description: "Configure subscription auto-cancellation, invoice numbering, and wallet balance alerts at the tenant and environment level."
+description: "Find settings in the Flexprice console and configure billing, alerts, access, and the customer experience."
 ---
 
-Settings in Flexprice control behavior for respective environment against tenant, providing complete isolation between different environments within and across tenants. All settings are scoped to per (tenant, environment) pair, validated on write, cached for one hour, and audited.
+Open the account menu at the bottom of the console sidebar and select **Settings**. Use the environment switcher to select the environment you want to configure. Check it before saving: most billing and customer settings apply to that environment, while organization settings such as SAML apply across the organization. Some sections and actions depend on your permissions or which features are enabled.
 
-**Benefits:**
+<Frame>
+  ![V2 Settings navigation with Organization selected](/images/docs/settings/v2-overview.png)
+</Frame>
 
-- **Tenant and environment isolation** — Each tenant and environment has its own settings; no cross-contamination
-- **Flexible updates** — Partial updates supported; only send the fields you want to change
-- **Automatic caching** — Settings are cached for one hour to reduce latency
-- **Audit trail** — All changes tracked with user and timestamp
-- **Validated on write** — Strict type checking and value constraints prevent invalid configuration
+## Where to find settings
 
-## Available Settings
+| Section | What you can manage |
+| --- | --- |
+| **Team** | Invite teammates and manage membership and roles. |
+| **Organization** | Edit your organization's profile. |
+| **Single sign-on** | Configure SAML and review its approval status. |
+| **Billing entities** | Manage billing entities when the feature is enabled. |
+| **Usage & billing** | View your own Flexprice account's plan, usage, and billing. |
+| **Coupons**, **Taxes**, **Cost tracking** | Open their dedicated console pages. |
+| **Invoicing** | **Invoices** for numbering and due dates, **PDF & drafts** for invoice documents and drafts, and **Tax engine** for tax calculation. |
+| **Contract** | **Contracts** for auto-cancellation and other contract defaults; **Commitments** for commitment settings. |
+| **Currency** | **Currencies** for custom currencies; **Forex rates** for global conversion rates. |
+| **Wallets** | **Wallet alerts**, **Bonus credits**, and **Top-ups**. |
+| **Alerts** | Enable contract and entitlement alerts, and view usage alert timing. |
+| **Events & analytics** | Configure ingestion, analytics, and processed events. |
+| **Tags** | Manage tags for organizing resources. |
+| **Customer experience** | Configure the customer-facing **Portal** and **Onboarding** workflows. |
+| **Appearance** | Choose the console theme. |
 
-Flexprice supports the following setting keys:
+Manage [API keys](/docs/rbac/manage-api), [service accounts](/docs/rbac/service-accounts/create), and webhooks under **Developers** in the main sidebar. Manage environments from the environment switcher.
+
+### Customer portal
+
+Go to **Settings → Customer experience → Portal** to change the sections and cards customers see. See [Portal configuration](/docs/customers/customer-portal/configuration) for controls and defaults.
+
+### SAML single sign-on
+
+Go to **Settings → Single sign-on**. Configure the identity provider's entity ID, sign-in URL, and signing certificate. You can also set the email attribute and default role for new SAML users. Use the service provider details shown in the panel when configuring your identity provider. Save the configuration and check its approval status before requiring single sign-on.
+
+<Frame>
+  ![V2 SAML settings showing approval status and identity provider fields](/images/docs/settings/v2-saml.png)
+</Frame>
+
+### Customer onboarding
+
+Go to **Settings → Customer experience → Onboarding**. Use **Default workflow** for the default onboarding steps, or select **Add workflow** to create a named workflow. Enter a unique name, add and order the steps, then select **Save changes**. For example, a workflow can create a wallet and start a contract for a new customer. Use the **Workflow** selector to edit a saved workflow. When creating a customer through the API, pass its name in `onboarding_workflow_name` to run that named workflow.
+
+<Frame>
+  ![V2 Onboarding settings with the workflow selector and Add workflow button](/images/docs/settings/v2-onboarding.png)
+</Frame>
+
+### Alerts
+
+Go to **Settings → Alerts** for contract and entitlement notifications. The **Usage alert timing** section shows how often usage alerts are checked and when usage is considered stale. Flexprice manages these values; they are read-only in the console. To set default wallet balance thresholds, go to **Settings → Wallets → Wallet alerts**.
+
+<Frame>
+  ![V2 Alerts settings with contract and entitlement switches and read-only usage timing](/images/docs/settings/v2-alerts.png)
+</Frame>
+
+## Settings API examples
+
+The following setting keys cover common billing and wallet configurations:
 
 - **Subscription Configuration** (`subscription_config`): controls subscription auto-cancellation for unpaid invoices
 - **Invoice Configuration** (`invoice_config`): controls invoice number generation, due date calculation, and whether period-end invoices are finalized automatically
@@ -76,6 +122,12 @@ When you enable auto-cancellation and set a grace period:
 **Key:** `invoice_config`
 
 Controls invoice number generation (prefix, format, sequence, timezone), due date calculation, and automatic finalization of period-end invoices.
+
+In the console, go to **Settings → Invoicing → Invoices**. Under **Dates and delivery**, edit **Payment due** to set the default number of days. If configured payment terms take precedence, the console shows the effective terms and does not offer the days input.
+
+<Frame>
+  ![V2 Invoices settings with numbering preview and payment due field](/images/docs/settings/v2-invoices.png)
+</Frame>
 
 ### Schema
 
