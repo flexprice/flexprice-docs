@@ -7,13 +7,9 @@ A usage chart that only splits by feature cannot answer the questions customers 
 
 The feature is off by default. You turn it on per environment and choose which properties customers can see.
 
-<Note>
-**The hosted portal has no property controls**
+In the hosted Customer Portal, open **Usage** to group or filter usage by the event properties made available for that customer. The controls appear when the portal has eligible property keys for the selected date range.
 
-The hosted Customer Portal doesn't group or filter by event property, and turning on usage properties adds no toolbar to it. The setting applies to the portal analytics endpoints, for a portal front end you build on the API.
-</Note>
-
-## Building property controls
+## Property controls
 
 A portal front end can offer three controls on these endpoints. The example below groups usage by `cloud_provider` with an `env` filter.
 
@@ -37,7 +33,9 @@ When usage is grouped in the example:
 
 ## Turning it on
 
-The dashboard has no control for usage properties. Turn them on through the settings API by writing `analytics_config` into the `customer_portal_config` setting. This changes what the portal analytics endpoints accept, not what the hosted portal shows:
+In the console, go to **Settings → Customer experience → Portal → Usage properties** and enable **Customers can group their usage by event property**. Use **Only these keys** to limit the properties customers can see and **Never these keys** to hide specific properties. Select **Save changes**.
+
+You can also write `analytics_config` into the `customer_portal_config` setting through the API:
 
 ```bash
 curl --request PUT \
