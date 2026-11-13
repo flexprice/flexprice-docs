@@ -18,6 +18,12 @@ A commitment has one of two scopes. A **contract commitment** is one minimum sha
 
 A contract uses one scope or the other. Flexprice rejects a contract commitment combined with a line-item commitment, with the message "Use either subscription-level commitment or line-item-level commitment, not both".
 
+<Warning>
+  The commitment fields on this page are deprecated: `commitment_amount`, `commitment_duration`, `overage_factor` and `enable_true_up` on subscription create, `line_item_commitments` on subscription create and addon attach, and the `commitment_*` fields on line items. Flexprice still accepts them, so existing integrations keep working, but new commitments should use [subscription commitments](/docs/subscriptions/commitment/subscription-commitments), created with `POST /commitments`. Subscription commitments are available in every environment, with no setting to turn on.
+
+  A subscription can't mix the two on the same charges. Flexprice refuses a subscription commitment over a line item that has a legacy commitment, legacy commitment fields on a line item a subscription commitment covers, a subscription commitment on a subscription with a contract commitment, and a create request that sends both.
+</Warning>
+
 <Note>
   This page covers commitments configured on a subscription line item. To pool a commitment across several prices, stack reservations, set separate committed and overage prices, or collect a commitment through upfront and scheduled payments, use [subscription commitments](/docs/subscriptions/commitment/subscription-commitments) with [billing terms](/docs/subscriptions/commitment/billing-terms).
 </Note>

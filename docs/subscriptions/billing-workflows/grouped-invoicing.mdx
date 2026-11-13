@@ -125,6 +125,14 @@ Use this when you already have standalone subscriptions that you want to group u
   request.
 </Note>
 
+<Note>
+  A child created with the parent through `grouped_invoicing_children_to_create`
+  keeps the `proration_behavior` you send for it, and defaults to `none` when
+  you omit it. To change a subscription's `proration_behavior` later, send it on
+  `PUT /subscriptions/{id}`. Omitting it leaves the stored value unchanged, and
+  the change doesn't rebill invoices that already exist.
+</Note>
+
 ### Option B: Add a subscription to an existing group
 
 Use this when the parent already exists and you want to add more subscriptions to the group.
@@ -320,6 +328,31 @@ Each subscription in the group has its own usage tracking. Query each subscripti
   <Accordion title="Can I preview whether a subscription can be added to a group?">
     Yes. Use `POST /subscriptions/{id}/modify/preview` with `type: "grouped_invoicing"` and `action: "add"`. The preview validates constraints and returns what would change without making writes.
   </Accordion>
+
+<Accordion title="What happens to the children when the parent subscription is cancelled?">
+  The children are cancelled with the parent. When the parent's cancellation
+  takes effect, each active or trialing child is cancelled with the same end
+  date and `cancellation_reason`, including `payment_overdue` when the parent
+  was auto-cancelled for an unpaid invoice. The child's line items, addons,
+  future credit grants and commitments end on that date, its pending schedules
+  are cancelled, and `subscription.updated` and `subscription.cancelled`
+  webhooks are sent for it.
+
+  On an immediate cancellation, the children's final charges stay on the
+  parent's closing invoice. A proration credit covers only the parent's line
+  items. On an `end_of_period` or `scheduled_date` cancellation, the children
+  stay active until the parent's cancellation fires, so reverting the parent's
+  scheduled cancellation needs no change to the children.
+
+```mermaid
+flowchart TB
+  A[Parent cancellation takes effect] --> B[Parent closing invoice built]
+  B --> C[Each active or trialing child cancelled with the same end date and reason]
+  C --> D[Child line items, addons, future credit grants and commitments end]
+  C --> E[Child pending schedules cancelled]
+  C --> F[subscription.updated and subscription.cancelled sent per child]
+```
+</Accordion>
 
 <Accordion title="What happens if I cancel one child subscription in the group?">
   The child stops immediately and leaves the group's future invoices. It does

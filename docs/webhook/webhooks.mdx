@@ -37,13 +37,14 @@ Webhooks push a notification to your server when something changes in Flexprice:
 
 ## Which events Flexprice sends
 
-Sixty-nine event types cover customers, subscriptions, invoices, payments, refunds, credit notes, wallets, features, entitlements, commitments and billing terms, checkout sessions, and usage ingestion. The [event catalog](/developers/webhooks/event-catalog) lists every one with a link to its payload schema. The ones most integrations start with:
+Flexprice sends events for customers, subscriptions, invoices, payments, refunds, credit notes, wallets, features, entitlements, commitments and billing terms, checkout sessions, and usage ingestion. The [event catalog](/developers/webhooks/event-catalog) lists every one with a link to its payload schema. The ones most integrations start with:
 
 | Event | Fires when |
 | --- | --- |
 | `invoice.update.finalized` | An invoice is finalized and ready for payment |
 | `invoice.update.payment` | A payment is recorded against an invoice |
 | `payment.success`, `payment.failed` | A payment attempt completes |
+| `invoice.payment.failed` | An automatic charge of an invoice fails |
 | `subscription.created`, `subscription.cancelled` | A subscription starts or ends |
 | `subscription.plan_changed` | A customer moves between plans |
 | `wallet.credit_balance.dropped` | A wallet crosses its low-balance threshold |
