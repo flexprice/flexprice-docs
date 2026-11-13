@@ -69,6 +69,31 @@ When you enable auto-cancellation and set a grace period:
 - **New settings:** `grace_period_days` required, integer ≥ 1, no decimals. `auto_cancellation_enabled` optional, boolean, default `false`.
 - **Updates:** Partial updates allowed; only provided fields validated; omitted fields unchanged.
 
+### Customer and Subscription Overrides
+
+A customer or a subscription can override the environment's grace period and auto-cancellation, for example to give one client a longer grace period than the rest. Set `settings.subscription_config` when you create or update the customer (`POST /customers`, `PUT /customers/{id}`) or the subscription (`POST /subscriptions`, `PUT /subscriptions/{id}`). Responses return the overrides in the same `settings` field.
+
+```json
+{
+  "settings": {
+    "subscription_config": {
+      "grace_period_days": 10,
+      "auto_cancellation_enabled": true
+    }
+  }
+}
+```
+
+- **Precedence**: each field resolves on its own, from the default, then the environment setting, then the customer, then the subscription. A subscription that overrides only `grace_period_days` takes `auto_cancellation_enabled` from its customer or the environment.
+- **Updates**: omit `settings` to keep the current overrides, send an object to replace them, or send `{}` to clear them.
+- **Zero-day grace**: overrides accept `grace_period_days: 0`, which cancels the subscription once its invoice is past due. The environment setting still requires 1 or more.
+- **Turning auto-cancellation on for one client**: an override with `auto_cancellation_enabled: true` applies even when the environment has auto-cancellation off.
+- **Which customer**: the customer override comes from the subscription's `customer_id`, not its invoicing customer.
+- **Plan changes**: a plan change copies the subscription's overrides to the new subscription.
+- **Customer portal**: customers can't change their own overrides through the customer portal.
+
+The grace period is read each time the overdue and auto-cancellation checks run, so a change applies to invoices that are already outstanding. Extending the grace period gives them more time. Shortening it can cancel a subscription on the next run.
+
 ---
 
 ## Invoice Configuration

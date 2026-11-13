@@ -160,7 +160,7 @@ Usage within the commitment appears at \$0, titled with the `invoice_label` foll
 An instalment is `invoiced` only when the invoice carrying it is **finalized**. Computing a draft invoice doesn't change it. Finalizing sets `instalment_status: invoiced` and `invoice_id`, and sends `billing_instalment.invoiced`.
 
 - **Trials and pauses**: instalments wait while the subscription is trialing or paused. They are billed on the first invoice after the trial or pause ends. Separate invoices are issued only for `active` subscriptions.
-- **Voided invoices**: voiding an invoice puts its instalments back to `scheduled`, so they are billed on the recalculated invoice or the next one.
+- **Voided invoices**: voiding an invoice puts its instalments back to `scheduled`, so they are billed on the recalculated invoice or the next one. After the commitment is [terminated](#terminating-a-commitment), an instalment the termination no longer owes is cancelled instead, so it is never billed again.
 - **Credit notes**: a credit note doesn't change instalments. A credited instalment stays `invoiced`.
 
 ## Viewing Instalments
@@ -256,7 +256,10 @@ curl -X POST "https://us.api.flexprice.io/v1/commitments/$COMMITMENT_ID/instalme
 [Terminating](/docs/subscriptions/commitment/subscription-commitments#terminating-a-commitment) a commitment with billing terms:
 
 1. Cancels every scheduled instalment.
-2. Bills the cancelled instalments that were already due (`bill_on` on or before `effective_at`) as one `settlement` instalment, labeled "Settlement".
+2. Bills the cancelled instalments the termination still owes as one `settlement` instalment, labeled "Settlement". An instalment is owed when it fell due by `effective_at` and pays for time before it:
+   - An `ARREAR` instalment pays for the step that ends on its `bill_on`, so one due on or before `effective_at` is owed.
+   - An `ADVANCE` instalment pays for the step that starts on its `bill_on`, so it is owed only when it fell due before `effective_at`. One due exactly at `effective_at` is not billed.
+   - A `once` instalment pays for the whole term, so a termination at or before the commitment start owes nothing for it.
 3. Bills the settlement and the cancellation fee, if any, together on one `ONE_OFF` invoice with billing reason `COMMITMENT_TERMINATION`.
 
 Instalments due after `effective_at` are not billed, and nothing is refunded. The cancellation fee is how a tenant charges for an early end. For a \$1,200 commitment terminated on 1 May:
@@ -268,7 +271,7 @@ Instalments due after `effective_at` are not billed, and nothing is refunded. Th
 | 12 × \$100 in arrears, none invoiced yet | \$0 | A \$400 settlement for the 4 instalments due by 1 May |
 | Everything at the end of the term | \$0 | Nothing, besides the fee |
 
-To give back an instalment billed before the termination, issue a credit note against its invoice. Voiding the invoice instead puts the instalment back on schedule, and it is billed again.
+To give back an instalment billed before the termination, issue a credit note against its invoice. Voiding the invoice instead puts the instalment back on schedule when the termination still owes it, and it is billed again. An instalment the termination no longer owes, because it fell due after `effective_at`, is cancelled when its invoice is voided and is not billed again.
 
 ### Subscription Cancellation
 
@@ -284,7 +287,7 @@ To give back an instalment billed before the termination, issue a credit note ag
 | [`billing_terms.updated`](/api-reference/webhook-events/billing_termsupdated) | An edit replaces a commitment's billing terms |
 | [`billing_instalment.created`](/api-reference/webhook-events/billing_instalmentcreated) | An instalment is added, on create, on an edit, or as a settlement |
 | [`billing_instalment.updated`](/api-reference/webhook-events/billing_instalmentupdated) | A trigger moves its `bill_on`, or a voided invoice puts it back on schedule |
-| [`billing_instalment.cancelled`](/api-reference/webhook-events/billing_instalmentcancelled) | An edit or a termination cancels it |
+| [`billing_instalment.cancelled`](/api-reference/webhook-events/billing_instalmentcancelled) | An edit or a termination cancels it, or its invoice is voided after a termination that no longer owes it |
 | [`billing_instalment.invoiced`](/api-reference/webhook-events/billing_instalmentinvoiced) | The invoice carrying it is finalized |
 
 A `billing_terms.*` payload carries the owner's current terms:

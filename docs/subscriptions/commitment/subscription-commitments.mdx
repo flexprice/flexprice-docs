@@ -71,7 +71,6 @@ The meter's price on the subscription is bucketed by the hour, so `value: 8` is 
 | `committed_price` | Required on `quantity` commitments and not allowed on `amount` ones. See [Committed and overage prices](#committed-and-overage-prices) |
 | `overage_price` | Optional, `quantity` commitments only. Same shape as `committed_price` |
 | `active_windows` | `window` measurement only. Daily time ranges the commitment applies in. See [Measurement and active windows](#measurement-and-active-windows) |
-| `timezone` | IANA time zone `active_windows` are read in. Defaults to `UTC` |
 | `priority` | Stacking order, 0 or greater. The lowest number fills first. Defaults to 0 |
 | `binding` | `true` or `false`. Defaults to `false` |
 | `collection_method` | Binding commitments only. `per_period` (default) or `billing_terms` |
@@ -127,7 +126,11 @@ With `measurement: billing_period`, usage is the period's total quantity (`quant
 
 With `measurement: window`, the capacity is `value` in every bucket of the scope's bucketed prices. Usage is read per bucket, an empty bucket counts as zero, and unused capacity in one bucket doesn't carry over to the next. Every price in scope must be bucketed with the same bucket size. Weekly and monthly buckets, and prices bucketed by a group-by property, are rejected.
 
-`active_windows` limits a `window` commitment to certain times of day. A bucket counts only when its start, in `timezone`, falls inside a range. Outside the ranges the commitment has no capacity, and the usage is billed at the overage price. Ranges are half-open, may wrap past midnight, and must not overlap. This adds 32 GPUs from 09:00 to 21:00 India time:
+A billing period edge can fall inside a bucket, for example when calendar months start at 18:30 UTC in Asia/Kolkata, or when an anniversary subscription starts at 10:15. That bucket belongs to the period that holds its end. The later period counts its capacity and bills all of its usage, read from the bucket's start, and the earlier period leaves it out. Where the commitment, the line item or the subscription ends at the edge, each period bills its own part of the bucket at the line item's price instead.
+
+A commitment covers the buckets that end after its `start_date` and no later than the end of its term. A commitment that starts inside an hour covers that hour. A commitment terminated inside an hour doesn't cover it, and that hour's usage is billed at the line item's price.
+
+`active_windows` limits a `window` commitment to certain times of day. Ranges are times of day in UTC, like line item [time-of-day buckets](/docs/subscriptions/commitment/time-of-day-buckets). A bucket counts only when its start, in UTC, falls inside a range. Outside the ranges the commitment has no capacity, and the usage is billed at the overage price. Ranges are half-open, may wrap past midnight, and must not overlap. Each range must hold whole buckets: it starts on the bucket grid and lasts a whole number of buckets, so 10:00 to 14:45 is rejected on an hourly price and 10:00 to 15:00 is accepted. This adds 32 GPUs from 09:00 to 21:00 India time, which is 03:30 to 15:30 UTC and needs 30-minute or finer buckets:
 
 ```json
 {
@@ -135,15 +138,14 @@ With `measurement: window`, the capacity is `value` in every bucket of the scope
   "value": "32",
   "measurement": "window",
   "active_windows": [
-    { "start": { "hour": 9, "minute": 0 }, "end": { "hour": 21, "minute": 0 } }
+    { "start": { "hour": 3, "minute": 30 }, "end": { "hour": 15, "minute": 30 } }
   ],
-  "timezone": "Asia/Kolkata",
   "priority": 1
 }
 ```
 
 <Note>
-  Billing periods follow the subscription. `active_windows` are read in the commitment's `timezone`, which defaults to `UTC` like line item time-of-day buckets.
+  Billing periods follow the subscription, in the customer's timezone. `active_windows` are always read in UTC. Commitments have no `timezone` field: a create request that sends a `timezone` other than `UTC` is rejected, and responses and webhooks don't carry one. Convert local hours to UTC before you set the windows.
 </Note>
 
 ## Stacking
@@ -226,7 +228,7 @@ curl -X POST "https://us.api.flexprice.io/v1/commitments/$COMMITMENT_ID/terminat
 
 - The commitment's capacity stops at `effective_at`. The period holding it bills a floor prorated to that moment, and later periods bill no true-up.
 - The cancellation fee is billed on its own `ONE_OFF` invoice with billing reason `COMMITMENT_TERMINATION`, returned as `termination_invoice_id`. With a fee, `effective_at` can't be before the start of the current billing period.
-- Under billing terms, scheduled instalments are cancelled and those already due are billed on the same invoice as the fee. See [Terminating a commitment with billing terms](/docs/subscriptions/commitment/billing-terms#terminating-a-commitment).
+- Under billing terms, scheduled instalments are cancelled, and those the termination still owes are billed on the same invoice as the fee. An advance instalment due exactly at `effective_at` pays for time after the termination, so it isn't billed. See [Terminating a commitment with billing terms](/docs/subscriptions/commitment/billing-terms#terminating-a-commitment).
 - The commitment's `commitment_status` becomes `terminated`, `terminated_at` is set, and `commitment.terminated` is sent.
 
 Cancelling the subscription or changing its plan terminates its commitments when the change takes effect.
@@ -258,7 +260,6 @@ The payload carries the commitment as the API returns it:
     "committed_price_id": "price_01KZ3M8Q2A5C7E9G1J3L5N7Q9S",
     "overage_price_id": "price_01KZ3M8Q2B6D8F0H2K4M6P8R0T",
     "measurement": "window",
-    "timezone": "UTC",
     "priority": 0,
     "binding": true,
     "collection_method": "per_period",

@@ -57,6 +57,7 @@ The SDKs export the event names as an enum and a typed model per payload. See [P
 | [`invoice.update.voided`](/api-reference/webhook-events/invoiceupdatevoided) | An invoice is voided |
 | [`invoice.update`](/api-reference/webhook-events/invoiceupdate) | An invoice is updated |
 | [`invoice.payment.overdue`](/api-reference/webhook-events/invoicepaymentoverdue) | An invoice is past its due date |
+| `invoice.payment.failed` | Flexprice's automatic charge of a `charge_automatically` invoice fails: no usable saved payment method (`payment_method_unavailable`), the gateway rejects the charge (`provider_error`), or the payment is declined (`declined`). Razorpay is the first gateway that sends it |
 | [`invoice.communication.triggered`](/api-reference/webhook-events/invoicecommunicationtriggered) | An invoice email or notification is triggered |
 
 ## Payment and refund events
@@ -66,6 +67,7 @@ The SDKs export the event names as an enum and a typed model per payload. See [P
 | [`payment.created`](/api-reference/webhook-events/paymentcreated) | A new payment is created |
 | [`payment.updated`](/api-reference/webhook-events/paymentupdated) | A payment is updated |
 | [`payment.failed`](/api-reference/webhook-events/paymentfailed) | A payment fails |
+| [`payment.attempt.failed`](/api-reference/webhook-events/paymentattemptfailed) | A Razorpay charge on an open payment link is declined. The payment stays open for retry, and the payload carries the decline reason and the checkout session |
 | [`payment.success`](/api-reference/webhook-events/paymentsuccess) | A payment succeeds |
 | [`payment.pending`](/api-reference/webhook-events/paymentpending) | A payment is pending processing |
 | [`refund.created`](/api-reference/webhook-events/refundcreated) | A refund is planned against an invoice |
