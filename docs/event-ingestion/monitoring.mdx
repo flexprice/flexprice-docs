@@ -21,7 +21,15 @@ x-api-key: <your_api_key>
 
 ### Request Parameters
 
-This endpoint accepts no query parameters. It automatically monitors the last 24 hours of data for your tenant and environment.
+All query parameters are optional. With none, the endpoint covers the last 24 hours of data for your tenant and environment.
+
+| Parameter | Description |
+|-----------|-------------|
+| `start_time` | Start of the period, as an RFC 3339 timestamp. Send it together with `end_time`, or leave both out. |
+| `end_time` | End of the period, as an RFC 3339 timestamp. Send it together with `start_time`, or leave both out. |
+| `window_size` | Splits the event count into time buckets returned in `points`: `MINUTE`, `15MIN`, `30MIN`, `HOUR`, `3HOUR`, `6HOUR`, `12HOUR`, `DAY`, `WEEK` or `MONTH`. Leave it out to get only the total. |
+
+Sending only one of `start_time` and `end_time` returns `400`.
 
 ### Response
 
@@ -35,9 +43,10 @@ This endpoint accepts no query parameters. It automatically monitors the last 24
 
 **Response Fields:**
 
-- `total_count` - Total distinct events stored in ClickHouse in the last 24 hours
+- `total_count` - Total distinct events stored in ClickHouse in the requested period (the last 24 hours by default)
 - `consumption_lag` - Kafka consumer lag for event processing (number of unprocessed messages)
 - `post_processing_lag` - Kafka consumer lag for feature usage tracking (number of unprocessed messages)
+- `points` - Present when `window_size` is set: one entry per bucket, each with a `timestamp` and an `event_count`
 
 
 ## Related Documentation
