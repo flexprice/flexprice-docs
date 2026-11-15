@@ -1,43 +1,33 @@
 ---
 title: "Usage by Properties"
-description: "Group and filter a customer's usage and cost by event properties such as region, model or instance, through the portal analytics API"
+description: "Group and filter a customer's usage and cost by event properties such as region, model or instance in the Customer Portal or through its analytics API"
 ---
 
-A usage chart that only splits by feature cannot answer the questions customers actually ask: which region is driving the bill, which model costs the most, which instance spiked last week. With usage properties turned on, the portal analytics API groups and filters a customer's usage and cost by the properties on your events, so a portal front end you build can answer them.
+A usage chart that only splits by feature cannot answer the questions customers actually ask: which region is driving the bill, which model costs the most, which instance spiked last week. With usage properties turned on, customers can group and filter usage by event property on the hosted portal's **Usage** tab. The same controls are available through the portal analytics API for a front end you build.
 
 The feature is off by default. You turn it on per environment and choose which properties customers can see.
 
-<Note>
-**The hosted portal has no property controls**
+## Using property controls
 
-The hosted Customer Portal doesn't group or filter by event property, and turning on usage properties adds no toolbar to it. The setting applies to the portal analytics endpoints, for a portal front end you build on the API.
-</Note>
-
-## Building property controls
-
-A portal front end can offer three controls on these endpoints. The example below groups usage by `cloud_provider` with an `env` filter.
+On the **Usage** tab, use the filter bar to narrow usage by feature or property value. In **Usage breakdown**, use **Group by** to choose a property. A front end you build can use the corresponding request fields:
 
 | Control | What it does | Request field |
 | ------- | ------------ | ------------- |
-| **Features** | Narrows the view to one or more features. Useful when the customer has usage on two or more features | `feature_ids` |
-| **Group by** | Splits the chart and the breakdown table by one property, for example `region` | `group_by` |
-| **Filter** | Keeps only usage whose property matches the chosen values, for example `cloud_provider` is `aws`. The values endpoint takes a `prefix` for search | `property_filters` |
+| Feature filter | Narrows the view to one or more features | `feature_ids` |
+| **Group by** | Groups the breakdown by one property, for example **By region** | `group_by` |
+| Property filter | Keeps only usage whose property matches the chosen values, for example `cloud_provider` is `aws` | `property_filters` |
 
-To drill down, combine the two: filter `region` to `us-east-1` and group by `instance_id`. In the example, active filters appear as removable chips under the toolbar, with **Clear all**.
+To drill down, combine the two: filter `region` to `us-east-1` and group by `instance_id`. Grouping is available when the server returns visible property keys for the customer and date range. A property's filter appears when values are available for it.
 
-<Frame>![Example property toolbar: usage grouped by cloud_provider with an env filter, showing cost per provider in the chart and the breakdown table](/images/docs/customers/customer-portal/usage-properties-toolbar.png)</Frame>
-
-When usage is grouped in the example:
-
-- **The chart shows cost per property value.** Cost adds up across features, where usage in different units does not.
-- **The top 8 values get their own line.** The rest are combined into **Other**.
-- **Usage without the property** appears as **(none)**.
-- **The breakdown table** lists one row per value, sorted by cost.
-- **Metric cards** (total spend, cost, margin) respect the active filters.
+* **The breakdown groups property values by cost**, highest first. Expand a group to see its features, usage and cost.
+* **Usage without the property** appears under **No value**.
+* **Grouping changes the breakdown, not the trend chart.** The chart and metric cards respect the active feature and property filters. Cost and margin cards appear only when enabled in the [portal configuration](/docs/customers/customer-portal/configuration#what-the-portal-applies).
 
 ## Turning it on
 
-The dashboard has no control for usage properties. Turn them on through the settings API by writing `analytics_config` into the `customer_portal_config` setting. This changes what the portal analytics endpoints accept, not what the hosted portal shows:
+In the dashboard, open **Settings** → **Customer experience** → **Portal**. Keep the Usage section visible, then under **Usage properties**, turn on **Customers can group their usage by event property**. Optionally enter comma-separated keys in **Only these keys** and **Never these keys**, then click **Save changes**. Reload the customer's portal to use the controls.
+
+Alternatively, write `analytics_config` into the `customer_portal_config` setting through the settings API. Both methods configure the hosted portal and its analytics endpoints:
 
 ```bash
 curl --request PUT \
@@ -65,7 +55,7 @@ curl --request PUT \
 
 The write replaces `analytics_config` as a whole and leaves the rest of the setting, such as your sections and theme, as it is. Send all three fields every time, because a field you leave out is cleared.
 
-Settings writes need a Super Admin user's API key. A service account key is refused. Saving the portal panel in the dashboard keeps this setting, but the panel's **Reset to defaults** deletes it.
+Settings writes require Super Admin. Through the API, use a Super Admin user's API key; a service account key is refused. The portal panel edits the same setting, and **Reset to defaults** deletes it.
 
 To find property names for the lists, call `POST /v1/meter-usage/properties` with your API key. See [API](#api).
 

@@ -73,7 +73,7 @@ Passing `payment_provider` for a gateway that is not connected in the environmen
 
 ## Paying an invoice
 
-An invoice row in the Invoices section carries a **Pay now** action when the invoice is awaiting payment. The customer clicks it, a hosted checkout opens in a new tab, and the invoice is marked paid by the provider's webhook when the payment settles.
+An invoice row in the Invoices section carries a **Pay now** action when the invoice is awaiting payment. The customer clicks it and continues to hosted checkout in the same tab. When the portal is embedded in an iframe, checkout opens in a new tab instead. The invoice is marked paid by the provider's webhook when the payment settles.
 
 **Endpoint:** `POST /v1/customer/portal/invoices/{id}/pay`
 
@@ -308,7 +308,7 @@ The response returns an action, not a payment method. Nothing is stored until th
 }
 ```
 
-The portal opens the URL in a new tab and shows the same link on screen, so a customer whose popup blocker stopped the open still has a way through. Card details are entered on the provider's page and never touch Flexprice.
+The portal opens the URL in the same tab, or a new tab when embedded in an iframe. In the embedded case, the dialog also keeps the link on screen if a popup blocker prevents the new tab. Card details are entered on the provider's page and never touch Flexprice.
 
 <Warning>
 The setup URL is an API string. The portal refuses to open anything that is not `http` or `https`, so a `javascript:` URL cannot be executed. Apply the same check if you build your own portal against these endpoints.
@@ -326,21 +326,16 @@ Setting a default requires the `set_default_method` capability. On a provider wi
 
 ## Returning from a hosted checkout
 
-Hosted checkout pages cannot be framed, so the portal opens them in a new tab. That raises a problem worth knowing about if you embed the portal or build your own: the provider redirects the tab it is in, which is the new one, leaving the customer looking at a second copy of their account while the tab they started from still shows pre-payment numbers.
+The standalone portal sends the customer to hosted checkout in the same tab and restores their portal session on return. An embedded portal opens checkout in a new tab because providers do not allow their payment pages to be framed.
 
 The portal resolves this itself:
 
-1. The return URL is rebuilt from the portal path with the session token removed, so the token never reaches the provider, its redirect logs, or the customer's browser history at the provider. A `checkout_return` marker is added in its place, and only recognised portal parameters such as `section` are carried across.
-2. The tab the provider returns to reads the marker, announces itself over a `BroadcastChannel`, and closes. The announcement carries no outcome.
-3. The original tab holds the checkout session id and asks the API what happened, so a message from any same-origin page cannot make the portal claim a payment succeeded.
-4. A tab that cannot close, which browsers only permit for script-opened windows, strips the marker and renders as a normal portal instead.
-5. The session token is held in `localStorage` for 30 minutes so the return trip can restore it. `sessionStorage` would not survive, because the provider tab is opened with `noopener` and inherits none.
+1. The return URL keeps the portal path but removes the session token and unrelated query parameters. It adds a `returned=1` marker, so the token is not sent to the provider as part of that URL.
+2. Before leaving, the portal saves this tab's token in `sessionStorage`. A same-tab return restores that token even if the provider drops the return marker. A marked return in another tab can restore the shared token saved in `localStorage` for up to one hour; this does not extend the session's server-side expiry.
+3. The portal restores the token in its address and renders the account again. It does not depend on closing a tab or a `BroadcastChannel` announcement. When a checkout session ID is available, it checks the session through the API and refreshes portal data after settlement.
+4. If no session can be restored, the page asks the customer to return to their billing portal. A gateway-reported success shows **You're all set!**; a reported failure or an unspecified result does not claim that payment succeeded. The provider's webhook settles the payment independently of this page.
 
 **Checking a session directly:** `GET /v1/customer/portal/checkout-sessions/{id}` returns the session with its `checkout_status`, `failure_reason` and linked `checkout_invoice_id` and `checkout_payment_id`. `POST /v1/customer/portal/checkout-sessions/{id}/cancel` abandons one.
-
-<Info>
-Polling gives up after roughly 40 seconds without discarding the session id, so a customer who lingers on the provider's page still has their result resolved when they come back.
-</Info>
 
 ## Chargebee as a portal provider
 
