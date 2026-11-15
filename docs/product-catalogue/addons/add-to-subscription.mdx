@@ -291,19 +291,23 @@ On the **Charges & add-ons** step of a new contract, the **Add-ons** card collec
 
 1. Pick an addon under **Add-on**. A dialog opens listing the addon's charges in the contract's currency and billing period, including one-time charges.
 2. Set **Qty** on fixed charges as needed. Optionally, use a charge's **⋯** menu to change how it bills on this contract: **Override price** sets a new billing model and price, and **Add commitment** (usage charges only, when available) sets a [commitment](/docs/subscriptions/commitment/overview). **Reset to add-on price** undoes the pricing changes.
-3. Choose **Starts** for this addon. Under **Advanced options**, choose a recurring or one-time **Cadence** and whether to prorate it.
+3. Choose **Starts** for this addon. Under **Advanced options**, choose whether to prorate it.
 4. Click **Add add-on**. Use **Add another add-on** inside the dialog to stage more addons, each with its own quantities, pricing and schedule. Until the contract is created, each addon's **⋯** menu offers **Edit** and **Remove add-on**.
 
 ### On an existing contract
 
 The **Add-ons** section on the contract page lists each attached addon with its status, start date, and end date.
 
-* **Attach or change several addons**: click **Modify add-ons**. Choose an **Add-on**, set fixed-charge quantities and any price overrides, and choose **Starts**: immediately, at period end, or on a date. **Advanced options** holds **Cadence** and **Proration**; proration is on by default. Use **Add another add-on** to stage another addition.
+* **Attach or change several addons**: click **Modify add-ons**. Choose an **Add-on**, set fixed-charge quantities and any price overrides, and choose **Starts**: immediately, at period end, or on a date. Set **Proration** under **Advanced options**; it is on by default. Use **Add another add-on** to stage another addition.
 * **Remove as part of the same change**: select addons under **Remove existing add-ons**. Choose when they are **Removed**, enter **Remove on** for a custom date, and set **Prorate the removed add-ons**.
 * **Apply the batch**: click **Apply add-on changes** to submit the additions and removals together. The dashboard accepts up to 20 entries across both.
 * **Remove one at period end**: the addon's **⋯** menu also offers **Remove add-on**. This shortcut removes it at the end of the current billing period; charges already billed are unaffected.
 
 The attachment form has no end-date field. To stop an addon on a chosen date, schedule its removal through **Modify add-ons**.
+
+<Note>
+One-time addon cadence requires the API's `cadence: "onetime"`. The current dashboard attaches addons with recurring cadence, even when **One time** is selected in its **Cadence** control.
+</Note>
 
 ## Legacy addon requests
 
