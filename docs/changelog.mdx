@@ -23,7 +23,7 @@ mode: "center"
 
   A customer or a subscription can now override the environment's grace period and auto-cancellation, for example to give one client more time to pay than the rest.
 
-  * **Set it**: Send `settings.subscription_config` with `grace_period_days` or `auto_cancellation_enabled` on `POST` or `PUT /customers` and `POST` or `PUT /subscriptions`. Send `{}` to go back to the environment settings
+  * **Set it**: Send `settings.subscription_config` with `grace_period_days` or `auto_cancellation_enabled` on `POST /customers`, `PUT /customers/{id}`, `POST /subscriptions` and `PUT /subscriptions/{id}`. Send `{}` to go back to the environment settings
   * **Precedence**: Each field resolves on its own, from the environment, then the customer, then the subscription. An override of `grace_period_days: 0` cancels once the invoice is past due
   * **Where it applies**: Overdue marking and auto-cancellation read the overrides on every run, a plan change keeps them, and customers can't change them through the customer portal
 
@@ -79,7 +79,7 @@ mode: "center"
     <Accordion title="API">
       * The `commitments_v2` setting is removed, and the Commitments API works without it
       * Legacy commitment fields on subscriptions, line items and addons are deprecated in favor of `POST /commitments`
-      * `settings.subscription_config` is accepted on `POST` and `PUT /customers` and `POST` and `PUT /subscriptions`
+      * `settings.subscription_config` is accepted on `POST /customers`, `PUT /customers/{id}`, `POST /subscriptions` and `PUT /subscriptions/{id}`
       * `invoice.payment.failed` is a new webhook event
       * `connection_id` on `POST /integrations/sync` limits a sync to one connection
       * Price responses can include `warnings`
