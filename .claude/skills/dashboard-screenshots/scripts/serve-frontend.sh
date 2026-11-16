@@ -1,26 +1,26 @@
 #!/usr/bin/env bash
-# Starts or stops the Flexprice dashboard (flexprice-front) for docs screenshots.
+# Starts or stops the Flexprice dashboard (portal) for docs screenshots.
 #
 # Usage: bash serve-frontend.sh start|stop|status
-# Env:   FLEXPRICE_FRONT  frontend repo (default: flexprice-front next to the docs repo)
+# Env:   PORTAL  frontend repo (default: portal next to the docs repo)
 #        PORT             default 3100; never 3000, which is often a running `mintlify dev` preview
-#        LOG_FILE         Vite output (default: $TMPDIR/flexprice-front-vite.log)
-#        PID_FILE         pid of the server `start` launched (default: $TMPDIR/flexprice-front-vite-$PORT.pid)
+#        LOG_FILE         Vite output (default: $TMPDIR/portal-vite.log)
+#        PID_FILE         pid of the server `start` launched (default: $TMPDIR/portal-vite-$PORT.pid)
 #
 # `stop` only stops the server that `start` launched: it reads the recorded pid and checks that
 # the process is still Vite running from the frontend repo on this port before signalling it.
 # Anything else listening on the port is left alone.
 #
-# VITE_API_URL points at the cloud API only so that URLs shown in the UI (webhook URLs) match
+# VITE_FLEXPRICE_API_URL points at the cloud API only so that URLs shown in the UI (webhook URLs) match
 # production. capture.cjs answers every API request itself; nothing reaches the real API.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DOCS_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
-FRONT="${FLEXPRICE_FRONT:-$DOCS_ROOT/../flexprice-front}"
+FRONT="${PORTAL:-$DOCS_ROOT/../portal}"
 PORT="${PORT:-3100}"
-LOG_FILE="${LOG_FILE:-${TMPDIR:-/tmp}/flexprice-front-vite.log}"
-PID_FILE="${PID_FILE:-${TMPDIR:-/tmp}/flexprice-front-vite-$PORT.pid}"
+LOG_FILE="${LOG_FILE:-${TMPDIR:-/tmp}/portal-vite.log}"
+PID_FILE="${PID_FILE:-${TMPDIR:-/tmp}/portal-vite-$PORT.pid}"
 
 refuse_3000() {
 	if [ "$PORT" = "3000" ]; then
@@ -37,17 +37,17 @@ is_our_server() {
 	cmd="$(ps -o command= -p "$pid" 2>/dev/null || true)"
 	[[ "$cmd" == *vite* && "$cmd" == *"--port $PORT"* ]] || return 1
 	cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' | head -1)"
-	[ -n "$cwd" ] && [ "$cwd" = "$(front_dir)" ]
+	[ -n "$cwd" ] && [ "$cwd" = "$(front_dir)/apps/console" ]
 }
 
 case "${1:-}" in
 start)
 	refuse_3000
-	[ -n "$(front_dir)" ] || { echo "Frontend repo not found at $FRONT. Set FLEXPRICE_FRONT."; exit 1; }
-	[ -d "$FRONT/node_modules" ] || { echo "Dependencies missing. Run: cd $FRONT && HUSKY=0 npm ci"; exit 1; }
+	[ -n "$(front_dir)" ] || { echo "Frontend repo not found at $FRONT. Set PORTAL."; exit 1; }
+	[ -d "$FRONT/node_modules" ] || { echo "Dependencies missing. Run: cd $FRONT && HUSKY=0 pnpm install --frozen-lockfile"; exit 1; }
 	[ -z "$(listener)" ] || { echo "Port $PORT is already in use (pid $(listener)). Choose another PORT."; exit 1; }
-	cd "$(front_dir)"
-	VITE_API_URL=https://api.cloud.flexprice.io/v1 VITE_ENVIRONMENT=self-hosted \
+	cd "$(front_dir)/apps/console"
+	VITE_FLEXPRICE_API_URL=https://api.cloud.flexprice.io/v1 VITE_USE_MOCKS=false VITE_FLEXPRICE_API_KEY=docs-preview-placeholder VITE_POSTHOG_ENABLED=false VITE_INTERCOM_ENABLED=false VITE_PYLON_ENABLED=false \
 		nohup ./node_modules/.bin/vite --port "$PORT" --strictPort >"$LOG_FILE" 2>&1 </dev/null &
 	pid=$!
 	if curl -s -o /dev/null --retry 30 --retry-connrefused --retry-delay 2 --max-time 120 "http://localhost:$PORT/" &&
