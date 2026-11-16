@@ -131,6 +131,7 @@ Your server must normalize provider activity into finalized billable image quant
 | Exact generation endpoint used | `endpoint` |
 | Finalized billable output count | `billable_images` |
 | Stable generation identity | `generation_id` and a stable `event_id` |
+| Usage time captured once and retained with the event | Stable `timestamp`, unchanged on retries |
 | Owning organization | `external_customer_id` |
 | Project used for generation | `project_id` |
 
@@ -152,7 +153,7 @@ Send one incremental event per finalized generation with `POST /events`:
 }
 ```
 
-Reuse the same event identity when retrying delivery of the same usage. Do not emit another image event for each poll, redownload, replayed callback or cumulative dashboard snapshot. Hold unresolved billability for reconciliation; failure adjustments and refunds need a separate verified workflow and are outside this example.
+Persist the usage event once and reuse the same `event_id` **and `timestamp`** on every delivery retry. Do not replace the original usage time with the retry's send time: this SUM meter depends on both fields matching for [deduplication](/docs/core-concepts/usage-events/idempotency). Do not emit another image event for each poll, redownload, replayed callback or cumulative dashboard snapshot. Hold unresolved billability for reconciliation; failure adjustments and refunds need a separate verified workflow and are outside this example.
 
 ## Worked monthly charge
 
