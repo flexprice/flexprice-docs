@@ -20026,9 +20026,6 @@
           "timezone": {
             "type": "string",
             "description": "timezone is the customer's IANA timezone name (e.g. \"Asia/Kolkata\", \"America/New_York\")\nDefaults to \"UTC\" if not provided"
-          },
-          "settings": {
-            "$ref": "#/components/schemas/types.SettingsOverride"
           }
         },
         "description": "Request object for creating a new customer in the system"
@@ -21047,9 +21044,6 @@
           "trial_period_days": {
             "type": "integer",
             "description": "TrialPeriodDays: nil = inherit from plan prices, 0 = no trial, >0 = override in days."
-          },
-          "settings": {
-            "$ref": "#/components/schemas/types.SettingsOverride"
           }
         }
       },
@@ -21796,9 +21790,6 @@
           },
           "updated_by": {
             "type": "string"
-          },
-          "settings": {
-            "$ref": "#/components/schemas/types.SettingsOverride"
           }
         },
         "description": "Customer response object containing all customer information"
@@ -26732,9 +26723,6 @@
           "version": {
             "type": "integer",
             "description": "Version is used for optimistic locking"
-          },
-          "settings": {
-            "$ref": "#/components/schemas/types.SettingsOverride"
           }
         }
       },
@@ -26965,9 +26953,6 @@
           "version": {
             "type": "integer",
             "description": "Version is used for optimistic locking"
-          },
-          "settings": {
-            "$ref": "#/components/schemas/types.SettingsOverride"
           }
         }
       },
@@ -27840,9 +27825,6 @@
           "timezone": {
             "type": "string",
             "description": "timezone is the updated IANA timezone name for the customer (e.g. \"Asia/Kolkata\", \"America/New_York\")"
-          },
-          "settings": {
-            "$ref": "#/components/schemas/types.SettingsOverride"
           }
         },
         "description": "Request object for updating an existing customer. All fields are optional - only provided fields will be updated"
@@ -28263,9 +28245,6 @@
           },
           "status": {
             "$ref": "#/components/schemas/types.SubscriptionStatus"
-          },
-          "settings": {
-            "$ref": "#/components/schemas/types.SettingsOverride"
           }
         }
       },
@@ -37113,28 +37092,6 @@
             "$ref": "#/components/schemas/types.WebhookEventName"
           }
         }
-      },
-      "types.SettingsOverride": {
-        "type": "object",
-        "properties": {
-          "subscription_config": {
-            "$ref": "#/components/schemas/types.SubscriptionConfigOverride"
-          }
-        },
-        "x-speakeasy-name-override": "SettingsOverride"
-      },
-      "types.SubscriptionConfigOverride": {
-        "type": "object",
-        "properties": {
-          "auto_cancellation_enabled": {
-            "type": "boolean"
-          },
-          "grace_period_days": {
-            "minimum": 0,
-            "type": "integer"
-          }
-        },
-        "x-speakeasy-name-override": "SubscriptionConfigOverride"
       }
     },
     "securitySchemes": {
