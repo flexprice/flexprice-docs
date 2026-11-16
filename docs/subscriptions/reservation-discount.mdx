@@ -63,20 +63,8 @@ An AI platform sells inference compute at **$2 / vCPU-hour**. They want customer
   <Step title="Pricing in the plan">
     The vCPU-hours line item is configured with a unit price of $2 / vCPU-hour in the pricing plan.
   </Step>
-  <Step title="Configure commitment from the line item">
-    Go to **Customers**, open the customer, and click **Create contract** (in the dashboard, subscriptions are called contracts). Select your pricing plan and click **Next**. On the **Charges & add-ons** step, open the **⋯** menu next to the vCPU-hours charge and choose **Add commitment**.
-
-    <Frame>
-      ![Add commitment in the menu of the vCPU-hours charge](/images/docs/subscriptions/reservation-discount/vcpu-add-commitment.png)
-    </Frame>
-  </Step>
-
-  <Step title="Configure the commitment details">
-    In the **Configure commitment** dialog, set **Committed** to **Usage (a number of units)** and **Commitment (units)** to **500**. Set **Overage factor** to **1.5** and turn on **True-up**. Click **Save commitment**, then continue to create the contract.
-
-    <Frame>
-      ![Configure commitment dialog with a usage commitment of 500 units, a 1.5 overage factor, and true-up on](/images/docs/subscriptions/reservation-discount/vcpu-usage-commitment.png)
-    </Frame>
+  <Step title="Configure the legacy commitment through the API">
+    Use the deprecated line-item commitment fields described in [Commitment](/docs/subscriptions/commitment/overview#steps-to-add-a-line-item-commitment). Set a quantity commitment of 500 units, an overage factor of 1.5, and enable true-up. The dashboard no longer configures commitments from a charge's menu. For new dashboard commitments, use the **Commitments** section described in [Subscription Commitments](/docs/subscriptions/commitment/subscription-commitments).
   </Step>
 
   <Step title="Scenario 1 — Usage exceeds commitment (700 vCPU-hours)">
@@ -135,20 +123,8 @@ A cloud infrastructure company sells GPU compute at **$2 / GPU-hour**. Instead o
     The GPU-hours line item is configured with a unit price of $2 / GPU-hour in the pricing plan.
   </Step>
 
-  <Step title="Configure commitment from the line item">
-    Go to **Customers**, open the customer, and click **Create contract**. Select your pricing plan and click **Next**. On the **Charges & add-ons** step, open the **⋯** menu next to the GPU-hours charge and choose **Add commitment**.
-
-    <Frame>
-      ![Add commitment in the menu of the GPU-hours charge](/images/docs/subscriptions/reservation-discount/gpu-add-commitment.png)
-    </Frame>
-  </Step>
-
-  <Step title="Configure the windowed commitment details">
-    In the **Configure commitment** dialog, set **Bucket size** to **Hour**, **Committed** to **Usage (a number of units)**, and **Commitment (units)** to **10**. Set **Overage factor** to **1.5**, then turn on **True-up** and **Apply to each bucket** so the commitment applies to every hour bucket instead of the whole period. Click **Save commitment** before creating the contract.
-
-    <Frame>
-      ![Configure commitment dialog with hourly buckets, 10 units per bucket, a 1.5 overage factor, true-up, and Apply to each bucket on](/images/docs/subscriptions/reservation-discount/gpu-windowed-commitment.png)
-    </Frame>
+  <Step title="Configure the legacy windowed commitment through the API">
+    Use the deprecated line-item commitment fields described in [Commitment](/docs/subscriptions/commitment/overview#steps-to-add-a-line-item-commitment) and [Time-of-Day Commitment Buckets](/docs/subscriptions/commitment/time-of-day-buckets). Configure an hourly bucket with a quantity commitment of 10 units per bucket, an overage factor of 1.5, and true-up enabled. For new dashboard commitments, use the **Commitments** section described in [Subscription Commitments](/docs/subscriptions/commitment/subscription-commitments).
   </Step>
 
   <Step title="Hour 1 — Usage exceeds commitment (15 GPU-hours)">
