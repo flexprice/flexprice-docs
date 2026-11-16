@@ -33,9 +33,9 @@ graph TD
     L -->|Yes| M[Webhook:<br/>payment.captured]
     L -->|No| N[Webhook:<br/>payment.failed]
     M --> O[Status: SUCCEEDED]
-    N --> P[Status: FAILED]
+    N --> P[Attempt Recorded<br/>Payment Stays Open]
     O --> Q[Reconcile Invoice]
-    P --> R[Log Failure]
+    P --> I
 ```
 
 ## Payment Status Flow
@@ -56,7 +56,7 @@ INITIATED → PENDING → SUCCEEDED
 | `PENDING` | Razorpay payment link created successfully | Successful Razorpay API call |
 | `PROCESSING` | Payment is being processed | Temporary status during updates |
 | `SUCCEEDED` | Payment completed successfully | Razorpay webhook: `payment.captured` |
-| `FAILED` | Payment attempt failed | Razorpay webhook: `payment.failed` |
+| `FAILED` | Payment failed and can no longer be settled | Razorpay webhook: `payment.failed` after the link's checkout session has ended |
 | `REFUNDED` | Payment was refunded | Manual refund processing |
 
 ## Creating Payment Links
@@ -217,13 +217,14 @@ When link creation fails during checkout, the session stores the rejection reaso
 
 ### Payment Failure Handling
 
-When payments fail:
+When a customer's payment on a payment link is declined:
 
 1. **Webhook Received**: Razorpay sends `payment.failed` webhook
-2. **Status Updated**: Payment status changed to `FAILED`
-3. **Error Logged**: Failure reason recorded
-4. **Customer Notified**: Optional failure notification
-5. **Retry Available**: Customer can create new payment link
+2. **Attempt Recorded**: Flexprice records the failed attempt with the decline reason and sends `payment.attempt.failed`
+3. **Payment Stays Open**: The payment is not marked `FAILED`, and the link stays live
+4. **Retry Available**: The customer retries on the same link
+
+If the link's checkout session is no longer pending, nothing can settle the payment, so the decline is final and the payment is marked `FAILED`.
 
 ## Testing Payment Links
 
