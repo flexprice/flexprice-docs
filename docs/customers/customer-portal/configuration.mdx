@@ -9,21 +9,24 @@ Anything you leave unset falls back to a default, so a tenant that has never tou
 
 ## Dashboard settings
 
-Click your email address at the bottom of the left navigation, select **Settings**, then go to **Customer experience** → **Portal**. The panel edits the same `customer_portal_config` setting that the API writes:
+Open the account menu at the bottom of the left navigation, select **Settings**, then go to **Customer experience** → **Portal**. The panel edits the same `customer_portal_config` setting that the API writes:
 
 | Setting | Controls |
 | ------- | -------- |
 | **Sections and tabs** | Every section and the tabs (widgets) inside it. Drag a row to reorder it, and use the eye icon to show or hide it. Hiding a section hides all its tabs |
-| **Cards** | For a metric cards tab, which cards are on: **Cost**, **Custom** and **Revenue** |
+| **Cards** | For a metric cards tab, which cards are on: **Spend**, **Cost and margin**, and **Custom metrics** |
 | **Opens on** and **Date range** | For a usage graph tab, the date preset it opens on, and whether customers can pick their own dates |
-| **Theme** | The **Primary**, **Secondary** and **Tertiary colour**, as hex codes |
+| **Usage properties** | Whether customers can group and filter usage by allowed event properties. See [Usage by Properties](/docs/customers/customer-portal/usage-properties). |
+| **Theme** | The primary colour used by the hosted portal |
 | **Reset to defaults** | Deletes the stored configuration, so the server's standard layout applies again |
 
 The top of the panel lists what is **Visible to customers**. Click **Save changes** to apply. Changes apply to every portal session opened in that environment from the next page load.
 
-The hosted portal uses only part of what the panel stores: the eye icons on the Usage, Credits and Invoices sections, and the primary colour. Section order, tab settings and the other two colours don't change it. See [What the portal applies](#what-the-portal-applies).
+<Frame>
+  ![V2 Portal settings with sections, visibility controls, and metric card switches](/images/docs/settings/v2-portal.png)
+</Frame>
 
-Usage properties have no control in the panel, and the hosted portal shows no property controls. Turn them on through the settings API for a front end you build, as described in [Usage by Properties](/docs/customers/customer-portal/usage-properties#turning-it-on). Saving the panel keeps them, and **Reset to defaults** turns them off.
+Cost and margin show what it costs your business to serve the customer and the margin on that usage. They are off by default. Enable them only when you intend to share those figures with customers.
 
 <Warning>
 **Saving the configuration requires Super Admin**
@@ -60,7 +63,7 @@ For anything the panel doesn't cover, write the configuration through the settin
 
 The example shows one section. A write replaces each top-level key it contains (`theme`, `sections`, `analytics_config`) and keeps the keys it leaves out. Nothing below the top level is merged:
 
-- **Send every section.** `sections` replaces the stored array, and once you have stored one, the default sections stop applying. A section you leave out is removed, and the portal hides Usage, Credits or Invoices when its section is missing. An empty array works differently: the server stores no sections, so the defaults come back.
+- **Send every section.** `sections` replaces the stored array, and once you have stored one, the default sections stop applying. Keep the full list when making an edit. To hide a section in the hosted portal, leave it in the list and set `enabled` to `false`.
 - **Send all three colours.** `theme` replaces the stored theme, so a colour you leave out is cleared.
 - **Fields outside the schema are dropped.** The server keeps only the fields on this page and discards anything else without an error, such as a `logo_url` in the theme or a `label` on a tab.
 
@@ -71,9 +74,9 @@ Start from the value `GET` returns, change it, and send the whole key back. **Re
 | Field | Type | Description |
 | ----- | ---- | ----------- |
 | `id` | string | Section identifier. The portal knows `overview`, `usage`, `credits` and `invoices`, and ignores any other id |
-| `label` | string | Name shown for the section in the dashboard panel. The portal uses its own tab names |
-| `enabled` | boolean | Whether the portal shows the section's tab. Overview shows either way |
-| `order` | number | Position in the dashboard panel. The portal's tab order is fixed |
+| `label` | string | Name shown in the dashboard and hosted portal |
+| `enabled` | boolean | Whether the portal shows the section's tab |
+| `order` | number | Position in the dashboard and hosted portal |
 | `tabs` | array | The section's widgets, sorted by their `order` |
 
 ### Widget fields
@@ -160,15 +163,9 @@ Valid presets are `today`, `last_7_days`, `last_30_days`, `current_month` and `l
 
 ## What the portal applies
 
-The hosted portal reads two things from the configuration: which sections are on, and the primary colour.
+The hosted portal applies the label, order, and visibility of Overview, Usage, Credits, and Invoices. Sections absent from the configuration retain their default visibility. If every supported section is hidden, the portal keeps Overview available.
 
-- **The tabs and their order are fixed:** Overview, Usage, Credits, Invoices. A section's `order` and `label` don't change them.
-- **Overview always shows.** The portal hides Usage, Credits or Invoices when its section has `"enabled": false` or is missing from `sections`. It ignores any other section id, including the retired `payment_methods` section.
-- **An empty `sections` array hides nothing.** The server stores no sections, so the defaults apply and every tab shows. To hide a section, keep it in the array with `"enabled": false`.
-- **Each tab shows a fixed set of widgets.** The portal doesn't read `tabs`, so a widget's `enabled` and `order`, the metric cards and the usage graph settings don't change it. Saved payment methods always show on Overview.
-- **`primary_color` is the brand colour.** See [Theming](#theming).
-
-The rest of the configuration is stored and returned by the [portal config endpoint](#reading-the-configuration-from-the-portal), for a portal front end you build yourself.
+The portal also honors visibility for supported widgets, metric card switches, and the usage graph's date settings. Custom metric cards appear when the API returns custom metrics for the selected period. The hosted portal has a fixed layout within each view; changing widget order does not rearrange that layout. The primary colour applies to the hosted portal. Secondary and tertiary colours are stored for custom front ends.
 
 ## Theming
 
