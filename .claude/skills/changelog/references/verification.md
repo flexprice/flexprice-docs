@@ -73,7 +73,7 @@ Before hand-off, verify:
 
 - The independent review ran and every non-correct verdict was confirmed or rejected in source, or its absence is reported.
 - Every retained claim has source evidence and preserves material limits and exceptions.
-- Coverage metadata holds the exact inspected ranges; only a fully reviewed, continuous range advances the checkpoint ([coverage.md](coverage.md)).
+- Coverage metadata holds the exact inspected ranges; an ordinary entry's range starts at the previous checkpoint's `to` with no gap, since the next run starts from this entry's `to` whatever its `complete` flag ([coverage.md](coverage.md)).
 - Cards and images are valid targets and relevant to the new behavior.
 - Publication date, historical context, and edit scope are correct.
 - The entry was checked for readability and complete MDX structure.
