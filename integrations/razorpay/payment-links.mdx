@@ -56,7 +56,7 @@ INITIATED → PENDING → SUCCEEDED
 | `PENDING` | Razorpay payment link created successfully | Successful Razorpay API call |
 | `PROCESSING` | Payment is being processed | Temporary status during updates |
 | `SUCCEEDED` | Payment completed successfully | Razorpay webhook: `payment.captured` |
-| `FAILED` | Payment failed and can no longer be settled | Razorpay webhook: `payment.failed` after the link's checkout session has ended |
+| `FAILED` | Payment failed and can no longer be settled | Gateway status sync reports failure, or `payment.failed` arrives for a link with a non-pending checkout session |
 | `REFUNDED` | Payment was refunded | Manual refund processing |
 
 ## Creating Payment Links
@@ -224,7 +224,7 @@ When a customer's payment on a payment link is declined:
 3. **Payment Stays Open**: The payment is not marked `FAILED`, and the link stays live
 4. **Retry Available**: The customer retries on the same link
 
-If the link's checkout session is no longer pending, nothing can settle the payment, so the decline is final and the payment is marked `FAILED`.
+Without a checkout session, a decline also leaves the payment open; for a session-backed link, checkout cleanup archives the payment, and a decline received after the session is no longer pending marks the payment `FAILED`.
 
 ## Testing Payment Links
 
@@ -320,4 +320,3 @@ Invoices are automatically synced to Razorpay when:
 - `POST /api/v1/webhooks/razorpay/{tenant_id}/{environment_id}` - Razorpay webhook handler
 
 For complete API documentation, see the [API Reference](/api-reference/payments/create-payment).
-
