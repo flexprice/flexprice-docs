@@ -6,13 +6,13 @@ Used when selecting a research range, reviewing a draft, and recording the compl
 
 After the wrapper fetches all three repositories, capture their full `upstream/main` SHAs: `DOCS_SHA` for published history and documentation checks, plus a separate source range per code repository (`BACKEND_FROM`/`BACKEND_TO`, `FRONTEND_FROM`/`FRONTEND_TO`).
 
-For an ordinary new entry, the baseline is the latest published `changelog-coverage` record with `"complete":true` at `DOCS_SHA`; its backend and frontend `to` SHAs become the next `from` SHAs. This lists every record with its label, newest first:
+For an ordinary new entry, the baseline is the latest published `changelog-coverage` record at `DOCS_SHA`, whatever its `complete` flag; its backend and frontend `to` SHAs become the next `from` SHAs. The record tracks the last commit the published changelog covers, so the next entry always starts there. Coverage tracks `flexprice/flexprice` (backend) and `flexprice/portal` (frontend) only. A frontend `to` that is not a portal commit (old `flexprice-front` history) is skipped for the frontend: use the newest record whose frontend `to` is in portal. This lists every record with its label, newest first:
 
 ```bash
 git show "${DOCS_SHA}:docs/changelog.mdx" | awk '/^<Update label=/{label=$0} /changelog-coverage:/{print label; print}'
 ```
 
-A newer entry without a completed record does not advance coverage: keep the last completed baseline and check all intervening published entries for duplicates. Never use a local draft as the previous published checkpoint.
+Never use a local draft as the previous published checkpoint.
 
 Default `to` values are the captured code-repository tips. For an explicit historical cutoff, prefer supplied release SHAs. If only dates are available, resolve them once against each captured tip's first-parent history with explicit UTC boundaries:
 
@@ -26,12 +26,11 @@ Once selected, freeze both `to` SHAs: source reads, field checks, and reviewers 
 
 ## Initial baseline and bounded reviews
 
-When no completed record exists, in order:
+When no usable record exists for a repository, in order:
 
-1. Resume from published incomplete records (see the last section).
-2. Look for exact source SHAs in the previous run's evidence or release records. A docs commit timestamp, publication label, or repeated heading is not evidence of the source cutoff.
-3. Use an explicit user-supplied starting SHA or date and disclose that earlier coverage is unknown.
-4. Otherwise ask for the starting point rather than assuming seven days. Make the question answerable: name the latest published entry and show `git log -5 --format='%h %cI %s' "$DOCS_SHA" -- docs/changelog.mdx`, saying those dates are context, not evidence. A slightly earlier start is the safer answer (Step 2 deduplicates published entries); a later one drops work that reached `main` before that date.
+1. Look for exact source SHAs in the previous run's evidence or release records. A docs commit timestamp, publication label, or repeated heading is not evidence of the source cutoff.
+2. Use an explicit user-supplied starting SHA or date and disclose that earlier coverage is unknown.
+3. Otherwise ask for the starting point rather than assuming seven days. Make the question answerable: name the latest published entry and show `git log -5 --format='%h %cI %s' "$DOCS_SHA" -- docs/changelog.mdx`, saying those dates are context, not evidence. A slightly earlier start is the safer answer (Step 2 deduplicates published entries); a later one drops work that reached `main` before that date.
 
 You may keep checking known draft assertions without a resolved baseline, but cannot certify completeness or advance coverage.
 
@@ -62,8 +61,8 @@ Immediately inside the new `<Update>` block, one non-rendering MDX comment with 
 
 `from` is exclusive, `to` inclusive. Parse the JSON within its Update block, not by matching a heading. Require version 1, a boolean `complete`, and valid full SHAs for both repositories; report malformed records instead of guessing. An unchanged repository keeps equal `from`/`to`.
 
-Set `complete: true` only when: both candidate lists were fully examined, every candidate is included or deliberately classified on the Skipped list, and the content and technical checks completed with no new findings. Unresolved or deferred user-facing changes, unavailable source, or a gap before this range keep it false. A deliberately excluded internal change is accounted for; an unverified feature is not. An explicit initial baseline may start a new checkpoint, with the earlier-coverage limitation reported at hand-off.
+Set `complete: true` only when: both candidate lists were fully examined, every candidate is included or deliberately classified on the Skipped list, and the content and technical checks completed with no new findings. Unresolved or deferred user-facing changes or unavailable source keep it false; a record from an earlier week does not. A deliberately excluded internal change is accounted for; an unverified feature is not. An explicit initial baseline may start a new checkpoint, with the earlier-coverage limitation reported at hand-off.
 
-On a later run, an incomplete record does not advance the starting point, so deferred changes stay in the next range. With no complete record, resume from the published incomplete record's `from` SHAs (not its `to`); with several incomplete records, use the earliest `from` in each repository's ancestry so no unresolved interval is dropped, and resolve inconsistent ranges first. Choosing a later baseline requires the user's explicit decision to abandon the unresolved interval; report the excluded ranges rather than treating those commits as reviewed.
+On a later run, always start from the latest published record's `to` SHAs, even when that record is `complete:false`; never carry an older record's `from` forward. A change an earlier entry deferred is not lost: the run that deferred it lists it on its Skipped list or in its PR description, so it can be announced later from that note. If a `from` fails the ancestry check, report the boundary error rather than substituting an older SHA.
 
 Recheck duplicates against all entries published since the selected starting point, and never mark a later checkpoint complete while an earlier deferred candidate in its range is unresolved. Preserve the ranges when revising wording; if the research scope changes, update the metadata and repeat verification. A local draft does not advance the published checkpoint. The metadata stays inside the one permitted changelog block.

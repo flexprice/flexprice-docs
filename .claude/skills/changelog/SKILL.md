@@ -24,7 +24,7 @@ Writes the weekly entry into `docs/changelog.mdx` while a person is present to a
 | Input | Default |
 |---|---|
 | `UNTIL` | today (`date -u +%F`); each range ends at the fetched tip |
-| Starting SHAs | backend and frontend `to` values of the latest completed coverage record on docs `upstream/main` |
+| Starting SHAs | backend and frontend `to` values of the latest published coverage record on docs `upstream/main`, complete or not |
 | `SINCE` | unset; a user-supplied date is only for an initial baseline or a bounded historical request |
 | `LABEL` | first Monday on or after `UNTIL` as `Month Xth YYYY` (entries publish on Mondays) |
 | `BRANCH` | `changelog/<LABEL with hyphens>`, e.g. `changelog/September-13th-2026` |
@@ -41,15 +41,15 @@ Use an explicit user range when supplied; otherwise continue from the recorded c
 
 ## Prepare the repos
 
-Sibling checkouts `../flexprice` and `../flexprice-front` must exist. If one is missing, offer `git clone https://github.com/flexprice/<repo> ../<repo>`; clone only after a yes, stop on a no. Never write the entry from commit titles, PR pages, or memory in place of source.
+Sibling checkouts `../flexprice` and `../portal` must exist. If one is missing, offer `git clone https://github.com/flexprice/<repo> ../<repo>`; clone only after a yes, stop on a no. Never write the entry from commit titles, PR pages, or memory in place of source.
 
 ```bash
 git remote get-url upstream >/dev/null 2>&1 || git remote add upstream https://github.com/flexprice/flexprice-docs
 git -C ../flexprice remote get-url upstream >/dev/null 2>&1       || git -C ../flexprice remote add upstream https://github.com/flexprice/flexprice
-git -C ../flexprice-front remote get-url upstream >/dev/null 2>&1 || git -C ../flexprice-front remote add upstream https://github.com/flexprice/flexprice-front
+git -C ../portal remote get-url upstream >/dev/null 2>&1 || git -C ../portal remote add upstream https://github.com/flexprice/portal
 git fetch upstream
 git -C ../flexprice fetch upstream
-git -C ../flexprice-front fetch upstream
+git -C ../portal fetch upstream
 ```
 
 **Stop** if any fetch fails. Capture the full backend, frontend, and docs `upstream/main` SHAs (docs is `DOCS_SHA`), then resolve and freeze the ranges per `references/coverage.md`. All later source reads use the captured SHAs, even if a remote ref moves.
