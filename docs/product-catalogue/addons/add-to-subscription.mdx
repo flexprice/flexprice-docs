@@ -76,7 +76,7 @@ curl -X POST https://us.api.flexprice.io/v1/subscriptions/<subscription_id>/modi
   }'
 ```
 
-Run the same body against [`/modify/preview`](/api-reference/subscriptions/preview-subscription-modification) first to see the resulting line items, invoice, or credit without writing anything. In a preview, new associations and line items carry the ID `(preview-created)`, and the invoice or wallet credit carries `(preview-invoice)` or `(preview-wallet-credit)` with `status: "preview"`. Previews quote the addon's list prices and default quantities; `override_line_items` are applied only on execute.
+Run the same body against [`/modify/preview`](/api-reference/subscriptions/preview-subscription-modification) first to see the resulting line items, invoice, or credit without writing anything. In a preview, new associations and line items carry the ID `(preview-created)`, and the invoice or wallet credit carries `(preview-invoice)` or `(preview-wallet-credit)` with `status: "preview"`. Previews, including bulk and grouped previews, quote the price and quantity overrides in `override_line_items`.
 
 The execute response reports everything the change touched, with one `addon_associations` entry per attach:
 
@@ -124,7 +124,7 @@ Each entry in `adds` takes:
 | `start_date` | timestamp | No | When the addon starts. Defaults to now. Mutually exclusive with `change_at`. |
 | `change_at` | string | No | `immediate`, or `end_of_period` for the current period end, as an alternative to an explicit `start_date` |
 | `override_line_items` | array | No | Per-charge overrides: each entry takes a `price_id` plus `quantity`, `amount`, `billing_model`, or tier changes, the same shape as [subscription override line items](/docs/subscriptions/override-line-items) |
-| `line_item_commitments` | object | No | Map keyed by `price_id` setting `commitment_amount` or `commitment_quantity`, `overage_factor`, and `enable_true_up` on the addon's usage charges. See [Commitment](/docs/subscriptions/commitment/overview). A subscription-level commitment and line-item commitments cannot be combined. |
+| `line_item_commitments` | object | No | Deprecated but still accepted. Map keyed by `price_id` setting `commitment_amount` or `commitment_quantity`, `overage_factor`, and `enable_true_up` on the addon's usage charges. Use `POST /commitments` for new commitments. See [Commitment](/docs/subscriptions/commitment/overview). A subscription-level commitment and line-item commitments cannot be combined. |
 | `metadata` | object | No | Stored on the association |
 
 To gate a change behind a payment, add a `checkout` object at the top level of the modification request, next to `type` and `addon_bulk_params`; it is not a field of an attach entry. See [payment-gated addon changes](#payment-gated-addon-changes).

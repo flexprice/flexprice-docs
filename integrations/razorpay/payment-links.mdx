@@ -211,6 +211,9 @@ When a payment is completed, Razorpay sends a `payment.captured` webhook:
 | "Invoice already paid" | Invoice status issue | Check invoice payment status |
 | "Amount below minimum" | Below currency minimum | Ensure amount meets minimum (₹1.00 for INR, $0.01 for USD) |
 | "Razorpay link creation failed" | API error | Check Razorpay connection |
+| `Razorpay rejected the payment link: <message>` (400) | Razorpay rejects link creation with a nonempty error message | Correct the issue in Razorpay's message and retry |
+
+When link creation fails during checkout, the session stores the rejection reason in `failure_reason`. This differs from a declined payment on an existing link, which remains available for retry.
 
 ### Payment Failure Handling
 
