@@ -9,7 +9,7 @@ Anything you leave unset falls back to a default, so a tenant that has never tou
 
 ## Dashboard settings
 
-Click your email address at the bottom of the left navigation, select **Settings**, then go to **Customer experience** → **Portal**. The panel edits the same `customer_portal_config` setting that the API writes:
+Open the account menu at the bottom of the left navigation, select **Settings**, then go to **Customer experience** → **Portal**. The panel edits the same `customer_portal_config` setting that the API writes:
 
 | Setting | Controls |
 | ------- | -------- |
@@ -23,6 +23,8 @@ Click your email address at the bottom of the left navigation, select **Settings
 The top of the panel lists the **Tabs customers see**. Click **Save changes** to apply. Changes apply to every portal session opened in that environment from the next page load.
 
 The panel exposes the controls the hosted portal applies. Each tab keeps its own layout: you can hide its parts, but cannot rearrange those parts. See [What the portal applies](#what-the-portal-applies).
+
+Cost and margin show what it costs your business to serve the customer and the margin on that usage. They are off by default. Enable them only when you intend to share those figures with customers.
 
 Under **Usage properties**, turn on **Customers can group their usage by event property** to enable the hosted portal's grouping and filtering controls. This block is hidden while the Usage section is off. See [Usage by Properties](/docs/customers/customer-portal/usage-properties#turning-it-on). **Reset to defaults** turns usage properties off.
 
@@ -165,7 +167,7 @@ The hosted portal applies tab visibility, names and order, supported part contro
 
 * **Tabs can be renamed, reordered and hidden.** The standard tabs are Overview, Usage, Credits and Invoices. A missing section stays visible. If all sections are disabled, Overview remains as a fallback. Unknown section IDs, including the retired `payment_methods` section, do not create extra tabs.
 * **Parts can be hidden, not rearranged.** Overview supports the credit balance, payment methods and subscriptions. Usage supports the metric cards, usage graph, current usage and usage breakdown. Credits supports the wallet balance, auto top-up and transaction history. A supported part is visible by default when its configuration is missing; explicitly disable it to hide it.
-* **Metric card settings apply.** `show_revenue_metric` controls the spend summary, `show_custom_metrics` controls custom metrics, and `show_cost_metrics` exposes cost and margin metrics. Keep cost metrics off for customer-facing portals unless you intend to share those numbers.
+* **Metric card settings apply.** `show_revenue_metric` controls the spend summary, `show_custom_metrics` controls custom metrics, and `show_cost_metrics` exposes cost and margin metrics. Custom metric cards appear when the API returns custom metrics for the selected period. Keep cost metrics off for customer-facing portals unless you intend to share those numbers.
 * **Usage graph settings apply.** The first `usage_graph` configuration sets the available date presets, the default preset and custom-date access. With no recognized presets, every preset is offered. `feature_filter_mode` does not change the hosted portal.
 * **Usage properties control grouping and filtering.** The server applies the enabled flag and key lists in `analytics_config.usage_properties`.
 * **`primary_color` is the brand color.** See [Theming](#theming).

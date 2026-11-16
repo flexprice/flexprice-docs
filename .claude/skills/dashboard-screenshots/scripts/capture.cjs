@@ -2,14 +2,14 @@
 // in headless Chrome against the mock API in mock-api.cjs.
 //
 // Usage: node capture.cjs <scenario.cjs> <out-dir>
-// Env:   FLEXPRICE_FRONT  frontend repo (default: flexprice-front next to the docs repo)
+// Env:   PORTAL  frontend repo (default: portal next to the docs repo)
 //        APP_URL          running frontend (default: http://localhost:3100)
 const fs = require('fs');
 const path = require('path');
 const { EXAMPLE, createMockApi, listResponse } = require('./mock-api.cjs');
 
 const DOCS_ROOT = path.resolve(__dirname, '../../../..');
-const FRONT = process.env.FLEXPRICE_FRONT || path.resolve(DOCS_ROOT, '../flexprice-front');
+const FRONT = process.env.PORTAL || path.resolve(DOCS_ROOT, '../portal');
 const APP_URL = (process.env.APP_URL || 'http://localhost:3100').replace(/\/$/, '');
 const [scenarioArg, outArg] = process.argv.slice(2);
 
@@ -21,9 +21,9 @@ function fail(message) {
 if (!scenarioArg || !outArg) fail('usage: node capture.cjs <scenario.cjs> <out-dir>');
 let playwright;
 try {
-	playwright = require(path.join(FRONT, 'node_modules/@playwright/test'));
+	playwright = require(path.join(FRONT, 'apps/console/node_modules/@playwright/test'));
 } catch {
-	fail(`Playwright not found in ${FRONT}/node_modules. Run: cd ${FRONT} && HUSKY=0 npm ci`);
+	fail(`Playwright not found in ${FRONT}/node_modules. Run: cd ${FRONT} && HUSKY=0 pnpm install --frozen-lockfile`);
 }
 const scenario = require(path.resolve(scenarioArg));
 const OUT = path.resolve(outArg);
@@ -55,6 +55,8 @@ async function scrollPageToTop(page) {
 
 const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+const KNOWN_PORTAL_WARNINGS = ['Encountered a script tag while rendering React component.'];
+
 (async () => {
 	try {
 		await fetch(APP_URL);
@@ -67,27 +69,38 @@ const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 	const routes = typeof scenario.routes === 'function' ? scenario.routes({ listResponse, example: EXAMPLE }) : scenario.routes;
 	const mock = createMockApi({ appOrigin: new URL(APP_URL).origin, routes, connections: scenario.connections });
 	const consoleErrors = [];
+	const ignoredWarnings = [];
+	let page;
 	const written = [];
 	// Mapping the API host to a closed local port means a request that slips past the mocks
 	// fails instead of reaching the real API.
 	const browser = await playwright.chromium.launch({
-		channel: 'chrome',
 		headless: true,
 		args: [`--host-resolver-rules=MAP ${EXAMPLE.apiHost} 127.0.0.1:9`],
 	});
 	try {
-		const context = await browser.newContext({ viewport: scenario.viewport || { width: 1470, height: 940 }, deviceScaleFactor: 2 });
+		const context = await browser.newContext({ serviceWorkers: 'block', viewport: scenario.viewport || { width: 1470, height: 940 }, deviceScaleFactor: 2 });
 		await context.addInitScript(
 			({ user, environmentId }) => {
-				localStorage.setItem('token', JSON.stringify({ token: 'docs-preview-token', user }));
-				localStorage.setItem('active_environment_id', environmentId);
-				localStorage.setItem('flexprice_theme', 'light');
+				localStorage.setItem('flexprice.session', JSON.stringify({ token: 'docs-preview-placeholder', userId: user.id, tenantId: user.tenant.id }));
+				localStorage.setItem('flexprice.environment', environmentId);
+				localStorage.setItem('fp.changelog.dismissed', JSON.stringify(['2026-11-console-walkthrough']));
+				localStorage.setItem('theme', 'light');
 			},
 			{ user: mock.user, environmentId: EXAMPLE.environmentId },
 		);
-		await context.route(`https://${EXAMPLE.apiHost}/**`, mock.handle);
-		const page = await context.newPage();
-		page.on('console', (m) => m.type() === 'error' && consoleErrors.push(m.text().slice(0, 300)));
+		await context.route('**/*', async (route) => {
+			const url = new URL(route.request().url());
+			if (url.origin === new URL(APP_URL).origin) return route.continue();
+			if (url.hostname === EXAMPLE.apiHost) return mock.handle(route);
+			return route.abort('blockedbyclient');
+		});
+		page = await context.newPage();
+		page.on('console', (m) => {
+			if (m.type() !== 'error') return;
+			const message = m.text();
+			(KNOWN_PORTAL_WARNINGS.some((prefix) => message.startsWith(prefix)) ? ignoredWarnings : consoleErrors).push(message);
+		});
 		page.on('pageerror', (e) => consoleErrors.push('pageerror: ' + String(e).slice(0, 300)));
 		page.on('requestfailed', (r) => r.url().includes(EXAMPLE.apiHost) && consoleErrors.push(`requestfailed: ${r.method()} ${r.url()}`));
 
@@ -100,9 +113,9 @@ const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 			},
 			drawer: () => page.getByRole('dialog'),
 			scrollDrawer: (where) => scrollWithin(page.getByRole('dialog'), where),
-			// The input that follows a label, for fields that have no placeholder.
+			// Portal form controls expose accessible names, including FormRow's aria-label.
 			field: (scope, label) =>
-				scope.getByText(label, { exact: true }).first().locator('xpath=following::*[self::input or self::textarea][1]'),
+				scope.getByRole('textbox', { name: label, exact: true }),
 			async turnOnSwitches(scope = page) {
 				for (const sw of await scope.getByRole('switch').all()) {
 					if ((await sw.getAttribute('aria-checked')) !== 'true') await sw.click();
@@ -118,10 +131,9 @@ const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 			// shot('name', { clipTo: locator })  from the top of the page down to that element
 			// shot('name', { fitTo: locator })   a whole page taller than the window: everything is
 			//   scrolled to the top and the window ends 64px below that element (a form's Save button)
-			// shot('name', { fitDrawer: true })  the whole open drawer: the window grows until the
-			//   drawer stops scrolling, plus room for the debug menu button that development
-			//   environments show at the bottom right
+			// shot('name', { fitDrawer: true })  grows the window to fit the open sheet
 			async shot(name, { clipTo, padding = 16, fitDrawer = false, fitTo } = {}) {
+				for (const close of await page.getByRole('button', { name: 'Close toast', exact: true }).all()) await close.click();
 				const file = path.join(OUT, name + '.png');
 				const before = page.viewportSize();
 				const resized = fitDrawer || !!fitTo;
@@ -161,8 +173,13 @@ const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 	} catch (e) {
 		process.exitCode = 1;
 		console.log('SCENARIO FAILED: ' + String(e).slice(0, 800));
+		if (page) {
+			await page.screenshot({ path: path.join(OUT, 'failure.png'), fullPage: true });
+			fs.writeFileSync(path.join(OUT, 'failure-aria.txt'), await page.locator('body').ariaSnapshot());
+		}
 	} finally {
 		await browser.close();
+		if (consoleErrors.length) process.exitCode = 1;
 		console.log('Screenshots:\n  ' + (written.join('\n  ') || '(none)'));
 		console.log('API calls:\n  ' + [...new Set(mock.calls)].join('\n  '));
 		console.log(
@@ -170,5 +187,6 @@ const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 				([...mock.defaulted].join('\n  ') || '(none)'),
 		);
 		console.log('Console errors:\n  ' + ([...new Set(consoleErrors)].join('\n  ') || '(none)'));
+		console.log('Ignored known portal warnings:\n  ' + ([...new Set(ignoredWarnings)].join('\n  ') || '(none)'));
 	}
 })();

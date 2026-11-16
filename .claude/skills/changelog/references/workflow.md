@@ -1,6 +1,6 @@
 # Changelog workflow (shared core)
 
-Content steps for the weekly entry. The wrapper that loaded this file has already resolved `UNTIL`, `LABEL`, and the range request, prepared `../flexprice` and `../flexprice-front` with an `upstream` remote, and defined **Stop** (tell the user why and end the turn). The wrapper owns questions, branches, commits, and PRs, and chooses the branch between Part 1 and Part 2.
+Content steps for the weekly entry. The wrapper that loaded this file has already resolved `UNTIL`, `LABEL`, and the range request, prepared `../flexprice` and `../portal` with an `upstream` remote, and defined **Stop** (tell the user why and end the turn). The wrapper owns questions, branches, commits, and PRs, and chooses the branch between Part 1 and Part 2.
 
 Part 1 only reads. Part 2 changes exactly one file, `docs/changelog.mdx`.
 
@@ -9,7 +9,7 @@ Part 1 only reads. Part 2 changes exactly one file, `docs/changelog.mdx`.
 | Repo | Path |
 |---|---|
 | Backend (Go: Gin, Ent, Temporal, Kafka, ClickHouse) | `../flexprice` |
-| Frontend (React + Vite + TypeScript dashboard) | `../flexprice-front` |
+| Frontend (`flexprice/portal`: pnpm + Nx monorepo, console app in `apps/console`) | `../portal` |
 | Docs (Mintlify MDX; the changelog is `docs/changelog.mdx`) | `.` |
 
 - Run from the docs root and use `git -C <path>`; never `cd` (shell state does not persist between commands).
@@ -31,7 +31,7 @@ git -C <repo> log --format="%H %cI %s" "<FROM>..<TO>"                  # all new
 
 Never apply `--since`, `--until`, or `--no-merges` to the only candidate list: work promoted from `develop` carries old commit dates, and an early date is never a reason to skip a newly reachable commit. Inspect promotion diffs against their first parents for merge-only changes.
 
-A squashed frontend promotion (`D2M (#1448)`, `Develop (#1443)`, `Release 2026-09-23 (#1435)`) bundles several PRs: read its body with `git -C ../flexprice-front show -s --format=%B <sha>` and treat each listed PR as a candidate. Bundle bodies repeat PR numbers within a range and across weeks; an earlier mention is a lead for comparison, not proof the current promotion adds nothing. Before deduplicating a repeated PR, diff the affected paths in each candidate promotion against its first parent (`git -C <repo> diff "<SHA>^1" "<SHA>" -- <paths>`) and compare behavior at `FROM` and `TO`. Deduplicate the verified change, not the PR number: keep genuine restorations after a revert, extensions, and reversals. Omit a repeat only with recorded promotion/path evidence and a reason on the Skipped list; if its scope is uncertain, keep it unresolved.
+A squashed frontend promotion (`D2M (#1448)`, `Develop (#1443)`, `Release 2026-09-23 (#1435)`) bundles several PRs: read its body with `git -C ../portal show -s --format=%B <sha>` and treat each listed PR as a candidate. Bundle bodies repeat PR numbers within a range and across weeks; an earlier mention is a lead for comparison, not proof the current promotion adds nothing. Before deduplicating a repeated PR, diff the affected paths in each candidate promotion against its first parent (`git -C <repo> diff "<SHA>^1" "<SHA>" -- <paths>`) and compare behavior at `FROM` and `TO`. Deduplicate the verified change, not the PR number: keep genuine restorations after a revert, extensions, and reversals. Omit a repeat only with recorded promotion/path evidence and a reason on the Skipped list; if its scope is uncertain, keep it unresolved.
 
 Read both lists to the end; never pipe through `head` (one promotion can bring hundreds of commits). If a list overflows one tool result, redirect it to a scratch file and read it in parts.
 
@@ -71,7 +71,7 @@ git -C <repo> ls-tree -r --name-only <TO_SHA>
 git -C <repo> show "<TO_SHA>:<path>"
 ```
 
-Where to look: backend `internal/api/` (handlers, request/response structs), `internal/service/` and `internal/ee/service/` (business logic), `internal/domain/` (models, enums), `ent/schema/` (DB schema), `internal/temporal/` (workflows); frontend `src/pages/`, `src/components/`, `src/api/`; docs repo `docs/` and `images/docs/`.
+Where to look: backend `internal/api/` (handlers, request/response structs), `internal/service/` and `internal/ee/service/` (business logic), `internal/domain/` (models, enums), `ent/schema/` (DB schema), `internal/temporal/` (workflows); frontend `apps/console/src/` (routes, wiring), `packages/ui/src/` (pages, components), `packages/query/src/` and `packages/api/src/` (data layer), `packages/domain/src/` (types); docs repo `docs/` and `images/docs/`.
 
 - Inspect a screenshot in `images/docs/` before using it in a `<Frame>`; it must depict the stated UI.
 - Read the relevant guide section before adding a `<Card>`; omit stale or unrelated targets.

@@ -72,7 +72,7 @@ function createMockApi({ appOrigin, routes = [], connections = [] }) {
 	const calls = [];
 	const defaulted = new Set();
 	const user = exampleUser();
-	const environment = { id: EXAMPLE.environmentId, name: EXAMPLE.environmentName, type: 'development', created_at: EXAMPLE.now, updated_at: EXAMPLE.now };
+	const environment = { id: EXAMPLE.environmentId, name: EXAMPLE.environmentName, type: 'sandbox', created_at: EXAMPLE.now, updated_at: EXAMPLE.now };
 	const cors = {
 		'access-control-allow-origin': appOrigin,
 		'access-control-allow-headers': '*',
@@ -99,7 +99,11 @@ function createMockApi({ appOrigin, routes = [], connections = [] }) {
 			if ((r.method || 'GET') === method && pathMatches) return reply(await r.respond({ url, body, state, listResponse, example: EXAMPLE }));
 		}
 
+		if (path === '/billing-entities/status') return reply({ mode: 'off' });
+		if (path === '/portal/billing/status') return reply({ enabled: false });
+		if (path.startsWith('/settings/')) return reply({ key: path.split('/').pop(), value: {} });
 		if (path === '/users/me') return reply(user);
+		if (path === `/tenants/${EXAMPLE.tenantId}`) return reply(user.tenant);
 		if (path.startsWith('/rbac/roles')) return reply({ roles: [{ id: 'super_admin', name: 'Super Admin', description: 'Full access', permissions: { '*': ['*'] } }] });
 		if (path === '/environments' && method === 'GET') return reply({ environments: [environment], total: 1, limit: 50, offset: 0 });
 		if (path === `/environments/${EXAMPLE.environmentId}`) return reply(environment);
