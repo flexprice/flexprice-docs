@@ -4,6 +4,90 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="November 16th 2026">
+  {/* changelog-coverage: {"version":1,"complete":true,"backend":{"from":"1eb798226482cf9a2245a908bfa966605f040db8","to":"b6f8bfb82f41f8892480f3424370b3222cefe50c"},"frontend":{"from":"66e5c0e48a8d7ab2e0528effd95c67af3b5a4f5c","to":"c756fc06a19e76bfa42fdf75b140289ae58fb097"}} */}
+
+  ## Commitments in every environment
+
+  The Commitments API no longer needs the `commitments_v2` setting. Creating, previewing and terminating commitments, billing terms and instalment triggers now work in every environment, and the setting is removed.
+
+  * **Legacy commitment fields**: The older commitment fields on subscriptions, line items and addons are still accepted, but they are deprecated in favor of `POST /commitments`
+  * **One kind per line**: A line covered by a commitment can't also take legacy commitment fields, and a commitment can't cover a line that already has them. This now applies in every environment
+  * **UTC windows**: Active windows are read in UTC, and a commitment sent with a timezone other than UTC is rejected
+
+  <Card icon="book-open" horizontal={true} href="/docs/subscriptions/commitment/overview" title="Commitments - Documentation" />
+
+  <br />
+
+  ## Grace period and auto-cancellation per customer or subscription
+
+  A customer or a subscription can now override the environment's grace period and auto-cancellation, for example to give one client more time to pay than the rest.
+
+  * **Set it**: Send `settings.subscription_config` with `grace_period_days` or `auto_cancellation_enabled` on `POST /customers`, `PUT /customers/{id}`, `POST /subscriptions` and `PUT /subscriptions/{id}`. Send `{}` to go back to the environment settings
+  * **Precedence**: Each field resolves on its own, from the environment, then the customer, then the subscription. An override of `grace_period_days: 0` cancels once the invoice is past due
+  * **Where it applies**: Overdue marking and auto-cancellation read the overrides on every run, a plan change keeps them, and customers can't change them through the customer portal
+
+  <Card icon="book-open" horizontal={true} href="/docs/settings/settings" title="Settings - Documentation" />
+
+  <br />
+
+  ## Failed auto-charge webhook
+
+  A new `invoice.payment.failed` webhook tells you when Flexprice could not automatically charge an invoice through Razorpay for a subscription that collects automatically.
+
+  * **Reasons**: `reason` is `payment_method_unavailable` when the customer has no saved Razorpay payment method and the invoice is sent for payment as usual, `provider_error` when Razorpay rejects the charge, and `declined` when Razorpay reports the payment failed
+  * **Payload**: The event carries the `invoice`, `provider`, `reason` and `is_auto_charge_attempt`, plus `payment_id` and `error` when a payment was attempted
+
+  <Card icon="book-open" horizontal={true} href="/docs/webhook/webhooks" title="Webhooks - Documentation" />
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * A fixed price created without `start_date` now starts on January 1, 2000 instead of the moment it is created, and the price response's `warnings` says the default was applied. Usage prices still start when they are created
+      * Usage analytics show how much of a commitment's prepaid quantity was used, not only its amount, and leave out commitment fields that don't apply to the commitment type
+      * Customer portal settings in the dashboard can rename a portal tab and choose which date ranges the Usage page offers
+      * Settings in the dashboard have new screens for invoice PDFs and draft recompute, wallet top-ups and payment mandate limits, alerts, and event ingestion and analytics
+      * Plans have a Price sync tab that lists the plan's price sync runs
+      * The invoice list filters by amount and amount due, and shows invoice and due dates in UTC
+      * Paying an invoice, buying credits or adding a card in the customer portal happens in the same tab and returns to it
+      * Saving a customer the API refuses points to the field and says why
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Pushing a record to one integration from the dashboard syncs it only to that connection, instead of every connected provider
+      * Connecting a Zoho Books organization in a data center outside the US no longer fails with "refresh token missing"
+      * A contract can start on any past day. The dashboard no longer limits the start date to the last 90 days
+      * Cancelling a grouped invoicing parent also cancels its active and trialing children, and bills them on the parent's final invoice
+      * Finalizing a subscription cycle draft that was never computed computes it first, instead of issuing a $0 invoice
+      * Addon attach previews, including bulk and grouped ones, quote price overrides instead of the catalog price
+      * Plan and addon price syncs started with an API key now run, and workflow details return 404 once the run has expired
+      * Razorpay payment link rejections at checkout return 400 with Razorpay's reason, which is also saved as the checkout session's `failure_reason`
+      * A commitment usage bucket cut by a billing period edge is billed once, in the period that holds its end
+      * Terminating a commitment no longer bills an advance instalment that falls due exactly at the termination
+      * Voiding an invoice no longer puts back on schedule the instalments a commitment termination cancelled
+      * Prorated commitment capacity no longer carries floating-point noise into commitment values and invoice quantities
+      * A saved customer's external ID is shown read-only on the edit page
+    </Accordion>
+
+    <Accordion title="Security">
+      * `golang.org/x/net` is updated to v0.62.0 for CVE-2026-78661
+    </Accordion>
+
+    <Accordion title="API">
+      * The `commitments_v2` setting is removed, and the Commitments API works without it
+      * Legacy commitment fields on subscriptions, line items and addons are deprecated in favor of `POST /commitments`
+      * `settings.subscription_config` is accepted on `POST /customers`, `PUT /customers/{id}`, `POST /subscriptions` and `PUT /subscriptions/{id}`
+      * `invoice.payment.failed` is a new webhook event
+      * `connection_id` on `POST /integrations/sync` limits a sync to one connection
+      * Price responses can include `warnings`
+      * The `schedule-update-billing-period` and `schedule-draft-finalization` endpoints are removed. Those schedules are managed automatically
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
 <Update label="November 9th 2026">
   {/* changelog-coverage: {"version":1,"complete":false,"backend":{"from":"31421e9ff62d00a9f4cdded11d0aad5d32a22f4a","to":"1eb798226482cf9a2245a908bfa966605f040db8"},"frontend":{"from":"f00ba7c9a3e281d280b074cf01531a459f659f62","to":"5db1aa60b53401bad8c6dfd36b83a3a53f52573b"}} */}
 
