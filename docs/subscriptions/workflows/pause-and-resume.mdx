@@ -13,23 +13,25 @@ Pausing a subscription stops billing without cancelling it. Flexprice invoices t
 
 Only an `active` subscription can be paused.
 
+In the dashboard, subscriptions are called **contracts**. **Pause contract** is not offered for inherited or grouped-invoicing contracts, or contracts with a cancellation scheduled. To pause an inherited or grouped-invoicing contract, open its parent contract instead. Actions that change a contract require write access to subscriptions.
+
 <Tabs>
   <Tab title="Dashboard">
     <Steps>
       <Step title="Open the subscription">
-        Go to **Customers**, select the customer, and find the active subscription under **Subscriptions**.
+        Go to **Customers**, select the customer, and find the active contract in the **Contracts** card.
       </Step>
 
-      <Step title="Choose Pause Subscription">
-        Open the options menu (⋮) next to the subscription and select **Pause Subscription**.
+      <Step title="Choose Pause contract">
+        Open the **⋯** menu beside the contract and select **Pause contract**. You can also open the contract and use its header menu.
       </Step>
 
       <Step title="Choose the proration behavior">
-        Choose **None** or **Create prorations** under **Proration Behavior**, and optionally enter a **Reason**.
+        Turn on **Credit the unused part of this period** to send `proration_behavior: create_prorations`. Leave it off (the default) to send `none`. Optionally enter a **Reason (optional)**.
       </Step>
 
       <Step title="Confirm">
-        Click **Yes, Pause**. The subscription status changes to **Paused**.
+        Click **Pause contract**. After a successful pause, the contract status changes to **Paused**.
       </Step>
     </Steps>
   </Tab>
@@ -74,19 +76,19 @@ The `proration_behavior` you send with the pause applies only to this invoice. T
   <Tab title="Dashboard">
     <Steps>
       <Step title="Open the subscription">
-        Go to **Customers**, select the customer, and find the paused subscription under **Subscriptions**.
+        Go to **Customers**, select the customer, and find the paused contract in the **Contracts** card.
       </Step>
 
-      <Step title="Choose Resume Subscription">
-        Open the options menu (⋮) next to the subscription and select **Resume Subscription**.
+      <Step title="Choose Resume contract">
+        Open the **⋯** menu beside the contract and select **Resume contract**. You can also open the contract and use its header menu.
       </Step>
 
       <Step title="Choose the proration behavior">
-        **Proration Behavior** shows the subscription's current setting. Change it to **None** or **Create prorations** if needed.
+        Turn on **Charge for the rest of this period** to send `proration_behavior: create_prorations`. Leave it off (the default) to send `none`. The dashboard always sends this choice rather than keeping the subscription's current setting.
       </Step>
 
       <Step title="Confirm">
-        Click **Yes, Resume**. The subscription status changes to **Active**.
+        Click **Resume contract**. After a successful resume, the contract status changes to **Active**.
       </Step>
     </Steps>
   </Tab>
