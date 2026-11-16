@@ -1,7 +1,7 @@
 // Worked example: a list page plus a full-page create form. Shows the Features list with one
 // feature of each basic type, then the Create Feature page filled in with the metered example
 // from docs/product-catalogue/features (event tokens_total, SUM of tokens).
-// Produces features-list and create-feature.
+// Produces features-list and feature-create-form.
 module.exports = {
 	routes: ({ listResponse, example }) => {
 		const feature = (n, name, type, updatedAt, extra = {}) => ({
@@ -25,31 +25,24 @@ module.exports = {
 		});
 		// Newest first, matching the list's default sort (Updated at, descending).
 		const features = [
-			feature(1, 'API Calls', 'metered', '2026-09-23T10:00:00Z', { meter_id: 'meter_docs_1', unit_singular: 'call', unit_plural: 'calls' }),
+			feature(1, 'API Calls', 'metered', '2026-09-23T10:00:00Z', { meter_id: 'meter_docs_1', meter: { id: 'meter_docs_1', event_name: 'api_request', aggregation: { type: 'COUNT' } }, unit_singular: 'call', unit_plural: 'calls' }),
 			feature(2, 'SAML SSO Authentication', 'boolean', '2026-09-18T10:00:00Z'),
 			feature(3, 'Priority Support', 'static', '2026-09-10T10:00:00Z'),
 		];
 		return [{ method: 'POST', path: '/features/search', respond: () => listResponse(features) }];
 	},
 
-	async run({ goto, page, choose, shot }) {
-		await goto('/product-catalog/features');
+	async run({ goto, page, field, choose, shot }) {
+		await goto('/features');
 		await page.getByText('Priority Support', { exact: true }).first().waitFor({ timeout: 60000 });
 		await shot('features-list');
-
-		// "Create Feature" is only the empty-state label; with features listed the button is "Add".
-		// Create Feature opens a full page, not a drawer.
-		await page.getByRole('button', { name: 'Add', exact: true }).click();
-		await page.getByText('Create Feature', { exact: true }).first().waitFor();
-		await page.getByPlaceholder('Enter a name for the feature').fill('GPT Tokens');
-		await choose(page, 'Type', 'Metered');
-		// Unit names sit behind a button; typing the singular fills in the plural.
-		await page.getByRole('button', { name: 'Unit Name', exact: true }).click();
-		await page.getByPlaceholder('millisecond', { exact: true }).fill('token');
-		await page.getByPlaceholder('tokens_total').fill('tokens_total');
-		await page.getByPlaceholder('tokens', { exact: true }).fill('tokens');
-
-		// The form is taller than the window, so size the window to end just below Save.
-		await shot('create-feature', { fitTo: page.getByRole('button', { name: 'Save', exact: true }) });
+		await page.getByRole('button', { name: 'New feature', exact: true }).click();
+		await field(page, 'Name').waitFor();
+		await field(page, 'Name').fill('GPT Tokens');
+		await page.getByRole('radio', { name: /Metered/ }).check();
+		await field(page, 'Event name').fill('tokens_total');
+		await choose(page, 'Aggregation', 'Sum');
+		await field(page, 'Event field').fill('tokens');
+		await shot('feature-create-form', { fitTo: page.locator('form') });
 	},
 };

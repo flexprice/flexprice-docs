@@ -1,8 +1,8 @@
 // Worked example: a data page. Shows the Customers list filled with example customers, then
-// the Create Customer drawer captured whole. Produces customers-list and create-customer.
+// the Create customer form captured whole. Produces customers-list and customer-create-form.
 //
 // The pattern for any page that lists data: find the call in the capture report's "API calls",
-// look up the response shape in flexprice-front/src/api and src/types/dto, and answer it here.
+// look up the response shape in portal/packages/query and packages/api, and answer it here.
 module.exports = {
 	routes: ({ listResponse, example }) => {
 		const customer = (n, name, email, externalId) => ({
@@ -33,19 +33,17 @@ module.exports = {
 		return [{ method: 'POST', path: '/customers/search', respond: () => listResponse(customers) }];
 	},
 
-	async run({ goto, page, drawer, field, shot }) {
-		await goto('/billing/customers');
+	async run({ goto, page, field, shot }) {
+		await goto('/customers');
 		await page.getByText('Northwind Traders').first().waitFor({ timeout: 60000 });
 		await shot('customers-list');
 
-		// "Create Customer" is only the empty-state label; with customers listed the button is "Add".
-		await page.getByRole('button', { name: 'Add', exact: true }).click();
-		const d = drawer();
-		await d.getByText('Add Customer').first().waitFor();
-		// field() finds the input after a label, which works whether or not the input has a placeholder.
+		await page.getByRole('button', { name: 'New customer', exact: true }).click();
+		const d = page;
+		await field(d, 'Name').waitFor();
 		await field(d, 'Name').fill('Hooli');
 		await field(d, 'External ID').fill('hooli');
-		await field(d, 'Email (Optional)').fill('billing@hooli.example.com');
-		await shot('create-customer', { fitDrawer: true });
+		await field(d, 'Email').fill('billing@hooli.example.com');
+		await shot('customer-create-form', { fitTo: page.getByRole('button', { name: 'Create customer', exact: true }) });
 	},
 };
