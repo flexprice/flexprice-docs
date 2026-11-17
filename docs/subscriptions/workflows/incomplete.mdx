@@ -126,6 +126,8 @@ An incomplete subscription does not expire. It stays `incomplete` until the invo
 - **Cancel it:** call [Cancel subscription](/api-reference/subscriptions/cancel-subscription). An incomplete subscription can be cancelled like any other.
 - **Cancel it automatically:** enable `auto_cancellation_enabled` in the [`subscription_config` setting](/docs/settings/settings). Flexprice cancels subscriptions whose invoices are still unpaid `grace_period_days` after the due date.
 
+If an overdue invoice has a charge in `PENDING` or `PROCESSING`, the auto-cancellation job skips it for that run and checks again on a later run after the charge settles. This gate is for an in-flight invoice charge, not every payment or invoice marked pending.
+
 <Note>
   Voiding the first invoice does not activate or cancel the subscription. It stays `incomplete`, so cancel it as well if the customer is not going ahead.
 </Note>

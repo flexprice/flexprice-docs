@@ -13,7 +13,7 @@ A Checkout Session represents a single payment attempt. Call `POST /v1/checkout/
 | `pending`   | Payment URL returned; awaiting customer payment              |
 | `completed` | Payment confirmed; subscription activated, invoice finalized |
 | `failed`    | Payment failed or provider cancelled the link                |
-| `expired`   | Session timed out without payment, or was cancelled          |
+| `expired`   | Session timed out or was canceled. An explicit cancellation also sets `cancelled_at`. |
 
 ## Create a Checkout Session
 
@@ -79,6 +79,8 @@ Redirect the customer to `payment_action.url`. Each session has its own link. Do
 | `cancel_url`                                              | No       | Where to redirect if the customer cancels.                                                                                                                 |
 | `idempotency_key`                                         | No       | Prevents duplicate sessions on retry. A duplicate key for an active session returns 409.                                                                   |
 
+All redirect URLs must be absolute HTTPS URLs. HTTP is accepted only for localhost.
+
 ## Other Checkout Actions
 
 Four more actions exist, but they are not created through this endpoint. Each is triggered by adding a `checkout` object to the endpoint that owns the change, so that Flexprice can compute the amount and defer the change itself:
@@ -131,12 +133,17 @@ Use this to confirm `checkout_status` on your redirect pages before showing the 
 
 Reading a session that is still `initiated` or `pending` checks it against the payment provider and completes it if the customer has already paid, so a late or dropped webhook does not leave a paying customer waiting. Gateway calls are debounced, so reading in a tight loop does not add load. Poll until `terminal` is `true`, waiting `next_poll_after_ms` between reads.
 
+A still-open session cannot complete after `expires_at`.
+
 | Field                | Description                                                                                                                                                                                                   |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `terminal`           | `true` once the session has finished (`completed`, `failed`, or `expired`). Poll on this rather than on the status set.                                                                                       |
 | `next_poll_after_ms` | Milliseconds to wait before the next read: `2000`, rising to `5000` after 30 seconds and `10000` after 2 minutes. `0` on finished sessions, list results, and webhook payloads. Stop polling on `terminal`, not on this value. |
 | `stale`              | `true` when this response is stored state that was not checked against the provider on this read: the check was debounced, the gateway did not answer, or no payment exists yet. Show "still checking" rather than a final result. |
 | `payment`            | The payment the session is waiting on, with its `id`, `status`, and `gateway`. Omitted when no payment has been created yet.                                                                                  |
+| `cancelled_at`       | The cancellation time, when the session was explicitly canceled.                                                                                                                                           |
+
+Terminal responses omit `payment_action`. A cancellation is represented by the `expired` status and `cancelled_at`, not by a separate checkout status.
 
 A declined payment does not fail the session. The payment link stays live so the customer can retry, and the session remains `pending` until the customer pays, the session reaches `expires_at`, or you [cancel it](#cancel-a-checkout-session).
 
@@ -152,7 +159,9 @@ curl -X POST https://us.api.flexprice.io/v1/checkout/sessions/<SESSION_ID>/cance
   -H "X-Environment-ID: <ENVIRONMENT_ID>"
 ```
 
-The response has the same shape as `GET /checkout/sessions/{id}`, with `terminal` set to `true`. An active session comes back as `expired`. A session that had already failed or expired is returned unchanged, so `checkout_status` can also be `failed`.
+The response has the same shape as `GET /checkout/sessions/{id}`, with `terminal` set to `true`. An active session comes back as `expired` and gets `cancelled_at`. A session that had already failed or expired is returned unchanged, so `checkout_status` can also be `failed`.
+
+Canceling an active session publishes both `checkout.session.expired` and `checkout.session.cancelled`. A session with a successful payment cannot be canceled before `expires_at`; completed sessions cannot be canceled.
 
 Cancelling releases whatever the session was holding:
 
@@ -165,7 +174,7 @@ Cleanup runs in a single transaction. If any step fails, nothing is changed and 
 
 | Session status               | Result                                                     |
 | ---------------------------- | ---------------------------------------------------------- |
-| `initiated`, `pending`       | Cleaned up and marked `expired`; `checkout.session.expired` fires |
+| `initiated`, `pending`       | Cleaned up and marked `expired`; `checkout.session.expired` and `checkout.session.cancelled` fire |
 | `failed`, `expired`          | Returned unchanged                                         |
 | `completed`                  | `400`: a completed session cannot be cancelled             |
 
@@ -179,7 +188,7 @@ curl -X DELETE https://us.api.flexprice.io/v1/checkout/sessions/<SESSION_ID> \
   -H "X-Environment-ID: <ENVIRONMENT_ID>"
 ```
 
-Deleting an active session first cancels it, releasing everything it holds exactly as `POST /checkout/sessions/{id}/cancel` does, and then archives it. Sessions already in a terminal state (`completed`, `failed`, `expired`) are archived as is. Use cancel instead of delete when you still want to read the session's final state afterwards.
+Deleting an active session runs expiry cleanup before archiving it. The endpoint returns `204 No Content`, not a final session state. Cleanup marks the session `expired` and publishes `checkout.session.expired`, but does not set `cancelled_at` or publish `checkout.session.cancelled`. Unlike `POST /checkout/sessions/{id}/cancel`, Delete does not run the paid-before-expiry guard. A session already in a terminal state (`completed`, `failed`, `expired`) is archived as is.
 
 ## Webhook events
 
@@ -191,6 +200,7 @@ Subscribe to these in **Developers > Webhooks** to drive fulfillment from your b
 | `checkout.session.completed` | Payment confirmed; subscription active, invoice finalized |
 | `checkout.session.failed`    | Payment failed or provider cancelled                      |
 | `checkout.session.expired`   | Session timed out without payment, or was cancelled       |
+| `checkout.session.cancelled` | An active session was explicitly canceled; its status remains `expired` |
 
 <Note>
   Safe to receive the same event twice. If your payment provider delivers
