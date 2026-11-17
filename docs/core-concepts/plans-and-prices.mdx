@@ -48,6 +48,12 @@ This [Create price](/api-reference/prices/create-price) body adds a usage charge
 }
 ```
 
+If you omit `start_date`, a `FIXED` price starts at `2000-01-01T00:00:00Z`, while a `USAGE` price starts at creation. The fixed price's create response includes this message in its `warnings` array:
+
+```text
+start_date not set; defaulted to 2000-01-01T00:00:00Z. Set start_date to control when the price takes effect.
+```
+
 - **`type`**
 
   `USAGE` charges for a metered feature: set `meter_id` to the feature's `meter_id`. `FIXED` charges a recurring or one-time fee, such as a platform fee or a per-seat fee, priced for the line item's quantity. That quantity starts at 1, or at `min_quantity` when you set one.
