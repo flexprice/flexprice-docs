@@ -47,6 +47,8 @@ graph TD
 INITIATED → PENDING → SUCCEEDED
     ↓           ↓          ↓
   FAILED     FAILED    REFUNDED
+
+PENDING → VOIDED  (invoice voided while the link is unpaid)
 ```
 
 ### Status Definitions
@@ -59,6 +61,7 @@ INITIATED → PENDING → SUCCEEDED
 | `SUCCEEDED` | Payment completed successfully | Stripe webhook: `checkout.session.completed` |
 | `FAILED` | Payment attempt failed | Stripe webhooks: `checkout.session.expired`, `payment_intent.payment_failed` |
 | `REFUNDED` | Payment was refunded | Manual refund processing |
+| `VOIDED` | Unpaid link closed because its invoice was voided; the Stripe checkout session is expired | Voiding the invoice |
 
 ## Creating Payment Links
 
