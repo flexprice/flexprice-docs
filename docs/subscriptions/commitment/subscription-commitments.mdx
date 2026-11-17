@@ -56,6 +56,12 @@ curl -X POST "https://us.api.flexprice.io/v1/commitments" \
 
 The meter's price on the subscription is bucketed by the hour, so `value: 8` is the capacity of each hour. The response is the commitment with its `commitment_value`, and `commitment.created` is sent.
 
+### In the dashboard
+
+During contract creation, open the **Commitments & benefits** step. In **Commitments**, click **Add commitment**, complete the dialog, and click **Save commitment draft**.
+
+On a live contract, click **Add commitment** in the **Commitments** section. This opens the **Contracts › Contract details › Add commitment** page. Set the name, dates, scope, minimum and measurement, then choose **Binding** and collection options as needed. Quantity commitments also have committed and overage rates.
+
 ### Commitment Fields
 
 | Field | Description |
@@ -208,6 +214,10 @@ Creating a commitment with a past `start_date`, or terminating one with a past `
 
 [Update commitment](/api-reference/commitments/update-commitment) changes `name`, `invoice_label`, `invoice_description` and `metadata`. The new label and description apply to invoices generated afterwards. Everything else, including the scope, value, prices, dates, binding and collection method, can't change. Sending `end_date` returns `changing end_date is not supported yet`: terminate the commitment to end it early.
 
+### In the dashboard
+
+Open the commitment and click **Edit details** to update its name, invoice text, or metadata.
+
 ## Terminating a Commitment
 
 [Terminate commitment](/api-reference/commitments/terminate-commitment) ends an active commitment immediately:
@@ -232,6 +242,10 @@ curl -X POST "https://us.api.flexprice.io/v1/commitments/$COMMITMENT_ID/terminat
 - The commitment's `commitment_status` becomes `terminated`, `terminated_at` is set, and `commitment.terminated` is sent.
 
 Cancelling the subscription or changing its plan terminates its commitments when the change takes effect.
+
+### In the dashboard
+
+Open the commitment's **Commitment actions** menu. Choose **End commitment** to terminate it now, with an optional cancellation fee for a binding commitment. Choose **Correct commitment** to terminate it and add a corrected copy when its amount, dates, scope, rates, or binding need to change.
 
 ## Webhooks
 
