@@ -33,9 +33,9 @@ graph TD
     L -->|Yes| M[Webhook:<br/>payment.captured]
     L -->|No| N[Webhook:<br/>payment.failed]
     M --> O[Status: SUCCEEDED]
-    N --> P[Status: FAILED]
+    N --> P[Attempt Recorded<br/>Payment Stays Open]
     O --> Q[Reconcile Invoice]
-    P --> R[Log Failure]
+    P --> I
 ```
 
 ## Payment Status Flow
@@ -56,7 +56,7 @@ INITIATED → PENDING → SUCCEEDED
 | `PENDING` | Razorpay payment link created successfully | Successful Razorpay API call |
 | `PROCESSING` | Payment is being processed | Temporary status during updates |
 | `SUCCEEDED` | Payment completed successfully | Razorpay webhook: `payment.captured` |
-| `FAILED` | Payment attempt failed | Razorpay webhook: `payment.failed` |
+| `FAILED` | Payment failed and can no longer be settled | Gateway status sync reports failure, or `payment.failed` arrives for a link with a non-pending checkout session |
 | `REFUNDED` | Payment was refunded | Manual refund processing |
 
 ## Creating Payment Links
@@ -211,16 +211,20 @@ When a payment is completed, Razorpay sends a `payment.captured` webhook:
 | "Invoice already paid" | Invoice status issue | Check invoice payment status |
 | "Amount below minimum" | Below currency minimum | Ensure amount meets minimum (₹1.00 for INR, $0.01 for USD) |
 | "Razorpay link creation failed" | API error | Check Razorpay connection |
+| `Razorpay rejected the payment link: <message>` (400) | Razorpay rejects link creation with a nonempty error message | Correct the issue in Razorpay's message and retry |
+
+When link creation fails during checkout, the session stores the rejection reason in `failure_reason`. This differs from a declined payment on an existing link, which remains available for retry.
 
 ### Payment Failure Handling
 
-When payments fail:
+When a customer's payment on a payment link is declined:
 
 1. **Webhook Received**: Razorpay sends `payment.failed` webhook
-2. **Status Updated**: Payment status changed to `FAILED`
-3. **Error Logged**: Failure reason recorded
-4. **Customer Notified**: Optional failure notification
-5. **Retry Available**: Customer can create new payment link
+2. **Attempt Recorded**: Flexprice records the failed attempt with the decline reason and sends `payment.attempt.failed`
+3. **Payment Stays Open**: The payment is not marked `FAILED`, and the link stays live
+4. **Retry Available**: The customer retries on the same link
+
+Without a checkout session, a decline also leaves the payment open; for a session-backed link, checkout cleanup archives the payment, and a decline received after the session is no longer pending marks the payment `FAILED`.
 
 ## Testing Payment Links
 

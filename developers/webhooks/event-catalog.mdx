@@ -60,6 +60,20 @@ The SDKs export the event names as an enum and a typed model per payload. See [P
 | `invoice.payment.failed` | Flexprice's automatic charge of a `charge_automatically` invoice fails: no usable saved payment method (`payment_method_unavailable`), the gateway rejects the charge (`provider_error`), or the payment is declined (`declined`). Razorpay is the first gateway that sends it |
 | [`invoice.communication.triggered`](/api-reference/webhook-events/invoicecommunicationtriggered) | An invoice email or notification is triggered |
 
+### Failed auto-charge payload
+
+The `invoice.payment.failed` payload contains these fields:
+
+| Field | Description |
+| --- | --- |
+| `event_type` | `invoice.payment.failed` |
+| `invoice` | The invoice whose automatic charge failed |
+| `provider` | `razorpay` |
+| `reason` | `payment_method_unavailable`, `provider_error`, or `declined` |
+| `is_auto_charge_attempt` | `true` for the auto-charge workflow, including when no saved payment method is available and no charge is submitted |
+| `payment_id` | The Flexprice payment ID, omitted when no payment was created |
+| `error` | The error from the failed attempt, omitted when empty |
+
 ## Payment and refund events
 
 | Event | Fires when |
