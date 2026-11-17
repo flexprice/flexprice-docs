@@ -57,7 +57,14 @@ INITIATED → PENDING → SUCCEEDED
 | `PROCESSING` | Payment is being processed | Temporary status during updates |
 | `SUCCEEDED` | Payment completed successfully | Razorpay webhook: `payment.captured` |
 | `FAILED` | Payment failed and can no longer be settled | Gateway status sync reports failure, or `payment.failed` arrives for a link with a non-pending checkout session |
+| `VOIDED` | Unpaid payment link closed as part of invoice voiding | Invoice void after Flexprice closes the link or confirms it is already cancelled or expired |
 | `REFUNDED` | Payment was refunded | Manual refund processing |
+
+### When an Invoice Is Voided
+
+When you void an invoice, Flexprice attempts to close its pending Razorpay payment links. For a Razorpay payment-link handle (`plink_`), it cancels the payment link. For a Razorpay invoice handle (`inv_`), it cancels the invoice. When cancellation succeeds, or a follow-up status check confirms that the link is already cancelled or expired, Flexprice changes the payment from `PENDING` to `VOIDED`.
+
+Payment links owned by a checkout session are skipped by this invoice-void step and left to the session. If Razorpay cancellation fails and a status check cannot confirm that the link is cancelled or expired, the payment remains `PENDING` and Flexprice logs the failure. If the status check finds the link is already paid, Flexprice leaves the payment for the Razorpay webhook instead of marking it `VOIDED`. Invoice voiding therefore does not guarantee that every Razorpay payment link is closed.
 
 ## Creating Payment Links
 
