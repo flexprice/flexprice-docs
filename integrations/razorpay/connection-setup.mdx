@@ -72,7 +72,7 @@ Configure these events in your Razorpay webhook endpoint:
   The `payment_link.*` events are required if you use [Flexprice Checkout Sessions](/docs/checkout/checkout-sessions). Without them, subscriptions created via Checkout will remain in `draft` status after payment. If you only use manual invoice payment links (not Checkout Sessions), these three events are optional.
 </Note>
 
-Mandate events report authorization state, not payment completion. See the [mandate event catalog](/developers/webhooks/event-catalog#mandate-events) for setup-attempt retries, current-link expiry, and payload details.
+If you use card, UPI, or eNACH mandates, select `token.confirmed`, `token.rejected`, and `token.cancelled` directly in the Razorpay Dashboard. For eNACH, also select `invoice.expired`. These events are additional to the payment events shown in the Flexprice connection wizard. See the [mandate event catalog](/developers/webhooks/event-catalog#mandate-events) for setup-attempt retries, current-link expiry, and payload details.
 
 ### Setting Up the Webhook
 
@@ -109,7 +109,7 @@ Mandate events report authorization state, not payment completion. See the [mand
   </Step>
 
   <Step title="Add the webhook">
-    The **Webhook** step shows your **Webhook URL** and the **Events to send**. Add them to a Razorpay webhook as in Step 2, enter its secret in **Webhook signing secret** (optional), and click **Connect Razorpay**.
+    The **Webhook** step shows your **Webhook URL** and a list of payment events. Use the URL in Razorpay and select the events for your setup from the [checklist above](#required-webhook-events). Enter the webhook secret in **Webhook signing secret** (optional), then click **Connect Razorpay**.
 
     <Frame>
       ![Webhook step with the webhook URL, the events to send, and the webhook signing secret](/images/docs/data-exports/amazon-s3/razorpay/webhook-setp.png)
