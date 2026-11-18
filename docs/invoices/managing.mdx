@@ -56,7 +56,19 @@ Use this for money that moved outside Flexprice.
   ![Update payment status dialog with Succeeded, Failed, Overpaid, and Pending](/images/docs/invoices/managing/payment-status.png)
 </Frame>
 
-To record a single payment against the invoice instead, select **Record payment**.
+### Recording a payment
+
+On an open or overdue invoice with a balance due, select **Record payment** from the **⋯** menu. You can record an offline or credit payment, create a payment link, or submit a charge against a saved method.
+
+1. Choose **Charge saved method** under **Method** and check the amount.
+2. Select the **Provider** and **Saved method**. Stripe supports saved cards. For INR invoices, Razorpay supports active card, UPI, and eNACH mandates.
+3. Click **Create payment** to submit the charge.
+
+The saved method must be unexpired and enabled for automatic charging. For Razorpay, the customer's phone number must match their Razorpay record, and the amount must be within the selected mandate's per-debit limit.
+
+Razorpay sends a pre-debit notice. Card and UPI debits can take about 36 hours to settle. The invoice shows **Processing** while the debit is pending.
+
+If there is no usable saved method, choose **Payment link** under **Method** when a payment-link provider is connected.
 
 ### Downloading invoices
 
