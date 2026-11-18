@@ -182,7 +182,7 @@ The portal always sends `checkout`. The invoiced path is available to your own i
 <Info>
 **Credits land after the payment, not on the click**
 
-The portal reports "Top-up requested, your balance will update once payment completes" rather than claiming success. The wallet transaction is written by the provider's webhook. After a return, the portal rechecks the balance on a short schedule (immediately, then at 1.5s and 4s) and stops as soon as the wallet actually changes, so a webhook arriving a moment after the redirect still shows up without a manual refresh.
+The portal reports "Top-up requested, your balance will update once payment completes" rather than claiming success. The wallet transaction is written by the provider's webhook. After a gateway return that does not report a failed or canceled payment, if the portal is not already tracking a checkout session, or after a saved-card top-up, the portal rechecks payment status while it is pending. It checks every two seconds for up to 60 seconds, stopping when there is no pending wallet transaction and the selected invoice, if any, is paid or void. A return does not confirm payment settlement. The provider webhook settles the payment.
 </Info>
 
 ### Paying with a saved card
@@ -332,12 +332,9 @@ Setting a default requires the `set_default_method` capability. On a provider wi
 
 The standalone portal sends the customer to hosted checkout in the same tab and restores their portal session on return. An embedded portal opens checkout in a new tab because providers do not allow their payment pages to be framed.
 
-The portal resolves this itself:
+When the customer returns, the portal resumes the session and checks payment status through the API. While the portal is tracking a checkout session, it checks the session status every two seconds for up to ten minutes. It refreshes portal data when the status is no longer pending. If the session cannot resume or has expired, reopen the billing portal to continue. Portal sessions expire one hour after they are issued.
 
-1. The return URL keeps the portal path but removes the session token and unrelated query parameters. It adds a `returned=1` marker, so the token is not sent to the provider as part of that URL.
-2. Before leaving, the portal saves this tab's token in `sessionStorage`. A same-tab return restores that token even if the provider drops the return marker. A marked return in another tab can restore the shared token saved in `localStorage` for up to one hour; this does not extend the session's server-side expiry.
-3. The portal restores the token in its address and renders the account again. It does not depend on closing a tab or a `BroadcastChannel` announcement. When a checkout session ID is available, it checks the session through the API and refreshes portal data after settlement.
-4. If no session can be restored, the page asks the customer to return to their billing portal. A gateway-reported success shows **You're all set!**; a reported failure or an unspecified result does not claim that payment succeeded. The provider's webhook settles the payment independently of this page.
+A return does not confirm that payment succeeded. The provider webhook settles the payment independently of this page. Treat portal and checkout return links as sensitive. Do not log them or share them publicly.
 
 **Checking a session directly:** `GET /v1/customer/portal/checkout-sessions/{id}` returns the session with its `checkout_status`, `failure_reason` and linked `checkout_invoice_id` and `checkout_payment_id`. `POST /v1/customer/portal/checkout-sessions/{id}/cancel` abandons one.
 
