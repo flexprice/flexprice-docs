@@ -137,6 +137,8 @@ curl --request POST \
 
 The HTTP 201 response includes `setup_intent_id`, `checkout_url`, provider `status`, `customer_id`, `created_at`, and `expires_at`. The timestamps are Unix seconds; `expires_at` is zero when Razorpay provides no expiry. Generic fields such as `checkout_session_id`, `client_secret`, and `usage` are empty for this Razorpay response. Redirect the customer to `checkout_url`, then read the latest status with `GET /v1/payments/customers/{id}/setup/intent?provider=razorpay`.
 
+Creating a new setup link replaces the customer's latest link and attempts to cancel the previous link. If the create request times out, use the GET endpoint to check whether a new link was created before retrying the POST.
+
 To cancel the customer's latest setup link, call `POST /v1/payments/customers/{id}/setup/intent/cancel?provider=razorpay`. The endpoint returns the setup-intent response and only cancels a link that has not been completed. Use the returned `status`; the API passes through the provider's setup-link status.
 
 ## Gotchas
