@@ -1,9 +1,9 @@
 ---
 title: "Coupons"
-description: "Create percentage or fixed-amount discounts and apply them to subscriptions at the invoice or line-item level."
+description: "Create percentage or fixed-amount discounts for subscriptions, invoice line items, or manual invoices."
 ---
 
-A coupon is a reusable discount definition. You create it once, then link it to one or more subscriptions via an **association**. Each association can be scoped to a time window and optionally targeted at a specific line item rather than the whole invoice.
+A coupon is a reusable discount definition. You can link it to subscriptions via an **association** or apply it directly when creating a manual invoice. Subscription associations can be scoped to a time window and optionally targeted at a specific line item rather than the whole invoice.
 
 ## Coupon types
 
@@ -24,21 +24,23 @@ Cadence controls how many billing cycles the discount repeats within an associat
 
 ## Validity controls
 
-These fields live on the coupon itself and gate whether a new association can be created.
+These fields control when you can create a subscription association or apply a coupon to a manual invoice.
 
 | Field | Purpose |
 |-------|---------|
-| `redeem_after` | Earliest timestamp a coupon can be associated to a subscription |
-| `redeem_before` | Expiry timestamp. Associations cannot be created after this date. Existing associations created before expiry remain active. |
-| `max_redemptions` | Maximum total associations allowed across all subscriptions |
+| `redeem_after` | Earliest timestamp for creating an association or applying the coupon to a manual invoice |
+| `redeem_before` | Latest timestamp for creating an association or applying the coupon to a manual invoice |
+| `max_redemptions` | Shared limit across subscription associations and direct invoice applications |
 
-The `total_redemptions` counter increments when the association is **created**, not when an invoice is generated.
+The `total_redemptions` counter increases when you create a subscription association or when Flexprice applies the coupon directly to an invoice. A subscription association counts once across its recurring invoices.
 
 ## Coupon scope
 
 **Subscription level**: discount applies to the invoice subtotal (or the running subtotal after earlier coupons have applied).
 
 **Line-item level**: discount applies to a specific price within the invoice before any subscription-level coupons run.
+
+**Manual invoice**: when creating a manual invoice in the dashboard, choose **Add a coupon** in the **Coupons** section. Each eligible coupon applies to that invoice only. Flexprice skips coupons outside their redemption window, coupons that have reached their redemption limit, and coupons whose currency differs from the invoice currency. Check the invoice totals to confirm the discount was applied.
 
 ## How multiple coupons apply
 
