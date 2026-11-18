@@ -40,6 +40,14 @@ A suspended tenant's portal endpoints stop serving requests, the same as the res
 | `PUT` | `/info` | Update the customer's own profile fields |
 | `GET` | `/usage` | Usage summary for the customer |
 
+`GET /usage` accepts an optional `refresh_grants` boolean query parameter. It defaults to `false`. Set it to `true` to ask the API to evaluate entitlement grants before returning their usage:
+
+```http
+GET /v1/customer/portal/usage?refresh_grants=true
+```
+
+The server refreshes grants only when `entitlement_grants.refresh_on_read` is enabled (default `true`). Refreshing may make the read slower. If a refresh fails, the API returns stored usage, so this is not a guarantee of real-time usage.
+
 ## Subscriptions
 
 | Method | Path | Description |
