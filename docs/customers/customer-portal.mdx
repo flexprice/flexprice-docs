@@ -23,9 +23,9 @@ The portal is organised into sections shown as tabs across the top. Which sectio
 
 | Section | Contents |
 | ------- | -------- |
-| **Overview** | Next billing date, amount due with Pay now, credit balance with Add credits, saved payment methods, subscriptions |
+| **Overview** | Next billing date, amount due with Pay now, Available balance or Credits owed with Add credits, saved payment methods, subscriptions |
 | **Usage** | Spend summary, usage trend chart, usage quota, usage breakdown by feature and group |
-| **Credits** | Balance with credits added and used, auto top-up settings, top-ups and full transaction history |
+| **Credits** | Available balance, Wallet balance, Pending usage, auto top-up settings, top-ups and full transaction history |
 | **Invoices** | Invoice list with status, detail drawer, PDF download, Pay now |
 
 Actions available to a customer:
@@ -199,9 +199,11 @@ The default landing section. It answers three questions in one screen: what the 
 
 - **Next billing** date and plan, with a link to the usage so far
 - **Amount due** with **Pay now**, and a banner with a **Pay** button when the last payment failed
-- **Credit balance** in money and credits, with **Add credits**
+- **Available balance** in money and credits, or **Credits owed** when the balance is below zero, with **Add credits**
 - **Payment methods** listing saved cards, with **Add card**, and **Make default** and **Remove card** in each card's menu
 - **Subscriptions** showing plan, status, current period and next billing date
+
+A banner appears across portal pages when the backend reports a configured low-balance alert for an active wallet; healthy, inactive, or alert-disabled wallets do not trigger one. When more than one active wallet has an alert, the banner shows the most severe one. On Overview, the selected active wallet's badge shows **Running low**, **Almost out**, or **Out of credits** when it has an alert; see [Low Balance Alert](/docs/wallet/low-balance-alert) for threshold settings.
 
 <Frame>![Saved payment methods on Overview, with the default card marked and a card's menu open on Make default and Remove card](/images/docs/customers/customer-portal/payment-methods.png)</Frame>
 
@@ -213,7 +215,7 @@ Feature-level consumption and cost over a date range. When features are assigned
 - **Spend**, **Largest cost** and **Daily average** cards, with spend compared to the previous period and a projection to the next billing date
 - **Usage trend** chart of cost or quantity per day, for all features or one
 - **Usage quota** showing how much of each allowance is used this billing period, and when it resets
-- **Usage breakdown** table of feature, usage, unit cost, cost and share of spend, grouped by group (called tags in the dashboard)
+- **Usage breakdown** table of feature, usage, unit cost, cost and share of spend, grouped by group (called tags in the dashboard). A commitment true-up amount appears beside an item's cost when the response includes it.
 
 <Frame>![Customer Portal Usage tab with spend cards, the usage trend, usage quota and the usage breakdown grouped by tag](/images/docs/customers/customer-portal/usage.png)</Frame>
 
@@ -221,7 +223,9 @@ Feature-level consumption and cost over a date range. When features are assigned
 
 The prepaid wallet in full.
 
-- **Balance** in money and credits, with the wallet status and the credits added and used since a recent date
+- **Available balance** in money and credits, or **Credits owed** when the balance is below zero
+- **Wallet balance** in money and credits, the ledger total of top-ups and transactions
+- **Pending usage** in money and credits, usage already counted against the available balance but not yet deducted
 - **Auto top-up** status and settings
 - **Top-ups**, listing each top-up with its credits, what remains, how much is consumed and when it expires, and **All transactions** for the full history
 
