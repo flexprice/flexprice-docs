@@ -146,6 +146,22 @@ The `invoice.payment.failed` payload contains these fields:
 | [`checkout.session.failed`](/api-reference/webhook-events/checkoutsessionfailed) | Payment fails or the provider cancels the link |
 | [`checkout.session.expired`](/api-reference/webhook-events/checkoutsessionexpired) | A checkout session times out unpaid |
 
+## Mandate events
+
+Mandate events report saved-payment-method authorization and status, not checkout payment completion. For the setup flow, see [Autopay & Mandates](/docs/checkout/autopay-mandates).
+
+| Event | Razorpay trigger | Fires when |
+| --- | --- | --- |
+| `mandate.confirmed` | `token.confirmed` | Razorpay confirms a saved payment method |
+| `mandate.rejected` | `token.rejected` | Razorpay rejects mandate authorization |
+| `mandate.cancelled` | `token.cancelled` | Razorpay marks the mandate as canceled |
+| `mandate.setup_attempt_failed` | `payment.failed` | A zero-amount eNACH registration payment fails. The customer can retry the same setup link while it remains valid. |
+| `mandate.setup_expired` | `invoice.expired` | The current mapped eNACH setup link expires before authorization. Older links are ignored. |
+
+Each payload contains `event_type` and a `mandate` object. `provider` is `razorpay`; `type` is `CARD`, `UPI`, or `ENACH`; and `status` matches the event suffix. `customer_id` is the Flexprice customer ID, and `external_customer_id` is the customer's external ID. `id` is the Razorpay token ID and can be empty on setup events; `setup_intent_id` is the Razorpay setup-link ID when available. `failure_reason` can be `null`.
+
+`currency` is `INR`. When present, `max_amount` is a decimal string in major currency units and `expires_at` is the mandate expiry. Optional bank and card details include masked account or card digits; bank details may also include the bank, IFSC, account type, and authorization type, while card details may include brand and expiry. Optional UPI details include the VPA.
+
 ## Usage ingestion events
 
 | Event | Fires when |
