@@ -31,6 +31,8 @@ Use a mandate when the customer will be billed repeatedly — a subscription, me
 
 ## Register a mandate at checkout
 
+Razorpay supports UPI and card mandates through Checkout Sessions. eNACH bank mandates use the customer setup-intent API below instead of `payment_provider_config`.
+
 Create a checkout session and include `payment_provider_config`. This is what switches the session from a one-time payment link to a mandate registration.
 
 ```bash
@@ -82,6 +84,8 @@ Redirect the customer to `payment_action.url`. They authorize the mandate once i
 | `payment_method`    | Yes      | `UPI` for UPI Autopay, `CARD` for a card mandate.                                                                                   |
 | `max_mandate_limit` | Yes      | Ceiling, in the major currency unit (e.g. rupees), for any single future auto-charge. Invoices above this are not auto-charged.     |
 
+For Razorpay, `payment_provider_config.notify_customer` defaults to `false`. Set it to `true` to ask Razorpay to send the payment link to the customer.
+
 ### Card mandate
 
 A card mandate uses the same request. Change `payment_method` to `CARD`:
@@ -109,6 +113,35 @@ An invoice falls back to a normal Razorpay payment link when there is no usable 
   never auto-charges; it always falls back to a payment link. Set the limit high
   enough to cover your largest expected invoice.
 </Note>
+
+## Set up a Razorpay eNACH bank mandate
+
+Razorpay eNACH setup creates a bank-mandate link. Razorpay saved eMandate tokens are represented as the `ENACH` payment method and include a `bank_account` object.
+
+The customer must already exist and have an email address and phone number. A Razorpay connection must be available for the customer's billing entity.
+
+Create a setup intent with `POST /v1/payments/customers/{id}/setup/intent`:
+
+```bash
+curl --request POST \
+  --url 'https://us.api.flexprice.io/v1/payments/customers/<CUSTOMER_ID>/setup/intent' \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: <API_KEY>' \
+  --header 'X-Environment-ID: <ENVIRONMENT_ID>' \
+  --data '{
+    "provider": "razorpay",
+    "max_amount": "25000",
+    "notify_customer": true
+  }'
+```
+
+`max_amount` is the per-debit ceiling in INR for eNACH and defaults to `99999`. `notify_customer` defaults to `false`; set it to `true` to ask Razorpay to send the setup link to the customer.
+
+The HTTP 201 response includes `setup_intent_id`, `checkout_url`, provider `status`, `customer_id`, `created_at`, and `expires_at`. The timestamps are Unix seconds; `expires_at` is zero when Razorpay provides no expiry. Generic fields such as `checkout_session_id`, `client_secret`, and `usage` are empty for this Razorpay response. Redirect the customer to `checkout_url`, then read the latest status with `GET /v1/payments/customers/{id}/setup/intent?provider=razorpay`.
+
+Creating a new setup link replaces the customer's latest link and attempts to cancel the previous link. If the create request times out, use the GET endpoint to check whether a new link was created before retrying the POST.
+
+To cancel the customer's latest setup link, call `POST /v1/payments/customers/{id}/setup/intent/cancel?provider=razorpay`. The endpoint returns the setup-intent response and only cancels a link that has not been completed. Use the returned `status`; the API passes through the provider's setup-link status.
 
 ## Gotchas
 

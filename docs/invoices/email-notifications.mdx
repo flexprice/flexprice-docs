@@ -1,0 +1,54 @@
+---
+title: "Emailing Invoices"
+description: "Send finalized invoices by email and inspect asynchronous delivery logs"
+---
+
+Use the invoice email API to send a finalized invoice and track its delivery. Sending is asynchronous: a successful request queues an email, while the delivery log records later provider updates.
+
+## Prerequisites
+
+* The API deployment must have an email provider configured.
+* Enable `email_notification_config.enabled` in the target environment.
+* Configure a billing or help reply-to email in business settings. A manual send without a reply-to address fails.
+
+If customer emails are disabled in the deployment or environment, the manual request returns an error instead of queuing an email.
+
+## Send an invoice
+
+Call `POST /v1/invoices/{id}/email`. The invoice must be finalized.
+
+```bash
+curl --request POST \
+  --url 'https://us.api.flexprice.io/v1/invoices/<INVOICE_ID>/email' \
+  --header 'Content-Type: application/json' \
+  --header 'x-api-key: <API_KEY>' \
+  --header 'X-Environment-ID: <ENVIRONMENT_ID>' \
+  --data '{
+    "to": ["billing@example.com"],
+    "cc": ["finance@example.com"],
+    "idempotency_key": "invoice-email-<INVOICE_ID>"
+  }'
+```
+
+* `to` is optional. If omitted, Flexprice uses the customer's email address. If neither provides a recipient, the manual request fails with a validation error.
+* `cc` is optional. `to` and `cc` accept recipient email addresses.
+* `idempotency_key` is optional. Retrying with the same key for the same invoice returns the existing email log. Reusing that key for another invoice is rejected.
+
+The response to a new send is an email log with `delivery_status: queued`. This means the email is queued for dispatch, not delivered. An idempotent retry returns the existing log with its current delivery status, not a new `queued` log.
+
+## Track delivery
+
+* Call `GET /v1/invoices/{id}/emails` to list email logs for an invoice.
+* Call `POST /v1/emails/search` with a JSON body to search email logs across invoices. Send `{}` for an unfiltered search or `{"delivery_statuses":["bounced"]}` to find bounced emails.
+
+Logs can move through these delivery statuses:
+
+* `queued`: waiting for dispatch
+* `sent`: accepted by the email provider
+* `delivery_delayed`: delivery was delayed
+* `delivered`: delivered to the recipient's mail server
+* `bounced`, `failed`, or `suppressed`: delivery failed or was suppressed
+* `complained`: the recipient filed a complaint about the message, including after delivery
+* `skipped`: an automatic email was intentionally not sent
+
+Automatic invoice emails are only considered for finalized invoices. They require `email_events.enabled` in deployment configuration, an email provider, and `email_notification_config.auto_send.enabled` with `invoice` included in `auto_send.entities` for the environment. For an automatic send, a missing customer email or a zero-total invoice is recorded as `skipped`. If no reply-to address is configured, the automatic send is not recorded.

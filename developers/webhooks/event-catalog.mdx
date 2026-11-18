@@ -57,22 +57,24 @@ The SDKs export the event names as an enum and a typed model per payload. See [P
 | [`invoice.update.voided`](/api-reference/webhook-events/invoiceupdatevoided) | An invoice is voided |
 | [`invoice.update`](/api-reference/webhook-events/invoiceupdate) | An invoice is updated |
 | [`invoice.payment.overdue`](/api-reference/webhook-events/invoicepaymentoverdue) | An invoice is past its due date |
-| `invoice.payment.failed` | Flexprice's automatic charge of a `charge_automatically` invoice fails: no usable saved payment method (`payment_method_unavailable`), the gateway rejects the charge (`provider_error`), or the payment is declined (`declined`). Razorpay is the first gateway that sends it |
+| `invoice.payment.failed` | A qualifying invoice auto-charge fails, or an invoice payment fails after a gateway payment ID is created. It is not limited to automatic charges. |
 | [`invoice.communication.triggered`](/api-reference/webhook-events/invoicecommunicationtriggered) | An invoice email or notification is triggered |
 
-### Failed auto-charge payload
+### Failed invoice payment payload
+
+The event is sent when an invoice auto-charge fails, including when no usable saved payment method is available, or when a failed invoice payment has a gateway payment ID. A non-auto-charge failure before a gateway payment is created does not produce this event.
 
 The `invoice.payment.failed` payload contains these fields:
 
 | Field | Description |
 | --- | --- |
 | `event_type` | `invoice.payment.failed` |
-| `invoice` | The invoice whose automatic charge failed |
-| `provider` | `razorpay` |
-| `reason` | `payment_method_unavailable`, `provider_error`, or `declined` |
-| `is_auto_charge_attempt` | `true` for the auto-charge workflow, including when no saved payment method is available and no charge is submitted |
+| `invoice` | The invoice associated with the failed payment |
+| `provider` | The payment provider |
+| `reason` | `payment_method_unavailable` when no saved method is available for an auto-charge, `provider_error` when the provider rejects a charge before creating a payment, or `declined` when a gateway payment ID exists |
+| `is_auto_charge_attempt` | Whether the failed attempt was triggered by invoice auto-charge |
 | `payment_id` | The Flexprice payment ID, omitted when no payment was created |
-| `error` | The error from the failed attempt, omitted when empty |
+| `error` | The error message from the failed attempt, omitted when empty |
 
 ## Payment and refund events
 
@@ -144,7 +146,8 @@ The `invoice.payment.failed` payload contains these fields:
 | [`checkout.session.initiated`](/api-reference/webhook-events/checkoutsessioninitiated) | A checkout session is created and a payment URL returned |
 | [`checkout.session.completed`](/api-reference/webhook-events/checkoutsessioncompleted) | Payment confirmed; subscription active, invoice finalized |
 | [`checkout.session.failed`](/api-reference/webhook-events/checkoutsessionfailed) | Payment fails or the provider cancels the link |
-| [`checkout.session.expired`](/api-reference/webhook-events/checkoutsessionexpired) | A checkout session times out unpaid |
+| [`checkout.session.expired`](/api-reference/webhook-events/checkoutsessionexpired) | A session expires or is explicitly canceled |
+| `checkout.session.cancelled` | An active checkout session is explicitly canceled. Its status remains `expired`. |
 
 ## Usage ingestion events
 

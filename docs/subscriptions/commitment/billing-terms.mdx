@@ -178,9 +178,9 @@ curl "https://us.api.flexprice.io/v1/commitments/$COMMITMENT_ID/instalments?stat
 | --- | --- |
 | `id` | Instalment identifier (`binst_` prefix). Instalments are listed by `bill_on`, then `id` |
 | `owner_type`, `owner_id` | `commitment` and the commitment ID |
-| `billing_term_id` | The term that produced it (`bterm_` prefix). Absent on a settlement |
+| `billing_term_id` | The term that produced it (`bterm_` prefix). Absent on a settlement or cancellation-fee installment |
 | `customer_id`, `subscription_id`, `currency` | Copied from the commitment |
-| `kind` | `instalment`, or `settlement` for one added at termination |
+| `kind` | `instalment`, `settlement`, or `cancellation_fee` for the termination fee |
 | `bill_trigger` | `date` or `manual` |
 | `bill_on` | When it becomes billable. An untriggered milestone waits at the commitment's `end_date` |
 | `triggered_at` | When a milestone was triggered |
@@ -269,6 +269,8 @@ On a manual installment row, choose **Change trigger date** to set an earlier tr
    - An `ADVANCE` instalment pays for the step that starts on its `bill_on`, so it is owed only when it fell due before `effective_at`. One due exactly at `effective_at` is not billed.
    - A `once` instalment pays for the whole term, so a termination at or before the commitment start owes nothing for it.
 3. Bills the settlement and the cancellation fee, if any, together on one `ONE_OFF` invoice with billing reason `COMMITMENT_TERMINATION`.
+
+The cancellation-fee installment has `kind: "cancellation_fee"` and no `billing_term_id`; it belongs to commitment termination, not an individual billing term.
 
 Instalments due after `effective_at` are not billed, and nothing is refunded. The cancellation fee is how a tenant charges for an early end. For a \$1,200 commitment terminated on 1 May:
 

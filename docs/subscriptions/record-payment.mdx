@@ -242,6 +242,10 @@ The system prioritizes card payments with intelligent wallet fallback:
 
 ## API Reference
 
+### In-flight gateway charges
+
+Payment responses include `submitted_for_processing` when the gateway has the charge and its outcome is still pending. When it is `true`, do not submit the charge again; wait for the gateway result.
+
 ### Create Subscription with Payment Configuration
 
 **Endpoint**: `POST /v1/subscriptions`

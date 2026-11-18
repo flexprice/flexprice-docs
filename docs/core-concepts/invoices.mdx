@@ -147,6 +147,8 @@ Editing a line item of a finalized invoice with [Execute invoice modification](/
   Voiding returns the invoice's `amount_paid` and applied prepaid credits to the customer's prepaid wallet, never to the card. Check `payment_status` before you void, recalculate, or edit a paid invoice. To bill missed usage without touching a paid invoice, put the difference on a one-off invoice.
 </Warning>
 
+Before voiding, let an invoice charge in `PENDING` or `PROCESSING` settle. Flexprice rejects void requests while that charge is in flight with: "A charge for this invoice is in progress. Wait for it to settle (up to 2 working days) and try again." The invoice response can include `in_flight_charge` for a saved-method debit that is still waiting on the gateway. This guard applies to an in-flight charge on the invoice, not to every unpaid invoice.
+
 Voiding also closes the invoice's unpaid payment links. Once the void is saved, Flexprice expires each `PENDING` payment link on Stripe or cancels it on Razorpay, and sets its payment to `VOIDED`. A link the customer already paid, or one the gateway fails to close, is left for the gateway webhook to record, and a link created by a checkout session is left to that session. Chargebee hosted pages and links on other gateways can't be closed this way and stay open. After the void, [Create payment](/api-reference/payments/create-payment) rejects a payment for the invoice with "Cannot create payment for a voided invoice".
 
 ## Previewing the next invoice
