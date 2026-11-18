@@ -50,7 +50,7 @@ When you only change metadata or commitment fields, the line item is updated in-
 
 ### Backdating a Line Item Version
 
-To move a line item's start earlier, set `effective_from` to a timestamp before the current line item's `start_date`:
+To move a line item's start earlier, use the ID of the latest published version in `PUT /subscriptions/lineitems/{id}`. That version may have a future `start_date`. Set `effective_from` to a timestamp before that version's `start_date`:
 
 ```json
 {
@@ -60,7 +60,11 @@ To move a line item's start earlier, set `effective_from` to a timestamp before 
 
 The update retires the current line item and any previous versions whose `start_date` is on or after `effective_from`. Their records remain stored, but are no longer linked from the replacement's `/history` chain. If a previous version is active at `effective_from`, it ends on that date. The replacement starts on that date and keeps the current version's `end_date`. `effective_from` cannot be earlier than the subscription's `start_date`.
 
-You can omit price fields to keep the current line item's price, or include price fields to create an override from that price. If the current line item has a scheduled successor, update that successor instead.
+The response returns the replacement's new `id` even when the request contains only `effective_from`. Use the returned ID for subsequent updates and `/history` requests.
+
+You can omit price fields to keep the current line item's price, or include price fields to create an override from that price.
+
+If the line item belongs to an add-on and the add-on attachment starts after `effective_from`, Flexprice also moves the attachment's `start_date` to `effective_from`.
 
 Backdating does not prorate or change existing invoices. See the [invoice guide](/docs/core-concepts/invoices) for draft and finalized invoice correction paths.
 
