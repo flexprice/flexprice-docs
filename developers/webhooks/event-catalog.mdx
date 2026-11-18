@@ -150,13 +150,13 @@ The `invoice.payment.failed` payload contains these fields:
 
 Mandate events report saved-payment-method authorization and status, not checkout payment completion. For the setup flow, see [Autopay & Mandates](/docs/checkout/autopay-mandates).
 
-| Event                          | Razorpay trigger  | Fires when                                                                                                         |
-| ------------------------------ | ----------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `mandate.confirmed`            | `token.confirmed` | Razorpay confirms a saved payment method                                                                           |
-| `mandate.rejected`             | `token.rejected`  | Razorpay rejects mandate authorization                                                                             |
-| `mandate.cancelled`            | `token.cancelled` | Razorpay marks the mandate as canceled                                                                             |
-| `mandate.setup_attempt_failed` | `payment.failed`  | A zero-amount eNACH registration payment fails. The customer can retry the same setup link while it remains valid. |
-| `mandate.setup_expired`        | `invoice.expired` | The current mapped eNACH setup link expires before authorization. Older links are ignored.                         |
+| Event                          | Razorpay trigger  | Fires when                                                                                                                                                       |
+| ------------------------------ | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mandate.confirmed`            | `token.confirmed` | Razorpay confirms a saved payment method                                                                                                                         |
+| `mandate.rejected`             | `token.rejected`  | Razorpay rejects mandate authorization                                                                                                                           |
+| `mandate.cancelled`            | `token.cancelled` | Razorpay marks the mandate as canceled                                                                                                                           |
+| `mandate.setup_attempt_failed` | `payment.failed`  | A failed zero-amount eNACH setup payment for a resolvable Flexprice customer with no linked Flexprice payment. The customer can retry the same link while valid. |
+| `mandate.setup_expired`        | `invoice.expired` | The current mapped eNACH setup link expires before authorization. Older links are ignored.                                                                       |
 
 ### Webhook payload
 
@@ -188,33 +188,23 @@ This illustrates one possible payload; optional properties may be absent when un
 
 ### Webhook fields
 
-| Field                                | Description                                      |
-| ------------------------------------ | ------------------------------------------------ |
-| `event_type`                         | Mandate event name.                              |
-| `mandate.id`                         | Razorpay token ID; can be empty on setup events. |
-| `mandate.setup_intent_id`            | For ENACH `mandate.confirmed`/`mandate.rejected`, the current mapped link, which may differ from the link behind the token event; setup-failure/expiry events use their triggering link. Omitted when unavailable. |
-| `mandate.customer_id`                | Flexprice customer ID.                           |
-| `mandate.external_customer_id`       | Customer's external ID.                          |
-| `mandate.provider`                   | `razorpay`.                                      |
-| `mandate.type`                       | `CARD`, `UPI`, or `ENACH`.                       |
-| `mandate.status`                     | Status suffix from the event name.               |
-| `mandate.failure_reason`             | Failure reason, or `null`.                       |
-| `mandate.max_amount`                 | Optional decimal string in major currency units. |
-| `mandate.currency`                   | `INR`.                                           |
-| `mandate.expires_at`                 | Optional mandate expiry timestamp.               |
-| `mandate.bank_account`               | Optional object; its fields are optional.        |
-| `mandate.bank_account.bank`          | Bank name, when available.                       |
-| `mandate.bank_account.ifsc`          | IFSC, when available.                            |
-| `mandate.bank_account.last4`         | Last four account digits, when available.        |
-| `mandate.bank_account.account_type`  | Account type, when available.                    |
-| `mandate.bank_account.auth_type`     | Authorization type, when available.              |
-| `mandate.card`                       | Optional object; its fields are optional.        |
-| `mandate.card.brand`                 | Card brand, when available.                      |
-| `mandate.card.last4`                 | Last four card digits, when available.           |
-| `mandate.card.exp_month`             | Expiry month, when available.                     |
-| `mandate.card.exp_year`              | Expiry year, when available.                      |
-| `mandate.upi`                        | Optional object; its fields are optional.        |
-| `mandate.upi.vpa`                    | UPI address, when available.                     |
+| Field                          | Description                                                                                                                                                                                             |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `event_type`                   | Mandate event name.                                                                                                                                                                                     |
+| `mandate.id`                   | Razorpay token ID; can be empty on setup events.                                                                                                                                                        |
+| `mandate.setup_intent_id`      | For `mandate.confirmed`/`mandate.rejected`, the current mapped ENACH link, which may differ from the link behind the token event. Setup failure/expiry use the triggering link; omitted if unavailable. |
+| `mandate.customer_id`          | Flexprice customer ID.                                                                                                                                                                                  |
+| `mandate.external_customer_id` | Customer's external ID.                                                                                                                                                                                 |
+| `mandate.provider`             | `razorpay`.                                                                                                                                                                                             |
+| `mandate.type`                 | `CARD`, `UPI`, or `ENACH`.                                                                                                                                                                              |
+| `mandate.status`               | Status suffix from the event name.                                                                                                                                                                      |
+| `mandate.failure_reason`       | Failure reason, or `null`.                                                                                                                                                                              |
+| `mandate.max_amount`           | Optional decimal string in major currency units.                                                                                                                                                        |
+| `mandate.currency`             | `INR`.                                                                                                                                                                                                  |
+| `mandate.expires_at`           | Optional mandate expiry timestamp.                                                                                                                                                                      |
+| `mandate.bank_account`         | Optional; nested keys `bank`, `ifsc`, `last4`, `account_type`, and `auth_type` are optional.                                                                                                            |
+| `mandate.card`                 | Optional; nested keys `brand`, `last4`, `exp_month`, and `exp_year` are optional.                                                                                                                       |
+| `mandate.upi`                  | Optional; nested key `vpa` is optional.                                                                                                                                                                 |
 
 ## Usage ingestion events
 
