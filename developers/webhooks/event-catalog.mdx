@@ -1,10 +1,10 @@
 ---
 title: "Event catalog"
-description: "Every webhook event Flexprice can send, grouped by resource, with a link to the payload schema for each"
+description: "Flexprice webhook events grouped by resource, with links to schemas and inline payload examples"
 mode: "wide"
 ---
 
-Flexprice sends a webhook for each of the events below. Each event name links to its payload schema in the API reference, where the object under the event's key (`invoice`, `payment`, `subscription`, and so on) is documented field by field. Subscribe to events per endpoint in the dashboard under **Developers > Webhooks**.
+Linked event names open their payload documentation. The mandate payload schema is documented on this page. Subscribe to events per endpoint in the dashboard under **Developers > Webhooks**.
 
 Every payload has the same envelope:
 
@@ -15,7 +15,7 @@ Every payload has the same envelope:
 }
 ```
 
-The SDKs export the event names as an enum and a typed model per payload. See [Parsing webhook payloads with the SDK](/developers/sdks/usage#parsing-webhook-payloads-with-the-sdk) for Go, Python, and TypeScript examples.
+For events with generated SDK models, see [Parsing webhook payloads with the SDK](/developers/sdks/usage#parsing-webhook-payloads-with-the-sdk) for Go, Python, and TypeScript examples.
 
 ## Customer events
 
@@ -148,6 +148,72 @@ The `invoice.payment.failed` payload contains these fields:
 | [`checkout.session.failed`](/api-reference/webhook-events/checkoutsessionfailed) | Payment fails or the provider cancels the link |
 | [`checkout.session.expired`](/api-reference/webhook-events/checkoutsessionexpired) | A session expires or is explicitly canceled |
 | `checkout.session.cancelled` | An active checkout session is explicitly canceled. Its status remains `expired`. |
+
+## Mandate events
+
+Mandate events report authorization and status changes for saved payment methods. Use `checkout.session.completed` to track checkout payment completion. For the setup flow, see [Autopay & Mandates](/docs/checkout/autopay-mandates).
+
+Flexprice forwards Razorpay `token.confirmed`, `token.rejected`, and `token.cancelled` events for card, UPI, and eNACH tokens that it can associate with a Flexprice customer in the receiving environment.
+
+| Event                          | Razorpay trigger  | Fires when                                                                                                                                                       |
+| ------------------------------ | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mandate.confirmed`            | `token.confirmed` | Razorpay confirms a saved payment method                                                                                                                         |
+| `mandate.rejected`             | `token.rejected`  | Razorpay rejects mandate authorization                                                                                                                           |
+| `mandate.cancelled`            | `token.cancelled` | Razorpay marks the mandate as canceled                                                                                                                           |
+| `mandate.setup_attempt_failed` | `payment.failed`  | A failed zero-amount eNACH setup payment for a resolvable Flexprice customer with no linked Flexprice payment. The customer can retry the same link while valid. |
+| `mandate.setup_expired`        | `invoice.expired` | The current mapped eNACH setup link expires before authorization. Older links are ignored.                                                                       |
+
+### Webhook payload
+
+Read `event_type` as a string and parse the `mandate` object using the fields below.
+
+**Example payload (eNACH):**
+
+**Event type:** `mandate.confirmed`
+
+```json
+{
+  "event_type": "mandate.confirmed",
+  "mandate": {
+    "id": "razorpay_token_id",
+    "setup_intent_id": "current_setup_link_id",
+    "customer_id": "flexprice_customer_id",
+    "external_customer_id": "external_customer_id",
+    "provider": "razorpay",
+    "type": "ENACH",
+    "status": "confirmed",
+    "failure_reason": null,
+    "max_amount": "5000",
+    "currency": "INR",
+    "expires_at": "2030-01-01T00:00:00Z",
+    "bank_account": {
+      "last4": "1234"
+    }
+  }
+}
+```
+
+This illustrates one possible payload; optional properties may be absent when unavailable, and details vary by payment method and event.
+
+### Webhook fields
+
+| Field                          | Description                                                                                                                                                                                             |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `event_type`                   | Mandate event name.                                                                                                                                                                                     |
+| `mandate.id`                   | Razorpay token ID; can be empty on setup events.                                                                                                                                                        |
+| `mandate.setup_intent_id`      | For ENACH confirmation/rejection only, this is the customer's current mapped link and may differ from the link behind the token event. Omitted for CARD/UPI and cancellation. Setup failure/expiry use the triggering link; omitted if unavailable. |
+| `mandate.customer_id`          | Flexprice customer ID.                                                                                                                                                                                  |
+| `mandate.external_customer_id` | Customer's external ID.                                                                                                                                                                                 |
+| `mandate.provider`             | `razorpay`.                                                                                                                                                                                             |
+| `mandate.type`                 | `CARD`, `UPI`, or `ENACH`.                                                                                                                                                                              |
+| `mandate.status`               | Status suffix from the event name.                                                                                                                                                                      |
+| `mandate.failure_reason`       | Failure reason, or `null`.                                                                                                                                                                              |
+| `mandate.max_amount`           | Optional decimal string in major currency units.                                                                                                                                                        |
+| `mandate.currency`             | `INR`.                                                                                                                                                                                                  |
+| `mandate.expires_at`           | Optional mandate expiry timestamp.                                                                                                                                                                      |
+| `mandate.bank_account`         | Optional; nested keys `bank`, `ifsc`, `last4`, `account_type`, and `auth_type` are optional.                                                                                                            |
+| `mandate.card`                 | Optional; nested keys `brand`, `last4`, `exp_month`, and `exp_year` are optional.                                                                                                                       |
+| `mandate.upi`                  | Optional; nested key `vpa` is optional.                                                                                                                                                                 |
 
 ## Usage ingestion events
 
