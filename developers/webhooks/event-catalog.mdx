@@ -150,17 +150,71 @@ The `invoice.payment.failed` payload contains these fields:
 
 Mandate events report saved-payment-method authorization and status, not checkout payment completion. For the setup flow, see [Autopay & Mandates](/docs/checkout/autopay-mandates).
 
-| Event | Razorpay trigger | Fires when |
-| --- | --- | --- |
-| `mandate.confirmed` | `token.confirmed` | Razorpay confirms a saved payment method |
-| `mandate.rejected` | `token.rejected` | Razorpay rejects mandate authorization |
-| `mandate.cancelled` | `token.cancelled` | Razorpay marks the mandate as canceled |
-| `mandate.setup_attempt_failed` | `payment.failed` | A zero-amount eNACH registration payment fails. The customer can retry the same setup link while it remains valid. |
-| `mandate.setup_expired` | `invoice.expired` | The current mapped eNACH setup link expires before authorization. Older links are ignored. |
+| Event                          | Razorpay trigger  | Fires when                                                                                                         |
+| ------------------------------ | ----------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `mandate.confirmed`            | `token.confirmed` | Razorpay confirms a saved payment method                                                                           |
+| `mandate.rejected`             | `token.rejected`  | Razorpay rejects mandate authorization                                                                             |
+| `mandate.cancelled`            | `token.cancelled` | Razorpay marks the mandate as canceled                                                                             |
+| `mandate.setup_attempt_failed` | `payment.failed`  | A zero-amount eNACH registration payment fails. The customer can retry the same setup link while it remains valid. |
+| `mandate.setup_expired`        | `invoice.expired` | The current mapped eNACH setup link expires before authorization. Older links are ignored.                         |
 
-Each payload contains `event_type` and a `mandate` object. `provider` is `razorpay`; `type` is `CARD`, `UPI`, or `ENACH`; and `status` matches the event suffix. `customer_id` is the Flexprice customer ID, and `external_customer_id` is the customer's external ID. `id` is the Razorpay token ID and can be empty on setup events; `setup_intent_id` is the Razorpay setup-link ID when available. `failure_reason` can be `null`.
+### Webhook payload
 
-`currency` is `INR`. When present, `max_amount` is a decimal string in major currency units and `expires_at` is the mandate expiry. Optional bank and card details include masked account or card digits; bank details may also include the bank, IFSC, account type, and authorization type, while card details may include brand and expiry. Optional UPI details include the VPA.
+**Example payload (eNACH):**
+
+```json
+{
+  "event_type": "mandate.confirmed",
+  "mandate": {
+    "id": "razorpay_token_id",
+    "setup_intent_id": "current_setup_link_id",
+    "customer_id": "flexprice_customer_id",
+    "external_customer_id": "external_customer_id",
+    "provider": "razorpay",
+    "type": "ENACH",
+    "status": "confirmed",
+    "failure_reason": null,
+    "max_amount": "5000.00",
+    "currency": "INR",
+    "expires_at": "2030-01-01T00:00:00Z",
+    "bank_account": {
+      "last4": "1234"
+    }
+  }
+}
+```
+
+This illustrates one possible payload; optional properties may be absent when unavailable, and details vary by payment method and event.
+
+### Webhook fields
+
+| Field                                | Description                                      |
+| ------------------------------------ | ------------------------------------------------ |
+| `event_type`                         | Mandate event name.                              |
+| `mandate.id`                         | Razorpay token ID; can be empty on setup events. |
+| `mandate.setup_intent_id`            | Razorpay setup-link ID when available.           |
+| `mandate.customer_id`                | Flexprice customer ID.                           |
+| `mandate.external_customer_id`       | Customer's external ID.                          |
+| `mandate.provider`                   | `razorpay`.                                      |
+| `mandate.type`                       | `CARD`, `UPI`, or `ENACH`.                       |
+| `mandate.status`                     | Status suffix from the event name.               |
+| `mandate.failure_reason`             | Failure reason, or `null`.                       |
+| `mandate.max_amount`                 | Optional decimal string in major currency units. |
+| `mandate.currency`                   | `INR`.                                           |
+| `mandate.expires_at`                 | Optional mandate expiry timestamp.               |
+| `mandate.bank_account`               | Optional object; its fields are optional.        |
+| `mandate.bank_account.bank`          | Bank name, when available.                       |
+| `mandate.bank_account.ifsc`          | IFSC, when available.                            |
+| `mandate.bank_account.last4`         | Last four account digits, when available.        |
+| `mandate.bank_account.account_type`  | Account type, when available.                    |
+| `mandate.bank_account.auth_type`     | Authorization type, when available.              |
+| `mandate.card`                       | Optional object; its fields are optional.        |
+| `mandate.card.brand`                 | Card brand, when available.                      |
+| `mandate.card.last4`                 | Last four card digits, when available.           |
+| `mandate.card.exp_month`             | Expiry month, when available.                     |
+| `mandate.card.exp_year`              | Expiry year, when available.                      |
+| `mandate.upi`                        | Optional object; its fields are optional.        |
+| `mandate.upi.vpa`                    | UPI address, when available.                     |
 
 ## Usage ingestion events
 
