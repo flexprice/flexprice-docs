@@ -39,7 +39,7 @@ Without Svix enabled, a self-hosted instance retries with exponential backoff an
 
 ## Replaying a failed webhook delivery
 
-Open **Developers > Webhooks**, select the endpoint, and find the failed message in **Message attempts**. Use **View message** to inspect the response, then choose **Resend** from the message's row actions or an attempt's details. This resends the same message to the endpoint, so its `svix-id` stays the same and your dedupe check treats it as a duplicate.
+Dashboard replay is available for Svix-backed webhooks. Open **Developers > Webhooks**, select the endpoint, and find the failed message in **Message attempts**. Use **View message** to inspect the response, then choose **Resend** from the message's row actions or an attempt's details. A resend keeps the original `svix-id`. If your handler deduplicates by `svix-id`, it skips the replay only if it still has a record of that ID.
 
 ## Handling duplicate webhook deliveries
 
@@ -92,7 +92,7 @@ Three properties do the work here, and all three are lost if you split the steps
 
 ## Monitoring webhook delivery health
 
-The endpoint page shows the error rate and every attempt. Alert on a rising error rate rather than on a single failure; one failure is normal, a trend means your handler or infrastructure is unhealthy.
+For Svix-backed webhooks, the **Endpoints** list under **Developers > Webhooks** shows the error rate for each endpoint. Open an endpoint to see delivery outcome counts under **Overview** and inspect individual attempts under **Message attempts**. Alert on a rising error rate, which can indicate a problem with your handler or infrastructure.
 
 <CardGroup cols={2}>
   <Card icon="/images/developers/icons/signature.svg" title="Signature verification" href="/developers/webhooks/signature-verification" />
