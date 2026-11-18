@@ -50,7 +50,7 @@ Use the URL for the region your account was created in, the one whose dashboard 
 
 There are two ways to authenticate.
 
-**Browser login (recommended).** Add the URL with no credentials. The first time your client connects, it opens the Flexprice dashboard in your browser. Log in, pick the environment the assistant should work in, and click **Authorize**. Every tool then works in that environment only. To switch environment, remove the server from your client and add it again.
+**Browser login (recommended).** Add the URL with no credentials. The first time your client connects, it opens the Flexprice dashboard in your browser. Log in, pick the environment the assistant should work in, and click **Authorize**. Every tool then works in that environment only. To switch environment, remove the server from your client and add it again. To use more than one environment, see [Using the MCP server in more than one environment](#using-the-mcp-server-in-more-than-one-environment).
 
 **API key.** Send your key in the `api-key-auth` header. The server then works in the key's environment. Use this for clients without browser login and for agents that run unattended. Create keys in the dashboard under **Developers**. See [Manage API keys](/docs/rbac/manage-api).
 
@@ -217,6 +217,48 @@ In Claude Desktop, add Flexprice as a custom connector:
 3. Click **Connect** and log in to Flexprice in the browser window that opens.
 
 Custom connectors cannot send an API key header. To use Claude Desktop with an API key, [run the server yourself](#running-the-mcp-server-yourself).
+
+## Using the MCP server in more than one environment
+
+With browser login, each server entry in your MCP client logs in on its own and works in the environment you pick on its **Authorize** page. Your client reuses that login in every chat, so the environment belongs to the entry, not to the chat.
+
+To work in more than one environment, add the server once per environment. Give each entry a name that says which environment it is, and pick that environment when it logs in:
+
+```bash
+claude mcp add --transport http flexprice-sandbox https://mcp.us.flexprice.io/mcp
+claude mcp add --transport http flexprice-production https://mcp.us.flexprice.io/mcp
+```
+
+Then run `claude`, type `/mcp`, and choose **Authenticate** on each entry. Each one opens its own **Authorize** page.
+
+- **Per project.** Add the entry for the environment a project uses at project level. In Claude Code, add `--scope project` to save it in the project's `.mcp.json`, which holds no credentials and can be committed. In Cursor, put it in the project's `.cursor/mcp.json`. Each teammate logs in and picks the environment themselves.
+- **Per chat.** Keep one entry per environment and turn on the one a chat needs. In Claude Desktop, add one custom connector per environment and turn it on for a chat from **+** then **Connectors**. In Cursor and VS Code, use the tools list in the chat.
+
+<Note>
+  Give each environment its own entry name. Some clients, Claude Code among them, keep one login per entry name and URL, so two projects whose entries are both named `flexprice` share one login and one environment.
+</Note>
+
+To check which environment an entry uses, ask the assistant "Which environment are you working in?" This works with browser login only.
+
+### Choosing the environment per session with an API key
+
+An API key always works in its own environment, so the key an entry sends decides the environment. In Claude Code, read the key from an environment variable in `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "flexprice": {
+      "type": "http",
+      "url": "https://mcp.us.flexprice.io/mcp",
+      "headers": {
+        "api-key-auth": "${FLEXPRICE_API_KEY}"
+      }
+    }
+  }
+}
+```
+
+Keep one key per environment in your shell profile or secrets manager, and start each session with the one it should use, for example `FLEXPRICE_API_KEY=$FLEXPRICE_SANDBOX_KEY claude`. The file holds no key, so you can commit it. Create keys in the dashboard under **Developers**.
 
 ## Running the MCP server yourself
 
