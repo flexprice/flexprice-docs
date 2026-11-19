@@ -251,7 +251,9 @@ Create one subscription per billing account with `POST /subscriptions`, with a p
 }
 ```
 
-At period close, ingest the finalized totals with `POST /events`, using the customer's external ID and an event timestamp inside the window being billed. Make sure the rated event is ingested before finalizing that invoice. Keep the ID and timestamp stable for retries; do not send the same totals as both a summary and individual billable events.
+Before using a period-close summary, turn off [automatic finalization](/docs/settings/settings#automatic-finalization) for subscription-cycle invoices in the test environment. Otherwise a draft can finalize before the summary is reflected in its line items.
+
+At period close, ingest the finalized totals with `POST /events`, using the customer's external ID and a timestamp inside the period being billed. Keep the event ID and timestamp stable for retries. Do not bill both the summary and the individual events.
 
 ```json
 {
@@ -267,6 +269,8 @@ At period close, ingest the finalized totals with `POST /events`, using the cust
   }
 }
 ```
+
+Once all three meters reflect the summary, use [Recalculate draft invoice](/api-reference/invoices/recalculate-draft-invoice-v2) with `?finalize=false` for the period's draft. Verify the recomputed line items before finalizing. Do not finalize a stale draft: finalization alone does not recompute usage.
 
 ## Worked bill
 
