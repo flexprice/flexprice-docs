@@ -251,9 +251,7 @@ Create one subscription per billing account with `POST /subscriptions`, with a p
 }
 ```
 
-Before using a period-close summary, turn off [automatic finalization](/docs/settings/settings#automatic-finalization) for subscription-cycle invoices in the test environment. Otherwise a draft can finalize before the summary is reflected in its line items.
-
-At period close, ingest the finalized totals with `POST /events`, using the customer's external ID and a timestamp inside the period being billed. Keep the event ID and timestamp stable for retries. Do not bill both the summary and the individual events.
+At period close, send the totals with `POST /events` early enough for all three meters to reflect them before [the first invoice computation](/docs/core-concepts/invoices#billing-usage-that-arrives-after-the-invoice-is-computed), which can happen one hour after period end. Use the customer's external ID and a timestamp inside the period being billed. Keep the event ID and timestamp stable for retries. Do not bill both the summary and the individual events.
 
 ```json
 {
@@ -270,7 +268,10 @@ At period close, ingest the finalized totals with `POST /events`, using the cust
 }
 ```
 
-Once all three meters reflect the summary, use [Recalculate draft invoice](/api-reference/invoices/recalculate-draft-invoice-v2) with `?finalize=false` for the period's draft. Verify the recomputed line items before finalizing. Do not finalize a stale draft: finalization alone does not recompute usage.
+If the first computation missed the summary, wait until all three meters reflect it and check the invoice status:
+
+- **`DRAFT`:** Use [Recalculate draft invoice](/api-reference/invoices/recalculate-draft-invoice-v2) with `?finalize=false`. Verify the recomputed line items before finalizing. Finalization alone does not recompute usage.
+- **`SKIPPED` or `FINALIZED`:** Draft recalculation won't work. Follow the [invoice correction guide](/docs/core-concepts/invoices#correcting-a-finalized-invoice) to replace the invoice or, if it was paid and should be left intact, bill only the missing difference on a one-off invoice.
 
 ## Worked bill
 
