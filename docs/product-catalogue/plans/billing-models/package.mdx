@@ -1,15 +1,19 @@
 ---
 title: "Package"
-description: "Package pricing charges one price for each pack of units, such as $5 per 100 API calls, with a started pack billed as a full pack"
+description: "Package pricing charges one price for each pack of units, such as $5 per 100 API calls, with a started pack billed as a full pack by default"
 ---
 
-The **Package** model charges a fixed price for each **pack of units** instead of for each unit. A started pack counts as a full pack.
+The **Package** model charges a fixed price for each **pack of units** instead of for each unit. By default, a started pack counts as a full pack.
 
 **Example:**
 
-An API service charges **$5 per 100 API calls**. If a customer makes **450 API calls** in a billing period, that is 4.5 packs, which round up to 5:
+An API service charges **$5 per 100 API calls**. If a customer makes **450 API calls** in a billing period, that is 4.5 packs. With the default `transform_quantity.round: "up"` setting, they round up to 5:
 
 `5 packs × $5 = $25`
+
+To round down, set `transform_quantity.round` to `"down"` in the API request. The 4.5 packs then round down to 4:
+
+`4 packs × $5 = $20`
 
 In the dashboard, set the **Price per package** and the **Units per package** on the charge.
 

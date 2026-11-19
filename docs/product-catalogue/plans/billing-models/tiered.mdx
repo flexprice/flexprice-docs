@@ -59,16 +59,18 @@ Earlier units keep their higher rate, and only the units above each boundary get
 
 ## Package size in a tier
 
-By default, a tier charges its price per unit. Give a tier a **package size** to charge the price once per package of that many units instead. A started package counts as a full package, and a tier without a package size keeps charging per unit, so one price can mix both.
+By default, a tier charges its price per unit. Give a tier a **package size** to charge the price once per package of that many units instead. By default, a started package counts as a full package, and a tier without a package size keeps charging per unit, so one price can mix both.
 
 | Tier       | Usage Range (API Calls) | Price ($) | Package size |
 | ---------- | ----------------------- | --------- | ------------ |
 | **Tier 1** | 0 – 10,000              | 1.00      | 1,000 calls  |
 | **Tier 2** | 10,001 and above        | 0.0008    | Per unit     |
 
-With volume mode, a customer who makes **4,500 API calls** falls within **Tier 1**. 4,500 calls make 4.5 packages, which round up to 5:
+With volume mode and the default `round: "up"` setting, a customer who makes **4,500 API calls** falls within **Tier 1**. 4,500 calls make 4.5 packages, which round up to 5:
 
 `5 packages × $1.00 = $5`
+
+With `round: "down"` set through the API, 4.5 packages round down to 4, so the charge is $4.
 
 In volume mode, packages are counted on the customer's total usage. In slab mode, they are counted on the units that fall inside each tier.
 
@@ -118,7 +120,7 @@ curl -X POST https://us.api.flexprice.io/v1/prices \
 ```
 
 <Note>
-  The dashboard always rounds partial packages up. Use the API to round down.
+  New package sizes in the dashboard round partial packages up by default. When editing a charge, the dashboard preserves its existing rounding setting. Set `round` to `down` through the API to round partial packages down.
 </Note>
 
 **API References**
