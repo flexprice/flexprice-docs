@@ -210,6 +210,16 @@ Creating a commitment with a past `start_date`, or terminating one with a past `
 | `unused` | The capacity not consumed. For a binding `per_period` commitment, the true-up still owed |
 | `billed_amount` | What the commitment bills for the window: `used` plus, when binding, the true-up. 0 under `billing_terms`, where the value is billed through instalments |
 
+### Commitment Charges in Usage Analytics
+
+When `POST /events/analytics` includes `window_size`, charges for a commitment with `measurement: window` are allocated across the displayed time-series windows:
+
+* Utilized charges follow the commitment capacity used in each window.
+* Overage charges follow usage not covered by commitment capacity in each window.
+* When a true-up applies, its charges follow the capacity left unused in each window.
+
+This distributes calculated charges for display. It does not add another charge.
+
 ## Updating a Commitment
 
 [Update commitment](/api-reference/commitments/update-commitment) changes `name`, `invoice_label`, `invoice_description` and `metadata`. The new label and description apply to invoices generated afterwards. Everything else, including the scope, value, prices, dates, binding and collection method, can't change. Sending `end_date` returns `changing end_date is not supported yet`: terminate the commitment to end it early.
