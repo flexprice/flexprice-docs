@@ -87,7 +87,7 @@ Create the [fixed price](/docs/product-catalogue/plans/pricing) with `POST /pric
 }
 ```
 
-Create a [metered feature](/docs/product-catalogue/features/linking-to-plans) with `POST /features`, then attach a [quantity entitlement grant](/docs/product-catalogue/features/entitlement-grants) with `POST /entitlements`. Use the returned feature ID. Give the grant one subscription period of validity so it follows the monthly cycle. Neither the meter nor the grant creates a USD usage charge.
+Create a [metered feature](/docs/product-catalogue/features/linking-to-plans) with `POST /features`, then attach a [quantity entitlement grant](/docs/product-catalogue/features/entitlement-grants) with `POST /entitlements`. Use the returned feature ID. A `subscription_period` grant uses the monthly subscription cycle automatically. Omit `grant_duration_value` and `grant_allocation_behavior` for this grant type. Neither the meter nor the grant creates a USD usage charge.
 
 ```json
 {
@@ -129,9 +129,7 @@ Create a [metered feature](/docs/product-catalogue/features/linking-to-plans) wi
   "is_enabled": true,
   "grant_measure": "quantity",
   "grant_quota": "5000",
-  "grant_duration_unit": "subscription_period",
-  "grant_duration_value": 1,
-  "grant_allocation_behavior": "unit_start"
+  "grant_duration_unit": "subscription_period"
 }
 ```
 
