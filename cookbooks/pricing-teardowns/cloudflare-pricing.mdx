@@ -268,7 +268,7 @@ At period close, send the totals with `POST /events` early enough for all three 
 }
 ```
 
-If the first computation missed the summary, wait until all three meters reflect it. Use [Query invoices](/api-reference/invoices/query-invoices) for the subscription, with `"invoice_status": ["DRAFT", "SKIPPED", "FINALIZED"]` so skipped invoices are included. Find the invoice for the billing period and follow its current status:
+If the first computation missed the summary, wait until all three meters reflect it. Use [Query invoices](/api-reference/invoices/query-invoices) with the subscription ID, `"billing_reason": "SUBSCRIPTION_CYCLE"`, and `"invoice_status": ["DRAFT", "SKIPPED", "FINALIZED"]`. Match the billing period's start and end dates. The billing reason distinguishes the period-end invoice from the opening invoice, which can be skipped for the same dates. Confirm the period-end invoice still lacks the usage before choosing a recovery step:
 
 - **`DRAFT`:** Use [Recalculate draft invoice](/api-reference/invoices/recalculate-draft-invoice-v2) with `?finalize=false`. Verify the recomputed line items before finalizing. Finalization alone does not recompute usage. If recalculation fails because the invoice is no longer a draft, fetch its latest status and use the matching recovery step below.
 - **`SKIPPED` or `FINALIZED`:** Draft recalculation won't work. Follow the [invoice correction guide](/docs/core-concepts/invoices#correcting-a-finalized-invoice) to replace the invoice or, if it was paid and should be left intact, bill only the missing difference on a one-off invoice.
