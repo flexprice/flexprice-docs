@@ -1,0 +1,288 @@
+---
+title: "Can Flexprice Handle Cloudflare's Pricing?"
+sidebarTitle: "Cloudflare Pricing"
+description: "Model Cloudflare R2 Standard pricing in Flexprice."
+---
+
+Cloudflare R2 Standard charges separately for storage, Class A operations and Class B operations. Each has a monthly free allowance. The bill uses rounded billing units rather than charging a fractional rate on every request.
+
+<Frame caption="Cloudflare pricing as shown on the official pricing page, 2026-11-19.">
+  <img src="/images/pricing-teardowns/cloudflare/cloudflare-r2-pricing-2026-11-19.png" alt="Cloudflare R2 comparison showing included and paid Standard storage, Class A and Class B rates, and separate Infrequent Access rates" />
+</Frame>
+
+[View the official pricing page](https://www.cloudflare.com/products/r2/).
+
+**Scope:** One billing account's R2 Standard storage, Class A requests and Class B requests for a monthly period.
+
+**Not modeled:** Infrequent Access, data retrieval, other services, negotiated rates and tax. R2 does not charge for direct egress.
+
+## Pricing profile
+
+| Dimension | Modeled offering |
+| --- | --- |
+| Pricing model | Usage-based; Tiered pricing |
+| Industry | Cloud object storage |
+| Buyer | Developers and infrastructure teams |
+| Sales motion | Self-serve |
+| Billing mechanics | Monthly free allowances; Rounded billing units; Separate operation classes |
+
+## What Cloudflare charges
+
+| Item | Published terms | Flexprice implication |
+| --- | --- | --- |
+| Standard storage | 10 GB-month free; $0.015 per additional GB-month | Round the monthly storage metric up to whole GB-months |
+| Standard Class A | 1 million requests free; $4.50 per additional million | Round the monthly Class A total up in millions |
+| Standard Class B | 10 million requests free; $0.36 per additional million | Round the monthly Class B total up in millions |
+
+## Design takeaways
+
+1. **Round after aggregation.** The billable unit is a unit of monthly usage. Rounding each event would make the invoice depend on how the same activity was batched. [Published terms](https://developers.cloudflare.com/r2/pricing/).
+2. **Model each allowance independently.** Storage, Class A and Class B have separate thresholds. Keep one meter per dimension and preserve the account scope so the free unit is not repeated for every bucket. [Published terms](https://developers.cloudflare.com/r2/pricing/).
+
+## How Cloudflare's pricing maps to Flexprice
+
+| Cloudflare concept | Flexprice configuration |
+| --- | --- |
+| Monthly account totals | Calculate rounded billable units upstream; send one rated event for the period |
+| Three Standard billing dimensions | Three SUM meters, filtered to Standard, each reading its own numeric property |
+| Independent free allowances | Graduated tiers with separate zero-cost thresholds |
+| Monthly invoice | Three usage prices in arrears, no fixed subscription charge |
+
+## Configure the plan and subscription
+
+These requests are illustrative. Use your own test environment and replace all example IDs with the IDs returned by your setup. Create a [plan](/docs/product-catalogue/plans/create) with `POST /plans`:
+
+```json
+{
+  "name": "Cloudflare R2 Standard example",
+  "lookup_key": "cloudflare_pricing_example",
+  "description": "One billing account's R2 Standard storage, Class A requests and Class B requests for a monthly period"
+}
+```
+
+For each billing account, measure the storage and request totals across Standard buckets. For storage, average the daily peaks of aggregate Standard storage over the billing window, then round the result up to a whole GB-month. Count Class A and B separately; divide each period total by 1,000,000 and round up. Do not round individual operations or buckets, or subtract the free amounts here.
+
+Create these [metered features](/docs/product-catalogue/features/linking-to-plans) and [usage prices](/docs/product-catalogue/plans/pricing). Replace each example meter ID with the meter ID from the corresponding feature. In Flexprice's API, the graduated tier mode is `SLAB`. These prices allow the first quantity band at zero and rate only the excess.
+
+### Standard storage
+
+`POST /features`:
+
+```json
+{
+  "name": "Standard storage",
+  "lookup_key": "r2_standard_month_closed_standard_storage_gb_month_units",
+  "type": "metered",
+  "meter": {
+    "name": "Standard storage",
+    "event_name": "r2_standard_month_closed",
+    "reset_usage": "BILLING_PERIOD",
+    "aggregation": {
+      "type": "SUM",
+      "field": "standard_storage_gb_month_units"
+    },
+    "filters": [
+      {
+        "key": "storage_class",
+        "values": [
+          "standard"
+        ]
+      }
+    ]
+  }
+}
+```
+
+`POST /prices`:
+
+```json
+{
+  "entity_type": "PLAN",
+  "entity_id": "plan_cloudflare_example",
+  "currency": "usd",
+  "price_unit_type": "FIAT",
+  "billing_period": "MONTHLY",
+  "billing_period_count": 1,
+  "display_name": "Standard storage",
+  "type": "USAGE",
+  "billing_model": "TIERED",
+  "invoice_cadence": "ARREAR",
+  "tier_mode": "SLAB",
+  "meter_id": "meter_r2_standard_1",
+  "tiers": [
+    {
+      "up_to": 10,
+      "unit_amount": "0"
+    },
+    {
+      "unit_amount": "0.015"
+    }
+  ]
+}
+```
+
+### Standard Class A
+
+`POST /features`:
+
+```json
+{
+  "name": "Standard Class A",
+  "lookup_key": "r2_standard_month_closed_standard_class_a_million_units",
+  "type": "metered",
+  "meter": {
+    "name": "Standard Class A",
+    "event_name": "r2_standard_month_closed",
+    "reset_usage": "BILLING_PERIOD",
+    "aggregation": {
+      "type": "SUM",
+      "field": "standard_class_a_million_units"
+    },
+    "filters": [
+      {
+        "key": "storage_class",
+        "values": [
+          "standard"
+        ]
+      }
+    ]
+  }
+}
+```
+
+`POST /prices`:
+
+```json
+{
+  "entity_type": "PLAN",
+  "entity_id": "plan_cloudflare_example",
+  "currency": "usd",
+  "price_unit_type": "FIAT",
+  "billing_period": "MONTHLY",
+  "billing_period_count": 1,
+  "display_name": "Standard Class A",
+  "type": "USAGE",
+  "billing_model": "TIERED",
+  "invoice_cadence": "ARREAR",
+  "tier_mode": "SLAB",
+  "meter_id": "meter_r2_standard_2",
+  "tiers": [
+    {
+      "up_to": 1,
+      "unit_amount": "0"
+    },
+    {
+      "unit_amount": "4.50"
+    }
+  ]
+}
+```
+
+### Standard Class B
+
+`POST /features`:
+
+```json
+{
+  "name": "Standard Class B",
+  "lookup_key": "r2_standard_month_closed_standard_class_b_million_units",
+  "type": "metered",
+  "meter": {
+    "name": "Standard Class B",
+    "event_name": "r2_standard_month_closed",
+    "reset_usage": "BILLING_PERIOD",
+    "aggregation": {
+      "type": "SUM",
+      "field": "standard_class_b_million_units"
+    },
+    "filters": [
+      {
+        "key": "storage_class",
+        "values": [
+          "standard"
+        ]
+      }
+    ]
+  }
+}
+```
+
+`POST /prices`:
+
+```json
+{
+  "entity_type": "PLAN",
+  "entity_id": "plan_cloudflare_example",
+  "currency": "usd",
+  "price_unit_type": "FIAT",
+  "billing_period": "MONTHLY",
+  "billing_period_count": 1,
+  "display_name": "Standard Class B",
+  "type": "USAGE",
+  "billing_model": "TIERED",
+  "invoice_cadence": "ARREAR",
+  "tier_mode": "SLAB",
+  "meter_id": "meter_r2_standard_3",
+  "tiers": [
+    {
+      "up_to": 10,
+      "unit_amount": "0"
+    },
+    {
+      "unit_amount": "0.36"
+    }
+  ]
+}
+```
+
+Create one subscription per billing account with `POST /subscriptions`, with a period boundary aligned to how you measure usage:
+
+```json
+{
+  "customer_id": "cust_cloudflare_example",
+  "plan_id": "plan_cloudflare_example",
+  "currency": "usd",
+  "billing_period": "MONTHLY",
+  "billing_period_count": 1,
+  "billing_cycle": "anniversary",
+  "start_date": "2026-12-01T00:00:00Z"
+}
+```
+
+At period close, ingest the finalized totals with `POST /events`, using the customer's external ID and an event timestamp inside the window being billed. Make sure the rated event is ingested before finalizing that invoice. Keep the ID and timestamp stable for retries; do not send the same totals as both a summary and individual billable events.
+
+```json
+{
+  "event_name": "r2_standard_month_closed",
+  "event_id": "evt_r2_account_2026_12",
+  "external_customer_id": "account_r2_example",
+  "timestamp": "2026-12-30T23:59:59Z",
+  "properties": {
+    "storage_class": "standard",
+    "standard_storage_gb_month_units": "110",
+    "standard_class_a_million_units": "2",
+    "standard_class_b_million_units": "11"
+  }
+}
+```
+
+## Worked bill
+
+| Standard usage in the period | Rounded units | Free units | Paid calculation |
+| --- | ---: | ---: | ---: |
+| 109.1 GB-month | 110 | 10 | 100 × $0.015 = $1.50 |
+| 1,000,001 Class A requests | 2 million | 1 million | 1 × $4.50 = $4.50 |
+| 10,000,001 Class B requests | 11 million | 10 million | 1 × $0.36 = $0.36 |
+
+The base usage total is **$6.36** before exclusions. Exactly 1 million Class A requests costs $0; one more request moves that month's Class A charge to $4.50.
+
+## Pricing sources
+
+- [Cloudflare pricing](https://www.cloudflare.com/products/r2/): R2 Standard and Infrequent Access pricing comparison.
+- [Cloudflare product documentation](https://developers.cloudflare.com/r2/pricing/): Monthly allowances, daily storage peaks and round-up rules for billable units.
+
+Pricing checked on 2026-11-19. This example does not reproduce a full provider invoice.
+
+## Related guide
+
+[Usage-based pricing](/cookbooks/billing-recipes/usage-based-pricing)
