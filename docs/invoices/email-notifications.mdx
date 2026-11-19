@@ -1,54 +1,93 @@
 ---
 title: "Emailing Invoices"
-description: "Send finalized invoices by email and inspect asynchronous delivery logs"
+description: "Email invoices to your customers from Flexprice, by hand or automatically when each invoice is finalized, and see whether each email was delivered"
 ---
 
-Use the invoice email API to send a finalized invoice and track its delivery. Sending is asynchronous: a successful request queues an email, while the delivery log records later provider updates.
+Invoice emails send a finalized invoice straight to your customer, with a button to view and pay it online and the invoice PDF attached. Send one by hand from the invoice page, or let Flexprice email every invoice as soon as it is finalized. The invoice page shows every email sent and whether it reached the customer.
 
-## Prerequisites
+<Frame>![Invoice email with the amount due, the View invoice button, the billing details and the charges](/images/docs/invoices/email/invoice-email-sample.png)</Frame>
 
-* The API deployment must have an email provider configured.
-* Enable `email_notification_config.enabled` in the target environment.
-* Configure a billing or help reply-to email in business settings. A manual send without a reply-to address fails.
+## What your customer receives
 
-If customer emails are disabled in the deployment or environment, the manual request returns an error instead of queuing an email.
+- **From your business:** the email comes from your business name, with the subject "Invoice _invoice number_ from _your business name_".
+- **View invoice:** opens the [hosted invoice](/docs/invoices/hosted-invoices), where the customer can see the full invoice, download the PDF and pay online.
+- **A summary of the invoice:** the amount due, who it is billed to, the invoice date and the charges with the totals. Long invoices list the first 10 charges, and the rest are on the hosted invoice.
+- **The PDF:** attached to the email when **Attach invoice PDF** is on.
+- **Replies come to you:** when the customer replies, the email goes to your organization's help email, or to its billing email if there is no help email.
+- **Billing entities, if turned on:** when [billing entities](/docs/invoices/billing-entities) are turned on for the environment, each invoice is emailed under the name of the entity that issued it, and replies go to that entity's help or billing email, or to your organization's if the entity has neither. With billing entities off, every email uses your organization's name and emails.
 
-## Send an invoice
+## Before you start
 
-Call `POST /v1/invoices/{id}/email`. The invoice must be finalized.
+Add a help or billing email under **Settings → Organization**, so customers have somewhere to reply. Invoices are not emailed without one. If billing entities are turned on, a help or billing email on the invoice's entity also works.
 
-```bash
-curl --request POST \
-  --url 'https://us.api.flexprice.io/v1/invoices/<INVOICE_ID>/email' \
-  --header 'Content-Type: application/json' \
-  --header 'x-api-key: <API_KEY>' \
-  --header 'X-Environment-ID: <ENVIRONMENT_ID>' \
-  --data '{
-    "to": ["billing@example.com"],
-    "cc": ["finance@example.com"],
-    "idempotency_key": "invoice-email-<INVOICE_ID>"
-  }'
-```
+## Turning on emails
 
-* `to` is optional. If omitted, Flexprice uses the customer's email address. If neither provides a recipient, the manual request fails with a validation error.
-* `cc` is optional. `to` and `cc` accept recipient email addresses.
-* `idempotency_key` is optional. Retrying with the same key for the same invoice returns the existing email log. Reusing that key for another invoice is rejected.
+Go to **Settings → Alerts & Emails → Emails**, turn on the options you want, and select **Save changes**. The settings apply to the environment selected in the environment switcher, so turn them on separately for Sandbox and Production.
 
-The response to a new send is an email log with `delivery_status: queued`. This means the email is queued for dispatch, not delivered. An idempotent retry returns the existing log with its current delivery status, not a new `queued` log.
+<Frame>![Emails settings with the Send emails, Attach invoice PDF and Email invoices automatically switches](/images/docs/invoices/email/settings-emails.png)</Frame>
 
-## Track delivery
+| Option | Default | What it does |
+| ------ | ------- | ------------ |
+| **Send emails** | Off | Lets you email invoices to customers. Turning it off also turns off automatic emails. |
+| **Attach invoice PDF** | On | Attaches the invoice PDF to each email, as well as the View invoice button. |
+| **Email invoices automatically** | Off | Emails each invoice to the customer as soon as it is finalized. Needs **Send emails** on. |
 
-* Call `GET /v1/invoices/{id}/emails` to list email logs for an invoice.
-* Call `POST /v1/emails/search` with a JSON body to search email logs across invoices. Send `{}` for an unfiltered search or `{"delivery_statuses":["bounced"]}` to find bounced emails.
+## Sending an invoice
 
-Logs can move through these delivery statuses:
+Open a finalized invoice under **Billing → Invoices**. Select **Send** in the **Emails** card, or **Email invoice** in the **⋯** menu.
 
-* `queued`: waiting for dispatch
-* `sent`: accepted by the email provider
-* `delivery_delayed`: delivery was delayed
-* `delivered`: delivered to the recipient's mail server
-* `bounced`, `failed`, or `suppressed`: delivery failed or was suppressed
-* `complained`: the recipient filed a complaint about the message, including after delivery
-* `skipped`: an automatic email was intentionally not sent
+<Frame>![Email invoice dialog with the customer's email in To and an address in CC](/images/docs/invoices/email/email-invoice-dialog.png)</Frame>
 
-Automatic invoice emails are only considered for finalized invoices. They require `email_events.enabled` in deployment configuration, an email provider, and `email_notification_config.auto_send.enabled` with `invoice` included in `auto_send.entities` for the environment. For an automatic send, a missing customer email or a zero-total invoice is recorded as `skipped`. If no reply-to address is configured, the automatic send is not recorded.
+**To** is filled in with the customer's email. Change it or add more addresses, add anyone to copy in **CC** (press Enter or a comma after each address), then select **Send email**. The email appears in the **Emails** card straight away.
+
+Draft invoices can't be emailed until they are finalized, and voided invoices can't be emailed at all.
+
+## Sending invoices automatically
+
+With **Email invoices automatically** on, Flexprice emails each invoice to the customer's email address the moment it is finalized, so you don't have to send it yourself. These emails are marked **Auto** in the **Emails** card.
+
+An invoice is not emailed automatically when the customer has no email address or the invoice total is zero. The **Emails** card shows these as **Skipped**, with the reason.
+
+## Checking delivery
+
+The **Emails** card on the invoice page lists every email sent for the invoice, newest first. Each one shows:
+
+- its status, such as **Delivered** or **Bounced**
+- **Manual** if someone sent it, or **Auto** if it was sent on finalize
+- who it was sent to, and how many people were copied
+- when it was sent
+
+When an email didn't reach the customer, the card also shows why. The status updates on its own, so there is no need to refresh the page.
+
+<Frame>![Invoice page with the Emails card listing a manual and an automatic email, both delivered](/images/docs/invoices/email/invoice-emails-card.png)</Frame>
+
+| Status | Meaning |
+| ------ | ------- |
+| **Queued** | About to be sent |
+| **Sent** | Sent, waiting for the customer's mail server to accept it |
+| **Delivery delayed** | Delivery is taking longer than usual |
+| **Delivered** | Reached the customer's inbox provider |
+| **Bounced** | The customer's mail server rejected it, often because the address is wrong |
+| **Failed** | Could not be sent |
+| **Suppressed** | Not sent, because this address bounced or complained before |
+| **Complained** | The customer marked the email as spam |
+| **Skipped** | Not sent on purpose, with the reason shown |
+
+If you turn off **Send emails** while an email is still **Queued**, it is not sent and shows as **Skipped**.
+
+## Using the API
+
+You can do the same from the API:
+
+- Turn emails on with the `email_notification_config` setting, which has the same three options: `enabled`, `attach_invoice_pdf` and `auto_send`.
+- Send an invoice with [Email invoice to customer](/api-reference/invoices/email-invoice-to-customer), optionally with your own `to` and `cc` addresses.
+- See an invoice's emails with [List invoice emails](/api-reference/invoices/list-invoice-emails), or search across invoices with [Search emails](/api-reference/invoices/search-emails).
+
+<CardGroup cols={2}>
+  <Card icon="link" href="/docs/invoices/hosted-invoices" title="Hosted Invoices">
+    The page your customer opens from the email to view and pay the invoice.
+  </Card>
+  <Card icon="file-invoice" href="/docs/invoices/managing" title="Managing Invoices">
+    Find, finalize, void and download invoices in the dashboard.
+  </Card>
+</CardGroup>
