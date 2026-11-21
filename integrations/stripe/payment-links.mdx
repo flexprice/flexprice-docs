@@ -21,23 +21,30 @@ Payment links in Flexprice provide a hosted Stripe payment page. Most use a Stri
 ```mermaid
 graph TD
     A[Create Payment Request] --> B[Validate Invoice & Customer]
-    B --> C[Create Payment Record: INITIATED]
-    C --> D{Eligible synced Stripe invoice?}
-    D -->|Yes| E[Use Stripe-hosted invoice page]
-    D -->|No| F[Create Stripe Checkout Session]
-    E --> G[Return Payment URL]
-    F --> G
-    G --> H[Customer opens payment page]
-    H --> I{Payment page type?}
-    I -->|Checkout Session| J{Payment successful?}
-    J -->|Yes| K[checkout.session.completed; Payment SUCCEEDED]
-    J -->|Declined| L[payment_intent.payment_failed with payment ID]
-    L --> M[Record attempt only; keep Checkout payment open]
-    M --> N[Retry same Checkout link]
-    I -->|Stripe-hosted invoice| O{Payment successful?}
-    O -->|Yes| P[Reconcile via invoice payment webhook]
-    O -->|Declined| Q[invoice.payment_failed; separate FAILED CARD payment if open PI]
-    Q --> R[Original pending link payment stays open]
+    B --> C{Finalized invoice with Stripe outbound sync enabled?}
+    C -->|No| D[Create Payment Record: INITIATED]
+    D --> E[Create Stripe Checkout Session]
+    C -->|Yes| F{Stripe hosted invoice URL available?}
+    F -->|No| X[Error: hosted invoice URL unavailable]
+    X --> X1[Exit without creating payment record]
+    F -->|Yes| G{Invoice unpaid and requested amount is full remaining balance?}
+    G -->|No| Y[Error: prior payment or amount is not full remaining balance]
+    Y --> Y1[Exit without creating payment record]
+    G -->|Yes| H[Create Payment Record: INITIATED]
+    H --> I[Use Stripe-hosted invoice page]
+    E --> J[Return Payment URL]
+    I --> J
+    J --> K[Customer opens payment page]
+    K --> L{Payment page type?}
+    L -->|Checkout Session| M{Payment successful?}
+    M -->|Yes| N[checkout.session.completed; Payment SUCCEEDED]
+    M -->|Declined| O[payment_intent.payment_failed with payment ID]
+    O --> P[Record attempt only; keep Checkout payment open]
+    P --> Q[Retry same Checkout link]
+    L -->|Stripe-hosted invoice| R{Payment successful?}
+    R -->|Yes| S[Reconcile via invoice payment webhook]
+    R -->|Declined| T[invoice.payment_failed; separate FAILED CARD payment if open PI]
+    T --> U[Original pending link payment stays open]
 ```
 
 ## Payment Status Flow
