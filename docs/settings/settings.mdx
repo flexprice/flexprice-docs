@@ -136,7 +136,7 @@ A customer or a subscription can override the environment's grace period and aut
 ```
 
 - **Precedence**: each field resolves on its own, from the default, then the environment setting, then the customer, then the subscription. A subscription that overrides only `grace_period_days` takes `auto_cancellation_enabled` from its customer or the environment.
-- **Updates**: omit `settings` to keep the current overrides, send an object to replace them, or send `{}` to clear them.
+* **Updates**: omit `settings` to keep the current overrides; send a non-empty `settings.subscription_config` object to merge the supplied fields and preserve omitted override fields; send `settings: {}` to clear overrides and resume inheritance.
 - **Zero-day grace**: overrides accept `grace_period_days: 0`, which cancels the subscription once its invoice is past due. The environment setting still requires 1 or more.
 - **Turning auto-cancellation on for one client**: an override with `auto_cancellation_enabled: true` applies even when the environment has auto-cancellation off.
 - **Which customer**: the customer override comes from the subscription's `customer_id`, not its invoicing customer.

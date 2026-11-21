@@ -127,6 +127,8 @@ const items = await fetch("/api/me/entitlements").then((r) => r.json());
 <UsageQuota items={normalizeUsageQuotaItems(items.map(toQuotaItem))} />
 ```
 
+For a raw backend-proxy usage read that needs a grant refresh, pass `refresh_grants=true`. See [grant refresh behavior](/docs/product-catalogue/features/entitlement-grants#refreshing-grant-usage).
+
 ## Which pattern should you use?
 
 - Start with a **portal session** if you are building a billing page and want to ship fast. Every read the page needs already exists under the portal.
