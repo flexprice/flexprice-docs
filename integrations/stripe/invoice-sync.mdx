@@ -45,13 +45,13 @@ graph TD
 When `collection_method` is set to `charge_automatically`:
 
 1. **Invoice Creation**: Creates a draft invoice in Stripe with `charge_automatically` collection method
-2. **Auto-advance**: Stripe automatically creates a PaymentIntent and attempts to charge the customer's default payment method
-3. **Payment Processing**: Stripe handles the payment attempt immediately
+2. **Auto-advance**: When enabled, Stripe advances the invoice and attempts to charge the customer's default payment method. Flexprice still finalizes the Stripe invoice during sync when this setting is disabled.
+3. **Payment Processing**: Stripe attempts collection when auto-advance is enabled and collection can proceed
 4. **Webhook Events**: Listen for `invoice_payment.paid`, `invoice.paid`, `invoice.payment_failed` and `payment_intent.succeeded`
 
 **Behavior:**
 
-- Immediate payment attempt upon invoice finalization
+* `auto_advance` defaults to `true`, except for `charge_automatically` when the customer has no default payment method; then it defaults to `false`. Setting it to `false` disables Stripe's automatic advancement and collection, but Flexprice still finalizes the invoice during sync.
 - Uses customer's default payment method
 - Automatic retry on failure (based on Stripe settings)
 - Subscription status depends of payment behavior until payment succeeds
@@ -62,16 +62,33 @@ When `collection_method` is set to `send_invoice`:
 
 1. **Invoice Creation**: Creates a invoice in Stripe with `send_invoice` collection method
 2. **Due Date**: Sets the invoice due date from Flexprice invoice
-3. **Send Invoice**: Automatically sends the invoice to the customer via email
+3. **Send Invoice**: Sends Stripe's invoice email by default; set `send_invoice_email` to `false` to suppress it
 4. **Customer Action**: Customer must manually pay using Stripe's hosted invoice page
 5. **Webhook Events**: Listen for `invoice_payment.paid`, `invoice.paid`, `invoice.payment_failed` and `payment_intent.succeeded`
 
 **Behavior:**
 
-- Customer receives email with payment link
+* `send_invoice_email` defaults to `true` for `send_invoice`; set it to `false` to prevent Stripe's invoice email
 - Manual payment required by customer
 - Subscription status depends on payment behavior setting
 - More control over payment timing
+
+### Outbound invoice settings
+
+Set these optional fields in `sync_config.invoice_sync_settings`:
+
+```json
+{
+  "sync_config": {
+    "invoice_sync_settings": {
+      "auto_advance": false,
+      "send_invoice_email": false
+    }
+  }
+}
+```
+
+When unset, `auto_advance` follows the collection method and saved default payment method; a failed lookup keeps it enabled. `send_invoice_email` defaults to sending Stripe's email for `send_invoice` invoices. An invoice already paid or overpaid in Flexprice is synced as paid, without another Stripe collection attempt or invoice email. Sync also adds Stripe invoice-item adjustments for Flexprice discounts, prepaid credits, and exclusive tax.
 
 ## Payment Flows
 
@@ -87,38 +104,43 @@ graph TD
     B --> C[Stripe Hosted Invoice Page]
     C --> D[Customer Enters Payment Details]
     D --> E{Payment Successful?}
-    E -->|Yes| F[Stripe: invoice_payment.paid]
-    E -->|No| G[No Webhook - Failure Handled by Stripe]
-    F --> H[Flexprice: Process Payment]
-    G --> I[Customer Can Retry Payment]
+    E -->|Yes| F{PaymentIntent included?}
+    F -->|No| G[Stripe: invoice.paid]
+    F -->|Yes| H[Stripe: invoice_payment.paid]
+    E -->|No| I[Stripe: invoice.payment_failed]
+    G --> J[Reconcile paid invoice without PaymentIntent]
+    H --> K[Settle pending payment or create external payment]
+    I --> L[Failure handling for outbound-synced invoice]
 ```
 
-**Webhook Handler:** `payment_intent.succeeded`
+**Webhook Events:** `invoice.paid` when there is no PaymentIntent; `invoice_payment.paid` when the payment includes a PaymentIntent
 
 - **Trigger**: Customer pays via Stripe invoice link
-- **Action**: Creates payment record in Flexprice
+- **Action**: `invoice.paid` reconciles the invoice without a PaymentIntent. `invoice_payment.paid` settles the matching pending hosted-invoice payment, or creates an external payment record if none exists.
 - **Reconciliation**: Uses `flexprice_invoice_id` from invoice metadata
-- **Note**: We don't listen to failure webhooks, only success
+* **Failure**: `invoice.payment_failed` is handled for outbound-synced invoices; see [Failed Payments](#3-failed-payments)
 
-#### 2. Charge Customer (Stripe Direct)
+#### 2. Stripe Invoice Auto-collection
 
 **Flow:**
 
 ```mermaid
 graph TD
-    A[Flexprice Initiates Charge] --> B[Stripe: Create PaymentIntent]
-    B --> C[Stripe: Charge Customer]
-    C --> D{Charge Successful?}
-    D -->|Yes| E[Stripe: invoice_payment.paid]
-    D -->|No| F[No Webhook - Failure Handled by Stripe]
-    E --> G[Flexprice: Update Payment Status]
+    A[Stripe auto-advances synced invoice] --> B[Stripe: Attempt collection]
+    B --> C{Charge Successful?}
+    C -->|Yes with PaymentIntent| D[Stripe: invoice_payment.paid]
+    C -->|Yes without PaymentIntent| E[Stripe: invoice.paid]
+    C -->|No| F[Stripe: invoice.payment_failed]
+    D --> G[Flexprice: Reconcile payment]
+    E --> H[Flexprice: Reconcile invoice without PaymentIntent]
+    F --> I[Flexprice: Apply invoice-failure handling]
 ```
 
-**Webhook Handler:** `invoice_payment.paid`
+**Webhook Events:** `invoice_payment.paid` includes a PaymentIntent; `invoice.paid` is reconciled without one.
 
-- **Trigger**: Direct charge to customer's payment method succeeds
-- **Action**: Updates existing payment record
-- **Reconciliation**: Uses `flexprice_invoice_id` from invoice metadata
+* **Trigger**: Stripe attempts automatic collection for a `charge_automatically` invoice
+* **Action**: Reconciles a payment when the event includes a PaymentIntent, or reconciles the paid invoice without one
+* **Failure**: `invoice.payment_failed` is handled separately from `payment_intent.payment_failed`; see [Failed Payments](#3-failed-payments)
 
 ### Flexprice Payment Methods
 
@@ -142,7 +164,7 @@ graph TD
 - **Trigger**: Customer completes payment via Stripe Checkout
 - **Action**: Updates payment status to `SUCCEEDED`
 - **Reconciliation**: Uses `flexprice_payment_id` from PaymentIntent metadata
-- **Note**: We get the invoice ID from the PaymentIntent and don't listen to failure webhooks
+* **Failure**: A `payment_intent.payment_failed` event with matching `flexprice_payment_id` metadata records a failed attempt and leaves the Checkout payment open for retry on the same live link.
 
 #### 2. Charge Card (Flexprice Direct)
 
@@ -158,11 +180,7 @@ graph TD
     E --> G[Update Invoice Status]
 ```
 
-**No Webhook Processing:**
-
-- **Reason**: Payment is processed synchronously
-- **Action**: Immediate status update in Flexprice
-- **Reconciliation**: Direct API response handling
+The direct card API handles successful charges synchronously. `payment_intent.succeeded` does not drive this success update; `payment_intent.payment_failed` can update the payment to `FAILED`. Neither event itself reconciles invoice payment status.
 
 ## Webhook Processing
 
@@ -171,9 +189,11 @@ graph TD
 | Event Type                      | Trigger                    | Action                       | Reconciliation Method                              |
 | ------------------------------- | -------------------------- | ---------------------------- | -------------------------------------------------- |
 | `checkout.session.completed`    | Payment link completed     | Update payment status        | `flexprice_payment_id` from session metadata       |
-| `payment_intent.succeeded`      | Checkout payment succeeded | Update payment status        | `flexprice_payment_id` from PaymentIntent metadata |
-| `payment_intent.payment_failed` | Direct charge failed       | Update payment status        | `flexprice_payment_id` from PaymentIntent metadata |
-| `invoice_payment.paid`          | Invoice payment succeeded  | Create/update payment record | `flexprice_invoice_id` from invoice metadata       |
+| `payment_intent.succeeded`      | PaymentIntent succeeds | Checkout success is handled by `checkout.session.completed`; direct card success is handled by the API response | `flexprice_payment_id` from PaymentIntent metadata |
+| `payment_intent.payment_failed` | PaymentIntent fails | Non-link payment becomes `FAILED`; a Checkout `PAYMENT_LINK` with matching metadata records an attempt and stays open | `flexprice_payment_id` from PaymentIntent metadata |
+| `invoice.paid`                  | Stripe invoice is paid without a PaymentIntent | Reconcile the mapped Flexprice invoice without a payment intent | Stripe invoice mapping |
+| `invoice_payment.paid`          | Stripe invoice payment includes a PaymentIntent | Settle a matching pending hosted-invoice payment or create an external payment record | Stripe invoice mapping and PaymentIntent ID |
+| `invoice.payment_failed`        | Outbound-synced Stripe invoice payment fails | May mark an eligible subscription incomplete; records a failed payment only when an open PaymentIntent is found. Does not directly change Flexprice invoice `payment_status`. | Stripe invoice mapping |
 
 ### Metadata Requirements
 
@@ -217,7 +237,7 @@ graph TD
 #### 1. Partial Payments
 
 - **Stripe**: Handles partial payments automatically
-- **Flexprice**: Syncs partial payment amounts
+- **Flexprice**: Syncs partial payment amounts; the hosted-invoice payment-link path below requires the full remaining balance
 - **Reconciliation**: Tracks cumulative payment amounts
 
 #### 2. Refunds
@@ -227,10 +247,13 @@ graph TD
 
 #### 3. Failed Payments
 
-- **Retry Logic**: Handled by Stripe's retry mechanism
-- **Webhook**: `payment_intent.payment_failed` for direct charges only
-- **Flexprice**: Updates payment status to `FAILED`
-- **Note**: Invoice payment failures are not tracked via webhooks
+* **Non-link PaymentIntent failure**: Updates that Flexprice payment to `FAILED`; this update does not itself reconcile the invoice.
+* **Checkout payment-link decline**: When `payment_intent.payment_failed` has matching `flexprice_payment_id` metadata, it records `payment.attempt.failed` only. The parent payment remains open and the customer can retry the same live Checkout link.
+* **`invoice.payment_failed`**: Handled only when invoice outbound sync is enabled, a Flexprice mapping exists, and the mapped invoice is not already paid. It can mark a subscription incomplete when the invoice is finalized, has a positive balance, is a subscription-cycle invoice, and belongs to an active subscription with incomplete-payment behavior and either automatic collection or an overdue invoice. If an open PaymentIntent is found, Flexprice records a separate failed payment; without one, it creates no payment record. The handler does not directly set the invoice's `payment_status` to `FAILED`.
+
+### Synced invoice payment links
+
+For an outbound-synced, finalized invoice, a `/payments` link uses the Stripe-hosted invoice page only after the hosted URL is available, no amount has already been paid, and the requested amount equals the full `amount_remaining`. This hosted-page PaymentIntent does not carry `flexprice_payment_id`. On failure, `invoice.payment_failed` can create a separate `FAILED` card payment when an open PaymentIntent is found; the original pending payment-link record stays open. Without an open PaymentIntent, no failed payment record is created. When payment succeeds through `invoice_payment.paid` with a PaymentIntent, Flexprice settles the existing pending hosted-invoice payment; if none exists, it creates an external payment record. `invoice.paid` without a PaymentIntent reconciles the mapped invoice. Partial payments are not supported on this hosted-page path. Voiding the Flexprice invoice attempts to void its synced Stripe invoice after the local commit; this is best-effort, and an already-paid Stripe invoice is left alone.
 
 ## Configuration
 
