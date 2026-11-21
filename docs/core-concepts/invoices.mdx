@@ -126,6 +126,8 @@ Flexprice builds a subscription invoice's amounts in this order. [Invoice Calcul
 4. **`total_tax`**: calculated on `subtotal` minus `total_discount`, so credits don't lower it. Exclusive tax is added to the total. Inclusive tax is already part of the subtotal.
 5. **`total`**: `subtotal` minus `total_discount` minus `total_prepaid_credits_applied`, plus exclusive tax. `amount_due` starts at `total`, and `amount_remaining` is `amount_due` minus `amount_paid`.
 
+An invoice response can include `linked_wallet_transactions`, an optional array of linked wallet transaction objects with `id`, `wallet_id`, `credit_amount`, `transaction_status`, and `transaction_reason`. A linked transaction that is not found is omitted from the response.
+
 `payment_status` tracks collection separately from `invoice_status`:
 
 - `PENDING`: owed, including after a partial payment.

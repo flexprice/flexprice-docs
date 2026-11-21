@@ -5,7 +5,7 @@ description: 'Complete guide to creating payment links and handling the Stripe c
 
 ## Overview
 
-Payment links in Flexprice provide a secure, hosted checkout experience powered by Stripe. Customers click a payment URL and are redirected to Stripe's secure checkout page to complete their payment.
+Payment links in Flexprice provide a hosted Stripe payment page. Most use a Stripe Checkout Session. An eligible payment request for an invoice already synced to Stripe uses that invoice's Stripe-hosted page instead.
 
 ### Key Features
 
@@ -22,21 +22,22 @@ Payment links in Flexprice provide a secure, hosted checkout experience powered 
 graph TD
     A[Create Payment Request] --> B[Validate Invoice & Customer]
     B --> C[Create Payment Record: INITIATED]
-    C --> D[Generate Stripe Checkout Session]
-    D --> E{Session Created?}
-    E -->|Success| F[Update Status: PENDING]
-    E -->|Failure| G[Keep Status: INITIATED]
-    F --> H[Return Payment URL]
-    H --> I[Customer Clicks Link]
-    I --> J[Stripe Checkout Page]
-    J --> K[Customer Enters Payment Details]
-    K --> L{Payment Successful?}
-    L -->|Yes| M[Stripe Webhook: completed]
-    L -->|No| N[Stripe Webhook: failed]
-    M --> O[Update Status: SUCCEEDED]
-    N --> P[Update Status: FAILED]
-    O --> Q[Reconcile Invoice]
-    P --> R[Log Payment Failure]
+    C --> D{Eligible synced Stripe invoice?}
+    D -->|Yes| E[Use Stripe-hosted invoice page]
+    D -->|No| F[Create Stripe Checkout Session]
+    E --> G[Return Payment URL]
+    F --> G
+    G --> H[Customer opens payment page]
+    H --> I{Payment page type?}
+    I -->|Checkout Session| J{Payment successful?}
+    J -->|Yes| K[checkout.session.completed; Payment SUCCEEDED]
+    J -->|Declined| L[payment_intent.payment_failed with payment ID]
+    L --> M[Record attempt only; keep Checkout payment open]
+    M --> N[Retry same Checkout link]
+    I -->|Stripe-hosted invoice| O{Payment successful?}
+    O -->|Yes| P[Reconcile via invoice payment webhook]
+    O -->|Declined| Q[invoice.payment_failed; separate FAILED CARD payment if open PI]
+    Q --> R[Original pending link payment stays open]
 ```
 
 ## Payment Status Flow
@@ -45,8 +46,8 @@ graph TD
 
 ```
 INITIATED → PENDING → SUCCEEDED
-    ↓           ↓          ↓
-  FAILED     FAILED    REFUNDED
+                           ↓
+                       REFUNDED
 
 PENDING → VOIDED  (invoice voided while the link is unpaid)
 ```
@@ -55,11 +56,10 @@ PENDING → VOIDED  (invoice voided while the link is unpaid)
 
 | Status | Description | Triggers |
 |--------|-------------|----------|
-| `INITIATED` | Payment record created, Stripe session not yet created | Initial payment creation |
-| `PENDING` | Stripe checkout session created successfully | Successful Stripe API call |
+| `INITIATED` | Payment record created, payment page not yet ready | Initial payment creation |
+| `PENDING` | Payment page created: Stripe Checkout Session or eligible synced invoice page | Successful Stripe API call |
 | `PROCESSING` | Payment is being processed | Temporary status during updates |
-| `SUCCEEDED` | Payment completed successfully | Stripe webhook: `checkout.session.completed` |
-| `FAILED` | Payment attempt failed | Stripe webhooks: `checkout.session.expired`, `payment_intent.payment_failed` |
+| `SUCCEEDED` | Payment completed through Checkout or a synced Stripe invoice page | `checkout.session.completed`, or invoice payment reconciliation |
 | `REFUNDED` | Payment was refunded | Manual refund processing |
 | `VOIDED` | Unpaid link closed because its invoice was voided; the Stripe checkout session is expired | Voiding the invoice |
 
@@ -70,7 +70,7 @@ PENDING → VOIDED  (invoice voided while the link is unpaid)
 1. **Stripe Connection**: Active Stripe connection configured
 2. **Customer Sync**: Customer must have Stripe customer ID
 3. **Invoice Status**: Invoice must be finalized and unpaid
-4. **Valid Amount**: Payment amount must match invoice outstanding
+4. **Amount**: For invoice payments, omit `amount` or set it to zero to use the remaining balance. Otherwise, request the amount to collect.
 
 ### Creating Payment Links via Dashboard
 
@@ -150,10 +150,11 @@ X-Environment-ID: your_environment_id
 | `destination_id` | string | ✅ | Valid invoice ID |
 | `payment_method_type` | string | ✅ | Must be `"payment_link"` |
 | `payment_gateway` | string | ✅ | Must be `"stripe"` |
-| `amount` | string | ✅ | Payment amount (must match invoice) |
+| `amount` | string | No | For invoice payments, zero or omitted defaults to the invoice's remaining balance. |
 | `currency` | string | ✅ | Valid currency code |
 | `process_payment` | boolean | ✅ | Set to `true` to create Stripe session |
 | `save_card_and_make_default` | boolean | ❌ | Save card for future payments (default: false) |
+| `gateway_options.stripe.allow_promotion_codes` | boolean | No | On direct `POST /payments` requests, show a promotion-code field in a Stripe Checkout Session. Defaults to `true`; set to `false` to disable. This does not configure a Stripe-hosted invoice page. |
 
 
 ## Stripe Checkout Configuration
@@ -232,13 +233,9 @@ When a payment is completed, Stripe sends a `checkout.session.completed` webhook
 
 ### Payment Failure Handling
 
-When payments fail:
+A declined Stripe Checkout PaymentIntent with matching `flexprice_payment_id` metadata records `payment.attempt.failed`; it does not fail the parent payment. The payment stays pending and the customer can retry the same live Checkout link. The synced Stripe-hosted invoice page has different failure handling: `invoice.payment_failed` can create a separate failed card payment while leaving the original pending link payment open. See [Synced invoice payment links](/integrations/stripe/invoice-sync#synced-invoice-payment-links).
 
-1. **Webhook Received**: Stripe sends failure webhook
-2. **Status Updated**: Payment status changed to `FAILED`
-3. **Error Logged**: Failure reason recorded
-4. **Customer Notified**: Optional failure notification
-5. **Retry Available**: Customer can create new payment link
+When Stripe outbound invoice sync is enabled, a finalized invoice uses its Stripe-hosted invoice page only after the hosted URL is available. The invoice must have no amount already paid, and the request must cover the full `amount_remaining`. An omitted or zero `amount` defaults to that remaining balance. A finalized invoice still syncing returns the hint "This invoice is being synced to Stripe. Please try again in some time." A prior payment or partial amount returns "This invoice can only be paid in full." These limits apply to the synced invoice page, not to Checkout Session settings such as `gateway_options.stripe.allow_promotion_codes`.
 
 ## Testing Payment Links
 
