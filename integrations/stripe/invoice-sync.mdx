@@ -47,7 +47,7 @@ When `collection_method` is set to `charge_automatically`:
 1. **Invoice Creation**: Creates a draft invoice in Stripe with `charge_automatically` collection method
 2. **Auto-advance**: Stripe automatically creates a PaymentIntent and attempts to charge the customer's default payment method
 3. **Payment Processing**: Stripe handles the payment attempt immediately
-4. **Webhook Events**: Listen for `invoice_payment.paid` and `payment_intent.succeeded`
+4. **Webhook Events**: Listen for `invoice_payment.paid`, `invoice.paid`, `invoice.payment_failed` and `payment_intent.succeeded`
 
 **Behavior:**
 
@@ -64,7 +64,7 @@ When `collection_method` is set to `send_invoice`:
 2. **Due Date**: Sets the invoice due date from Flexprice invoice
 3. **Send Invoice**: Automatically sends the invoice to the customer via email
 4. **Customer Action**: Customer must manually pay using Stripe's hosted invoice page
-5. **Webhook Events**: Listen for `invoice_payment.paid` and `payment_intent.succeeded`
+5. **Webhook Events**: Listen for `invoice_payment.paid`, `invoice.paid`, `invoice.payment_failed` and `payment_intent.succeeded`
 
 **Behavior:**
 
@@ -253,6 +253,8 @@ POST /api/v1/webhooks/stripe/{tenant_id}/{environment_id}
 - `payment_intent.succeeded`
 - `payment_intent.payment_failed`
 - `invoice_payment.paid`
+
+For invoice outbound sync, also subscribe to `invoice.paid` and `invoice.payment_failed`.
 
 ## Error Handling
 

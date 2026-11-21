@@ -25,6 +25,8 @@ The invoice page shows:
 - The **Payments** and **Credit memos** tabs, listing the payments recorded against the invoice and the credit memos issued for it.
 - The **Emails** card, listing the emails sent to the customer for the invoice with their delivery status. Select **Send** to email the invoice. See [Emailing invoices](/docs/invoices/email-notifications).
 
+* If the invoice has linked wallet credits in the pending state, its header shows **Releases X credits**. The credits become available once the invoice is paid.
+
 <Frame>
   ![Invoice page with the amount due, dates, addresses, line items, and totals](/images/docs/invoices/managing/invoice-details.png)
 </Frame>
@@ -68,6 +70,8 @@ The saved method must be unexpired and enabled for automatic charging. For Razor
 Razorpay sends a pre-debit notice. Card and UPI debits can take about 36 hours to settle. The invoice shows **Processing** while the debit is pending.
 
 If there is no usable saved method, choose **Payment link** under **Method** when a payment-link provider is connected.
+
+Before creating a payment link, Flexprice checks again for a saved-method charge in progress. If the check fails, no link is created and you are asked to try again. If a charge is in progress, a confirmation lets you create the link anyway or wait. Paying on the link too could charge the customer twice.
 
 ### Downloading invoices
 
