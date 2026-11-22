@@ -212,11 +212,11 @@ Creating a commitment with a past `start_date`, or terminating one with a past `
 
 ### Commitment Charges in Usage Analytics
 
-When `POST /events/analytics` includes `window_size`, charges for a commitment with `measurement: window` are allocated across the displayed time-series windows:
+For `POST /events/analytics` requests with `window_size`, Flexprice allocates charges from `measurement: window` commitments to the corresponding time-series windows where it can attribute the charges. Nonempty `sources` or `property_filters` filters exclude commitment charges from the results.
 
-* Utilized charges follow the commitment capacity used in each window.
-* Overage charges follow usage not covered by commitment capacity in each window.
-* When a true-up applies, its charges follow the capacity left unused in each window.
+* Utilized charges are allocated based on the commitment capacity used in each window.
+* Overage charges are allocated to windows with usage beyond the available commitment capacity.
+* When a true-up applies, its charges are allocated based on unused commitment capacity.
 
 This distributes calculated charges for display. It does not add another charge.
 
