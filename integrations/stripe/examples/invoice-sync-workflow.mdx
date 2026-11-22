@@ -417,7 +417,7 @@ You can also save cards during invoice payment by using the payment creation end
     
     1. Stripe attempts collection when invoice auto-advance is enabled and collection can proceed
     2. The attempt timing is controlled by Stripe, so it is not guaranteed to happen immediately
-    3. Setting `auto_advance` to `false` disables automatic collection, but Flexprice still finalizes the Stripe invoice during sync
+    3. To disable Stripe’s automatic collection, use the FlexPrice Connections API to set `sync_config.invoice_sync_settings.auto_advance` to `false` on the Stripe connection. FlexPrice still finalizes the Stripe invoice during sync.
     
     **If Stripe marks the invoice as paid:**
     - Flexprice handles Stripe's [`invoice_payment.paid` and `invoice.paid`](https://docs.stripe.com/api/events/types?api-version=2026-02-25.clover) events
@@ -426,10 +426,7 @@ You can also save cards during invoice payment by using the payment creation end
   </Step>
   
   <Step title="Webhook Processing">
-    Flexprice receives webhook at:
-    ```
-    /api/v1/webhooks/stripe/{tenant_id}/{environment_id}
-    ```
+    In FlexPrice Portal, open the Stripe connection under **Integrations** and enable **Push invoices**. Copy the full **Webhook URL**, including `?connection=...`, into your webhook endpoint in Stripe. Select the events listed under **Events to send**, including `invoice_payment.paid`, `invoice.paid`, and `invoice.payment_failed`.
     
     **Webhook Flow:**
     1. Stripe sends webhook → Flexprice
@@ -442,18 +439,17 @@ You can also save cards during invoice payment by using the payment creation end
   <Step title="Payment Status Updated">
     Check invoice payment status:
     
-    **Endpoint:** `GET /api/v1/invoices/{invoice_id}`
+    **Endpoint:** `GET /v1/invoices/{invoice_id}`
+
+    **Example response excerpt**
 
 ```json
 {
   "id": "inv_1234567890abcdef",
-  "payment_status": "paid",
-  "paid_at": "2024-02-20T00:05:00Z",
-  "payment_details": {
-    "payment_method": "card",
-    "last4": "4242",
-    "brand": "visa"
-  }
+  "payment_status": "SUCCEEDED",
+  "amount_paid": "118.5",
+  "amount_remaining": "0",
+  "paid_at": "2024-02-20T00:05:00Z"
 }
 ```
   </Step>
@@ -482,7 +478,7 @@ Flexprice supports multiple payment collection methods for invoices. For detaile
 
 **Send Invoice (`send_invoice`)**
 - Best for: Manual payment workflows, B2B customers
-- Flexprice requests Stripe's invoice email by default; set `send_invoice_email: false` to suppress the request
+- FlexPrice requests Stripe’s invoice email by default when syncing an unpaid `send_invoice` invoice. To skip that request, use the FlexPrice Connections API to set `sync_config.invoice_sync_settings.send_invoice_email` to `false` on the Stripe connection.
 - Flexible payment options
 
 ---
