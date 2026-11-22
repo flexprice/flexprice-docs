@@ -21,7 +21,7 @@ What goes to the client instead:
 - Fetch it over your own authenticated endpoint. Never place it in a shared URL, an email, or a log line.
 - Keep it in memory for the page. If you must persist, use `sessionStorage`, not `localStorage`.
 - Re-mint on expiry by reading `expires_at`; do not extend or reuse.
-- When the token opens a hosted checkout, never pass it back as the provider's return URL. See [Portal payments](/docs/customers/customer-portal/payments).
+- For checkout in your own portal, give the payment provider a return URL on your domain without the portal session token. Restore the session in your application after the redirect. See the [invoice payment example](/docs/customers/customer-portal/payments#paying-an-invoice).
 
 ## Enforce on the server, display on the client
 
