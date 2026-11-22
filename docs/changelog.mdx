@@ -4,6 +4,114 @@ description: "What we’ve been shipping at Flexprice lately"
 mode: "center"
 ---
 
+<Update label="November 23rd 2026">
+  {/* changelog-coverage: {"version":1,"complete":true,"backend":{"from":"b6f8bfb82f41f8892480f3424370b3222cefe50c","to":"0e6df1f4a7386b449c6315a5e26a67af819b1dc9"},"frontend":{"from":"c756fc06a19e76bfa42fdf75b140289ae58fb097","to":"cf44ca29a08f10531204e0b2d08666d17daf3905"}} */}
+
+  ## Email invoices from Flexprice
+
+  Send finalized invoices manually or configure automatic sends for an environment. The invoice page shows recent email activity.
+
+  * **Manual sends**: Send a finalized invoice to the customer's email or other recipients, with optional CC addresses
+  * **Automatic emails**: With an email provider configured, enable invoice auto-sends for the environment. Finalized invoices are emailed; zero-total invoices are skipped
+  * **Recent activity**: The invoice's Emails card shows recent recipients, delivery status, and whether each message was sent manually or automatically
+
+  <Card icon="book-open" horizontal={true} href="/docs/invoices/email-notifications" title="Invoice email notifications - Documentation" />
+
+  <br />
+
+  ## Use Razorpay eNACH mandates
+
+  Customers can authorize a bank account mandate once, then use that saved method for eligible invoice payments.
+
+  * **Set up**: Create an eNACH setup link through the API, dashboard, or customer portal; setup waits for bank confirmation and does not collect a payment
+  * **Charge**: Use an active mandate for a saved-method payment or automatic invoice collection. A webhook-settled payment remains pending until gateway confirmation; the portal shows the charge in progress
+
+  <br />
+
+  ## Choose a plan at self-billing checkout
+
+  When multiple plans are offered, customers can compare the available plans and choose one before checkout; the price summary and checkout follow their selection.
+
+  <br />
+
+  ## See wallet balances and alerts in the customer portal
+
+  The customer portal shows **Available balance**, **Wallet balance**, and **Accrued usage** separately. A banner appears when an active wallet crosses a merchant-configured low-balance threshold.
+
+  <Card icon="book-open" horizontal={true} href="/docs/customers/customer-portal" title="Customer portal - Documentation" />
+
+  <br />
+
+  ## See current grant usage in the customer portal
+
+  The Usage page refreshes grant consumption when it loads. Its breakdown shows a Total row without a synthetic “Other” group, keeps rows expanded, and explains commitment true-ups.
+
+  <br />
+
+  ## Manage contract relationships and commitments
+
+  * **Relationships and invoices**: Dashboard contract views show parent and child relationships, and grouped invoices attribute charges to their contracts
+  * **Contract actions**: Customer contract rows expose lifecycle actions; invoice views refresh after cancellation, contract charge history omits deleted line items, and ended contracts retain parent links
+  * **Commitments**: Details show scheduled installments and controls to end a commitment, edit billing terms, and trigger eligible installments. Correction terminates the original and creates a replacement; finalized invoices remain unchanged
+  * **Billing timelines**: Contract allowances show their per-period reset dates; usage charges can start earlier, line-item versions can be replaced from an earlier effective date, and add-on creation keeps the selected start time
+  * **Create from a contract**: Create a plan with its first charge, an add-on with its charges, or a coupon from the Discount card without leaving the contract flow
+
+  <Card icon="book-open" horizontal={true} href="/docs/subscriptions/billing-workflows/grouped-invoicing" title="Grouped invoicing - Documentation" />
+
+  <br />
+
+  **Other changes**
+
+  <AccordionGroup>
+    <Accordion title="Improvements">
+      * Customer and subscription detail pages now let teams manage the per-record billing settings overrides introduced in the previous update
+      * Customer creation can select a named onboarding workflow from the dashboard
+      * Pickers can create a related record without leaving the form
+      * Customer reports can filter by active or archived status; archived customers keep their names, and the Overview ranking remains unfiltered
+      * Invoice creation supports eligible coupons; invoice details show applied prepaid credits and the amount due, and top-up invoices identify the wallet credits they fund
+      * Credit-consumption reports include invoice-linked prepaid-credit adjustments; manual adjustments without an invoice reference remain excluded
+      * Credit summary cards in reports use one display currency: invoice currency when it contains credits; otherwise the wallet currency with the largest credit amount
+      * Dashboard invoice counts exclude skipped and void invoices
+      * The Price sync tab shows how many contracts still use older plan prices
+      * Scheduled commitment charges and cancellation installments are attributed to their billing windows
+    </Accordion>
+
+    <Accordion title="Fixes">
+      * Stripe invoice sync mirrors its totals and invoice number and is idempotent; paid Flexprice invoices sync as paid, customers can pay synced invoices on Stripe's hosted invoice page, and missing PDF links fall back to Stripe
+      * Voiding an invoice returns any remaining funded value to the customer's wallet, never to the gateway
+      * Voiding closes eligible unpaid payment links outside checkout sessions; paid or unclosed links keep their payment for the gateway webhook
+      * Voiding also attempts to void an unpaid synced Stripe invoice; an already-paid Stripe invoice is left unchanged
+      * Invoices cannot be voided or auto-cancelled while a debit is in flight; unpaid initiated or pending payments can be voided, and automatic Razorpay invoice charges guard against duplicate debits
+      * Captures arriving after failed or expired checkouts are handled as late captures and refunded through the supported provider path; refund failures are surfaced for manual reconciliation
+      * Stripe send-invoice checkout saves the paid card for future off-session use, without making it the default
+      * When attempt tracking is enabled, Stripe records checkout declines and successful payment-link charges even without a checkout session
+      * Self-billing keeps invoice due dates on their UTC calendar day and counts trial days on the viewer's local calendar
+      * Self-billing finds the usage meter for the offered price, including expired prices; the Go SDK decodes usage summaries correctly
+      * When a saved-card wallet top-up is blocked, the portal now shows the open-checkout dialog so the customer can continue payment
+      * The dashboard warns before creating another payment link while a charge is in flight; the portal shows a charge-in-progress state. Returning from checkout preserves the portal session and refreshes balances
+      * Retrying plan creation after a partial save keeps edited fields and grants; completing onboarding lands on Home
+      * Invoice-payment failure webhooks are also emitted for eligible charges when gateway status synchronization records a failure
+    </Accordion>
+
+    <Accordion title="Security">
+      * API keys are revoked when their user is removed, and event processing binds each message to its tenant scope
+      * Integration identifiers are validated and escaped; checkout redirect URLs must be absolute HTTPS URLs, with HTTP allowed only for localhost or 127.0.0.1
+      * Alert dialogs show a loading state instead of another entity's thresholds; invoice sync offers only connections for that invoice's billing entity
+      * Session replays show ordinary page text while keeping inputs, code blocks, and explicitly masked elements hidden
+    </Accordion>
+
+    <Accordion title="API">
+      * Invoice email settings use `email_notification_config`; `POST /invoices/{id}/email`, `GET /invoices/{id}/emails`, and `POST /emails/search` send and list invoice emails. Manual-send idempotency keys are bound to the invoice and recipient set
+      * Razorpay eNACH setup intents use `POST /payments/customers/{id}/setup/intent`, with matching get and cancel operations; `ENACH` is available as a payment method type. Razorpay customer notifications are off by default and can be opted into per checkout or payment
+      * `POST /checkout/sessions` uses the provider default when `payment_provider_config.link_expiry` is omitted and rejects values below that provider's minimum. Stripe checkout sessions do not offer promotion-code entry
+      * Separately, `POST /payments` accepts `gateway_options.stripe.allow_promotion_codes`, which defaults to on when omitted
+      * Private-beta `POST /usage/analytics` excludes unsupported meters from rows and totals and reports their IDs and reasons in `omitted_meters`
+      * The customer-report API accepts the `customer_status` filter
+      * Payment lifecycle webhooks are published on persisted payment creation and status transitions
+    </Accordion>
+  </AccordionGroup>
+</Update>
+
 <Update label="November 16th 2026">
   {/* changelog-coverage: {"version":1,"complete":true,"backend":{"from":"1eb798226482cf9a2245a908bfa966605f040db8","to":"b6f8bfb82f41f8892480f3424370b3222cefe50c"},"frontend":{"from":"66e5c0e48a8d7ab2e0528effd95c67af3b5a4f5c","to":"c756fc06a19e76bfa42fdf75b140289ae58fb097"}} */}
 
