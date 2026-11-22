@@ -121,7 +121,7 @@ Because the first outcome returns no URL, treat `payment_action.url` as optional
 
 Complete or cancel the open session before starting another. Deleting a session is allowed only while it is non-terminal.
 
-**Sessions expire.** Razorpay sessions expire 15 minutes after creation. If the provider's own link expires sooner, Flexprice shortens the session to match. On expiry the draft invoice and payment are archived and the change is discarded.
+**Sessions expire.** For the default `send_invoice` hosted-link path, Flexprice's Razorpay link-expiry default is 20 minutes. The default session deadline is 25 minutes after creation, five minutes after the configured link deadline. If Razorpay returns an earlier link expiry, Flexprice sets the session deadline five minutes after that time. Saved-method charges can extend the session for settlement, so use the response's `expires_at` as the authoritative session deadline. On expiry, the draft invoice and payment are archived and the change is discarded.
 
 **Completion is idempotent.** If your provider delivers the same success event twice, only the first delivery applies the change; the duplicate is rejected. Make your own webhook handler idempotent for the same reason.
 
