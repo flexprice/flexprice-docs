@@ -40,9 +40,9 @@ Actions available to a customer:
 Payment actions depend on a payment provider being connected for the environment. See [Portal payments](/docs/customers/customer-portal/payments) for the provider capability matrix and the full flow of each action.
 
 <Info>
-**Session tokens expire after 1 hour**
+**Session tokens expire after one hour by default**
 
-The portal reads a session token from the URL. Generate a fresh session each time a customer needs access rather than storing the token.
+The portal reads a session token from the URL. Check the session’s `expires_at` for the link’s actual expiration. Generate a fresh session each time a customer needs access rather than storing the token.
 </Info>
 
 ## Generating a portal session
@@ -80,7 +80,6 @@ const response = await fetch(
 );
 
 const session = await response.json();
-console.log("Token:", session.token);
 console.log("Expires at:", session.expires_at);
 ```
 
@@ -96,7 +95,6 @@ response = requests.get(
 )
 
 session = response.json()
-print(f"Token: {session['token']}")
 print(f"Expires at: {session['expires_at']}")
 ```
 </CodeGroup>
@@ -188,7 +186,7 @@ A session is generated and the portal opens in a new tab.
 <Frame>![Customer page menu with Copy portal link](/images/docs/customers/customer-portal/customer-details-page.png)</Frame>
 
 <Tip>
-The copied link contains a session token that expires after 1 hour. Share it through a channel the customer controls, and generate a new one if they come back later.
+The copied link contains a session token that expires after one hour by default. Share it through a channel the customer controls, and generate a new one if they come back later.
 </Tip>
 
 ## Section reference
@@ -251,11 +249,11 @@ Invoice rows show each invoice in its own currency, so a customer billed in more
 | Control | Behaviour |
 | ------- | --------- |
 | **Session scope** | The token names one customer. Every portal request is scoped to that customer, and to the tenant and environment the token was issued in |
-| **Token lifetime** | 1 hour from issue |
+| **Token lifetime** | 1 hour from issue by default |
 | **Tenant suspension** | A suspended tenant's portal stops serving requests, the same as the rest of the API |
 | **Card data** | Collected and stored by the payment provider's hosted page. Card details never reach Flexprice or your servers |
 | **Gateway identity** | Provider names are shown only where the customer must choose between two connected providers |
-| **Return links** | Portal and checkout return links are sensitive because they can resume a customer session. Do not log them or share them publicly |
+| **Return links** | The hosted portal can include the session token in a payment provider return URL. Redact the token from logs, analytics, and error reports |
 | **Amount authority** | Invoice payments take their amount from the invoice, so a customer cannot part-pay. Top-up credit reason, expiry and priority are pinned server-side |
 
 ## Related resources
