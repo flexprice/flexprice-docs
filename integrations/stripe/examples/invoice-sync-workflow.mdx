@@ -415,14 +415,14 @@ You can also save cards during invoice payment by using the payment creation end
   <Step title="Automatic Payment Attempt">
     When `collection_method: "charge_automatically"`:
     
-    1. Stripe automatically attempts to charge customer's default payment method
-    2. Payment intent is created and confirmed
-    3. Charge is processed immediately
+    1. Stripe attempts collection when invoice auto-advance is enabled and collection can proceed
+    2. The attempt timing is controlled by Stripe, so it is not guaranteed to happen immediately
+    3. Setting `auto_advance` to `false` disables automatic collection, but Flexprice still finalizes the Stripe invoice during sync
     
-    **If successful:**
-    - Stripe sends `invoice.payment_paid` webhook
-    - Flexprice updates invoice status to "paid"
-    - Customer receives payment confirmation email
+    **If Stripe marks the invoice as paid:**
+    - Flexprice handles Stripe's [`invoice_payment.paid` and `invoice.paid`](https://docs.stripe.com/api/events/types?api-version=2026-02-25.clover) events
+    - Flexprice reconciles the payment and invoice from the webhook
+    - Payment receipt emails depend on Stripe's email settings; this webhook flow does not guarantee delivery
   </Step>
   
   <Step title="Webhook Processing">
@@ -477,12 +477,12 @@ Flexprice supports multiple payment collection methods for invoices. For detaile
 
 **Charge Automatically (`charge_automatically`)**
 - Best for: Subscriptions with saved payment methods
-- Stripe automatically charges customer's default payment method
-- Immediate payment confirmation via webhooks
+- Stripe attempts collection when auto-advance is enabled and collection can proceed
+- Flexprice reconciles paid invoices from Stripe's invoice webhooks
 
 **Send Invoice (`send_invoice`)**
 - Best for: Manual payment workflows, B2B customers
-- Customer receives email with Stripe-hosted payment link
+- Flexprice requests Stripe's invoice email by default; set `send_invoice_email: false` to suppress the request
 - Flexible payment options
 
 ---
