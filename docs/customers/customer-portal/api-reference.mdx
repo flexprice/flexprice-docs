@@ -46,7 +46,9 @@ A suspended tenant's portal endpoints stop serving requests, the same as the res
 GET /v1/customer/portal/usage?refresh_grants=true
 ```
 
-The server refreshes grants only when `entitlement_grants.refresh_on_read` is enabled (default `true`). Refreshing may make the read slower. If a refresh fails, the API returns stored usage, so this is not a guarantee of real-time usage.
+The server refreshes grants only when `entitlement_grants.refresh_on_read` is enabled (default `true`). Refreshing can slow down the request, open missing grant windows, and save updated usage. If the refresh detects that a grant has reached its quota, it can publish an `entitlement.grant.exhausted` webhook.
+
+The response can contain both updated and previously stored usage. If an individual grant fails to refresh, the API uses its last stored usage when available.
 
 ## Subscriptions
 
