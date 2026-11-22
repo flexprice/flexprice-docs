@@ -334,7 +334,7 @@ The standalone portal sends the customer to hosted checkout in the same tab and 
 
 The portal resolves this itself:
 
-1. The return URL keeps the portal path but removes the session token and unrelated query parameters. It adds a `returned=1` marker, so the token is not sent to the provider as part of that URL.
+1. The return URL keeps the portal path and session token, removes unrelated query parameters, and adds a `returned=1` marker.
 2. Before leaving, the portal saves this tab's token in `sessionStorage`. A same-tab return restores that token even if the provider drops the return marker. A marked return in another tab can restore the shared token saved in `localStorage` for up to one hour; this does not extend the session's server-side expiry.
 3. The portal restores the token in its address and renders the account again. It does not depend on closing a tab or a `BroadcastChannel` announcement. When a checkout session ID is available, it checks the session through the API and refreshes portal data after settlement.
 4. If no session can be restored, the page asks the customer to return to their billing portal. A gateway-reported success shows **You're all set!**; a reported failure or an unspecified result does not claim that payment succeeded. The provider's webhook settles the payment independently of this page.

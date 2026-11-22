@@ -54,7 +54,7 @@ mode: "center"
 
   * **Relationships and invoices**: Dashboard contract views show parent and child relationships, and grouped invoices attribute charges to their contracts
   * **Contract actions**: Customer contract rows expose lifecycle actions; invoice views refresh after cancellation, contract charge history omits deleted line items, and ended contracts retain parent links
-  * **Commitments**: Details show scheduled installments and controls to end a commitment, edit billing terms, and trigger eligible installments. Correction terminates the original and creates a replacement; finalized invoices remain unchanged
+  * **Commitments**: Details show scheduled installments and controls to end a commitment, edit billing terms, and trigger eligible installments. Correcting a commitment terminates the original and opens a prefilled form. Save the form to create the replacement. Until then, the contract has no commitment from the correction date.
   * **Billing timelines**: Contract allowances show their per-period reset dates; usage charges can start earlier, line-item versions can be replaced from an earlier effective date, and add-on creation keeps the selected start time
   * **Create from a contract**: Create a plan with its first charge, an add-on with its charges, or a coupon from the Discount card without leaving the contract flow
 
@@ -86,7 +86,7 @@ mode: "center"
       * Voiding closes eligible unpaid payment links outside checkout sessions; paid or unclosed links keep their payment for the gateway webhook
       * Voiding also attempts to void an unpaid synced Stripe invoice; an already-paid Stripe invoice is left unchanged
       * Invoices cannot be voided or auto-cancelled while a debit is in flight; unpaid initiated or pending payments can be voided, and automatic Razorpay invoice charges guard against duplicate debits
-      * Captures arriving after failed or expired checkouts are handled as late captures and refunded through the supported provider path; refund failures are surfaced for manual reconciliation
+      * If Razorpay captures a standalone payment after Flexprice has marked it failed, Flexprice attempts a refund. If the refund request fails, Flexprice returns a webhook error so Razorpay can retry.
       * Stripe send-invoice checkout saves the paid card for future off-session use, without making it the default
       * When attempt tracking is enabled, Stripe records checkout declines and successful payment-link charges even without a checkout session
       * Self-billing keeps invoice due dates on their UTC calendar day and counts trial days on the viewer's local calendar
@@ -105,9 +105,9 @@ mode: "center"
     </Accordion>
 
     <Accordion title="API">
-      * Invoice email settings use `email_notification_config`; `POST /invoices/{id}/email`, `GET /invoices/{id}/emails`, and `POST /emails/search` send and list invoice emails. Manual-send idempotency keys are bound to the invoice and recipient set
+      * Invoice email settings use `email_notification_config`; `POST /invoices/{id}/email`, `GET /invoices/{id}/emails`, and `POST /emails/search` send and list invoice emails. Reusing an idempotency key on the same invoice returns the original email record. Use a new key if you change the To or CC recipients. The dashboard does this automatically.
       * Razorpay eNACH setup intents use `POST /payments/customers/{id}/setup/intent`, with matching get and cancel operations; `ENACH` is available as a payment method type. Razorpay customer notifications are off by default and can be opted into per checkout or payment
-      * `POST /checkout/sessions` uses the provider default when `payment_provider_config.link_expiry` is omitted and rejects values below that provider's minimum. Stripe checkout sessions do not offer promotion-code entry
+      * `POST /checkout/sessions` uses Flexprice’s default for the selected provider when `payment_provider_config.link_expiry` is omitted. The default is also the minimum Flexprice accepts: 20 minutes for Razorpay, 25 minutes for Chargebee, and 35 minutes for Stripe. Stripe checkout sessions do not offer promotion-code entry
       * Separately, `POST /payments` accepts `gateway_options.stripe.allow_promotion_codes`, which defaults to on when omitted
       * Private-beta `POST /usage/analytics` excludes unsupported meters from rows and totals and reports their IDs and reasons in `omitted_meters`
       * The customer-report API accepts the `customer_status` filter
