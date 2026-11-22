@@ -72,7 +72,7 @@ Redirect the customer to `payment_action.url`. Each session has its own link. Do
 | `configuration.create_subscription_params.start_date`     | No       | Subscription start date. Defaults to now.                                                                                                                  |
 | `payment_provider_config`                                 | No       | Provider-specific settings, including mandate options and `link_expiry`. Omit for the default payment-link flow. See [Autopay & Mandates](/docs/checkout/autopay-mandates). |
 | `payment_provider_config.collection_method`               | No       | Set to `charge_automatically` to register a mandate.                                                                                                       |
-| `payment_provider_config.preferred_method`                | No       | `UPI` or `CARD`. Selects the mandate type.                                                                                                                 |
+| `payment_provider_config.payment_method`                  | No       | `UPI` or `CARD`. Selects the mandate type.                                                                                                                 |
 | `payment_provider_config.max_mandate_limit`               | No       | Ceiling for any single future auto-charge, in the major currency unit.                                                                                     |
 | `payment_provider_config.link_expiry`                     | No       | Provider-link lifetime as a positive `value` and `unit` object. See provider limits below.                                                                 |
 | `success_url`                                             | No       | Where to redirect after successful payment.                                                                                                                |
@@ -102,7 +102,7 @@ Set `link_expiry` as a value/unit object:
 | Razorpay | 20 minutes | Flexprice leaves headroom over Razorpay's 15-minute floor. |
 | Chargebee | 25 minutes | The Chargebee adapter does not pass the requested deadline to the provider, so this does not guarantee when its hosted page expires. |
 
-The Flexprice session expires five minutes after the provider-link deadline. For Stripe, this grace period allows a payment already in progress to settle; it does not extend the time for starting another payment.
+For hosted links, Flexprice sets the session deadline five minutes after the configured link deadline, or five minutes after an earlier expiry returned by the provider. On Stripe, this grace period gives payments already in progress time to settle. When Checkout debits an existing Razorpay mandate, Flexprice can extend the session for settlement: 72 hours for card or UPI and seven days for eNACH. Use the response’s `expires_at` as the session deadline.
 
 Stripe Checkout Sessions created through this API save the card for future off-session use, but do not set it as the customer's default. These sessions do not offer promotion-code entry. The direct `/payments` option `gateway_options.stripe.allow_promotion_codes` is separate and does not apply here.
 

@@ -189,7 +189,7 @@ The direct card API handles successful charges synchronously. `payment_intent.su
 | Event Type                      | Trigger                    | Action                       | Reconciliation Method                              |
 | ------------------------------- | -------------------------- | ---------------------------- | -------------------------------------------------- |
 | `checkout.session.completed`    | Payment link completed     | Update payment status        | `flexprice_payment_id` from session metadata       |
-| `payment_intent.succeeded`      | PaymentIntent succeeds | Checkout success is handled by `checkout.session.completed`; direct card success is handled by the API response | `flexprice_payment_id` from PaymentIntent metadata |
+| `payment_intent.succeeded`      | PaymentIntent succeeds | Completes a matching Flexprice Checkout Session, including off-session charges, or refunds a late capture if the session has ended. It can also reconcile a payment on a mapped Stripe invoice when outbound invoice sync is enabled. Standalone Flexprice card charges are handled synchronously by the API. | `flexprice_payment_id` from PaymentIntent metadata, or the Stripe invoice ID for external invoice payments. |
 | `payment_intent.payment_failed` | PaymentIntent fails | Non-link payment becomes `FAILED`; a Checkout `PAYMENT_LINK` with matching metadata records an attempt and stays open | `flexprice_payment_id` from PaymentIntent metadata |
 | `invoice.paid`                  | Stripe invoice is paid without a PaymentIntent | Reconcile the mapped Flexprice invoice without a payment intent | Stripe invoice mapping |
 | `invoice_payment.paid`          | Stripe invoice payment includes a PaymentIntent | Settle a matching pending hosted-invoice payment or create an external payment record | Stripe invoice mapping and PaymentIntent ID |
@@ -267,7 +267,7 @@ For an outbound-synced, finalized invoice, a `/payments` link uses the Stripe-ho
 ### Webhook Endpoints
 
 ```
-POST /api/v1/webhooks/stripe/{tenant_id}/{environment_id}
+POST /v1/webhooks/stripe/{tenant_id}/{environment_id}
 ```
 
 **Required Events:**

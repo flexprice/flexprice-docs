@@ -86,11 +86,11 @@ PENDING → VOIDED  (invoice voided while the link is unpaid)
 3. Check the amount and click **Create payment**.
 4. Copy the URL from **Payment link ready** and send it to the customer.
 
-The invoice menu's **Copy hosted invoice link** action copies the Flexprice-hosted invoice page. To debit a saved method from the dashboard, see [Recording a payment](/docs/invoices/managing#recording-a-payment).
+The invoice menu’s **Copy hosted invoice link** action copies the invoice’s customer-facing URL. For an invoice synced to Stripe, this opens Stripe’s hosted invoice page. Otherwise, it opens the Flexprice-hosted invoice page when available. To create a payment record and get its payment URL, use **Record payment → Payment link**. To debit a saved method from the dashboard, see [Recording a payment](/docs/invoices/managing#recording-a-payment).
 
 ### API Request
 
-**Endpoint:** `POST /api/v1/payments`
+**Endpoint:** `POST /v1/payments`
 
 **Headers:**
 ```http
@@ -322,6 +322,6 @@ For detailed information about card payments, see [Card Payment Documentation](/
 
 ### Webhook Endpoints
 
-- `POST /api/v1/webhooks/stripe/{tenant_id}/{environment_id}` - Stripe webhook handler
+- `POST /v1/webhooks/stripe/{tenant_id}/{environment_id}` - Stripe webhook handler
 
 For complete API documentation, see the [API Reference](/api-reference/payments/create-payment).
