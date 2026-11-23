@@ -93,7 +93,7 @@ Return the `payment_action.url` from your backend to your frontend and redirect 
 window.location.href = session.payment_action.url;
 ```
 
-Use a full-page redirect. In this example, the Razorpay payment link expires 20 minutes after session creation because `payment_provider_config.link_expiry` is omitted.
+Do a full-page redirect, not an iframe. Flexprice's default Razorpay hosted-link expiry is 20 minutes, and the default session deadline is 25 minutes after creation. If Razorpay returns an earlier link expiry, Flexprice sets the session deadline five minutes after it. Use the returned `expires_at` as the session deadline. Redirect promptly so the customer can start payment while the hosted link is valid.
 
 ## Step 4: Handle the webhook
 

@@ -44,7 +44,8 @@ Your backend asks Flexprice for a session token for one customer. The browser th
         body: JSON.stringify(body),
       }).then((r) => r.json());
 
-    const usage = await fetch(`${base}/usage`, { headers }).then((r) => r.json());
+    // Add refresh_grants=true when you want to refresh grant usage.
+    const usage = await fetch(`${base}/usage?refresh_grants=true`, { headers }).then((r) => r.json());
     const wallets = await post("/wallets"); // an array, possibly empty
     const subs = await post("/subscriptions", { page: 1, limit: 20 });
     ```
@@ -126,6 +127,8 @@ import { UsageQuota, normalizeUsageQuotaItems } from '@flexprice/ui';
 const items = await fetch("/api/me/entitlements").then((r) => r.json());
 <UsageQuota items={normalizeUsageQuotaItems(items.map(toQuotaItem))} />
 ```
+
+For a raw backend-proxy usage read that needs a grant refresh, pass `refresh_grants=true`. See [grant refresh behavior](/docs/product-catalogue/features/entitlement-grants#refreshing-grant-usage).
 
 ## Which pattern should you use?
 

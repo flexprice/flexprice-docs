@@ -45,10 +45,12 @@ Go to **Settings → Single sign-on**. Configure the identity provider's entity 
 
 ### Customer onboarding
 
-Go to **Settings → Customer experience → Onboarding**. Use **Default workflow** for the default onboarding steps, or select **Add workflow** to create a named workflow. Enter a unique name, add and order the steps, then select **Save changes**. For example, a workflow can create a wallet and start a contract for a new customer. Use the **Workflow** selector to edit a saved workflow. When creating a customer through the API, pass its name in `onboarding_workflow_name` to run that named workflow.
+Go to **Settings → Customer experience → Onboarding**. The table lists the **Default workflow** and any named workflows. Select a row to edit it, or select **New workflow** to create a named workflow.
+
+Give each named workflow a unique name. Use **Add wallet** and **Add subscription** to add up to one of each to a workflow, then configure their steps. Select **Create workflow** for a new workflow or **Save workflow** when editing an existing one. A named workflow runs instead of the default when you choose it while creating a customer. When creating a customer through the API, pass the exact saved workflow name in `onboarding_workflow_name`. If the name is unknown, for example because it was misspelled, renamed, or deleted, the API still creates the customer and falls back to the default workflow.
 
 <Frame>
-  ![V2 Onboarding settings with the workflow selector and Add workflow button](/images/docs/settings/v2-onboarding.png)
+  ![Customer onboarding settings table showing the Default, Growth, and Enterprise workflows with their wallet actions](/images/docs/settings/customer-onboarding-workflows.png)
 </Frame>
 
 ### Alerts
@@ -136,7 +138,7 @@ A customer or a subscription can override the environment's grace period and aut
 ```
 
 - **Precedence**: each field resolves on its own, from the default, then the environment setting, then the customer, then the subscription. A subscription that overrides only `grace_period_days` takes `auto_cancellation_enabled` from its customer or the environment.
-- **Updates**: omit `settings` to keep the current overrides, send an object to replace them, or send `{}` to clear them.
+- **Updates**: Omit `settings` or send `settings: null` to keep the current overrides. To merge an update, send at least one non-null field in `settings.subscription_config`. An omitted or null field keeps its existing override when the other field has a non-null value. To clear both overrides and resume inheritance, send `settings: {}`. An empty or all-null `subscription_config` also clears both overrides.
 - **Zero-day grace**: overrides accept `grace_period_days: 0`, which cancels the subscription once its invoice is past due. The environment setting still requires 1 or more.
 - **Turning auto-cancellation on for one client**: an override with `auto_cancellation_enabled: true` applies even when the environment has auto-cancellation off.
 - **Which customer**: the customer override comes from the subscription's `customer_id`, not its invoicing customer.
