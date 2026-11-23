@@ -172,6 +172,14 @@ curl "https://us.api.flexprice.io/v1/commitments/$COMMITMENT_ID/instalments?stat
   -H "x-api-key: $FLEXPRICE_API_KEY"
 ```
 
+### In Usage Analytics
+
+To include commitment instalments in `POST /events/analytics`, send `external_customer_id` and `"expand": ["instalments"]` in the JSON request body. The API returns scheduled and invoiced instalments whose `bill_on` dates fall within the requested range and whose commitments cover a meter included in the query. If you pass `feature_ids`, only meters for those features are considered.
+
+Without recurring `ARREAR` cadence, the range is `[start_time, end_time)`. It includes `start_time` and excludes `end_time`. For a recurring billing term with `invoice_cadence: "ARREAR"`, the range is `(start_time, end_time]`. It excludes `start_time` and includes `end_time`.
+
+The response includes `invoice_cadence` for recurring terms. It omits the field for one-time terms, settlements, and fees. `total_cost_with_instalments` adds invoiced instalment amounts to `total_cost`; scheduled instalments are listed but not added. If `sources` or `property_filters` is nonempty, or if no instalments match the request, the response omits `instalments`. When `"expand": ["instalments"]` is requested in these cases, `total_cost_with_instalments` equals `total_cost`.
+
 ### Instalment Object
 
 | Field | Description |
