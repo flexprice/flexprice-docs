@@ -181,6 +181,20 @@ A **parallel** feature also carries a `buckets` array, one entry per budget with
 
 Allowances are listed per subscription rather than merged, so a customer holding one feature on two subscriptions sees two sets of windows. Tell them apart with `entitlement_id`. Inherited subscriptions carry none of their own; their usage belongs to the [parent](/docs/subscriptions/customer-hierarchy).
 
+### Refreshing Grant Usage
+
+Reads do not refresh grants by default. Add `refresh_grants=true` to request a refresh. Refreshes take longer. The server must have `entitlement_grants.refresh_on_read` enabled (default `true`).
+
+If a grant window fails to refresh, its last saved usage is returned when available. Other windows can still return newly measured usage in the same response. Subscription entitlement reads refresh only active or trialing subscriptions.
+
+A refresh can trigger exhaustion alerts. It does not guarantee real-time usage or that in-flight events are included.
+
+With an API key, you can use `refresh_grants=true` on `GET /v1/customers/{id}/entitlements`, `GET /v1/customers/external/{external_id}/entitlements`, `GET /v1/customers/usage`, and `GET /v1/subscriptions/{id}/entitlements`. The deprecated `GET /v1/customers/{id}/usage` also accepts it. With a customer portal session token, use `GET /v1/customer/portal/usage?refresh_grants=true`. Flexprice’s Portal already sends this flag when loading quotas.
+
+```http
+GET /v1/customers/usage?customer_id=cust_123&refresh_grants=true
+```
+
 ## Stacking
 
 When a customer holds more than one allowance on the same feature, such as a plan entitlement plus an addon entitlement, **Stacking** decides how they combine.

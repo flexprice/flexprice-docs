@@ -70,16 +70,41 @@ Redirect the customer to `payment_action.url`. Each session has its own link. Do
 | `configuration.create_subscription_params.currency`       | Yes      | Billing currency (e.g., `INR`, `USD`).                                                                                                                     |
 | `configuration.create_subscription_params.billing_period` | Yes      | `monthly`, `quarterly`, `annual`, etc.                                                                                                                     |
 | `configuration.create_subscription_params.start_date`     | No       | Subscription start date. Defaults to now.                                                                                                                  |
-| `payment_provider_config`                                 | No       | Collect a recurring mandate instead of a one-time link. Omit for the default payment-link flow. See [Autopay & Mandates](/docs/checkout/autopay-mandates). |
+| `payment_provider_config`                                 | No       | Provider-specific settings, including mandate options and `link_expiry`. Omit for the default payment-link flow. See [Autopay & Mandates](/docs/checkout/autopay-mandates). |
 | `payment_provider_config.collection_method`               | No       | Set to `charge_automatically` to register a mandate.                                                                                                       |
-| `payment_provider_config.preferred_method`                | No       | `UPI` or `CARD`. Selects the mandate type.                                                                                                                 |
+| `payment_provider_config.payment_method`                  | No       | `UPI` or `CARD`. Selects the mandate type.                                                                                                                 |
 | `payment_provider_config.max_mandate_limit`               | No       | Ceiling for any single future auto-charge, in the major currency unit.                                                                                     |
+| `payment_provider_config.link_expiry`                     | No       | Provider-link lifetime as a positive `value` and `unit` object. See provider limits below.                                                                 |
 | `success_url`                                             | No       | Where to redirect after successful payment.                                                                                                                |
 | `failure_url`                                             | No       | Where to redirect after a failed payment.                                                                                                                  |
 | `cancel_url`                                              | No       | Where to redirect if the customer cancels.                                                                                                                 |
 | `idempotency_key`                                         | No       | Prevents duplicate sessions on retry. A duplicate key for an active session returns 409.                                                                   |
 
 All redirect URLs must be absolute HTTPS URLs. HTTP is accepted only for localhost.
+
+### Provider link expiry
+
+Set `link_expiry` as a value/unit object:
+
+```json
+{
+  "payment_provider_config": {
+    "link_expiry": { "value": 45, "unit": "minute" }
+  }
+}
+```
+
+`value` must be greater than zero. `unit` must be `second`, `minute`, `hour`, or `day`. If omitted, Flexprice uses the provider default. These defaults are also the minimum accepted overrides:
+
+| Provider | Default and minimum `link_expiry` | Provider limit |
+| -------- | --------------------------------- | -------------- |
+| Stripe | 35 minutes | Stripe Checkout sessions expire 30 minutes to 24 hours after creation. Do not request more than 24 hours. |
+| Razorpay | 20 minutes | Flexprice leaves headroom over Razorpay's 15-minute floor. |
+| Chargebee | 25 minutes | The Chargebee adapter does not pass the requested deadline to the provider, so this does not guarantee when its hosted page expires. |
+
+For hosted links, Flexprice sets the session deadline five minutes after the configured link deadline, or five minutes after an earlier expiry returned by the provider. On Stripe, this grace period gives payments already in progress time to settle. When Checkout debits an existing Razorpay mandate, Flexprice can extend the session for settlement: 72 hours for card or UPI and seven days for eNACH. Use the response’s `expires_at` as the session deadline.
+
+Stripe Checkout Sessions created through this API save the card for future off-session use, but do not set it as the customer's default. These sessions do not offer promotion-code entry. The direct `/payments` option `gateway_options.stripe.allow_promotion_codes` is separate and does not apply here.
 
 ## Other Checkout Actions
 
@@ -145,7 +170,7 @@ A still-open session cannot complete after `expires_at`.
 
 Terminal responses omit `payment_action`. A cancellation is represented by the `expired` status and `cancelled_at`, not by a separate checkout status.
 
-A declined payment does not fail the session. The payment link stays live so the customer can retry, and the session remains `pending` until the customer pays, the session reaches `expires_at`, or you [cancel it](#cancel-a-checkout-session).
+A declined payment does not fail the session. The customer can retry on the same link while the provider link remains live, and the session stays `pending` until payment, `expires_at`, or cancellation. For Stripe, the link expires five minutes before the session deadline, so the grace period is for a payment already in progress. On unpaid Stripe session cleanup, Flexprice attempts to close the provider link after the session update commits. This is best-effort cleanup, not part of the session transaction; a provider error can leave the link open. Flexprice expires sessions through its own `expires_at` cleanup; Stripe's `checkout.session.expired` event is unhandled and does not transition a payment status. Chargebee's provider page can also outlive the Flexprice session because its adapter does not apply the requested provider deadline.
 
 Reconciliation on read applies to Razorpay sessions. Chargebee sessions reconcile through webhooks, and reads return stored state.
 
