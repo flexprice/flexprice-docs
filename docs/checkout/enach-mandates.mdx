@@ -12,7 +12,7 @@ eNACH runs through Razorpay. Setting up a mandate never collects money. The cust
 - **Setup:** you create a setup link for the customer, from the API, the dashboard or the customer portal. The customer opens it, picks their bank, and authorises the mandate.
 - **Confirmation:** the bank confirms the mandate. Until then the payment method shows **Awaiting bank confirmation** and can't be charged.
 - **Charging:** an invoice can be charged against an active mandate automatically, or from **Record payment → Charge saved method** in the dashboard.
-- **Processing:** an eNACH debit takes up to 2 working days to settle. Meanwhile the payment is `PROCESSING` and the invoice shows **Processing · eNACH mandate**. The invoice can't be charged again or voided until the debit settles.
+* **Processing:** while Razorpay awaits the bank's result, the payment response reports `payment_status: PENDING` and `submitted_for_processing: true`. The invoice dashboard separately labels it **Processing · eNACH mandate**.
 - **Result:** when the bank answers, the payment becomes `SUCCEEDED` or `FAILED`. A failed debit is not retried. Flexprice records the bank's reason and sends `invoice.payment.failed`.
 
 <Frame>
@@ -114,11 +114,11 @@ Flexprice also checks unsettled debits with Razorpay every hour, so a missed Raz
 ## Limitations
 
 <Warning>
-  Some banks take up to 2 working days after confirming a mandate before it can be debited. A debit in that window fails with a "mandate not active" reason. Wait before charging a mandate confirmed the same day.
+  Razorpay's [eNACH FAQ](https://razorpay.com/docs/payments/recurring-payments/emandate/faqs) says some NPCI eNACH partner banks may take up to 2 days to complete registration. Debits initiated before the bank completes registration will fail. Wait at least 2 days before retrying a debit that failed because bank registration was incomplete.
 </Warning>
 
-- **Settlement time:** debits submitted before 9 AM on a bank working day are processed the same day, and they can take up to 2 working days to settle.
-- **One attempt:** failed debits are not retried. Follow up with a payment link or ask for a new mandate. Razorpay advises waiting at least 3 days before debiting again after a failure.
+* **One attempt:** failed debits are not retried. Follow up with a payment link or ask for a new mandate.
+* **In-flight debit:** A second saved-method charge and invoice void are blocked while the gateway outcome is pending. The hourly status check is not a bank settlement deadline. There is no fixed two-day expiry. The dashboard warns before allowing a payment link that could double-charge.
 - **Bank limits:** HDFC netbanking mandates are capped at ₹1 lakh, whatever `max_amount` you set. The customer's own account limits can also fail a debit.
 - **No editing:** a mandate's limit or bank account can't be changed. The customer approves a new mandate instead.
 - **No redirect:** the Razorpay setup page doesn't return the customer to your site. Watch for `mandate.confirmed`.
