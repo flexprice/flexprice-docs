@@ -217,6 +217,8 @@ Feature-level consumption and cost over a date range. When features are assigned
 - **Usage quota** showing how much of each allowance is used this billing period, and when it resets
 - **Usage breakdown** table of feature, usage, unit cost, cost and share of spend, grouped by group (called tags in the dashboard). A commitment true-up amount appears beside an item's cost when the response includes it.
 
+The portal requests a grant-usage refresh for the **Usage quota**. The refresh runs only when the server's `entitlement_grants.refresh_on_read` setting is enabled (default `true`). It can slow down the request. Grants that refresh successfully show updated usage. If a grant fails to refresh, the portal uses its last stored usage when available.
+
 <Frame>![Customer Portal Usage tab with spend cards, the usage trend, usage quota and the usage breakdown grouped by tag](/images/docs/customers/customer-portal/usage.png)</Frame>
 
 ### Credits
