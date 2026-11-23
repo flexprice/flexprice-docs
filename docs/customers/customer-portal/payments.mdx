@@ -5,10 +5,10 @@ description: "Let customers pay invoices, top up wallets, save cards and enable 
 
 The Customer Portal turns billing from a support conversation into a self-service action. A customer with an outstanding invoice pays it from the invoice row. A customer running low on credits tops up, or turns on auto top-up so it never happens again. Cards are collected on the payment provider's own hosted page, so no card data reaches Flexprice or your servers.
 
-Every payment action follows the same shape: the portal asks the API to start the action, the API returns a `payment_action` describing what to do next, and the portal opens it. Credits and payment records are written by the provider's webhook once the money actually moves, never optimistically on the customer's screen.
+The portal asks the API to start a payment and opens the provider page when the response includes a hosted payment action. Flexprice updates payment records and wallet credits after the provider confirms payment.
 
 <Note>
-The API examples on this page return to your own front end at `portal.yourapp.com`. Their `checkout_return` query parameter is an application-defined example, not a Flexprice requirement. The hosted Flexprice portal uses `returned=1` for [its session-restoration flow](#returning-from-a-hosted-checkout). If you build your own portal, handle the return in your application.
+The API examples on this page return to your own front end at `portal.yourapp.com`. Their `checkout_return` query parameter is an application-defined example, not a Flexprice requirement. The hosted Flexprice portal resumes the customer session after checkout. See [Returning from a hosted checkout](#returning-from-a-hosted-checkout) for the customer-facing return behavior. If you build your own portal, handle the return in your application.
 </Note>
 
 <Frame>![Portal Overview with the amount due and Pay now, the credit balance and Add credits, and the saved payment methods list](/images/docs/customers/customer-portal/customer-portal-overview.png)</Frame>
@@ -37,11 +37,11 @@ Flexprice names each payment operation as a capability and resolves the provider
 
 | Capability | Chargebee | Razorpay | Stripe | Nomod |
 | ---------- | :-------: | :------: | :----: | :---: |
-| `checkout` (hosted payment page) | Yes | Yes | No | No |
+| `checkout` (hosted payment page) | Yes | Yes | Yes | No |
 | `payment_link` (invoice payment link) | Yes | Yes | Yes | Yes |
-| `auto_charge` (charge a saved card off-session) | Yes | Yes | No | No |
-| `payment_method_management` (list, add, remove cards) | Yes | No | No | No |
-| `set_default_method` (promote a card to default) | Yes | No | No | No |
+| `auto_charge` (charge a saved card off-session) | Yes | Yes | Yes | No |
+| `payment_method_management` (list, add, remove cards) | Yes | No | Yes | No |
+| `set_default_method` (promote a card to default) | Yes | No | Yes | No |
 | `invoice_sync` (push invoices to the provider) | Yes | No | No | No |
 
 Read the capabilities available to a session from `GET /v1/customer/portal/integrations`:
@@ -174,7 +174,7 @@ The `checkout` object decides which of the two flows runs.
 
 | `checkout` | Behaviour |
 | ---------- | --------- |
-| **Present** | Pay-first. The customer is charged before any credit lands. The response carries a `checkout_session`, and credits are applied by the payment webhook once the charge settles |
+| **Present** | Pay-first. The response carries a `checkout_session`. Flexprice applies credits after the provider confirms payment |
 | **Omitted** | Invoiced. An invoice is raised for the top-up and the customer settles it later, through the Invoices section or any other channel you offer |
 
 The portal always sends `checkout`. The invoiced path is available to your own integrations calling the portal API directly.
@@ -182,7 +182,7 @@ The portal always sends `checkout`. The invoiced path is available to your own i
 <Info>
 **Credits land after the payment, not on the click**
 
-The portal reports "Top-up requested, your balance will update once payment completes" rather than claiming success. The wallet transaction is written by the provider's webhook. After a return, the portal rechecks the balance on a short schedule (immediately, then at 1.5s and 4s) and stops as soon as the wallet actually changes, so a webhook arriving a moment after the redirect still shows up without a manual refresh.
+After a gateway return with no reported failure or cancellation and no tracked checkout session, or after a saved-card top-up that starts a charge, the portal checks for pending wallet activity or an unpaid selected invoice. If either remains, it refreshes the payment data every two seconds for up to 60 seconds. It stops early when there are no pending wallet transactions and any selected invoice is paid or void.
 </Info>
 
 ### Paying with a saved card
@@ -193,7 +193,7 @@ Read `checkout_status`, not the presence of a URL:
 
 | `checkout_status` | Meaning |
 | ----------------- | ------- |
-| `completed` | Paid. Credits follow from the webhook |
+| `completed` | Flexprice confirmed and applied the payment |
 | `failed` | The gateway declined. `failure_reason` carries its own message |
 | `expired` | The session timed out before it was completed |
 | `initiated` / `pending` | Still settling. Neither outcome can be claimed yet |
@@ -244,7 +244,7 @@ Enabling auto top-up is itself the customer's consent to be charged unattended, 
 
 Auto top-up needs a saved card that can be charged off-session. The portal shows "Add a payment method to enable automatic top-ups" and keeps the toggle unavailable until one exists, which means:
 
-- The resolved provider supports the `auto_charge` capability (Chargebee or Razorpay)
+- The resolved provider supports the `auto_charge` capability (Chargebee, Razorpay, or Stripe)
 - The customer has at least one saved card with `can_auto_charge: true`
 
 For the mandate rules behind unattended charging, see [Autopay mandates](/docs/checkout/autopay-mandates).
@@ -332,18 +332,17 @@ Setting a default requires the `set_default_method` capability. On a provider wi
 
 The standalone portal sends the customer to hosted checkout in the same tab and restores their portal session on return. An embedded portal opens checkout in a new tab because providers do not allow their payment pages to be framed.
 
-The portal resolves this itself:
+If your portal session resumes, the portal reloads your billing details. When the portal is tracking a checkout session, it checks the status every two seconds for up to ten minutes and refreshes billing details when the session finishes. If you paid an existing invoice and it still shows an amount due when you return, refresh the portal to check again. If your portal session has expired, ask the business for a new billing link.
 
-1. The return URL keeps the portal path but removes the session token and unrelated query parameters. It adds a `returned=1` marker, so the token is not sent to the provider as part of that URL.
-2. Before leaving, the portal saves this tab's token in `sessionStorage`. A same-tab return restores that token even if the provider drops the return marker. A marked return in another tab can restore the shared token saved in `localStorage` for up to one hour; this does not extend the session's server-side expiry.
-3. The portal restores the token in its address and renders the account again. It does not depend on closing a tab or a `BroadcastChannel` announcement. When a checkout session ID is available, it checks the session through the API and refreshes portal data after settlement.
-4. If no session can be restored, the page asks the customer to return to their billing portal. A gateway-reported success shows **You're all set!**; a reported failure or an unspecified result does not claim that payment succeeded. The provider's webhook settles the payment independently of this page.
+Portal sessions expire after one hour by default. Use the `expires_at` value returned when the session is created to determine when a specific link expires.
 
-**Checking a session directly:** `GET /v1/customer/portal/checkout-sessions/{id}` returns the session with its `checkout_status`, `failure_reason` and linked `checkout_invoice_id` and `checkout_payment_id`. `POST /v1/customer/portal/checkout-sessions/{id}/cancel` abandons one.
+Returning from checkout alone does not confirm payment. Flexprice applies wallet credits after the provider confirms payment. Confirmation can arrive through a webhook. For providers that support payment-status lookups, reading the checkout session can also confirm the payment and apply the credits. The hosted Flexprice portal can include the customer’s session token in the return URL it sends to the payment provider. Treat any URL containing the token as a credential and redact the token from logs, analytics, and error reports.
+
+**Checking a session directly:** Use `GET /v1/customer/portal/checkout-sessions/{id}` to read the session. See [Checkout sessions](/docs/customers/customer-portal/api-reference#checkout-sessions) for the response fields and polling guidance. `POST /v1/customer/portal/checkout-sessions/{id}/cancel` abandons a session.
 
 ## Chargebee as a portal provider
 
-Chargebee is the only connected provider that currently serves every portal capability, including saved-card management and default-card selection. Alongside the portal work, Chargebee invoice sync now pushes Flexprice invoices to Chargebee for collection and reconciles payments back through the Chargebee webhook, so an invoice paid on either side settles on both.
+Chargebee and Stripe both support saved-card management and default-card selection. Chargebee invoice sync pushes Flexprice invoices to Chargebee for collection and reconciles payments back through the Chargebee webhook, so an invoice paid on either side settles on both.
 
 <Card icon="plug" horizontal={true} href="/integrations/chargebee/invoice-sync" title="Chargebee invoice sync" />
 
@@ -352,10 +351,10 @@ Chargebee is the only connected provider that currently serves every portal capa
 | Symptom | Cause | Resolution |
 | ------- | ----- | ---------- |
 | Payment actions do not appear | No payment provider connection published in the environment | Publish a connection, then reload the portal |
-| Add card is missing | The connected provider lacks `payment_method_management` | Connect Chargebee, or collect cards outside the portal |
+| Add card is missing | No connected provider supports adding cards | Connect a provider that supports adding cards, such as Chargebee or Stripe |
 | Auto top-up cannot be enabled | No saved card with `can_auto_charge: true` | Add a card at a provider supporting `auto_charge` |
 | The checkout page did not open | A popup blocker stopped the new tab | Use the link shown in the dialog. The portal keeps it on screen for this reason |
-| The balance is unchanged after paying | The provider's webhook has not landed yet | Wait a moment. The portal rechecks automatically. If it persists, check webhook delivery for the provider |
+| The balance is unchanged after paying | Flexprice may still be confirming the payment | Wait a moment and refresh the portal. If the balance stays unchanged, check the checkout status and provider webhook delivery |
 | "Top-up amount is below the minimum" | The charge is under the tenant's per-currency floor | Raise the credit amount, or lower the floor in `wallet_topup_config` |
 | "requested payment provider is not connected" | `payment_provider` names a gateway with no published connection | Omit the field, or name a connected gateway |
 

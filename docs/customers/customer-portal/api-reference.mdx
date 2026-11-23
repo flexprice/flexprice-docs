@@ -21,11 +21,11 @@ curl --request GET \
 | -------- | ----- |
 | Base path | `/v1/customer/portal` |
 | Header | `X-Session-Token` |
-| Token lifetime | 1 hour |
+| Token lifetime | 1 hour by default. The session response includes the actual `expires_at` |
 | Scope | One customer, in the tenant and environment the token was issued in |
 
 <Warning>
-The session token is a credential. Do not log it, put it in a URL you send to a third party, or hand it to a payment provider as a return URL. See how the portal builds return URLs in [Portal payments](/docs/customers/customer-portal/payments#returning-from-a-hosted-checkout).
+The hosted Flexprice portal can include the customer’s session token in the return URL it sends to the payment provider. Treat any URL containing the token as a credential and redact the token from logs, analytics, and error reports. If you build your own portal, keep the session token out of provider return URLs and resume the session in your application. See [Portal payments](/docs/customers/customer-portal/payments#returning-from-a-hosted-checkout) for the hosted portal’s return behavior.
 </Warning>
 
 <Note>
@@ -163,7 +163,9 @@ Send `cooldown` as `{ "value": 0, "unit": "hour" }` to clear a stored cooldown. 
   "checkout_invoice_id": "inv_01H...",
   "checkout_payment_id": "pay_01H...",
   "expires_at": "2026-01-06T18:00:00Z",
-  "completed_at": "2026-01-06T17:31:04Z"
+  "completed_at": "2026-01-06T17:31:04Z",
+  "terminal": true,
+  "next_poll_after_ms": 0
 }
 ```
 
@@ -171,12 +173,12 @@ Send `cooldown` as `{ "value": 0, "unit": "hour" }` to clear a stored cooldown. 
 | ----------------- | ------- |
 | `initiated` | Created, nothing attempted yet |
 | `pending` | In flight at the provider |
-| `completed` | The gateway is done. Credits and payment records follow from the webhook |
+| `completed` | Flexprice confirmed and applied the payment |
 | `failed` | Declined. Read `failure_reason` |
 | `expired` | Timed out before completion |
 
 <Info>
-`completed` means the gateway finished, not that the wallet transaction exists yet. It is written by the provider's webhook, which can land a moment later. Recheck the wallet rather than assuming the balance from the status.
+When polling a checkout session, use `next_poll_after_ms` to schedule the next request. Stop when `terminal` is `true` or `next_poll_after_ms` is `0`. Read the wallet balance to display the current credits.
 </Info>
 
 ## Payment methods
