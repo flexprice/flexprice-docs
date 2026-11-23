@@ -32,12 +32,12 @@ Airtable Business advertises $45 per seat per month when billed annually. The se
 | --- | --- | --- |
 | Business annual rate | $45 USD per seat per month, billed annually | $540 USD per billable collaborator for a full year |
 | Billing scope | Self-serve plans are billed per workspace | Keep a distinct subscription for each billed workspace |
-| Business seat eligibility | Owners, Creators and Editors are billable. Commenters and read-only collaborators are not | Count eligible users before setting quantity |
+| Business seat eligibility | Owners, Creators and Editors are billable. Commenters and read-only collaborators are not | Check workspace, base and interface permissions, then count each eligible user once |
 
 ## Design takeaways
 
 1. **Classify by plan, not by a global role list.** A Commenter can be billable on Team but not on self-serve Business. Keep the role-to-seat rule tied to the plan so a change of plan can change the count even if nobody changes roles. [Published terms](https://support.airtable.com/docs/airtable-plans).
-2. **Keep the workspace as the billing boundary.** Compute a distinct eligible-user count for each workspace. Counting once across all workspaces would turn separate workspace subscriptions into an account-wide seat pool. [Published terms](https://support.airtable.com/docs/airtable-plans).
+2. **Bill by workspace, but check access below it.** Combine eligible grants from the workspace and its bases and interfaces. A workspace-only roster misses base-only and interface-only editors; summing all rosters can double-count a user. [How Airtable counts collaborators](https://support.airtable.com/articles/8704138241-adding-removing-and-managing-billable-collaborators-in-airtable).
 
 ## How Airtable's pricing maps to Flexprice
 
@@ -76,7 +76,7 @@ Create the [fixed price](/docs/product-catalogue/plans/pricing) with `POST /pric
 }
 ```
 
-For each workspace, count each eligible user once. For this example, one Owner, two Creators and three Editors qualify. Four Commenters and two read-only collaborators do not. Reuse the same Flexprice customer if one payer pays for multiple workspaces, but keep each workspace's subscription quantity separate.
+For each workspace, count each user with an eligible permission on at least one surface. In this example, the workspace roster has one Owner, two Creators and one Editor. A base-only Editor and an interface-only Editor add two more seats. One Creator also edits a base and still counts only once. Four users with only Commenter access and two with only read-only access do not count. Keep the subscription quantity separate for each billed workspace.
 
 Create or select a customer to bill, then use `POST /subscriptions`. Set the quantity on the returned fixed price using a [line-item override](/docs/subscriptions/plan-price-overrides).
 
@@ -108,6 +108,7 @@ Verify that the opening invoice shows the annual unit amount and the fixed-line 
 
 - [Airtable pricing](https://airtable.com/pricing): Published US plan rates and purchase options.
 - [Airtable billing documentation](https://support.airtable.com/docs/airtable-plans): Workspace billing and plan-specific collaborator permissions.
+- [Managing billable collaborators](https://support.airtable.com/articles/8704138241-adding-removing-and-managing-billable-collaborators-in-airtable): Eligible permissions across the workspace, its bases and its interfaces.
 
 Pricing checked on 2026-11-23. This example does not reproduce a full provider invoice.
 
