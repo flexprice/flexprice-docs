@@ -45,10 +45,12 @@ Go to **Settings → Single sign-on**. Configure the identity provider's entity 
 
 ### Customer onboarding
 
-Go to **Settings → Customer experience → Onboarding**. Use **Default workflow** for the default onboarding steps, or select **Add workflow** to create a named workflow. Enter a unique name, add and order the steps, then select **Save changes**. For example, a workflow can create a wallet and start a contract for a new customer. Use the **Workflow** selector to edit a saved workflow. When creating a customer through the API, pass its name in `onboarding_workflow_name` to run that named workflow.
+Go to **Settings → Customer experience → Onboarding**. The table lists the **Default workflow** and any named workflows. Select a row to edit it, or select **New workflow** to create a named workflow.
+
+Give each named workflow a unique name. Use **Add wallet** and **Add subscription** to add up to one of each to a workflow, then configure their steps. Select **Create workflow** for a new workflow or **Save workflow** when editing an existing one. A named workflow runs instead of the default when you choose it while creating a customer. When creating a customer through the API, pass the exact saved workflow name in `onboarding_workflow_name`. If the name is unknown, for example because it was misspelled, renamed, or deleted, the API still creates the customer and falls back to the default workflow.
 
 <Frame>
-  ![V2 Onboarding settings with the workflow selector and Add workflow button](/images/docs/settings/v2-onboarding.png)
+  ![Customer onboarding settings table showing the Default, Growth, and Enterprise workflows with their wallet actions](/images/docs/settings/customer-onboarding-workflows.png)
 </Frame>
 
 ### Alerts
