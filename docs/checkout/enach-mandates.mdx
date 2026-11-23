@@ -117,7 +117,7 @@ Flexprice also checks unsettled debits with Razorpay every hour, so a missed Raz
   Razorpay's [eNACH FAQ](https://razorpay.com/docs/payments/recurring-payments/emandate/faqs.md) says some NPCI eNACH partner banks may take up to 2 days to complete registration. Debits initiated before the bank completes registration will fail. Wait at least 2 days before retrying a debit that failed because bank registration was incomplete.
 </Warning>
 
-* **One attempt:** failed debits are not retried. Follow up with a payment link or ask for a new mandate.
+* **One attempt:** Flexprice does not automatically retry failed debits. Follow up with a payment link or ask for a new mandate. Razorpay's [eNACH FAQ](https://razorpay.com/docs/payments/recurring-payments/emandate/faqs.md) says a failed subsequent NPCI eNACH debit can be retried 3 days after receiving confirmation or rejection of the last payment.
 * **In-flight debit:** A second saved-method charge and invoice void are blocked while the gateway outcome is pending. The hourly status check is not a bank settlement deadline. There is no fixed two-day expiry. The dashboard warns before allowing a payment link that could double-charge.
 - **Bank limits:** HDFC netbanking mandates are capped at ₹1 lakh, whatever `max_amount` you set. The customer's own account limits can also fail a debit.
 - **No editing:** a mandate's limit or bank account can't be changed. The customer approves a new mandate instead.
