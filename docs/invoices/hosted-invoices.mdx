@@ -1,18 +1,18 @@
 ---
 title: "Hosted Invoices"
-description: "Share a link to each finalized invoice so your customer can view it, download the PDF and pay it online, without signing in"
+description: "Share hosted invoice links when pages are configured so customers can view, download and pay online without signing in when payment is available"
 ---
 
-Emailing a PDF leaves your customer with a static document and no way to pay it. Every finalized invoice in Flexprice gets its own hosted invoice page: a link you can send to your customer, who can open it without an account to see what they owe, download the PDF and pay online.
+Emailing a PDF leaves your customer with a static document and no way to pay it. When hosted invoice pages are configured, Flexprice creates a page for each finalized invoice: a link you can send to your customer, who can open it without an account to see what they owe, download the PDF and pay online when payment is available for that invoice.
 
 <Frame>![Hosted invoice page showing the amount due, the Pay button, billing details and the charges on the invoice](/images/docs/invoices/hosted-invoice/hosted-invoice-page.png)</Frame>
 
 ## How It Works
 
-- **One link per invoice:** Flexprice creates the link when the invoice is finalized. Draft invoices have no link.
+* **One link per invoice:** when a Flexprice hosted-page URL is configured, Flexprice creates the link when the invoice is finalized. Draft invoices have no link.
 - **No sign-in:** anyone with the link can open the page. Each link opens only its own invoice.
 - **Always current:** the page shows the invoice as it is right now, so a payment, a status change or a new due date shows up the next time the page loads.
-- **Pay online:** when a payment gateway is connected, the page shows a **Pay** button for the amount remaining. It opens the gateway's checkout in a new tab, and the page updates once the payment is recorded.
+* **Pay online:** On the Flexprice hosted page, **Pay** is enabled only for a finalized invoice that is neither `DRAFT` nor `VOIDED`, has a `PENDING` or `FAILED` payment status, and has a positive remaining amount. The portal also blocks a first-subscription invoice while its subscription awaits activation. A provider that supports [`payment_link`](/docs/customers/customer-portal/payments#provider-capabilities) must be [connected to the invoice's billing entity](/integrations/billing-entities#payments-use-the-customers-entity). When billing entities are off, the provider must be connected in the environment. The button opens the provider's checkout in a new tab, and the page updates once the payment is recorded.
 - **Preview and download:** **Preview invoice** opens the invoice PDF.
 - **Full details:** **All invoice details** opens a panel with the invoice dates, your billing address, the customer's details, the memo and the payment history.
 
@@ -73,20 +73,21 @@ A link works until 30 days after the invoice's due date. If the invoice has no d
 
 When the due date changes, the expiry moves with it. After a link expires, the page tells your customer it is no longer valid and to contact you.
 
-## What the Page Shows by Invoice State
+## What the Flexprice Page Shows by Invoice State
 
 | Invoice state | What your customer sees |
 | ------------- | ----------------------- |
-| Unpaid | A **Due** badge, the amount due and the **Pay** button (when a gateway is connected) |
-| Past due date | An **Overdue** badge and the date it became overdue |
+| Unpaid | A **Due** badge, the amount due and a **Pay** button. It is disabled when the eligibility requirements in **How It Works** are not met. |
+| Past due date | An **Overdue** badge, the date it became overdue and a **Pay** button. It is disabled when the eligibility requirements in **How It Works** are not met. |
 | Payment in progress | A **Processing** badge, no Pay button |
 | Paid | A **Paid** badge, the payment date and the payment in the payment history |
 | Voided | A **Void** badge and the date it was voided, no Pay button |
 
 ## Limitations
 
+* **Flexprice hosted-page URL required.** Flexprice-hosted links are not generated without a configured URL. An invoice synced to Stripe instead uses its Stripe-hosted URL. Without either URL, invoice emails have no **View invoice** button.
 - **Finalized invoices only.** Draft invoices have no link, and invoices finalized before hosted invoice pages were available have none either.
-- **Pay needs a payment gateway.** Without one, the page still shows the invoice and PDF, but no Pay button. See [Portal payments](/docs/customers/customer-portal/payments) for which gateways support paying an invoice.
+* **Pay can be disabled.** Due or overdue invoices still show a disabled **Pay** button when the eligibility requirements in **How It Works** are not met. The tooltip tells the customer to contact your business.
 - **No custom domain or branding yet.** The page is served from `invoice.flexprice.io` and shows your business name.
 
 <Warning>
