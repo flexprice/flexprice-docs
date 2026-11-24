@@ -10,17 +10,17 @@ Emailing a PDF leaves your customer with a static document and no way to pay it.
 ## How It Works
 
 * **One link per invoice:** when a Flexprice hosted-page URL is configured, Flexprice creates the link when the invoice is finalized. Draft invoices have no link.
-- **No sign-in:** anyone with the link can open the page. Each link opens only its own invoice.
-- **Always current:** the page shows the invoice as it is right now, so a payment, a status change or a new due date shows up the next time the page loads.
+* **No sign-in:** anyone with the link can open the page. Each link opens only its own invoice.
+* **Always current:** the page shows the invoice as it is right now, so a payment, a status change or a new due date shows up the next time the page loads.
 * **Pay online:** The Flexprice page shows **Pay** for due and overdue invoices and disables it when online payment is unavailable. An enabled button opens the provider's checkout in a new tab; the page updates after payment is recorded.
-- **Preview and download:** **Preview invoice** opens the invoice PDF.
-- **Full details:** **All invoice details** opens a panel with the invoice dates, your billing address, the customer's details, the memo and the payment history.
+* **Preview and download:** **Preview invoice** opens the invoice PDF.
+* **Full details:** **All invoice details** opens a panel with the invoice dates, your billing address, the customer's details, the memo and the payment history.
 
 ### When online payment is available
 
 * **Invoice state and balance:** The invoice must not be a draft or voided, its payment status must be pending or failed, and its remaining amount must be positive.
 * **Subscription activation:** The hosted page blocks payment on a first-subscription open invoice while its subscription is incomplete. For trial-end first-subscription open invoices, payment is blocked until the subscription is active; renewals and one-off invoices are not affected.
-* **Provider and billing entity:** A provider that supports [`payment_link`](/docs/customers/customer-portal/payments#provider-capabilities) must be [connected to the invoice's billing entity](/integrations/billing-entities#payments-use-the-customers-entity). When billing entities are off, the provider must be connected in the environment.
+* **Provider and billing entity:** A provider that supports [`payment_link`](/docs/customers/customer-portal/payments#provider-capabilities) must be [connected to the invoice's billing entity](/integrations/billing-entities#payments-use-the-customer%E2%80%99s-entity). When billing entities are off, the provider must be connected in the environment.
 
 <Frame>![Invoice details panel on the hosted invoice page with dates, status, billing addresses, memo and payments](/images/docs/invoices/hosted-invoice/hosted-invoice-details.png)</Frame>
 
@@ -79,7 +79,9 @@ A link works until 30 days after the invoice's due date. If the invoice has no d
 
 When the due date changes, the expiry moves with it. After a link expires, the page tells your customer it is no longer valid and to contact you.
 
-## What the Flexprice Page Shows by Invoice State
+## What the Page Shows by Invoice State
+
+On a Flexprice-hosted page, your customer sees:
 
 | Invoice state | What your customer sees |
 | ------------- | ----------------------- |
@@ -92,9 +94,9 @@ When the due date changes, the expiry moves with it. After a link expires, the p
 ## Limitations
 
 * **Flexprice hosted-page URL required.** Flexprice-hosted links are not generated without a configured URL. An invoice synced to Stripe instead uses its Stripe-hosted URL. Without either URL, invoice emails have no **View invoice** button.
-- **Finalized invoices only.** Draft invoices have no link, and invoices finalized before hosted invoice pages were available have none either.
+* **Finalized invoices only.** Draft invoices have no link, and invoices finalized before hosted invoice pages were available have none either.
 * **Pay can be disabled.** Due or overdue invoices still show a disabled **Pay** button when the requirements in [When online payment is available](#when-online-payment-is-available) are not met. The tooltip tells the customer to contact your business.
-- **No custom domain or branding yet.** The page is served from `invoice.flexprice.io` and shows your business name.
+* **No custom domain or branding yet.** The page is served from `invoice.flexprice.io` and shows your business name.
 
 <Warning>
 Anyone with the link can view the invoice, including your customer's name and billing address. Share it only with the people who should see the invoice.
