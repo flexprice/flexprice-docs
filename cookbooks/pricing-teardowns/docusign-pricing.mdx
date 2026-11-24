@@ -79,7 +79,9 @@ Create the [fixed price](/docs/product-catalogue/plans/pricing) with `POST /pric
 
 Use the number of purchased Standard user subscriptions as the fixed line quantity. Four purchased users require quantity four. Do not substitute the number of recipients signing agreements, envelopes sent or fields in a document. This guide does not configure the included envelope allowance or charge for extra envelopes. The annual-upfront selection is essential: the monthly-installment option is not represented by changing only the invoice period.
 
-Create or select a customer to bill, then use `POST /subscriptions`. Set the quantity on the returned fixed price using a [line-item override](/docs/subscriptions/plan-price-overrides).
+Create or select a customer to bill. Send `POST /subscriptions` only when the paid period begins. This request omits `start_date` so the period begins at creation. Set the quantity on the returned fixed price using a [line-item override](/docs/subscriptions/plan-price-overrides).
+
+A future `start_date` does not defer the opening advance invoice. To prepare the subscription early without invoicing, [create a draft and activate it when billing should begin](/docs/core-concepts/subscriptions#choosing-a-subscription-start-date).
 
 ```json
 {
@@ -89,7 +91,6 @@ Create or select a customer to bill, then use `POST /subscriptions`. Set the qua
   "billing_period": "ANNUAL",
   "billing_period_count": 1,
   "billing_cycle": "anniversary",
-  "start_date": "2026-12-01T00:00:00Z",
   "override_line_items": [
     {
       "price_id": "price_docusign_example",

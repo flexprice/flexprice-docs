@@ -78,9 +78,11 @@ Create the [fixed price](/docs/product-catalogue/plans/pricing) with `POST /pric
 }
 ```
 
-Create one subscription for the paying account. Set quantity to its purchased Workplace Pro licenses, not the meeting count, attendee count or all registered Basic users. In the example, the account buys five Pro licenses and has three additional Basic users without Pro licenses. Keep quantity at five even if one purchased license is temporarily unassigned. Confirm the account's renewal date and billing period from its invoice before copying the example dates.
+Create one subscription for the paying account. Set quantity to its purchased Workplace Pro licenses, not the meeting count, attendee count or all registered Basic users. In the example, the account buys five Pro licenses and has three additional Basic users without Pro licenses. Keep quantity at five even if one purchased license is temporarily unassigned.
 
-Create or select a customer to bill, then use `POST /subscriptions`. Set the quantity on the returned fixed price using a [line-item override](/docs/subscriptions/plan-price-overrides).
+Create or select a customer to bill. Send `POST /subscriptions` only when the paid period begins. This request omits `start_date` so the period begins at creation. Set the quantity on the returned fixed price using a [line-item override](/docs/subscriptions/plan-price-overrides).
+
+A future `start_date` does not defer the opening advance invoice. To prepare the subscription early without invoicing, [create a draft and activate it when billing should begin](/docs/core-concepts/subscriptions#choosing-a-subscription-start-date).
 
 ```json
 {
@@ -90,7 +92,6 @@ Create or select a customer to bill, then use `POST /subscriptions`. Set the qua
   "billing_period": "MONTHLY",
   "billing_period_count": 1,
   "billing_cycle": "anniversary",
-  "start_date": "2026-12-01T00:00:00Z",
   "override_line_items": [
     {
       "price_id": "price_zoom_example",
