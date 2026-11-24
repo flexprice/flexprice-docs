@@ -1,6 +1,6 @@
 ---
 title: "Hosted Invoices"
-description: "Share hosted invoice links when pages are configured so customers can view, download and pay online without signing in when payment is available"
+description: "Share invoice links so customers can view and download invoices without signing in, and pay online when eligible"
 ---
 
 Emailing a PDF leaves your customer with a static document and no way to pay it. When hosted invoice pages are configured, Flexprice creates a page for each finalized invoice: a link you can send to your customer, who can open it without an account to see what they owe, download the PDF and pay online when payment is available for that invoice.
@@ -12,9 +12,15 @@ Emailing a PDF leaves your customer with a static document and no way to pay it.
 * **One link per invoice:** when a Flexprice hosted-page URL is configured, Flexprice creates the link when the invoice is finalized. Draft invoices have no link.
 - **No sign-in:** anyone with the link can open the page. Each link opens only its own invoice.
 - **Always current:** the page shows the invoice as it is right now, so a payment, a status change or a new due date shows up the next time the page loads.
-* **Pay online:** On the Flexprice hosted page, **Pay** is enabled only for a finalized invoice that is neither `DRAFT` nor `VOIDED`, has a `PENDING` or `FAILED` payment status, and has a positive remaining amount. The portal also blocks a first-subscription invoice while its subscription awaits activation. A provider that supports [`payment_link`](/docs/customers/customer-portal/payments#provider-capabilities) must be [connected to the invoice's billing entity](/integrations/billing-entities#payments-use-the-customers-entity). When billing entities are off, the provider must be connected in the environment. The button opens the provider's checkout in a new tab, and the page updates once the payment is recorded.
+* **Pay online:** The Flexprice page shows **Pay** for due and overdue invoices and disables it when online payment is unavailable. An enabled button opens the provider's checkout in a new tab; the page updates after payment is recorded.
 - **Preview and download:** **Preview invoice** opens the invoice PDF.
 - **Full details:** **All invoice details** opens a panel with the invoice dates, your billing address, the customer's details, the memo and the payment history.
+
+### When online payment is available
+
+* **Invoice state and balance:** The invoice must not be a draft or voided, its payment status must be pending or failed, and its remaining amount must be positive.
+* **Subscription activation:** The hosted page blocks payment on a first-subscription open invoice while its subscription is incomplete. For trial-end first-subscription open invoices, payment is blocked until the subscription is active; renewals and one-off invoices are not affected.
+* **Provider and billing entity:** A provider that supports [`payment_link`](/docs/customers/customer-portal/payments#provider-capabilities) must be [connected to the invoice's billing entity](/integrations/billing-entities#payments-use-the-customers-entity). When billing entities are off, the provider must be connected in the environment.
 
 <Frame>![Invoice details panel on the hosted invoice page with dates, status, billing addresses, memo and payments](/images/docs/invoices/hosted-invoice/hosted-invoice-details.png)</Frame>
 
@@ -77,8 +83,8 @@ When the due date changes, the expiry moves with it. After a link expires, the p
 
 | Invoice state | What your customer sees |
 | ------------- | ----------------------- |
-| Unpaid | A **Due** badge, the amount due and a **Pay** button. It is disabled when the eligibility requirements in **How It Works** are not met. |
-| Past due date | An **Overdue** badge, the date it became overdue and a **Pay** button. It is disabled when the eligibility requirements in **How It Works** are not met. |
+| Unpaid | A **Due** badge, the amount due and a **Pay** button. It is disabled when the requirements in [When online payment is available](#when-online-payment-is-available) are not met. |
+| Past due date | An **Overdue** badge, the date it became overdue and a **Pay** button. It is disabled when the requirements in [When online payment is available](#when-online-payment-is-available) are not met. |
 | Payment in progress | A **Processing** badge, no Pay button |
 | Paid | A **Paid** badge, the payment date and the payment in the payment history |
 | Voided | A **Void** badge and the date it was voided, no Pay button |
@@ -87,7 +93,7 @@ When the due date changes, the expiry moves with it. After a link expires, the p
 
 * **Flexprice hosted-page URL required.** Flexprice-hosted links are not generated without a configured URL. An invoice synced to Stripe instead uses its Stripe-hosted URL. Without either URL, invoice emails have no **View invoice** button.
 - **Finalized invoices only.** Draft invoices have no link, and invoices finalized before hosted invoice pages were available have none either.
-* **Pay can be disabled.** Due or overdue invoices still show a disabled **Pay** button when the eligibility requirements in **How It Works** are not met. The tooltip tells the customer to contact your business.
+* **Pay can be disabled.** Due or overdue invoices still show a disabled **Pay** button when the requirements in [When online payment is available](#when-online-payment-is-available) are not met. The tooltip tells the customer to contact your business.
 - **No custom domain or branding yet.** The page is served from `invoice.flexprice.io` and shows your business name.
 
 <Warning>
