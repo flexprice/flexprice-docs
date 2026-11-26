@@ -77,7 +77,7 @@ Use `POST /prices` for each [fixed recurring price](/docs/product-catalogue/plan
 
 Select the 1,000-contact band and start one annual subscription when the paid term begins. If your application enforces sends, anchor each monthly window to the annual subscription's billing day.
 
-Create or select the payer's customer record. When paid billing begins, use `POST /subscriptions` with that customer ID and the returned plan and price IDs. To set up a subscription now without raising the advance invoice yet, [create a draft](/docs/core-concepts/subscriptions#choosing-a-subscription-start-date) and activate it when billing begins.
+Create or select the payer's customer record. When paid billing begins, use `POST /subscriptions` with that customer ID and the returned plan ID. Set `include_price_ids` to the ID returned by `POST /prices` so the subscription [attaches only the modeled charge](/docs/core-concepts/subscriptions#attaching-plan-prices-to-a-subscription). To set up a subscription now without raising the advance invoice yet, [create a draft](/docs/core-concepts/subscriptions#choosing-a-subscription-start-date) and activate it when billing begins.
 
 ```json
 {
@@ -86,7 +86,10 @@ Create or select the payer's customer record. When paid billing begins, use `POS
   "currency": "usd",
   "billing_period": "ANNUAL",
   "billing_period_count": 1,
-  "billing_cycle": "anniversary"
+  "billing_cycle": "anniversary",
+  "include_price_ids": [
+    "price_activecampaign_example"
+  ]
 }
 ```
 
