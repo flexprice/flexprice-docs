@@ -10,6 +10,17 @@ An invoice bills a [subscription](/docs/core-concepts/subscriptions) for one str
   Find invoices with [Query invoices](/api-reference/invoices/query-invoices) and [Get invoice](/api-reference/invoices/get-invoice), seal or cancel them with [Finalize invoice](/api-reference/invoices/finalize-invoice) and [Void invoice](/api-reference/invoices/void-invoice), and see the next one early with [Get invoice preview](/api-reference/invoices/get-invoice-preview). For the dashboard, see [Managing Invoices](/docs/invoices/managing). For the arithmetic, see [Invoice Calculation Order](/docs/invoices/calculation).
 </Info>
 
+## Querying invoices
+
+The [Query invoices API](/api-reference/invoices/query-invoices) includes line items by default and limits each page to 50 invoices. Set `skip_line_items` to `true` to omit them and request up to 1,000:
+
+```json
+{
+  "limit": 1000,
+  "skip_line_items": true
+}
+```
+
 ## Telling invoices apart by billing reason
 
 Every invoice has an `invoice_type` and a `billing_reason`. Filter on `billing_reason` to separate renewals from other invoices, and on `subscription_id` to find everything a subscription billed: a mid-period quantity change, for example, bills on a `ONE_OFF` invoice that carries the subscription's ID.
@@ -169,7 +180,15 @@ Add `period_start` and `period_end` to preview another window.
 
 ## Setting invoice due dates and payment terms
 
-A subscription invoice is due a number of days after its `period_end`, which for a `SUBSCRIPTION_CREATE` invoice is the end of the first period. The number is the subscription's `payment_terms` when set (`15 NET` to `90 NET`, in steps of 15), and otherwise `due_date_days` in the [`invoice_config` setting](/docs/settings/settings#invoice-configuration), which is 1 by default. A one-off invoice is due on the `due_date` you send. Update invoice can change either one to a date in the future.
+For automatically finalized subscription invoices, the due date is calculated from `issue_date`. Flexprice derives `issue_date` from the billing boundary and caps it at `finalized_at` if it would be later. `SUBSCRIPTION_CYCLE` uses `period_end` as its boundary; `SUBSCRIPTION_CREATE` uses `period_start`.
+
+Payment terms resolve in this order: the subscription's terms, `payment_terms` in the tenant's [`invoice_config` setting](/docs/settings/settings#invoice-configuration), then `due_date_days` in that setting (1 by default).
+
+For a subscription, set `payment_terms_type` to `DAYS` and `payment_terms_days` to a value from 1 to 365. The other `payment_terms_type` values are `DUE_ON_RECEIPT`, `END_OF_MONTH`, and `END_OF_NEXT_MONTH`.
+
+The tenant's day-based `invoice_config.payment_terms` uses the `<days> NET` form, with 1 to 365 days. Month-end terms use the subscription's timezone.
+
+A one-off invoice uses the `due_date` you send. To change an invoice's due date, update a draft or finalized invoice and set a date that is not in the past.
 
 If subscription auto-cancellation is on in `subscription_config` (it's off by default), a finalized subscription invoice still unpaid `grace_period_days` after its `due_date` gets the subscription cancelled immediately and the invoice voided.
 
