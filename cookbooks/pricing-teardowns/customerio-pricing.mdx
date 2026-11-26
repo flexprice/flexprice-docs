@@ -185,7 +185,9 @@ Create these [metered features](/docs/product-catalogue/features/linking-to-plan
 
 ### Subscription and usage
 
-Use `POST /subscriptions` when paid billing begins. The worked example sets `start_date` to the beginning of December in UTC so the anniversary period matches the usage window. For a different start, update the start date and the summary event's ID and timestamp to match the actual period. An active subscription with a future start date raises its opening advance invoice at creation. To prepare it earlier and defer the invoice, [create a draft](/docs/core-concepts/subscriptions#choosing-a-subscription-start-date) and activate it when billing begins.
+Use `POST /subscriptions` when paid billing begins. The example uses a customer with [UTC billing](/docs/customers/timezone-aware-billing) and a December 1 start, so the first period ends at midnight UTC on January 1. For a different start date or customer timezone, check the actual period boundaries on the subscription. Count usage within those boundaries and adjust the summary event ID and timestamp for that period.
+
+An active subscription with a future start date raises its opening advance invoice at creation. To prepare it earlier and defer the invoice, [create a draft](/docs/core-concepts/subscriptions#choosing-a-subscription-start-date) and activate it when billing begins.
 
 ```json
 {
