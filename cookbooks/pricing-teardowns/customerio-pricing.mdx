@@ -185,7 +185,7 @@ Create these [metered features](/docs/product-catalogue/features/linking-to-plan
 
 ### Subscription and usage
 
-Use `POST /subscriptions` when the paid period begins. Align the billing boundary with the window used to count profiles and sends. Replace the customer and plan IDs with your own.
+Use `POST /subscriptions` when paid billing begins. The worked example sets `start_date` to the beginning of December in UTC so the anniversary period matches the usage window. For a different start, update the start date and the summary event's ID and timestamp to match the actual period. An active subscription with a future start date raises its opening advance invoice at creation. To prepare it earlier and defer the invoice, [create a draft](/docs/core-concepts/subscriptions#choosing-a-subscription-start-date) and activate it when billing begins.
 
 ```json
 {
@@ -194,13 +194,14 @@ Use `POST /subscriptions` when the paid period begins. Align the billing boundar
   "currency": "usd",
   "billing_period": "MONTHLY",
   "billing_period_count": 1,
-  "billing_cycle": "anniversary"
+  "billing_cycle": "anniversary",
+  "start_date": "2026-12-01T00:00:00Z"
 }
 ```
 
 From your application's records, count opening profiles plus all new profiles in the billing month, across workspaces. Count a recreated profile again and retain deleted profiles for the current month's total. Count billable email sends that reach the email service provider. Report the profile total and the email total in 1,000-email units without subtracting allowances. This example covers complete blocks. Verify how partial blocks are charged before using this model for them.
 
-Send one summary using `POST /events` and the customer's external ID. The example assumes a subscription activated at 00:00 UTC on December 1, 2026. The timestamp is inside that billing cycle. Use a timestamp inside the period you are settling and ensure the meters reflect it before the first invoice computation. Keep the event ID and timestamp stable on retries. If usage arrives late, follow the [invoice recovery flow](/docs/core-concepts/invoices#billing-usage-that-arrives-after-the-invoice-is-computed).
+Send one summary using `POST /events` and the customer's external ID. Use a timestamp inside the period you are settling and ensure the meters reflect the summary before the first invoice computation. Keep the event ID and timestamp stable on retries. If usage arrives late, follow the [invoice recovery flow](/docs/core-concepts/invoices#billing-usage-that-arrives-after-the-invoice-is-computed).
 
 ```json
 {
