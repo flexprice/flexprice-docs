@@ -180,7 +180,7 @@ Add `period_start` and `period_end` to preview another window.
 
 ## Setting invoice due dates and payment terms
 
-For automatically finalized subscription invoices, the due date is calculated from `issue_date`. Flexprice derives `issue_date` from the billing boundary and caps it at `finalized_at` if it would be later. `SUBSCRIPTION_CYCLE` uses `period_end` as its boundary; `SUBSCRIPTION_CREATE` uses `period_start`.
+For a subscription invoice that has not been manually edited, finalization calculates the due date from `issue_date`. Flexprice derives `issue_date` from the billing boundary and caps it at `finalized_at` if it would be later. `SUBSCRIPTION_CYCLE` uses `period_end` as its boundary; `SUBSCRIPTION_CREATE` uses `period_start`.
 
 Payment terms resolve in this order: the subscription's terms, `payment_terms` in the tenant's [`invoice_config` setting](/docs/settings/settings#invoice-configuration), then `due_date_days` in that setting (1 by default).
 
@@ -188,7 +188,9 @@ For a subscription, set `payment_terms_type` to `DAYS` and `payment_terms_days` 
 
 The tenant's day-based `invoice_config.payment_terms` uses the `<days> NET` form, with 1 to 365 days. Month-end terms use the subscription's timezone.
 
-A one-off invoice uses the `due_date` you send. To change an invoice's due date, update a draft or finalized invoice and set a date that is not in the past.
+A one-off invoice uses the `due_date` you send. You can update a draft or finalized invoice's due date to a date that is not in the past.
+
+For a subscription invoice that has not been manually edited, a draft due-date change is recalculated at finalization, whether finalization is automatic or manual. To retain a custom due date, update after finalization. Manually edited subscription invoices skip this recalculation.
 
 If subscription auto-cancellation is on in `subscription_config` (it's off by default), a finalized subscription invoice still unpaid `grace_period_days` after its `due_date` gets the subscription cancelled immediately and the invoice voided.
 
