@@ -31,12 +31,12 @@ Klaviyo's Email plan pairs an active-profile band with a monthly send allowance.
 | Item | Published terms | Flexprice implication |
 | --- | --- | --- |
 | Email band | $20 USD per month for 500 active profiles and 5,000 email sends | Use one fixed monthly line per billing account |
-| Eligible profiles | The pricing selector counts profiles the account can market to | Count eligible profiles for the tier rather than all stored contact records |
+| Active email profiles | Klaviyo counts profiles that can receive marketing email, including eligible checkout contacts who never opted in. Suppressed profiles are excluded | Use the active email profile count for the tier |
 | Plan at renewal | Paid plans renew monthly on the paid billing anniversary. The plan must cover active profiles at the end of the cycle | Evaluate the eligible count before renewal and keep the standard send window aligned to subscription billing |
 
 ## Design takeaways
 
-1. **Choose the tier from profile eligibility.** Keep marketing eligibility separate from record storage. A database row that the business cannot market to should not by itself force a higher band [Published terms](https://www.klaviyo.com/pricing).
+1. **Use the billing count for tier selection.** Store email eligibility separately from opt-in status. An opt-in-only count can put an account in a lower band even though eligible checkout contacts count toward its limit [Published terms](https://help.klaviyo.com/hc/en-us/articles/24263920096027).
 2. **Check tier fit at the billing boundary.** Evaluate active profiles separately from send consumption. Using only the number of sends at renewal would miss a growing marketable list that has not yet received a campaign [Published terms](https://help.klaviyo.com/hc/en-us/articles/115000976672).
 
 ## How Klaviyo's pricing maps to Flexprice
@@ -98,9 +98,10 @@ Verify the fixed charge amounts and quantities on the opening invoice. No usage 
 
 ## Pricing sources
 
-- [Klaviyo pricing](https://www.klaviyo.com/pricing): Email price, active profile eligibility and included email sends.
+- [Klaviyo pricing](https://www.klaviyo.com/pricing): Email price and included email sends.
 - [Klaviyo billing guide](https://help.klaviyo.com/hc/en-us/articles/115000976672): Paid anniversary renewals, usage windows, and profile-compliant plans.
 - [Klaviyo terms of service](https://www.klaviyo.com/legal/terms-of-service): Section 6.3 advance billing terms.
+- [Klaviyo active profile guide](https://help.klaviyo.com/hc/en-us/articles/24263920096027): Which email profiles count toward the plan, including profiles added through checkout and excluded suppressions.
 
 Pricing checked on 2026-11-26.
 
