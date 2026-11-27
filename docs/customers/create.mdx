@@ -52,7 +52,11 @@ You are not required to fill in all details initially; additional information ca
 
 ## Route billing emails to contacts
 
-You can route invoice emails and invoice payment reminder emails to customer contacts through the API. The dashboard does not expose the `email_types` field. Send this body to `PUT /v1/customers?id={customer_id}`:
+You can route invoice emails and invoice payment reminder emails to customer contacts in the dashboard or through the API. During customer creation, add up to five contact persons. Later, use **Contact persons** on the customer's detail page to add, edit, or remove them.
+
+For each person, under **Subscribe**, choose **Invoices**, **Payment reminders**, or both. A selected email type requires an email address. When no contact is assigned to a type, Flexprice uses the customer's `email` as the fallback.
+
+To configure contact recipients through the API, send this body to `PUT /v1/customers?id={customer_id}`:
 
 ```json
 {
