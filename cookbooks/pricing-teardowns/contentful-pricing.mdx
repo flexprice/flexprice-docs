@@ -193,6 +193,20 @@ In December the organization uses 2,000,001 API calls and 101.2 GB of asset band
 
 The usage-only invoice totals **$10.30** before taxes. Check both quantities and charges on the invoice for the completed month.
 
+### Verify the charges before month-end
+
+To test the arithmetic now, use a dedicated test customer with UTC billing. Set the subscription's `start_date` to midnight UTC on the first day of the current month. Send the synthetic summary above with a fresh event ID and a current UTC timestamp within the active period. After the meters reflect the event, call [Get invoice preview](/api-reference/invoices/get-invoice-preview) with the test subscription ID. It previews the current period without creating an invoice.
+
+`POST /invoices/preview`
+
+```json
+{
+  "subscription_id": "sub_contentful_example"
+}
+```
+
+Check for two units on each line, with charges of $10.00 and $0.30 before taxes.
+
 ## Pricing sources
 
 - [Contentful pricing](https://www.contentful.com/pricing/): Plan price, allowances, and included space.
