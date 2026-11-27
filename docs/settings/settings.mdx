@@ -70,7 +70,7 @@ Go to **Settings → Alerts & Emails → Emails** to turn on invoice emails for 
 The following setting keys cover common billing and wallet configurations:
 
 - **Subscription Configuration** (`subscription_config`): controls subscription auto-cancellation for unpaid invoices
-- **Invoice Configuration** (`invoice_config`): controls invoice number generation, due date calculation, and whether period-end invoices are finalized automatically
+- **Invoice Configuration** (`invoice_config`): controls invoice number generation, payment terms and fallback due-date calculation, and whether period-end invoices are finalized automatically
 - **Wallet Balance Alert Configuration** (`wallet_balance_alert_config`): wallet balance alert thresholds configurations per tenant per environment
 - **Bonus Credits Topup Configuration** (`bonus_credits_topup_config`): slab-based bonus credit rules applied automatically to purchased wallet top-ups
 - **Custom Currency Configuration** (`custom_currency_config`): currencies of your own that the catalogue can be priced in, and the fiat currency invoices are denominated in
@@ -153,12 +153,12 @@ The grace period is read each time the overdue and auto-cancellation checks run,
 
 **Key:** `invoice_config`
 
-Controls invoice number generation (prefix, format, sequence, timezone), due date calculation, and automatic finalization of period-end invoices.
+Controls invoice number generation (prefix, format, sequence, timezone), payment terms and due dates, and automatic finalization of period-end invoices.
 
-In the console, go to **Settings → Invoicing → Invoices**. Under **Dates and delivery**, edit **Payment due** to set the default number of days. If configured payment terms take precedence, the console shows the effective terms and does not offer the days input.
+In the console, go to **Settings → Invoicing → Invoices**. Under **Dates and delivery**, use **Payment due** to choose **A number of days** and enter a whole number from 1 to 365, or select **Due on receipt**, **End of month**, or **End of next month**. The console previews the due date for an invoice issued today. Contracts can set their own payment terms.
 
 <Frame>
-  ![V2 Invoices settings with numbering preview and payment due field](/images/docs/settings/v2-invoices.png)
+  ![V2 Invoices settings with numbering preview and payment terms selector](/images/docs/settings/v2-invoices.png)
 </Frame>
 
 ### Schema
@@ -172,6 +172,7 @@ In the console, go to **Settings → Invoicing → Invoices**. Under **Dates and
   "separator": string,
   "suffix_length": number,
   "due_date_days": number,
+  "payment_terms": string,
   "finalization_delay_seconds": number,
   "auto_finalize": boolean
 }
@@ -183,9 +184,19 @@ In the console, go to **Settings → Invoicing → Invoices**. Under **Dates and
 - **`timezone`** — Required for new settings; optional on update. Valid IANA timezone (e.g. `America/New_York`, `UTC`) or common abbreviation (e.g. `EST`, `GMT`). Timezone for date formatting.
 - **`separator`** — Required for new settings; optional on update. String (empty allowed). Character(s) between prefix, date, and sequence (e.g. `"-"`).
 - **`suffix_length`** — Required for new settings; optional on update. Integer 1–10. Number of digits for sequence (padded with zeros).
-- **`due_date_days`** — Optional; defaults to `1`. Integer ≥ 0, no decimals. Number of days after invoice creation to set due date.
+- **`due_date_days`** — Optional; defaults to `1`. Integer ≥ 0, no decimals. Used to form the workspace's default payment terms when `payment_terms` is unset. A value of `0` means due on receipt; a positive value becomes `<days> NET`.
+- **`payment_terms`** — Optional. A day term from `1 NET` to `365 NET`, or `DUE_ON_RECEIPT`, `END_OF_MONTH`, or `END_OF_NEXT_MONTH`. When set, this value takes precedence over `due_date_days`.
 - **`finalization_delay_seconds`**: Optional, defaults to `7200`. Integer, in seconds. How long Flexprice waits before finalizing a draft invoice on its own. For a `SUBSCRIPTION_CYCLE` draft, the wait starts at the period end or the draft's creation, whichever is later. For any other draft, it starts at the draft's last compute.
 - **`auto_finalize`**: Optional, defaults to `true`. Boolean. Whether Flexprice finalizes `SUBSCRIPTION_CYCLE` draft invoices on its own. See [Automatic Finalization](#automatic-finalization).
+
+For example, this partial setting uses `30 NET`; `due_date_days` supplies the workspace default when `payment_terms` is unset:
+
+```json
+{
+  "due_date_days": 14,
+  "payment_terms": "30 NET"
+}
+```
 
 ### Default Values
 
