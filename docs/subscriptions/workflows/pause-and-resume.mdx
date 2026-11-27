@@ -1,9 +1,9 @@
 ---
 title: "Pause and Resume"
-description: "Pause a subscription to stop billing without cancelling it, and resume it with or without proration"
+description: "Pause a subscription to stop billing for a while, and cancel it automatically if it is not resumed in time"
 ---
 
-Pausing a subscription stops billing without cancelling it. Flexprice invoices the current billing period up to the pause, bills nothing while the subscription is paused, and bills the subscription again from the moment you resume it.
+Pausing a subscription stops billing without ending it. The billing period carries on, and its invoice is raised at the period end as usual, over the time the subscription was active. A paused subscription that is not resumed within its grace period is cancelled.
 
 <Info>
   Pause and resume take effect at the moment of the request. Pause with [Pause subscription](/api-reference/subscriptions/pause-subscription) and resume with [Resume subscription](/api-reference/subscriptions/resume-subscription). For how prorated amounts are calculated, see [Understanding Proration](/docs/subscriptions/understanding-proration).
@@ -13,7 +13,7 @@ Pausing a subscription stops billing without cancelling it. Flexprice invoices t
 
 Only an `active` subscription can be paused.
 
-In the dashboard, subscriptions are called **contracts**. **Pause contract** is not offered for inherited or grouped-invoicing contracts, or contracts with a cancellation scheduled. To pause an inherited or grouped-invoicing contract, open its parent contract instead. Actions that change a contract require write access to subscriptions.
+In the dashboard, subscriptions are called **contracts**. Actions that change a contract require write access to subscriptions.
 
 <Tabs>
   <Tab title="Dashboard">
@@ -26,14 +26,26 @@ In the dashboard, subscriptions are called **contracts**. **Pause contract** is 
         Open the **⋯** menu beside the contract and select **Pause contract**. You can also open the contract and use its header menu.
       </Step>
 
-      <Step title="Choose the proration behavior">
-        Turn on **Credit the unused part of this period** to send `proration_behavior: create_prorations`. Leave it off (the default) to send `none`. Optionally enter a **Reason (optional)**.
+      <Step title="Fill in the pause">
+        All fields are optional:
+
+        - **Proration**: **None** (the default) or **Create prorations**. See [How a paused period is billed](#how-a-paused-period-is-billed).
+        - **Grace period (optional)**: the number of days the contract may stay paused before it is cancelled. Leave it empty to use the default.
+        - **Reason (optional)**: why the contract is paused.
       </Step>
 
       <Step title="Confirm">
-        Click **Pause contract**. After a successful pause, the contract status changes to **Paused**.
+        Click **Pause contract**. The contract status changes to **Paused**, and its banner shows the date it is cancelled if it is not resumed.
       </Step>
     </Steps>
+
+    <Frame>
+      ![Pause contract in the contract menu on the customer page](/images/docs/subscriptions/pause-and-resume/pause-menu.png)
+    </Frame>
+
+    <Frame>
+      ![Pause contract dialog with proration, grace period and reason](/images/docs/subscriptions/pause-and-resume/pause-dialog.png)
+    </Frame>
   </Tab>
   <Tab title="API">
     ```bash
@@ -42,92 +54,87 @@ In the dashboard, subscriptions are called **contracts**. **Pause contract** is 
       -H "Content-Type: application/json" \
       -d '{
         "proration_behavior": "create_prorations",
+        "pause_grace_period_days": 15,
         "reason": "customer_request"
       }'
     ```
 
     | Field | Description |
     | ----- | ----------- |
-    | `proration_behavior` | `none` (default) or `create_prorations`. Prices the invoice raised at the pause |
+    | `proration_behavior` | `none` (default) or `create_prorations`. Decides whether this pause's days are taken off the fixed charges |
+    | `pause_grace_period_days` | Days the subscription may stay paused before it is cancelled. Minimum 1, and it must end by the current period end |
     | `reason` | Why the subscription is paused. Up to 255 characters |
     | `metadata` | Key-value pairs stored with the pause |
   </Tab>
 </Tabs>
 
+## Automatic cancellation
+
+Every pause schedules a cancellation. If the subscription is still paused when the grace period ends, it is cancelled and its invoice for the period is raised. The grace period is taken from the first of these that is set:
+
+1. `pause_grace_period_days` on the pause request.
+2. `pause_grace_period_days` in the [subscription settings](/docs/settings/settings#subscription-configuration), capped at the current period end.
+3. The end of the current billing period.
+
+<Warning>
+  A grace period sent on the pause request must end by the current period end. A longer one is refused with HTTP 400.
+</Warning>
+
 <Note>
-  A paused subscription can be cancelled only with `cancellation_type: immediate`. The cancellation bills nothing.
+  To set the default, go to **Settings → Contract** and enter the **Pause grace period**. Leave it empty to cancel paused contracts at the end of their period.
 </Note>
 
-## Invoicing the period up to the pause
+## How a paused period is billed
 
-Pausing raises a `PRORATION` invoice from `current_period_start` up to the pause. It bills the usage and the `ARREAR` fixed charges for that time. `ADVANCE` fixed charges were billed when the period started, so they are not billed again.
+The period's `SUBSCRIPTION_CYCLE` invoice is raised at the period end, as for any other period.
+
+- **Usage** is billed only for the time the subscription was active.
+- **Fixed charges** depend on each pause's `proration_behavior`:
 
 | Charge | `none` | `create_prorations` |
 | ------ | ------ | ------------------- |
-| Usage | Up to the pause | Up to the pause |
-| `ARREAR` fixed charges | The full period | The time up to the pause |
-| `ADVANCE` fixed charges | No credit | The unused time is credited to the customer's prepaid wallet |
+| `ARREAR` fixed charges | The full period | The period minus the paused days |
+| `ADVANCE` fixed charges | No credit | The paused share is credited to the customer's prepaid wallet |
 
-The `proration_behavior` you send with the pause applies only to this invoice. The subscription's own `proration_behavior` does not change.
+The `ADVANCE` credit is given once per billing period, when that period's invoice is finalized, and covers every `create_prorations` pause in the period together. Days paused with `none` are billed as usual. The subscription's own `proration_behavior` does not change.
 
 ## Resuming a subscription
 
+Resuming starts billing again and removes the pause's scheduled cancellation. The billing period and its end date stay as they were.
+
 <Tabs>
   <Tab title="Dashboard">
-    <Steps>
-      <Step title="Open the subscription">
-        Go to **Customers**, select the customer, and find the paused contract in the **Contracts** card.
-      </Step>
+    Open the **⋯** menu beside the paused contract, select **Resume contract**, and confirm. The contract status changes to **Active**.
 
-      <Step title="Choose Resume contract">
-        Open the **⋯** menu beside the contract and select **Resume contract**. You can also open the contract and use its header menu.
-      </Step>
+    <Frame>
+      ![Resume contract in the menu of a paused contract](/images/docs/subscriptions/pause-and-resume/resume-menu.png)
+    </Frame>
 
-      <Step title="Choose the proration behavior">
-        Turn on **Charge for the rest of this period** to send `proration_behavior: create_prorations`. Leave it off (the default) to send `none`. The dashboard always sends this choice rather than keeping the subscription's current setting.
-      </Step>
-
-      <Step title="Confirm">
-        Click **Resume contract**. After a successful resume, the contract status changes to **Active**.
-      </Step>
-    </Steps>
+    <Frame>
+      ![Resume contract confirmation](/images/docs/subscriptions/pause-and-resume/resume-dialog.png)
+    </Frame>
   </Tab>
   <Tab title="API">
     ```bash
     curl -X POST "https://us.api.flexprice.io/v1/subscriptions/$SUBSCRIPTION_ID/resume" \
       -H "x-api-key: $FLEXPRICE_API_KEY" \
       -H "Content-Type: application/json" \
-      -d '{
-        "proration_behavior": "create_prorations"
-      }'
+      -d '{}'
     ```
 
     | Field | Description |
     | ----- | ----------- |
-    | `proration_behavior` | `none` or `create_prorations`. Saved on the subscription. When omitted, the subscription's current `proration_behavior` is used |
-    | `metadata` | Key-value pairs stored with the pause |
+    | `metadata` | Key-value pairs merged into the pause |
   </Tab>
 </Tabs>
 
-<Note>
-  Unlike the pause, the `proration_behavior` you send with the resume is saved on the subscription, and its later invoices use it.
-</Note>
+A subscription can be paused again after it is resumed. Each pause has its own proration behavior and grace period.
 
-## Invoicing the period after the resume
+## Cancelling a paused subscription
 
-The subscription resumes inside the billing period the resume falls in, and that period still ends on its usual date. Two invoices bill it:
+A paused subscription can be cancelled only with `cancellation_type: immediate`. Its invoice for the period is raised up to the cancellation, over the time it was active. If the pause used `create_prorations`, the paused share of the `ADVANCE` fixed charges is credited up to the original period end. To keep the subscription instead, resume it, which removes the scheduled cancellation.
 
-- **`SUBSCRIPTION_RESUME`**, raised at the resume. It bills the `ADVANCE` fixed charges for the rest of the period.
-- **`SUBSCRIPTION_CYCLE`**, raised when the period ends. It bills the `ARREAR` fixed charges and the usage from the resume onward, and the next period's `ADVANCE` fixed charges.
-
-The resume request's `proration_behavior` decides how much of each fixed charge they bill. When the request omits it, the subscription's current `proration_behavior` applies.
-
-| Charge | `none` | `create_prorations` |
-| ------ | ------ | ------------------- |
-| `ADVANCE` fixed charges on `SUBSCRIPTION_RESUME` | The full period | The time from the resume to the period end |
-| `ARREAR` fixed charges on `SUBSCRIPTION_CYCLE` | The full period | The time from the resume to the period end |
-
-## Use case: pause in January, resume in March
+## Use case: a ten-day pause in January
 
 | Subscription | Setup |
 | ------------ | ----- |
@@ -136,14 +143,13 @@ The resume request's `proration_behavior` decides how much of each fixed charge 
 | Support fee | \$62, `ARREAR` |
 | API usage | `ARREAR` |
 | Paused | January 11, after 10 of 31 days |
-| Resumed | March 18, with 14 of 31 days left in the period |
+| Resumed | January 21, after 10 paused days |
 
 | Invoice | Raised on | `create_prorations` | `none` |
 | ------- | --------- | ------------------- | ------ |
-| `PRORATION` | January 11 | API usage up to January 11, \$20 support fee. \$210 of the platform fee is credited to the wallet | API usage up to January 11, \$62 support fee. No credit |
-| `SUBSCRIPTION_PAUSED` | Each paused stretch from January 11 to March 18 | \$0, nothing billed | \$0, nothing billed |
-| `SUBSCRIPTION_RESUME` | March 18 | \$140 platform fee | \$310 platform fee |
-| `SUBSCRIPTION_CYCLE` | April 1 | \$28 support fee, API usage from March 18, \$310 platform fee for April | \$62 support fee, API usage from March 18, \$310 platform fee for April |
+| `SUBSCRIPTION_CYCLE` | February 1 | \$42 support fee, API usage outside January 11 to 21, \$310 platform fee for February. \$100 of January's platform fee is credited to the wallet | \$62 support fee, API usage outside January 11 to 21, \$310 platform fee for February. No credit |
+
+Had the subscription not been resumed, it would have been cancelled when its grace period ended, and its January invoice raised then.
 
 ## Webhooks
 
@@ -154,8 +160,8 @@ The resume request's `proration_behavior` decides how much of each fixed charge 
 | [`subscription.updated`](/api-reference/webhook-events/subscriptionupdated) | A subscription is paused or resumed, sent alongside the two events above |
 
 <CardGroup cols={3}>
-  <Card title="Understanding Proration" icon="book-open" href="/docs/subscriptions/understanding-proration">
-    How prorated amounts are calculated.
+  <Card title="Subscription settings" icon="gear" href="/docs/settings/settings#subscription-configuration">
+    Set the default pause grace period.
   </Card>
   <Card title="Pause subscription" icon="pause" href="/api-reference/subscriptions/pause-subscription">
     API reference for pausing a subscription.

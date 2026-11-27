@@ -20,7 +20,7 @@ Open the account menu at the bottom of the console sidebar and select **Settings
 | **Usage & billing** | View your own Flexprice account's plan, usage, and billing. |
 | **Coupons**, **Taxes**, **Cost tracking** | Open their dedicated console pages. |
 | **Invoicing** | **Invoices** for numbering and due dates, **PDF & drafts** for invoice documents and drafts, and **Tax engine** for tax calculation. |
-| **Contract** | **Contracts** for auto-cancellation and other contract defaults. |
+| **Contract** | Auto-cancellation of unpaid contracts and the pause grace period. |
 | **Currency** | **Currencies** for custom currencies; **Forex rates** for global conversion rates. |
 | **Wallets** | **Wallet alerts**, **Bonus credits**, and **Top-ups**. |
 | **Alerts & Emails** | **Alerts** for contract and entitlement alerts and usage alert timing; **Emails** for invoice emails to customers. |
@@ -83,19 +83,21 @@ The following setting keys cover common billing and wallet configurations:
 
 **Key:** `subscription_config`
 
-Controls subscription auto-cancellation for unpaid invoices. When enabled, subscriptions are automatically cancelled after grace period if invoices remain unpaid.
+Controls when Flexprice cancels a subscription on its own: after its invoices stay unpaid past a grace period, and after it stays paused past a pause grace period. In the console, both are under **Settings → Contract**.
 
 ### Schema
 
 ```json
 {
   "grace_period_days": number,
-  "auto_cancellation_enabled": boolean
+  "auto_cancellation_enabled": boolean,
+  "pause_grace_period_days": number
 }
 ```
 
 - **`grace_period_days`** — Required for new settings; optional on update. Integer ≥ 1, no decimals. Number of days after invoice due date before auto-cancellation.
 - **`auto_cancellation_enabled`** — Optional; defaults to `false`. Boolean. Enable or disable auto-cancellation for this tenant and environment.
+- **`pause_grace_period_days`**: Optional. Integer of 1 or more. Days a paused subscription may stay paused before it is cancelled. Used when a pause request does not send its own value, and capped at the subscription's current period end. Unset cancels a paused subscription at the end of its period. It applies whether or not `auto_cancellation_enabled` is on. See [Pause and Resume](/docs/subscriptions/workflows/pause-and-resume#automatic-cancellation).
 
 ### Default Values
 
@@ -119,12 +121,12 @@ When you enable auto-cancellation and set a grace period:
 
 ### Validation
 
-- **New settings:** `grace_period_days` required, integer ≥ 1, no decimals. `auto_cancellation_enabled` optional, boolean, default `false`.
+- **New settings:** `grace_period_days` required, integer ≥ 1, no decimals. `auto_cancellation_enabled` optional, boolean, default `false`. `pause_grace_period_days` optional, integer of 1 or more, unset by default.
 - **Updates:** Partial updates allowed; only provided fields validated; omitted fields unchanged.
 
 ### Customer and Subscription Overrides
 
-A customer or a subscription can override the environment's grace period and auto-cancellation, for example to give one client a longer grace period than the rest. Set `settings.subscription_config` when you create or update the customer (`POST /customers`, `PUT /customers/{id}`) or the subscription (`POST /subscriptions`, `PUT /subscriptions/{id}`). Responses return the overrides in the same `settings` field.
+A customer or a subscription can override the environment's grace period and auto-cancellation (not the pause grace period), for example to give one client a longer grace period than the rest. Set `settings.subscription_config` when you create or update the customer (`POST /customers`, `PUT /customers/{id}`) or the subscription (`POST /subscriptions`, `PUT /subscriptions/{id}`). Responses return the overrides in the same `settings` field.
 
 ```json
 {
