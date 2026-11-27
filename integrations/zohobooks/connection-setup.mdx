@@ -11,6 +11,7 @@ If your finance team keeps its books in Zoho Books, every Flexprice invoice othe
 |---|---|---|
 | Invoice sync | Flexprice → Zoho | Finalized invoices are created in Zoho Books, with contacts and items created as needed. See [Invoice Sync](/integrations/zohobooks/invoice-sync). |
 | Payment sync | Flexprice → Zoho | When a Flexprice invoice is fully paid, the payment is recorded against the Zoho invoice. |
+| Credit note sync | Flexprice → Zoho | Credit notes on synced invoices are created in Zoho Books, then credited to the invoice or refunded. Voided credit notes are voided in Zoho Books. See [Credit Note Sync](/integrations/zohobooks/credit-note-sync). |
 | Payment gateways | Flexprice → Zoho | Synced invoices can carry Zoho online payment options such as Razorpay, Stripe or PayPal. |
 | Paid and voided invoices | Zoho → Flexprice | A Zoho invoice marked paid or voided updates the linked Flexprice invoice. See [Webhooks and Customer Sync](/integrations/zohobooks/webhooks-and-customer-sync). |
 | Customer import | Zoho → Flexprice | A customer created in Zoho Books creates a Flexprice customer. |
@@ -80,10 +81,12 @@ openssl rand -hex 32
     </Frame>
   </Step>
   <Step title="Choose what syncs">
-    **Push invoices** sends finalized Flexprice invoices to Zoho Books. **Pull customers** creates Flexprice customers from new Zoho customers. Both are on by default; switch off any you do not want.
+    - **Push invoices**: sends finalized invoices to Zoho Books. On by default.
+    - **Pull customers**: creates Flexprice customers from new Zoho customers. On by default.
+    - **Push credit notes**: sends credit notes to Zoho Books. Off by default. Needs **Push invoices** on and a **Deposit to account ID**, the Bank or Cash account in Zoho Books that credit notes are refunded from. See [Credit Note Sync](/integrations/zohobooks/credit-note-sync).
 
     <Frame>
-      ![Sync step with the Push invoices and Pull customers switches](/images/docs/integrations/zoho-books/zoho-connect-sync.png)
+      ![Sync step with the Push invoices, Pull customers and Push credit notes switches and the Deposit to account ID field](/images/docs/integrations/zoho-books/zoho-connect-sync-credit-notes.png)
     </Frame>
 
     To let customers pay from the Zoho invoice, tick **Enable payment gateways** and select the gateways. If you pick **PayPal**, also choose the **PayPal payment method** (**Standard** or **Adaptive**). Each gateway must already be set up in Zoho Books under **Settings** > **Module Settings** > **Online Payments** > **Customer Payments**, or Zoho rejects the invoice. Click **Continue**.
@@ -108,7 +111,21 @@ openssl rand -hex 32
   </Step>
 </Steps>
 
-Flexprice requests these Zoho scopes: settings, contacts, invoices and customer payments (each with read, create and update).
+Flexprice requests these Zoho scopes:
+
+| Module | Scopes |
+|---|---|
+| Settings | `ZohoBooks.settings.READ`, `ZohoBooks.settings.CREATE`, `ZohoBooks.settings.UPDATE` |
+| Contacts | `ZohoBooks.contacts.READ`, `ZohoBooks.contacts.CREATE`, `ZohoBooks.contacts.UPDATE` |
+| Invoices | `ZohoBooks.invoices.READ`, `ZohoBooks.invoices.CREATE`, `ZohoBooks.invoices.UPDATE`, `ZohoBooks.invoices.DELETE` |
+| Credit notes | `ZohoBooks.creditnotes.READ`, `ZohoBooks.creditnotes.CREATE` |
+| Customer payments | `ZohoBooks.customerpayments.READ`, `ZohoBooks.customerpayments.CREATE`, `ZohoBooks.customerpayments.UPDATE` |
+
+`ZohoBooks.invoices.DELETE` lets Flexprice remove a voided credit note's applied credit from the Zoho invoice. It does not delete invoices.
+
+<Warning>
+  The credit note scopes and `ZohoBooks.invoices.DELETE` were added with credit note sync. A connection authorized before then does not have them, and Zoho rejects its credit note calls. Flexprice cannot authorize an existing connection again. Disconnecting and connecting again grants the new scopes, but it creates a new connection: credit notes on invoices synced through the old connection are then skipped, because their invoices are linked to the old connection.
+</Warning>
 
 ## Step 4: Register the Webhooks in Zoho Books
 
@@ -140,7 +157,7 @@ In Zoho Books, open **Settings** > **Automation** > **Workflow Rules**:
 
 ## Managing the Connection
 
-Click **Configure** on the Zoho card to rename the connection, switch syncs on or off, change payment gateways, copy the webhook URL or replace the webhook signing secret. Leave the secret blank to keep the current one.
+Click **Configure** on the Zoho card to rename the connection, switch syncs on or off, change payment gateways or the **Deposit to account ID**, copy the webhook URL or replace the webhook signing secret. Leave the secret blank to keep the current one.
 
 <Frame>
   ![Configure sheet with the connection name, sync switches and payment gateways](/images/docs/integrations/zoho-books/zoho-configure.png)
@@ -173,11 +190,17 @@ curl -X POST https://api.cloud.flexprice.io/v1/oauth/init \
       "accounts_server": "https://accounts.zoho.in"
     },
     "sync_config": {
-      "invoice":  { "inbound": false, "outbound": true },
-      "customer": { "inbound": true,  "outbound": false }
+      "invoice":     { "inbound": false, "outbound": true },
+      "customer":    { "inbound": true,  "outbound": false },
+      "credit_note": { "inbound": false, "outbound": true },
+      "invoice_sync_settings": {
+        "deposit_to_account_id": "4602000000000361"
+      }
     }
   }'
 ```
+
+`credit_note.outbound` needs `invoice.outbound` and a `deposit_to_account_id`. Leave out the `credit_note` entry and `invoice_sync_settings` if you do not sync credit notes.
 
 The response holds an `oauth_url` and a `session_id`. Send the user to `oauth_url`. Zoho redirects back to your redirect URI with `code`, `state` and `accounts-server`. Finish within 5 minutes:
 
@@ -207,6 +230,8 @@ To change settings later, use `PUT /v1/connections/{id}`. Invoice settings such 
 | `Zoho token exchange failed` | Wrong data center, wrong client secret, or the 5-minute window passed | Pick the **Accounts server** your Zoho account signs in on and retry the connect flow |
 | Webhook returns `401` | Secret missing on the connection or different from the one in Zoho | Set the same secret in the Zoho webhook and in **Configure** > **Webhook signing secret** |
 | Webhook returns `200` but nothing changes in Flexprice | Tenant or environment in the URL is not the one holding the connection, or the Zoho invoice was not created by Flexprice | Copy the URL from **Configure**, and check that the invoice was synced from Flexprice |
+| `Set deposit_to_account_id to the Zoho Bank or Cash account credit note refunds are paid from` | **Push credit notes** is on and **Deposit to account ID** is blank | Enter the numeric ID of a Zoho Bank or Cash account |
+| `Enable invoice outbound sync to sync credit notes to Zoho Books` | **Push credit notes** is on and **Push invoices** is off | Turn on **Push invoices** |
 | Webhook returns `404` | The `?connection=` value does not match a connection | Use the connection ID shown for this Zoho connection |
 
 ## Related Articles
@@ -214,6 +239,9 @@ To change settings later, use `PUT /v1/connections/{id}`. Invoice settings such 
 <CardGroup cols={2}>
   <Card icon="file-invoice" href="/integrations/zohobooks/invoice-sync" title="Invoice Sync">
     What Flexprice sends to Zoho Books, and the settings that control it.
+  </Card>
+  <Card icon="file-minus" href="/integrations/zohobooks/credit-note-sync" title="Credit Note Sync">
+    How credit notes, refunds and voids reach Zoho Books.
   </Card>
   <Card icon="arrow-right-arrow-left" href="/integrations/zohobooks/webhooks-and-customer-sync" title="Webhooks and Customer Sync">
     How paid and voided invoices and new Zoho customers reach Flexprice.

@@ -13,7 +13,7 @@ Your billing runs in Flexprice, but revenue, receivables and GST returns are rep
 4. **Flexprice adopts the Zoho invoice number.** The Flexprice invoice's number is replaced with the number Zoho assigned, and `metadata.zoho_invoice_id` stores the Zoho invoice ID. Both systems then show the same invoice number on PDFs and statements.
 5. **The payment follows.** When the Flexprice invoice is fully paid, Flexprice records a customer payment against the Zoho invoice. If the invoice was already paid when it synced, the payment is recorded straight away. See [Payments](#payments).
 
-An invoice syncs once. Later edits in Flexprice do not change the Zoho invoice unless you [re-sync](#re-syncing-an-invoice) it.
+An invoice syncs once. Later edits in Flexprice do not change the Zoho invoice unless you [re-sync](#re-syncing-an-invoice) it. Credit notes on synced invoices sync separately: see [Credit Note Sync](/integrations/zohobooks/credit-note-sync).
 
 <Warning>
   Flexprice invoice numbers change after sync. If you hand out invoice numbers before they reach Zoho (for example in an email sent at finalization), use the number that appears after sync.
@@ -211,7 +211,7 @@ Settings beyond the sync switches and payment gateways are set through the API, 
 | `global_custom_fields` | `[{ field, value }]` | None | Fixed values for Zoho fields |
 | `submit_for_approval` | boolean | `false` | Submit drafts for approval before recording payments |
 | `payment_mode` | string, up to 100 characters | `others` | Zoho payment mode for recorded payments, for example `Bank Transfer` |
-| `deposit_to_account_id` | numeric Zoho account ID | Undeposited Funds | Account recorded payments are deposited to |
+| `deposit_to_account_id` | numeric Zoho account ID | Undeposited Funds | Account recorded payments are deposited to. With [credit note sync](/integrations/zohobooks/credit-note-sync) on, it is required, must be a Bank or Cash account, and is the account credit notes are refunded from |
 | `payment_gateways` | `{ enabled, gateways, paypal_payment_method }` | Off | Online payment options on synced invoices |
 
 `PUT /v1/connections/{id}` replaces the whole `sync_config`, so send every field you want to keep:
@@ -272,7 +272,7 @@ curl -X POST https://api.cloud.flexprice.io/v1/integrations/sync \
 ## Limitations
 
 - Voiding an invoice in Flexprice does not void it in Zoho Books. Void it in Zoho too.
-- Credit notes, refunds and payment reversals are not synced in either direction.
+- Credit notes and their refunds sync from Flexprice to Zoho only, with **Push credit notes** on. See [Credit Note Sync](/integrations/zohobooks/credit-note-sync). Payment reversals are not synced.
 - Plans, prices and subscriptions are not synced on their own; items are created only for invoice lines.
 - Zero-amount lines and Flexprice tax amounts are not sent.
 - If Zoho Books rejects an invoice (for example for a missing currency or an unknown custom field), fix the cause in Zoho, then [re-sync](#re-syncing-an-invoice) the invoice.
@@ -294,6 +294,9 @@ curl -X POST https://api.cloud.flexprice.io/v1/integrations/sync \
 <CardGroup cols={2}>
   <Card icon="plug" href="/integrations/zohobooks/connection-setup" title="Connection Setup">
     Connect Zoho Books over OAuth and register the webhooks.
+  </Card>
+  <Card icon="file-minus" href="/integrations/zohobooks/credit-note-sync" title="Credit Note Sync">
+    Credit notes, refunds and voids sent to Zoho Books.
   </Card>
   <Card icon="arrow-right-arrow-left" href="/integrations/zohobooks/webhooks-and-customer-sync" title="Webhooks and Customer Sync">
     Paid and voided invoices and new customers from Zoho.
