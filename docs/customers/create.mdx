@@ -19,7 +19,7 @@ To create a new customer in Flexprice, follow these steps:
 
     - **Name**: the customer's display name on invoices and in the dashboard.
     - **External ID**: your own identifier for the customer. Usage events are matched to the customer by it.
-    - **Email** (optional): where invoices and billing emails are sent.
+    - **Email** (optional): the customer's default address and fallback for invoice and invoice payment reminder emails when no contact person is assigned to that type.
     * **Phone** (optional): choose a country code and enter the number. Flexprice saves it in E.164-style international format with a leading `+` and 8 to 15 digits (for example, `+919876543210`). Spaces, hyphens, and parentheses are removed.
 
     <Frame>
@@ -49,3 +49,30 @@ To create a new customer in Flexprice, follow these steps:
 </Steps>
 
 You are not required to fill in all details initially; additional information can be added later as needed.
+
+## Route billing emails to contacts
+
+You can route invoice emails and invoice payment reminder emails to customer contacts in the dashboard or through the API. During customer creation, add up to five contact persons. Later, use **Contact persons** on the customer's detail page to add, edit, or remove them.
+
+For each person, under **Subscribe**, choose **Invoices**, **Payment reminders**, or both. A selected email type requires an email address. When no contact is assigned to a type, Flexprice uses the customer's `email` as the fallback.
+
+To configure contact recipients through the API, send this body to `PUT /v1/customers?id={customer_id}`:
+
+```json
+{
+  "contact_persons": [
+    {
+      "first_name": "Ana",
+      "email": "ap@example.com",
+      "email_types": ["invoice"]
+    },
+    {
+      "first_name": "Raj",
+      "email": "dues@example.com",
+      "email_types": ["invoice_payment_reminder"]
+    }
+  ]
+}
+```
+
+Use `invoice` for automatic invoice emails and API invoice emails sent without a `to` address. Use `invoice_payment_reminder` for invoice payment reminders approved for sending. Flexprice sends to each distinct email address on a contact assigned to that type, and falls back to the customer's `email` when no contact is assigned. On update, `contact_persons` replaces the existing list, so include every contact you want to keep.

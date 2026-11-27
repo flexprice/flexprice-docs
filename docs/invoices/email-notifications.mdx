@@ -44,9 +44,9 @@ Draft invoices can't be emailed until they are finalized, and voided invoices ca
 
 ## Sending invoices automatically
 
-With **Email invoices automatically** on, Flexprice emails each invoice to the customer's email address the moment it is finalized, so you don't have to send it yourself. These emails are marked **Auto** in the **Emails** card.
+With **Email invoices automatically** on, Flexprice emails each invoice to the contacts assigned the `invoice` email type, or to the customer's email address if no contact is assigned. These emails are marked **Auto** in the **Emails** card. See [Creating a customer](/docs/customers/create#route-billing-emails-to-contacts) to configure contact routing in the dashboard or through the API.
 
-An invoice is not emailed automatically when the customer has no email address or the invoice total is zero. The **Emails** card shows these as **Skipped**, with the reason.
+An invoice is not emailed automatically when there are no invoice recipients or the invoice total is zero. The **Emails** card shows skipped emails and the reason.
 
 ## Checking delivery
 
@@ -82,6 +82,8 @@ You can do the same from the API:
 - Turn emails on with the `email_notification_config` setting, which has the same three options: `enabled`, `attach_invoice_pdf` and `auto_send`.
 - Send an invoice with [Email invoice to customer](/api-reference/invoices/email-invoice-to-customer), optionally with your own `to` and `cc` addresses.
 - See an invoice's emails with [List invoice emails](/api-reference/invoices/list-invoice-emails), or search across invoices with [Search emails](/api-reference/invoices/search-emails).
+
+When you send an invoice through the API without `to`, Flexprice uses contacts assigned the `invoice` email type. If no matching contact has an email address, it falls back to the customer's email address when set. An explicit `to` address overrides contact routing.
 
 <CardGroup cols={2}>
   <Card icon="link" href="/docs/invoices/hosted-invoices" title="Hosted Invoices">
