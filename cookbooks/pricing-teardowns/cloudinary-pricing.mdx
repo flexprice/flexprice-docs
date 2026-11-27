@@ -36,6 +36,7 @@ Cloudinary Image and Video API Plus pairs a $99 monthly fee with a shared 225-cr
 | --- | --- | --- |
 | Plus base | $99 per month on monthly billing, including 225 credits | Fixed monthly price and a separately tracked allowance |
 | Credit conversions used here | 1 credit per 1,000 image transformations, 1 GB stored, 1 GB of standard image bandwidth, or 2 GB of video bandwidth on Plus | Convert each resource to the same credit unit upstream |
+| Managed storage | Original assets, cached copies of delivered derivatives, and revisions backed up to Cloudinary storage | Include all three in the storage snapshot |
 | Usage window | Transformations and bandwidth accrue over a trailing 30 days. Storage uses a current snapshot | Evaluate the allowance from an application snapshot outside the billing-period meters |
 
 ## Design takeaways
@@ -102,7 +103,7 @@ Use `POST /subscriptions` with the returned customer, plan, and price IDs. Set `
 
 ## Worked bill
 
-A Plus account has 100,000 billable image transformations, 30 GB of standard image bandwidth, and 60 GB of video bandwidth over the last 30 days. It currently stores 20 GB.
+A Plus account has 100,000 billable image transformations, 30 GB of standard image bandwidth, and 60 GB of video bandwidth over the last 30 days. Its current storage totals 20 GB across originals, cached derivatives, and revisions backed up to Cloudinary.
 
 | Resource | Conversion | Credits |
 | --- | --- | --- |
@@ -116,7 +117,7 @@ Total usage is **180 of 225 credits**, leaving 45 credits at this snapshot. The 
 ## Pricing sources
 
 - [Cloudinary pricing](https://cloudinary.com/pricing): Monthly Plus price and included credits.
-- [Cloudinary billing and plans](https://cloudinary.com/documentation/billing_and_plans): Credit conversions and Plus usage windows.
+- [Cloudinary billing and plans](https://cloudinary.com/documentation/billing_and_plans): Credit conversions, managed storage, and Plus usage windows.
 - [Cloudinary terms of use](https://cloudinary.com/tou): Access to paid services after confirmation of payment.
 
 Pricing checked on 2026-11-27.
