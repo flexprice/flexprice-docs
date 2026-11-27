@@ -184,17 +184,27 @@ In the console, go to **Settings → Invoicing → Invoices**. Under **Dates and
 - **`timezone`** — Required for new settings; optional on update. Valid IANA timezone (e.g. `America/New_York`, `UTC`) or common abbreviation (e.g. `EST`, `GMT`). Timezone for date formatting.
 - **`separator`** — Required for new settings; optional on update. String (empty allowed). Character(s) between prefix, date, and sequence (e.g. `"-"`).
 - **`suffix_length`** — Required for new settings; optional on update. Integer 1–10. Number of digits for sequence (padded with zeros).
-- **`due_date_days`**: Optional; defaults to `1`. Integer ≥ 0, no decimals. Used to form the workspace's default payment terms when `payment_terms` is unset. A value of `0` means due on receipt; a positive value becomes `<days> NET`.
-- **`payment_terms`**: Optional. A day term from `1 NET` to `365 NET`, or `DUE_ON_RECEIPT`, `END_OF_MONTH`, or `END_OF_NEXT_MONTH`. When set, this value takes precedence over `due_date_days`.
+- **`due_date_days`**: Optional; defaults to `1`. Integer ≥ 0, no decimals. When `payment_terms` is unset, invoices are due this many days after issue. The API field has no upper bound; the console's **A number of days** selector accepts 1–365. A value of `0` makes an invoice due on its issue date.
+- **`payment_terms`**: Optional. A day term from `1 NET` to `365 NET`, or `DUE_ON_RECEIPT`, `END_OF_MONTH`, or `END_OF_NEXT_MONTH`. When set, this value takes precedence over `due_date_days`. To clear an existing term and use the fallback again, send an empty string; omitting the field in a partial update keeps its current value.
 - **`finalization_delay_seconds`**: Optional, defaults to `7200`. Integer, in seconds. How long Flexprice waits before finalizing a draft invoice on its own. For a `SUBSCRIPTION_CYCLE` draft, the wait starts at the period end or the draft's creation, whichever is later. For any other draft, it starts at the draft's last compute.
 - **`auto_finalize`**: Optional, defaults to `true`. Boolean. Whether Flexprice finalizes `SUBSCRIPTION_CYCLE` draft invoices on its own. See [Automatic Finalization](#automatic-finalization).
 
-For example, this partial setting uses `30 NET`; `due_date_days` supplies the workspace default when `payment_terms` is unset:
+For example, this partial setting uses `30 NET`; `due_date_days` remains the fallback when `payment_terms` is unset:
 
 ```json
 {
   "due_date_days": 14,
   "payment_terms": "30 NET"
+}
+```
+
+To return to the fallback after saving a term, send this partial update. Do not omit `payment_terms`, because omitted fields retain their current values:
+
+```json
+{
+  "value": {
+    "payment_terms": ""
+  }
 }
 ```
 
