@@ -61,7 +61,7 @@ If your service sends events inline and the call fails, or the process crashes b
 
 - **Retry network errors, timeouts, and `5xx` responses** with exponential backoff until you get `202`. Resend the whole request: copies of an event that share its `event_id` and `timestamp` collapse into one.
 - **Turn on SDK retries.** They are off by default in every SDK: see [Retrying failed SDK requests](/developers/sdks/usage#retrying-failed-sdk-requests).
-- **Expect partly accepted bulk requests.** A `400` caused by one event missing a required field or exceeding the maximum message size can arrive even though other events in the same array were accepted. Fix the rejected event. If every event in the original batch had its own `event_id` and `timestamp`, resend the corrected batch with those original values so accepted events are deduplicated; otherwise check which events were accepted before resending.
+- **Expect partly accepted bulk requests.** A `400` caused by one event missing a required field or exceeding the maximum message size can arrive even though other events in the same array were accepted. Fix the rejected event. If every event in the original batch had its own `event_id` and `timestamp`, resend the corrected batch with those original values so accepted events are deduplicated. Otherwise, don't replay the batch until you can confirm which events were accepted. An event missing from the Event Debugger may still be processing; resend only events confirmed unaccepted.
 
 <Warning>
   **Don't retry an unchanged `400` automatically.** The payload fails the same way every time. Move the event to a dead letter queue, raise an alert, and fix it before resending.
