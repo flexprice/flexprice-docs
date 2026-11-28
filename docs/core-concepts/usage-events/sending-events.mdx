@@ -125,7 +125,7 @@ curl --request POST \
 | Status | Meaning | What to do |
 | ------ | ------- | ---------- |
 | **`202`** | Accepted for processing | Nothing. While you integrate, confirm counts in the Event Debugger |
-| **`400`** | The request is malformed: invalid JSON, a timestamp that isn't RFC 3339, a missing `event_name` or `external_customer_id`, more than 1000 events, or a body over 32 MiB. A bulk request can also return `400` when an event exceeds the maximum message size, even if other events in the array were accepted | Don't automatically retry the unchanged request. Fix the payload, then resend the corrected batch with each event's original `event_id` and `timestamp` so events already accepted are deduplicated |
+| **`400`** | Malformed JSON, an invalid timestamp, more than 1000 events, or a body over 32 MiB rejects the request before event processing. A missing `event_name` or `external_customer_id`, or an event over the maximum message size, can also return `400`; in a bulk request, other events may already have been accepted | Don't automatically retry an unchanged request. For request-wide errors, fix the request and resend; no events were accepted. For a per-event error in a bulk request, fix the rejected event. Resend the corrected batch with each event's original `event_id` and `timestamp` only if every event originally had both; otherwise check which events were accepted before resending. |
 | **`401`** | Missing or invalid API key | Check the `x-api-key` header and the environment the key belongs to |
 | **`403`** | The API key isn't allowed to write events | Use a key with write access |
 | **`5xx`** or a network error | The request may or may not have been processed | Retry with the same `event_id` and `timestamp` |
