@@ -18,7 +18,7 @@ How a bulk request fails decides what to resend:
 - **Invalid JSON, a timestamp that isn't RFC 3339, more than 1000 events, or an oversized body** reject the whole request before any event in it is accepted.
 - **An event missing `event_name` or `external_customer_id`, or an event that exceeds the maximum message size,** can fail the request even though other events in the array were accepted.
 
-In both cases, fix the payload and resend the whole batch. When every event carries its own `event_id` and `timestamp`, the events Flexprice already accepted collapse with their resent copies: see [Idempotency and Deduplication](/docs/core-concepts/usage-events/idempotency).
+Don't automatically retry an unchanged request. Fix the invalid event or request, then resend the corrected batch with each event's original `event_id` and `timestamp`. When every event carries both, events Flexprice already accepted collapse with their resent copies: see [Idempotency and Deduplication](/docs/core-concepts/usage-events/idempotency).
 
 ## Batching usage events with the SDKs
 

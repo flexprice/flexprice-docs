@@ -69,7 +69,7 @@ A Sum feature over `cpu_cores` then counts core-minutes. Send two or more heartb
 
 ## Resending a failed bulk request
 
-When a bulk request fails with a network error or a `5xx`, or with a `400` after some events were accepted, resend the whole batch. Events that Flexprice already accepted collapse with their resent copies, as long as every event in the batch carries its own `event_id` and `timestamp`.
+Don't automatically retry an unchanged `400` request. Fix the invalid payload, then resend the corrected batch with each event's original `event_id` and `timestamp`; events Flexprice already accepted collapse with their resent copies when every event carries both values. For network errors and `5xx`, retry the whole batch with those same values.
 
 <CardGroup cols={2}>
   <Card title="Send Usage Events" icon="book-open" href="/docs/core-concepts/send-usage-events">
